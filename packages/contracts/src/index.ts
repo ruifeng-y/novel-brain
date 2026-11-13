@@ -7963,6 +7963,7 @@ export const goldenThreeWorkspaceSchema = z
     branchId: uuidV7Schema,
     candidates: z.array(goldenThreeCandidateSchema).max(3),
     selectedCandidateId: uuidV7Schema.nullable(),
+    activeGenerationJob: goldenThreeGenerationJobSchema.nullable(),
     lock: goldenThreeLockSchema.nullable(),
     styleBaseline: goldenThreeStyleBaselineSchema.nullable(),
     gate: goldenThreeGateSchema,

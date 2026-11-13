@@ -3,6 +3,7 @@ import {
   GOLDEN_THREE_CONTEXT_COMPILER,
   GoldenThreeRepository,
   type GoldenThreeContextCompiler,
+  type GoldenThreeProviderFactory,
 } from "@novel-brain/golden-three";
 
 import { AuthModule } from "../auth/auth.module";
@@ -25,7 +26,14 @@ import { GoldenThreeService } from "./golden-three.service";
     {
       provide: GoldenThreeRepository,
       inject: [GOLDEN_THREE_CONTEXT_COMPILER],
-      useFactory: (compiler: GoldenThreeContextCompiler) => new GoldenThreeRepository(compiler),
+      useFactory: (compiler: GoldenThreeContextCompiler) => {
+        const providerFactory: GoldenThreeProviderFactory = {
+          create() {
+            throw new Error("Golden three provider execution belongs to the worker");
+          },
+        };
+        return new GoldenThreeRepository(compiler, providerFactory);
+      },
     },
     GoldenThreeQueue,
     GoldenThreeService,

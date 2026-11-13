@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { AgentGrantStore } from "@novel-brain/db";
+import type { AiGateway } from "@novel-brain/ai";
 import { GoldenThreeRepository } from "@novel-brain/golden-three";
 
 import { AgentGrantGuard, WorkerAgentGrantStore } from "./agent-runtime/agent-grant.guard";
@@ -47,9 +48,14 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
     WorkerGoldenThreeContextCompiler,
     {
       provide: GoldenThreeRepository,
-      inject: [WorkerGoldenThreeContextCompiler],
-      useFactory: (compiler: WorkerGoldenThreeContextCompiler) =>
-        new GoldenThreeRepository(compiler),
+      inject: [WorkerGoldenThreeContextCompiler, AI_GATEWAY],
+      useFactory: (
+        compiler: WorkerGoldenThreeContextCompiler,
+        resolver: AiGateway | Pick<ByokAiGatewayFactory, "create">,
+      ) =>
+        new GoldenThreeRepository(compiler, {
+          create: (config) => ("generateText" in resolver ? resolver : resolver.create(config)),
+        }),
     },
     GoldenThreeJobProcessor,
     WorkerSummaryRepository,

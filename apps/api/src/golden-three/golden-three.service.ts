@@ -145,7 +145,12 @@ export class GoldenThreeService {
         { retryable: true },
       );
     }
-    if (!result.replayed || result.job.status === "queued" || result.job.status === "preparing") {
+    if (
+      !result.replayed ||
+      result.job.status === "queued" ||
+      result.job.status === "preparing" ||
+      result.job.status === "running"
+    ) {
       await this.queue.enqueue(result.worker);
     }
     return result.job;

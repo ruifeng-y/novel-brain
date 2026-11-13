@@ -35,7 +35,9 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
       if (!response.ok) {
         throw new Error(await readError(response, "黄金三章加载失败。"));
       }
-      setWorkspace(goldenThreeWorkspaceResponseSchema.parse(await response.json()).data);
+      const loaded = goldenThreeWorkspaceResponseSchema.parse(await response.json()).data;
+      setWorkspace(loaded);
+      setGenerationJob(loaded.activeGenerationJob);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "黄金三章加载失败。");
     } finally {

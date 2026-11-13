@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { ContextPackPreview } from "@novel-brain/contracts";
-import type { GoldenThreeContextCompiler } from "@novel-brain/golden-three";
+import type { GoldenThreeContextCompiler, GoldenThreeJobScope } from "@novel-brain/golden-three";
 
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -12,7 +12,7 @@ export class ApiGoldenThreeContextCompiler implements GoldenThreeContextCompiler
 
   compile(
     userId: string,
-    input: { jobId: string; workId: string; branchId: string; chapterId: string },
+    input: GoldenThreeJobScope,
     tokenBudget: number,
   ): Promise<ContextPackPreview> {
     return this.generation.contextPreview(

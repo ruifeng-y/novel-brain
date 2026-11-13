@@ -5,7 +5,7 @@ import {
   PROVIDER_CALL_MAX_OUTPUT_TOKENS,
   resolveModelContextWindow,
 } from "@novel-brain/core";
-import type { GoldenThreeContextCompiler } from "@novel-brain/golden-three";
+import type { GoldenThreeContextCompiler, GoldenThreeJobScope } from "@novel-brain/golden-three";
 
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -20,7 +20,7 @@ export class WorkerGoldenThreeContextCompiler implements GoldenThreeContextCompi
 
   async compile(
     userId: string,
-    input: { jobId: string; workId: string; branchId: string; chapterId: string },
+    input: GoldenThreeJobScope,
     tokenBudget: number,
   ): Promise<ContextPackPreview> {
     const payload: WorkerJobBase = {

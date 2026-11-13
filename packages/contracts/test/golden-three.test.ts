@@ -194,6 +194,7 @@ describe("golden three contracts", () => {
     const workspace = goldenThreeWorkspaceSchema.parse({
       workId,
       branchId,
+      activeGenerationJob: null,
       candidates: [
         {
           id: candidateAId,

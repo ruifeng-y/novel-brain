@@ -1,11 +1,9 @@
 import { createHash } from "node:crypto";
 
 import {
-  DeepSeekProvider,
-  FakeAiProvider,
   AiProviderError,
-  decryptApiKey,
   M0_COST_PER_TOKEN_CNY,
+  type AiGateway,
   type GenerationResult,
 } from "@novel-brain/ai";
 import type {
@@ -80,12 +78,23 @@ export interface GoldenThreeAuditContext {
   userAgent: string;
 }
 
+export interface GoldenThreeJobScope {
+  jobId: string;
+  workId: string;
+  branchId: string;
+  chapterId: string;
+}
+
 export interface GoldenThreeContextCompiler {
   compile(
     userId: string,
-    input: { jobId: string; workId: string; branchId: string; chapterId: string },
+    input: GoldenThreeJobScope,
     tokenBudget: number,
   ): Promise<ContextPackPreview>;
+}
+
+export interface GoldenThreeProviderFactory {
+  create(config: InferSelectModel<typeof modelConfigs>): AiGateway;
 }
 
 interface GoldenThreePreparedCall {
@@ -179,19 +188,18 @@ export type GoldenThreeEnqueueResult =
 export class GoldenThreeRepository {
   private readonly pool: Pool;
   private readonly db: DatabaseClient;
-  private generationStepHook: ((stepKey: string) => void | Promise<void>) | undefined;
 
-  constructor(private readonly contextCompiler: GoldenThreeContextCompiler) {
+  constructor(
+    private readonly contextCompiler: GoldenThreeContextCompiler,
+    private readonly providerFactory: GoldenThreeProviderFactory,
+    private readonly generationStepHook?: (stepKey: string) => void | Promise<void>,
+  ) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required");
     }
     this.pool = createDatabasePool(databaseUrl);
     this.db = createDatabaseClient(this.pool);
-  }
-
-  setGenerationStepHook(hook: ((stepKey: string) => void | Promise<void>) | undefined): void {
-    this.generationStepHook = hook;
   }
 
   async findWorkContext(
@@ -491,9 +499,10 @@ export class GoldenThreeRepository {
         };
       }
       const now = new Date();
+      const durableCheckpoint = parseGoldenThreeCheckpoint(job);
       const checkpoint = goldenThreeJobCheckpointSchema.parse({
-        ...payload.checkpoint,
-        revision: job.checkpointVersion,
+        ...durableCheckpoint,
+        revision: job.checkpointVersion + 1,
         stage: "preparing",
         failureClass: null,
       });
@@ -504,6 +513,7 @@ export class GoldenThreeRepository {
           progress: Math.max(job.progress, 5),
           currentStep: "preparing",
           checkpoint,
+          checkpointVersion: checkpoint.revision,
           goldenThreeLeaseVersion: job.goldenThreeLeaseVersion + 1,
           startedAt: job.startedAt ?? now,
           updatedAt: now,
@@ -571,6 +581,21 @@ export class GoldenThreeRepository {
               .from(goldenThreeReviews)
               .where(inArray(goldenThreeReviews.candidateId, candidateIds))
               .orderBy(asc(goldenThreeReviews.createdAt));
+      const [activeGenerationJob] = await transaction
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.userId, userId),
+            eq(jobs.workId, context.workId),
+            eq(jobs.branchId, context.branchId),
+            eq(jobs.type, "agent_workflow"),
+            inArray(jobs.status, ["queued", "preparing", "running"]),
+            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+          ),
+        )
+        .orderBy(desc(jobs.createdAt))
+        .limit(1);
       const [lockRecord] = await transaction
         .select()
         .from(goldenThreeLocks)
@@ -729,6 +754,9 @@ export class GoldenThreeRepository {
         branchId: context.branchId,
         candidates,
         selectedCandidateId,
+        activeGenerationJob: activeGenerationJob
+          ? toGoldenThreeGenerationJob(activeGenerationJob)
+          : null,
         lock: lockRecord
           ? {
               id: lockRecord.id,
@@ -1293,11 +1321,11 @@ export class GoldenThreeRepository {
         systemHash: hashValue(system),
       };
     });
-    let provider: ReturnType<typeof createGoldenThreeProvider>;
+    let provider: AiGateway;
     try {
-      provider = createGoldenThreeProvider(modelConfig);
+      provider = this.providerFactory.create(modelConfig);
     } catch (error) {
-      const failureClass = error instanceof AiProviderError ? error.failureClass : "provider";
+      const failureClass = goldenThreeFailureClass(error, "provider");
       await withTenantTransaction(this.db, userId, async (transaction) => {
         await recordGoldenThreeInitializationFailure(transaction, {
           userId,
@@ -1846,7 +1874,7 @@ export class GoldenThreeRepository {
           maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
         });
       } catch (error) {
-        const failureClass = error instanceof AiProviderError ? error.failureClass : "unknown";
+        const failureClass = goldenThreeFailureClass(error, "unknown");
         await withTenantTransaction(this.db, userId, async (transaction) => {
           await recordGoldenThreeCallFailure(transaction, userId, call, failureClass, completed);
         });
@@ -3150,6 +3178,39 @@ async function recordGoldenThreeCallSuccess(
         eq(jobs.branchId, call.branchId),
       ),
     );
+  await transaction
+    .update(costReservations)
+    .set({
+      status: "settled",
+      settledTokens: inputTokens + outputTokens,
+      settledCostCny: costCny,
+      failureClass: "timeout",
+      settledAt: now,
+    })
+    .where(
+      and(
+        eq(costReservations.id, call.reservationId),
+        eq(costReservations.userId, userId),
+        eq(costReservations.jobId, call.jobId),
+      ),
+    );
+  await transaction
+    .update(costReservations)
+    .set({
+      status: "released",
+      settledTokens: 0,
+      settledCostCny: 0,
+      failureClass: "timeout",
+      settledAt: null,
+    })
+    .where(
+      and(
+        eq(costReservations.jobId, call.jobId),
+        eq(costReservations.userId, userId),
+        eq(costReservations.status, "reserved"),
+        sql`${costReservations.id} <> ${call.reservationId}`,
+      ),
+    );
   await transaction.insert(usageRecords).values({
     id: uuidv7(),
     userId,
@@ -3500,6 +3561,39 @@ async function recordGoldenThreeLeaseLostUsage(
         eq(agentRuns.workId, call.workId),
         eq(agentRuns.branchId, call.branchId),
         eq(agentRuns.jobId, call.jobId),
+      ),
+    );
+  await transaction
+    .update(costReservations)
+    .set({
+      status: "settled",
+      settledTokens: inputTokens + outputTokens,
+      settledCostCny: costCny,
+      failureClass: "timeout",
+      settledAt: now,
+    })
+    .where(
+      and(
+        eq(costReservations.id, call.reservationId),
+        eq(costReservations.userId, userId),
+        eq(costReservations.jobId, call.jobId),
+      ),
+    );
+  await transaction
+    .update(costReservations)
+    .set({
+      status: "released",
+      settledTokens: 0,
+      settledCostCny: 0,
+      failureClass: "timeout",
+      settledAt: null,
+    })
+    .where(
+      and(
+        eq(costReservations.jobId, call.jobId),
+        eq(costReservations.userId, userId),
+        eq(costReservations.status, "reserved"),
+        sql`${costReservations.id} <> ${call.reservationId}`,
       ),
     );
   await transaction.insert(usageRecords).values({
@@ -4130,32 +4224,19 @@ function parseGoldenThreeCheckpoint(job: InferSelectModel<typeof jobs>): GoldenT
   };
 }
 
-function createGoldenThreeProvider(config: InferSelectModel<typeof modelConfigs>) {
-  if (process.env.MODEL_CONNECTION_TESTER === "fake") {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Fake model provider is not allowed in production");
-    }
-    const failOnCall = Number(process.env.GOLDEN_THREE_FAKE_FAILURE_AT ?? "");
-    const usageMultiplier = Number(process.env.GOLDEN_THREE_FAKE_USAGE_MULTIPLIER ?? "1");
-    const delayMs = Number(process.env.GOLDEN_THREE_FAKE_DELAY_MS ?? "0");
-    const emptyOnCall = Number(process.env.GOLDEN_THREE_FAKE_EMPTY_AT ?? "");
-    return new FakeAiProvider({
-      failOperations:
-        process.env.GOLDEN_THREE_FAKE_FAILURE === "1" ||
-        (Number.isInteger(failOnCall) && failOnCall > 0)
-          ? ["draft"]
-          : [],
-      ...(Number.isInteger(failOnCall) && failOnCall > 0 ? { failOnCall } : {}),
-      ...(Number.isFinite(usageMultiplier) && usageMultiplier > 0 ? { usageMultiplier } : {}),
-      ...(Number.isFinite(delayMs) && delayMs > 0 ? { delayMs } : {}),
-      ...(Number.isInteger(emptyOnCall) && emptyOnCall > 0 ? { emptyOnCall } : {}),
-    });
+function goldenThreeFailureClass(error: unknown, fallback: string): string {
+  if (error instanceof AiProviderError) {
+    return error.failureClass;
   }
-  return new DeepSeekProvider({
-    apiKey: decryptApiKey(config.encryptedKey),
-    baseUrl: config.baseUrl,
-    model: config.model,
-  });
+  if (
+    error instanceof Error &&
+    error.name === "AiProviderError" &&
+    "failureClass" in error &&
+    typeof error.failureClass === "string"
+  ) {
+    return error.failureClass;
+  }
+  return fallback;
 }
 
 function goldenThreeSystemPrompt(strategy: GoldenThreeStrategy): string {

@@ -5,9 +5,14 @@ import { createHash, randomUUID } from "node:crypto";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  GENERATE_GOLDEN_THREE_JOB,
+  WORKER_QUEUE_NAME,
   generateGoldenThreeJobSchema,
   goldenThreeGenerationJobResponseSchema,
+  workerJobSchema,
 } from "@novel-brain/contracts";
+import { Worker } from "bullmq";
+import { FakeAiProvider, type AiGateway } from "@novel-brain/ai";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import { GoldenThreeRepository } from "@novel-brain/golden-three";
 import Redis from "ioredis";
@@ -138,14 +143,88 @@ describe("golden three HTTP integration", () => {
     const generationRepository = new WorkerGenerationRepository();
     const repository = new GoldenThreeRepository(
       new WorkerGoldenThreeContextCompiler(generationRepository),
+      { create: () => goldenThreeTestProvider() },
+      options.stepHook,
     );
-    repository.setGenerationStepHook(options.stepHook);
     try {
       await new GoldenThreeJobProcessor(repository).process(payload);
     } finally {
       await generationRepository.onModuleDestroy();
       await repository.onModuleDestroy();
     }
+  }
+
+  async function runGoldenThreeQueue(jobId: string, options: { failFirstAfterStep?: string } = {}) {
+    const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    const worker = new Worker(
+      WORKER_QUEUE_NAME,
+      async (job) => {
+        const payload = workerJobSchema.parse(job.data);
+        if (payload.jobType !== GENERATE_GOLDEN_THREE_JOB || payload.jobId !== jobId) {
+          throw new Error("Unexpected job delivered to golden-three queue test");
+        }
+        const generationRepository = new WorkerGenerationRepository();
+        const repository = new GoldenThreeRepository(
+          new WorkerGoldenThreeContextCompiler(generationRepository),
+          { create: () => goldenThreeTestProvider() },
+          options.failFirstAfterStep && job.attemptsMade === 0
+            ? (stepKey) => {
+                if (stepKey.endsWith(options.failFirstAfterStep!)) {
+                  throw new Error("simulated worker crash");
+                }
+              }
+            : undefined,
+        );
+        try {
+          await new GoldenThreeJobProcessor(repository).process(payload);
+        } finally {
+          await generationRepository.onModuleDestroy();
+          await repository.onModuleDestroy();
+        }
+      },
+      { connection, concurrency: 1 },
+    );
+    try {
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const result = await databasePool.query<{ status: string }>(
+          "SELECT status FROM jobs WHERE id = $1",
+          [jobId],
+        );
+        if (["completed", "failed", "cancelled"].includes(result.rows[0]?.status ?? "")) {
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      throw new Error("Golden three queue worker did not reach a terminal state");
+    } finally {
+      await worker.close();
+      if (connection.status === "ready") {
+        await connection.quit();
+      } else {
+        connection.disconnect();
+      }
+    }
+  }
+
+  function goldenThreeTestProvider(): AiGateway {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Fake model provider is not allowed in production");
+    }
+    const failOnCall = Number(process.env.GOLDEN_THREE_FAKE_FAILURE_AT ?? "");
+    const usageMultiplier = Number(process.env.GOLDEN_THREE_FAKE_USAGE_MULTIPLIER ?? "1");
+    const delayMs = Number(process.env.GOLDEN_THREE_FAKE_DELAY_MS ?? "0");
+    const emptyOnCall = Number(process.env.GOLDEN_THREE_FAKE_EMPTY_AT ?? "");
+    return new FakeAiProvider({
+      failOperations:
+        process.env.GOLDEN_THREE_FAKE_FAILURE === "1" ||
+        (Number.isInteger(failOnCall) && failOnCall > 0)
+          ? ["draft"]
+          : [],
+      ...(Number.isInteger(failOnCall) && failOnCall > 0 ? { failOnCall } : {}),
+      ...(Number.isFinite(usageMultiplier) && usageMultiplier > 0 ? { usageMultiplier } : {}),
+      ...(Number.isFinite(delayMs) && delayMs > 0 ? { delayMs } : {}),
+      ...(Number.isInteger(emptyOnCall) && emptyOnCall > 0 ? { emptyOnCall } : {}),
+    });
   }
 
   async function generationJob(agent: SuperAgentTest, outlinePath: string, jobId: string) {
@@ -644,6 +723,10 @@ describe("golden three HTTP integration", () => {
       token,
     );
     expect(queued.status).toBe("queued");
+    expect((await owner.get(outlinePath).expect(200)).body.data.activeGenerationJob).toMatchObject({
+      id: queued.id,
+      status: "queued",
+    });
     const beforeWorker = await databasePool.query<{ candidates: string; model_calls: string }>(
       `SELECT
          (SELECT count(*) FROM golden_three_candidates WHERE generation_job_id = $1) AS candidates,
@@ -851,6 +934,48 @@ describe("golden three HTTP integration", () => {
       usage_records: "3",
       succeeded_steps: "3",
       failed_steps: "0",
+    });
+  });
+
+  it("resumes a real BullMQ redelivery from the database checkpoint", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-bullmq-resume@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const outlinePath = `${basePath}/golden-three`;
+    await createGoldenThreeChapters(owner, token, basePath);
+    await createModelConfig(owner, token);
+    await createGoldenThreeContext(owner, token, basePath);
+
+    const queued = await startGoldenThreeGeneration(
+      owner,
+      outlinePath,
+      "golden-three-bullmq-resume",
+      token,
+    );
+    await runGoldenThreeQueue(queued.id, { failFirstAfterStep: "hook_focus" });
+
+    expect(await generationJob(owner, outlinePath, queued.id)).toMatchObject({
+      status: "completed",
+      progress: 100,
+    });
+    expect((await owner.get(outlinePath).expect(200)).body.data.candidates).toHaveLength(3);
+    const result = await databasePool.query<{
+      model_calls: string;
+      usage_records: string;
+      succeeded_steps: string;
+    }>(
+      `SELECT
+         (SELECT count(*) FROM model_calls WHERE job_id = $1) AS model_calls,
+         (SELECT count(*) FROM usage_records WHERE job_id = $1) AS usage_records,
+         (SELECT count(*) FROM job_steps WHERE job_id = $1 AND status = 'succeeded')
+           AS succeeded_steps`,
+      [queued.id],
+    );
+    expect(result.rows[0]).toEqual({
+      model_calls: "3",
+      usage_records: "3",
+      succeeded_steps: "3",
     });
   });
 
@@ -1176,6 +1301,14 @@ describe("golden three HTTP integration", () => {
       );
       expect(usage.rows[0]?.usage_count).toBe("1");
       expect(usage.rows[0]?.total_tokens).toBeGreaterThan(0);
+      const reservations = await databasePool.query<{ statuses: string[] }>(
+        `SELECT array_agg(reservation.status ORDER BY reservation.status) AS statuses
+           FROM cost_reservations reservation
+           JOIN jobs job ON job.id = reservation.job_id
+          WHERE job.golden_three_generation_key = $1`,
+        [key],
+      );
+      expect(reservations.rows[0]?.statuses).toEqual(["released", "released", "settled"]);
       expect(
         (await owner.get(`${basePath}/golden-three`).expect(200)).body.data.candidates,
       ).toHaveLength(0);
@@ -1332,7 +1465,7 @@ describe("golden three HTTP integration", () => {
       model_call_statuses: ["failed", "succeeded", "failed"],
       attempt_statuses: ["failed", "succeeded", "skipped"],
       checkpoint_count: "3",
-      checkpoint_revisions: [2, 3, 4],
+      checkpoint_revisions: [3, 4, 5],
       event_count: "4",
     });
     expect(result.rows[0]?.budget_input_tokens).toBe(result.rows[0]?.usage_input_tokens);
