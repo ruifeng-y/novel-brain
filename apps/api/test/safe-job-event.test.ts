@@ -17,6 +17,7 @@ describe("SSE job event sensitive payload boundary", () => {
           prompt: "PROMPT_SSE_INDEPENDENT_133",
           manuscript: "沈砚把断臂藏进衣袍。",
           message: "MESSAGE_SSE_CANARY_133",
+          cost: { inputTokens: 10, outputTokens: 20, totalTokens: 30, costCny: 0.01 },
           unknownNumber: 42,
           unknownBoolean: true,
           unknownNull: null,
@@ -32,6 +33,7 @@ describe("SSE job event sensitive payload boundary", () => {
       prompt: "[REDACTED]",
       manuscript: "[REDACTED]",
       message: "[REDACTED]",
+      cost: { inputTokens: 10, outputTokens: 20, totalTokens: 30, costCny: 0.01 },
     });
     expect(sanitized.data).not.toHaveProperty("unknownNumber");
     expect(sanitized.data).not.toHaveProperty("unknownBoolean");

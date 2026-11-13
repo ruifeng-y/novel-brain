@@ -9,7 +9,7 @@
 - Provider、模型名、状态、错误码、耗时、token 与费用。
 - 不含用户内容的低基数指标标签。
 
-普通日志不得记录 API Key、authorization header、正文、完整 prompt、ContextPack 快照、导入原文或其他用户私有内容。
+普通日志不得记录 API Key、authorization header、正文、完整 prompt、ContextPack 快照、导入原文或其他用户私有内容。自由文本消息和无法归类为机器诊断值的字符串会替换为 `[REDACTED]`。
 
 ## 追踪
 
@@ -23,7 +23,9 @@ TRACE_ENDPOINT=<http(s) endpoint>
 
 只设置 endpoint 或 retention、但不显式设置 `TRACE_MODE=self_hosted` 时，API/Worker 应启动失败。追踪策略在启动日志中只记录 mode、retention 和 endpoint 是否已配置，不记录 endpoint 本身。
 
-endpoint 只接受 localhost、私网 IP、`*.internal`、`*.local` 或集群内部主机名。公开第三方域名会使 API/Worker 启动失败。启用后，API/Worker 启动时会发送只含安全属性的 `service.started` trace envelope；导出失败会阻止服务启动。
+endpoint 只接受 localhost、IPv4 私网、IPv6 loopback/ULA/link-local、`*.internal`、`*.local` 或集群内部主机名。公开第三方域名和公网 IPv6 会使 API/Worker 启动失败。启用后，API/Worker 启动时会发送只含安全属性的 `service.started` trace envelope；信封名称、时间、属性和字段名均执行格式与 canary 校验，导出失败会阻止服务启动。
+
+`retentionDays` 随每次 trace 导出传给自托管接收端；实际 TTL 和过期删除由接收端按该字段执行。应用端负责拒绝缺失保留期、匿名第三方 endpoint 和重定向，避免把 trace 导出到未声明的接收位置。
 
 ## 脱敏 canary
 

@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 const REDACTED = "[REDACTED]";
 
 const SENSITIVE_KEYS = new Set([
@@ -54,6 +56,8 @@ const SAFE_LOG_KEYS = new Set([
   "contentHash",
   "contextManifestHash",
   "contextPackId",
+  "contextWindowTokens",
+  "cost",
   "costCny",
   "currentStep",
   "delayMs",
@@ -98,12 +102,15 @@ const SAFE_LOG_KEYS = new Set([
   "requestId",
   "reservationId",
   "reportState",
+  "requiredTokens",
   "reservedCostCny",
+  "reservedOutputTokens",
   "reservedTokens",
   "resumeStep",
   "recoveryId",
   "retentionDays",
   "retryable",
+  "retryAfterSeconds",
   "revision",
   "route",
   "runId",
@@ -117,10 +124,10 @@ const SAFE_LOG_KEYS = new Set([
   "targetId",
   "terminal",
   "tokenBudget",
+  "totalTokens",
   "total",
   "type",
   "userId",
-  "value",
   "versionNodeId",
   "workId",
 ]);
@@ -129,22 +136,60 @@ const SAFE_STRUCTURED_RESPONSE_KEYS = new Set([
   "blockers",
   "chapterVersionId",
   "commitId",
+  "conflictingAlias",
+  "conflictingName",
+  "dependencies",
+  "dependencyFingerprint",
+  "evidence",
+  "fieldKey",
   "findingId",
+  "entityId",
   "issues",
+  "items",
+  "label",
   "missingCards",
   "missingChapterNumbers",
+  "p0Keys",
   "path",
   "pendingRequiredFactIds",
   "proposalCount",
+  "reason",
+  "remediation",
   "reportId",
+  "resource",
   "resumedChapters",
+  "ruleVersion",
   "sourceVersionId",
   "severity",
+  "state",
+  "summary",
   "title",
+  "uncommittedChapterNumbers",
+  "unresolvedHighRiskFactIds",
+  "version",
+  "violations",
+  "warnings",
+]);
+const OBJECT_ONLY_KEYS = new Set(["checkpoint", "cost", "error", "remediation", "resource"]);
+const ARRAY_ONLY_KEYS = new Set([
+  "blockers",
+  "candidateIds",
+  "chapterNumbers",
+  "dependencies",
+  "evidence",
+  "failedDimensions",
+  "issues",
+  "items",
+  "missingCards",
+  "outputRefs",
+  "p0Keys",
+  "path",
+  "pendingRequiredFactIds",
   "uncommittedChapterNumbers",
   "unresolvedHighRiskFactIds",
   "violations",
 ]);
+const SAFE_LOG_MACHINE_TEXT = /^[A-Za-z0-9_./:#@?=&%+,-]{1,256}$/u;
 const SAFE_TELEMETRY_LABEL_KEYS = new Set([
   "errorcode",
   "jobtype",
@@ -191,14 +236,14 @@ export type TraceFetch = (
 ) => Promise<{ ok: boolean; status: number }>;
 
 export function sanitizeLogPayload(value: unknown): unknown {
-  return sanitizeValue(value, 0, SAFE_LOG_KEYS);
+  return sanitizeValue(value, 0, SAFE_LOG_KEYS, "log");
 }
 
 export function sanitizeStructuredPayload(
   value: unknown,
   options: { canaryValues?: readonly string[] } = {},
 ): unknown {
-  const sanitized = sanitizeValue(value, 0, SAFE_STRUCTURED_RESPONSE_KEYS);
+  const sanitized = sanitizeValue(value, 0, SAFE_STRUCTURED_RESPONSE_KEYS, "structured");
   const findings = findSensitiveLogValues(sanitized);
   for (const canary of options.canaryValues ?? []) {
     if (canary && containsString(sanitized, canary)) {
@@ -275,14 +320,17 @@ export async function emitTraceEnvelope(
   if (!policy.endpoint || !policy.retentionDays) {
     throw new Error("Self-hosted trace policy is incomplete");
   }
-  const attributes = sanitizeLogPayloadStrict(envelope.attributes ?? {});
+  const canaryValues = parseLogCanaryValues(process.env.LOG_CANARY_VALUES);
+  const name = safeTraceName(envelope.name, canaryValues);
+  const occurredAt = safeTraceTimestamp(envelope.occurredAt, canaryValues);
+  const attributes = sanitizeLogPayloadStrict(envelope.attributes ?? {}, { canaryValues });
   const response = await fetcher(policy.endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
     redirect: "error",
     body: JSON.stringify({
-      name: envelope.name,
-      occurredAt: envelope.occurredAt,
+      name,
+      occurredAt,
       retentionDays: policy.retentionDays,
       attributes,
     }),
@@ -318,6 +366,10 @@ export function sanitizeTelemetryLabels(labels: Record<string, unknown>): Record
   return safe;
 }
 
+export function isSafeTelemetryMetricName(name: string): boolean {
+  return /^[a-z][a-z0-9_.-]{0,99}$/u.test(name) && !containsCredential(name);
+}
+
 export function parseLogCanaryValues(value: string | undefined): string[] {
   if (!value?.trim()) {
     return [];
@@ -336,23 +388,33 @@ export function parseLogCanaryValues(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function sanitizeValue(value: unknown, depth: number, allowedKeys: ReadonlySet<string>): unknown {
+type SanitizationMode = "log" | "structured";
+
+function sanitizeValue(
+  value: unknown,
+  depth: number,
+  allowedKeys: ReadonlySet<string>,
+  mode: SanitizationMode,
+): unknown {
   if (depth > 12) {
     return "[TRUNCATED]";
   }
   if (typeof value === "string") {
+    if (mode === "log" && !SAFE_LOG_MACHINE_TEXT.test(value)) {
+      return REDACTED;
+    }
     return sanitizeText(value);
   }
   if (Array.isArray(value)) {
-    return value.map((entry) => sanitizeValue(entry, depth + 1, allowedKeys));
+    return value.map((entry) => sanitizeValue(entry, depth + 1, allowedKeys, mode));
   }
   if (value && typeof value === "object") {
     const safeEntries: Array<[string, unknown]> = [];
     for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
       if (isSensitiveKey(key)) {
         safeEntries.push([key, REDACTED]);
-      } else if (allowedKeys.has(key)) {
-        safeEntries.push([key, sanitizeValue(entry, depth + 1, allowedKeys)]);
+      } else if (allowedKeys.has(key) && isCompatibleEntry(key, entry)) {
+        safeEntries.push([key, sanitizeValue(entry, depth + 1, allowedKeys, mode)]);
       }
     }
     return Object.fromEntries(safeEntries);
@@ -393,6 +455,16 @@ function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEYS.has(normalizeKey(key));
 }
 
+function isCompatibleEntry(key: string, value: unknown): boolean {
+  if (OBJECT_ONLY_KEYS.has(key)) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
+  if (ARRAY_ONLY_KEYS.has(key)) {
+    return Array.isArray(value);
+  }
+  return true;
+}
+
 function containsCredential(value: string): boolean {
   TOKEN_PATTERN.lastIndex = 0;
   return TOKEN_PATTERN.test(value);
@@ -425,17 +497,44 @@ function containsString(value: unknown, expected: string, depth = 0): boolean {
   return false;
 }
 
+function safeTraceName(name: string, canaryValues: readonly string[]): string {
+  if (
+    !/^[a-z][a-z0-9_.-]{0,127}$/u.test(name) ||
+    containsCredential(name) ||
+    canaryValues.some((canary) => canary && name.includes(canary))
+  ) {
+    throw new Error("Trace envelope name is invalid");
+  }
+  return name;
+}
+
+function safeTraceTimestamp(value: string, canaryValues: readonly string[]): string {
+  if (
+    canaryValues.some((canary) => canary && value.includes(canary)) ||
+    Number.isNaN(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
+    throw new Error("Trace envelope timestamp is invalid");
+  }
+  return value;
+}
+
 function isSelfHostedTraceHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/gu, "");
-  if (
-    host === "localhost" ||
-    host === "::1" ||
-    host.endsWith(".internal") ||
-    host.endsWith(".local") ||
-    !host.includes(".")
-  ) {
+  if (host === "localhost" || host.endsWith(".internal") || host.endsWith(".local")) {
     return true;
   }
+  const ipVersion = isIP(host);
+  if (ipVersion === 4) {
+    return isPrivateIpv4(host);
+  }
+  if (ipVersion === 6) {
+    return isPrivateOrLoopbackIpv6(host);
+  }
+  return !host.includes(".");
+}
+
+function isPrivateIpv4(host: string): boolean {
   const octets = host.split(".").map(Number);
   if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet))) {
     return false;
@@ -447,6 +546,17 @@ function isSelfHostedTraceHost(hostname: string): boolean {
     (first === 192 && second === 168) ||
     (first === 172 && second !== undefined && second >= 16 && second <= 31)
   );
+}
+
+function isPrivateOrLoopbackIpv6(host: string): boolean {
+  if (host === "::1") {
+    return true;
+  }
+  const firstHextet = Number.parseInt(host.split(":", 1)[0] ?? "0", 16);
+  if ((firstHextet & 0xfe00) === 0xfc00 || (firstHextet & 0xffc0) === 0xfe80) {
+    return true;
+  }
+  return false;
 }
 
 const defaultTraceFetch: TraceFetch = async (url, init) => {

@@ -61,7 +61,7 @@ describe("API logger", () => {
     expect(output).not.toContain(canary);
   });
 
-  it("redacts sensitive logger context", () => {
+  it("fails closed when sensitive logger context survives sanitization", () => {
     const writes: string[] = [];
     const canary = "CONTEXT_CANARY_133";
     vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
@@ -73,6 +73,6 @@ describe("API logger", () => {
 
     const output = writes.join("");
     expect(output).not.toContain(canary);
-    expect(output).toContain("redacted");
+    expect(output).toContain("logging.redaction_failed");
   });
 });

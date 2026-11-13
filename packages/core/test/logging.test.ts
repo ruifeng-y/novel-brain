@@ -4,6 +4,7 @@ import {
   LogRedactionError,
   emitTraceEnvelope,
   findSensitiveLogValues,
+  isSafeTelemetryMetricName,
   parseLogCanaryValues,
   resolveTracePolicy,
   sanitizeLogPayload,
@@ -93,6 +94,18 @@ describe("sensitive log sanitization", () => {
     expect(text).toContain("provider.request.failed");
   });
 
+  it("does not treat arbitrary root or wrapper strings as safe log content", () => {
+    const sanitized = sanitizeLogPayload({
+      event: "provider.request.failed",
+      error: "沈砚把断臂藏进衣袍。",
+      reason: "This looks like an English manuscript sentence.",
+    });
+
+    expect(sanitizeLogPayload("沈砚把断臂藏进衣袍。")).toBe("[REDACTED]");
+    expect(sanitizeLogPayload("free form english manuscript")).toBe("[REDACTED]");
+    expect(sanitized).toEqual({ event: "provider.request.failed" });
+  });
+
   it("keeps operational client error fields while stripping sensitive values", () => {
     const sanitized = sanitizeStructuredPayload({
       branchId: "01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
@@ -105,10 +118,14 @@ describe("sensitive log sanitization", () => {
       unknownNumber: 42,
       unknownBoolean: true,
       unknownNull: null,
+      requiredTokens: 120,
+      contextWindowTokens: 64,
     });
     expect(sanitized).toMatchObject({
       branchId: "01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
       tokenBudget: 200,
+      requiredTokens: 120,
+      contextWindowTokens: 64,
       failedDimensions: ["world_rules"],
       message: "[REDACTED]",
       prompt: "[REDACTED]",
@@ -169,6 +186,20 @@ describe("sensitive log sanitization", () => {
         TRACE_ENDPOINT: "https://third-party.example/otel",
       }),
     ).toThrow("self-hosted");
+    expect(
+      resolveTracePolicy({
+        TRACE_MODE: "self_hosted",
+        TRACE_RETENTION_DAYS: "14",
+        TRACE_ENDPOINT: "https://[fd00::1]/otel",
+      }).mode,
+    ).toBe("self_hosted");
+    expect(() =>
+      resolveTracePolicy({
+        TRACE_MODE: "self_hosted",
+        TRACE_RETENTION_DAYS: "14",
+        TRACE_ENDPOINT: "https://[2001:4860:4860::8888]/otel",
+      }),
+    ).toThrow("self-hosted");
   });
 
   it("emits traces only when explicitly self-hosted and never includes sensitive payloads", async () => {
@@ -219,6 +250,34 @@ describe("sensitive log sanitization", () => {
     expect(calls[0]?.redirect).toBe("error");
     expect(calls[0]?.body).not.toContain("PROMPT_TRACE_CANARY_133");
     expect(calls[0]?.body).not.toContain("沈砚");
+    await expect(
+      emitTraceEnvelope(
+        {
+          mode: "self_hosted",
+          retentionDays: 14,
+          endpoint: "http://langfuse.internal:3000/api/public/otel",
+        },
+        {
+          name: "service.PROMPT_TRACE_CANARY_133",
+          occurredAt: "2026-11-13T15:00:00.000Z",
+        },
+        fetcher,
+      ),
+    ).rejects.toThrow("name");
+    await expect(
+      emitTraceEnvelope(
+        {
+          mode: "self_hosted",
+          retentionDays: 14,
+          endpoint: "http://langfuse.internal:3000/api/public/otel",
+        },
+        {
+          name: "service.started",
+          occurredAt: "PROMPT_TRACE_CANARY_133",
+        },
+        fetcher,
+      ),
+    ).rejects.toThrow("timestamp");
   });
 
   it("drops sensitive and high-cardinality telemetry labels", () => {
@@ -243,6 +302,8 @@ describe("sensitive log sanitization", () => {
         route: "/api/v1/works/private-slug",
       }),
     ).toEqual({});
+    expect(isSafeTelemetryMetricName("worker.job.started")).toBe(true);
+    expect(isSafeTelemetryMetricName("sk-live-secret-133")).toBe(false);
   });
 
   it("parses deployment canaries from JSON or comma-separated configuration", () => {

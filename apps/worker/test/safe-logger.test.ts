@@ -85,6 +85,11 @@ describe("worker safe logger", () => {
     expect(output).not.toContain("01a1d573-7f8c");
     expect(output).not.toContain("ROUTE_CANARY_133");
     expect(output).not.toContain("author-private-model");
+    expect(output).not.toContain("route_canary_133");
+
+    writes.length = 0;
+    new SafePinoLogger().metric("sk-live-secret-133", { queue: "novelbrain" });
+    expect(writes.join("")).not.toContain("sk-live-secret-133");
   });
 
   it("keeps safe identifiers and low-cardinality operational fields", () => {

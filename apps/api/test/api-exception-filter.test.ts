@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import { ApiExceptionFilter } from "../src/common/api-exception.filter";
 import { ApiError } from "../src/common/api-error";
@@ -71,6 +72,26 @@ describe("API exception filter sensitive payload boundary", () => {
     expect(body).not.toContain(apiKey);
     expect(body).not.toContain(manuscript);
     expect(body).not.toContain(prompt);
+  });
+
+  it("drops sensitive validation path segments", () => {
+    const { host, response } = createHost();
+    const canary = "PROMPT_PATH_CANARY_133";
+    const filter = new ApiExceptionFilter({ error: vi.fn() } as never, [canary]);
+    const error = new z.ZodError([
+      {
+        code: "custom",
+        path: [canary],
+        message: "Invalid field",
+      },
+    ]);
+
+    filter.catch(error, host as never);
+
+    const body = JSON.stringify(response.json.mock.calls[0]?.[0]);
+    expect(response.status).toHaveBeenCalledWith(400);
+    expect(body).not.toContain(canary);
+    expect(response.json.mock.calls[0]?.[0].error.details.issues[0].path).toEqual([]);
   });
 
   it("logs unhandled errors through the redacting logger without payload text", () => {

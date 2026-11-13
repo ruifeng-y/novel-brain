@@ -3,6 +3,7 @@ import {
   LogRedactionError,
   parseLogCanaryValues,
   sanitizeLogPayloadStrict,
+  sanitizeStructuredPayload,
 } from "@novel-brain/core";
 import pino, { type Logger } from "pino";
 
@@ -25,83 +26,107 @@ export class AppLogger implements LoggerService {
   }
 
   log(message: unknown, context?: string): void {
-    this.logger.info(this.context(context), this.message(message));
+    this.write("info", message, context);
   }
 
   error(message: unknown, stack?: string, context?: string): void {
-    const safeStack = stack ? this.stack(stack) : undefined;
-    this.logger.error(
-      {
-        ...this.context(context),
-        ...(safeStack ? { stack: safeStack } : {}),
-      },
-      this.message(message),
-    );
+    this.write("error", message, context, stack);
   }
 
   warn(message: unknown, context?: string): void {
-    this.logger.warn(this.context(context), this.message(message));
+    this.write("warn", message, context);
   }
 
   debug(message: unknown, context?: string): void {
-    this.logger.debug(this.context(context), this.message(message));
+    this.write("debug", message, context);
   }
 
   verbose(message: unknown, context?: string): void {
-    this.logger.trace(this.context(context), this.message(message));
+    this.write("trace", message, context);
   }
 
   fatal(message: unknown, context?: string): void {
-    this.logger.fatal(this.context(context), this.message(message));
+    this.write("fatal", message, context);
   }
 
-  private context(context?: string): Record<string, string> {
+  private write(
+    level: "info" | "warn" | "error" | "debug" | "trace" | "fatal",
+    message: unknown,
+    context?: string,
+    stack?: string,
+  ): void {
+    const safeContext = this.context(context);
+    const safeMessage = this.message(message);
+    const safeStack = stack ? this.stack(stack) : { value: undefined, failed: false };
+    if (safeContext.failed || safeMessage.failed || safeStack.failed) {
+      this.logger[level]({ event: "logging.redaction_failed" });
+      return;
+    }
+    this.logger[level](
+      {
+        ...safeContext.value,
+        ...(safeStack.value ? { stack: safeStack.value } : {}),
+      },
+      safeMessage.value,
+    );
+  }
+
+  private context(context?: string): { value: Record<string, string>; failed: boolean } {
     if (!context) {
-      return {};
+      return { value: {}, failed: false };
     }
     try {
       const sanitized = sanitizeLogPayloadStrict(context, {
         canaryValues: this.canaryValues,
       });
-      return typeof sanitized === "string" ? { context: sanitized } : { context: "redacted" };
+      return {
+        value: typeof sanitized === "string" ? { context: sanitized } : { context: "redacted" },
+        failed: false,
+      };
     } catch {
-      return { context: "redacted" };
+      return { value: {}, failed: true };
     }
   }
 
-  private message(message: unknown): string {
+  private message(message: unknown): { value: string; failed: boolean } {
     try {
       const sanitized = sanitizeLogPayloadStrict(message, {
         canaryValues: this.canaryValues,
       });
-      return typeof sanitized === "string" ? sanitized : JSON.stringify(sanitized);
+      return {
+        value: typeof sanitized === "string" ? sanitized : JSON.stringify(sanitized),
+        failed: false,
+      };
     } catch (error) {
       if (error instanceof LogRedactionError) {
-        return JSON.stringify({ event: "logging.redaction_failed" });
+        return { value: "", failed: true };
       }
-      return JSON.stringify({ event: "logging.serialization_failed" });
+      return { value: "", failed: true };
     }
   }
 
-  private stack(stack: string): string | undefined {
+  private stack(stack: string): { value: string | undefined; failed: boolean } {
+    const frames = stack
+      .split(/\r?\n/u)
+      .map((line) => line.trimEnd())
+      .filter((line) => /^\s+at\s/u.test(line));
+    if (frames.length === 0) {
+      return { value: undefined, failed: false };
+    }
     let sanitized: unknown;
     try {
-      sanitized = sanitizeLogPayloadStrict(stack, {
+      sanitized = sanitizeStructuredPayload(frames, {
         canaryValues: this.canaryValues,
       });
     } catch (error) {
       if (error instanceof LogRedactionError) {
-        return undefined;
+        return { value: undefined, failed: true };
       }
-      return undefined;
+      return { value: undefined, failed: true };
     }
-    if (typeof sanitized !== "string") {
-      return undefined;
+    if (!Array.isArray(sanitized) || sanitized.some((line) => typeof line !== "string")) {
+      return { value: undefined, failed: true };
     }
-    const frames = sanitized
-      .split(/\r?\n/u)
-      .map((line) => line.trimEnd())
-      .filter((line) => /^\s+at\s/u.test(line));
-    return frames.length > 0 ? frames.join("\n") : undefined;
+    return { value: sanitized.join("\n"), failed: false };
   }
 }

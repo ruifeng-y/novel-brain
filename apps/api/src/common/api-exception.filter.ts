@@ -47,7 +47,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
             message: "输入内容不完整或格式不正确",
             details: {
               issues: exception.issues.map(({ path, message }) => ({
-                path,
+                path: safeValidationPath(path, this.canaryValues),
                 message: safeMessage(message, this.canaryValues),
               })),
             },
@@ -92,6 +92,28 @@ export class ApiExceptionFilter implements ExceptionFilter {
       }),
     );
   }
+}
+
+function safeValidationPath(
+  path: readonly PropertyKey[],
+  canaryValues: readonly string[],
+): Array<string | number> {
+  const safePath: Array<string | number> = [];
+  for (const segment of path) {
+    if (typeof segment === "number") {
+      safePath.push(segment);
+      continue;
+    }
+    if (
+      typeof segment !== "string" ||
+      !/^[A-Za-z_$][A-Za-z0-9_$.-]{0,63}$/u.test(segment) ||
+      canaryValues.some((canary) => canary.length > 0 && segment.includes(canary))
+    ) {
+      continue;
+    }
+    safePath.push(segment);
+  }
+  return safePath;
 }
 
 function safeMessage(message: string, canaryValues: readonly string[]): string {
