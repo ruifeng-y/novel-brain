@@ -15838,7 +15838,7 @@ export interface operations {
               timestamp: string;
               checks: {
                 /** @enum {string} */
-                name: "database" | "queue";
+                name: "database" | "queue" | "storage";
                 /** @enum {string} */
                 status: "up" | "down";
                 latencyMs: number;
@@ -15869,7 +15869,7 @@ export interface operations {
               timestamp: string;
               checks: {
                 /** @enum {string} */
-                name: "database" | "queue";
+                name: "database" | "queue" | "storage";
                 /** @enum {string} */
                 status: "up" | "down";
                 latencyMs: number;

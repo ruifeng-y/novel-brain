@@ -1,0 +1,45 @@
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+  minio:
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY_ID:?STORAGE_ACCESS_KEY_ID is required}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_ACCESS_KEY:?STORAGE_SECRET_ACCESS_KEY is required}
+
+  minio-init:
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY_ID:?STORAGE_ACCESS_KEY_ID is required}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_ACCESS_KEY:?STORAGE_SECRET_ACCESS_KEY is required}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:?STORAGE_BUCKET is required}
+
+  api:
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      PROXY_IP_SECRET: ${PROXY_IP_SECRET:?PROXY_IP_SECRET is required}
+      APP_ORIGIN: ${APP_ORIGIN:?APP_ORIGIN is required}
+      COOKIE_SECURE: "true"
+      ALLOW_INSECURE_LOCAL_PROXY_IP: "false"
+      ALLOW_INSECURE_LOCAL_MODEL_KEY: "false"
+      MODEL_CONFIG_ENCRYPTION_KEY: ${MODEL_CONFIG_ENCRYPTION_KEY:?MODEL_CONFIG_ENCRYPTION_KEY is required}
+      MODEL_CONNECTION_TESTER: network
+      MODEL_PROVIDER_ALLOWLIST: ${MODEL_PROVIDER_ALLOWLIST:?MODEL_PROVIDER_ALLOWLIST is required}
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST is required}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      MAIL_FROM: ${MAIL_FROM:?MAIL_FROM is required}
+
+  worker:
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      AI_PROVIDER_MODE: byok
+
+  caddy:
+    ports:
+      - "80:80"
+      - "443:443"

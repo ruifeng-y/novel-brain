@@ -6,6 +6,9 @@ const { WORKER_QUEUE_NAME, readinessResponseSchema } = contracts;
 const apiUrl = process.env.API_URL ?? "http://127.0.0.1:3001";
 const webUrl = process.env.WEB_URL ?? "http://127.0.0.1:3000";
 const mailpitUrl = process.env.MAILPIT_URL ?? "http://127.0.0.1:8025";
+const metricsUrl = process.env.METRICS_URL ?? "http://127.0.0.1:3001/api/v1/metrics";
+const storageHealthUrl =
+  process.env.STORAGE_HEALTH_URL ?? "http://127.0.0.1:9000/minio/health/live";
 const redisUrl = new URL(process.env.REDIS_URL ?? "redis://127.0.0.1:6379");
 
 function redisConnection() {
@@ -39,6 +42,25 @@ async function main() {
   });
 
   await fetchRequired(`${mailpitUrl}/api/v1/info`);
+  const publicMetrics = await fetch(`${webUrl}/api/v1/metrics`);
+  if (publicMetrics.status !== 404) {
+    throw new Error("Metrics must not be exposed through the public Web origin");
+  }
+  await fetchRequired(storageHealthUrl);
+  await fetchRequired(metricsUrl, async (response) => {
+    const text = await response.text();
+    for (const metric of [
+      "novelbrain_api_request_duration_seconds",
+      "novelbrain_worker_queue_jobs",
+      "novelbrain_jobs_total",
+      "novelbrain_model_cost_cny_total",
+      "novelbrain_dependency_up",
+    ]) {
+      if (!text.includes(metric)) {
+        throw new Error(`Metrics response is missing ${metric}`);
+      }
+    }
+  });
 
   const connection = redisConnection();
   const queue = new Queue(WORKER_QUEUE_NAME, { connection });
@@ -59,6 +81,8 @@ async function main() {
       web: `${webUrl}/health`,
       api: `${apiUrl}/api/v1/health/ready`,
       mailpit: `${mailpitUrl}/api/v1/info`,
+      metrics: metricsUrl,
+      storage: storageHealthUrl,
       worker: "ready",
     }),
   );

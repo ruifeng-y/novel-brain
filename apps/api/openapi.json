@@ -35124,7 +35124,7 @@
                             "properties": {
                               "name": {
                                 "type": "string",
-                                "enum": ["database", "queue"]
+                                "enum": ["database", "queue", "storage"]
                               },
                               "status": {
                                 "type": "string",
@@ -35190,7 +35190,7 @@
                             "properties": {
                               "name": {
                                 "type": "string",
-                                "enum": ["database", "queue"]
+                                "enum": ["database", "queue", "storage"]
                               },
                               "status": {
                                 "type": "string",

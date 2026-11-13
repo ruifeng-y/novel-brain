@@ -11,6 +11,9 @@ interface RouteContext {
 async function proxy(request: NextRequest, context: RouteContext): Promise<Response> {
   const apiInternalUrl = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:3001";
   const { path } = await context.params;
+  if (path[0] === "metrics") {
+    return new Response("Not found", { status: 404 });
+  }
   const target = new URL(`/api/v1/${path.join("/")}`, apiInternalUrl);
   target.search = request.nextUrl.search;
   const requestHeaders = new Headers();

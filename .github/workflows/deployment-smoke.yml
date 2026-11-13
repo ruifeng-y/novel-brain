@@ -1,0 +1,46 @@
+name: Deployment Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/deployment-smoke.yml"
+      - "apps/**"
+      - "infra/**"
+      - "packages/**"
+      - "scripts/deployment-guardrails.mjs"
+      - "scripts/observability-guardrails.mjs"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+
+jobs:
+  compose-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.15.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: docker compose -f infra/docker/compose.yml config --quiet
+      - run: docker compose -f infra/docker/compose.yml up -d --build --wait --wait-timeout 600
+      - run: pnpm stack:smoke
+      - name: Capture deployment evidence
+        if: always()
+        run: docker compose -f infra/docker/compose.yml ps
+      - name: Dump compose logs
+        if: failure()
+        run: docker compose -f infra/docker/compose.yml logs --no-color
+      - name: Stop stack
+        if: always()
+        run: docker compose -f infra/docker/compose.yml down --remove-orphans

@@ -17,6 +17,7 @@ async function mockReadyHealth(page: Page) {
           checks: [
             { name: "database", status: "up", latencyMs: 4 },
             { name: "queue", status: "up", latencyMs: 2 },
+            { name: "storage", status: "up", latencyMs: 3 },
           ],
         },
         requestId: "req_ready",
@@ -50,6 +51,7 @@ test("health page follows the shell at all signed-off viewports", async ({ page 
     const results = page.getByRole("region", { name: "服务检查结果" });
     await expect(results.getByText("数据库", { exact: true })).toBeVisible();
     await expect(results.getByText("任务队列", { exact: true })).toBeVisible();
+    await expect(results.getByText("对象存储", { exact: true })).toBeVisible();
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -79,6 +81,7 @@ test("health page shows an actionable dependency failure", async ({ page }) => {
           checks: [
             { name: "database", status: "up", latencyMs: 4 },
             { name: "queue", status: "down", latencyMs: 2 },
+            { name: "storage", status: "up", latencyMs: 3 },
           ],
         },
         requestId: "req_not_ready",

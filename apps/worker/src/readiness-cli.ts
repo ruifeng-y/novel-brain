@@ -80,6 +80,39 @@ async function checkQueue(
   }
 }
 
+async function checkStorage(storageHealthUrl: string | undefined): Promise<DependencyCheck> {
+  const startedAt = process.hrtime.bigint();
+  if (!storageHealthUrl) {
+    return {
+      name: "storage",
+      status: "down",
+      latencyMs: elapsedMilliseconds(startedAt),
+    };
+  }
+
+  try {
+    const response = await fetch(storageHealthUrl, {
+      method: "GET",
+      redirect: "error",
+      signal: AbortSignal.timeout(2_000),
+    });
+    if (!response.ok) {
+      throw new Error(`Object storage health check failed with HTTP ${response.status}`);
+    }
+    return {
+      name: "storage",
+      status: "up",
+      latencyMs: elapsedMilliseconds(startedAt),
+    };
+  } catch {
+    return {
+      name: "storage",
+      status: "down",
+      latencyMs: elapsedMilliseconds(startedAt),
+    };
+  }
+}
+
 async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   const redisUrl = process.env.REDIS_URL;
@@ -87,11 +120,16 @@ async function main(): Promise<void> {
     throw new Error("DATABASE_URL and REDIS_URL are required");
   }
 
-  const [database, queue] = await Promise.all([checkDatabase(databaseUrl), checkQueue(redisUrl)]);
+  const [database, queue, storage] = await Promise.all([
+    checkDatabase(databaseUrl),
+    checkQueue(redisUrl),
+    checkStorage(process.env.STORAGE_HEALTH_URL),
+  ]);
   const report = workerReadinessDataSchema.parse(
     evaluateWorkerReadiness({
       database,
       queue: queue.check,
+      storage,
       workerCount: queue.workerCount,
     }),
   );

@@ -17,6 +17,8 @@ pnpm stack:up
 - 健康页：<http://localhost:3000/health>
 - API（仅本机回环）：<http://localhost:3001/api/v1/health>
 - Mailpit：<http://localhost:8025>
+- MinIO：<http://localhost:9001>
+- Prometheus：<http://localhost:9090>
 
 停止并清理容器：
 
@@ -51,7 +53,7 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Compose 启动后验证 Web、API、Mailpit、Postgres、Redis 和 Worker：
+Compose 启动后验证 Web、API readiness、Mailpit、MinIO、Prometheus metrics 和 Worker：
 
 ```bash
 pnpm stack:smoke
@@ -87,4 +89,10 @@ packages/ai       AI Gateway 与确定性 fake provider
 infra/docker      Dockerfile 与 Compose
 ```
 
-Worker 不暴露 HTTP；容器健康检查通过 `apps/worker/dist/readiness-cli.js` 检查数据库、队列和正在消费队列的 Worker。
+Worker 不暴露 HTTP；容器健康检查通过 `apps/worker/dist/readiness-cli.js` 检查数据库、队列、对象存储和正在消费队列的 Worker。
+
+部署、告警与诊断：
+
+- `docs/operations/deployment.md`
+- `docs/operations/alerting.md`
+- `docs/operations/logging-and-tracing.md`

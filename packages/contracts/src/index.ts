@@ -4695,7 +4695,7 @@ export const serviceNameSchema = z.enum(["api", "worker"]);
 export type ServiceName = z.infer<typeof serviceNameSchema>;
 
 export const dependencyCheckSchema = z.object({
-  name: z.enum(["database", "queue"]),
+  name: z.enum(["database", "queue", "storage"]),
   status: z.enum(["up", "down"]),
   latencyMs: z.number().nonnegative(),
 });

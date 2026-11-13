@@ -1,0 +1,75 @@
+groups:
+  - name: novelbrain-operations
+    rules:
+      - alert: ApiReadinessDown
+        expr: min(novelbrain_dependency_up) < 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: NovelBrain API has an unavailable required dependency
+          runbook: docs/operations/alerting.md#apireadinessdown
+      - alert: ApiLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(novelbrain_api_request_duration_seconds_bucket[5m])) by (le)) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: NovelBrain API p95 latency is above the 300 ms target
+          runbook: docs/operations/alerting.md#apilatencyhigh
+      - alert: WorkerQueueBacklog
+        expr: novelbrain_worker_queue_jobs{state="wait"} > 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: NovelBrain worker queue backlog is above the approved threshold
+          runbook: docs/operations/alerting.md#workerqueuebacklog
+      - alert: WorkerQueueOldestJobAge
+        expr: novelbrain_worker_queue_oldest_job_age_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: The oldest NovelBrain queued job has waited too long
+          runbook: docs/operations/alerting.md#workerqueueoldestjobage
+      - alert: JobFailureRateHigh
+        expr: sum(novelbrain_jobs_total{status="failed"}) / clamp_min(sum(novelbrain_jobs_total), 1) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: NovelBrain durable job failure rate is above 10 percent
+          runbook: docs/operations/alerting.md#jobfailureratehigh
+      - alert: ModelLatencyHigh
+        expr: max(novelbrain_model_latency_ms) > 5000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Provider model latency is above the operational target
+          runbook: docs/operations/alerting.md#modellatencyhigh
+      - alert: ModelCostDailyHigh
+        expr: sum(novelbrain_model_cost_cny_total) > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Daily model spend has exceeded the default review threshold
+          runbook: docs/operations/alerting.md#modelcostdailyhigh
+      - alert: StorageUsageHigh
+        expr: minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_usable_total_bytes < 0.15
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Object storage usable free space is below 15 percent
+          runbook: docs/operations/alerting.md#storageusagehigh
+      - alert: StorageUnavailable
+        expr: novelbrain_dependency_up{dependency="storage"} < 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Required object storage is unavailable
+          runbook: docs/operations/alerting.md#storageunavailable

@@ -72,3 +72,5 @@ docker compose -f infra/docker/compose.yml up -d --build
 ## 指标标签
 
 指标标签通过 `sanitizeTelemetryLabels` 限制为低基数白名单字段，例如 route、method、status、operation、provider、outcome 和 error code。route、job type、provider、method、service 和 queue 只接受已登记值；operation、outcome 和状态只接受低基数机器标识。Worker 作业启动通过 `worker.job.started` 指标路径输出。request ID、用户内容、Prompt、正文、模型自定义名和任意动态字段不得作为指标标签。
+
+Prometheus 通过容器网络抓取 `api:3001/api/v1/metrics` 和 MinIO 的 cluster metrics。公开 Web 代理明确拒绝 `/api/v1/metrics`；API 指标只包含聚合计数、延迟桶、队列状态和依赖可用性。存储容量与使用量使用 MinIO 自带的 `minio_cluster_capacity_*` 指标。
