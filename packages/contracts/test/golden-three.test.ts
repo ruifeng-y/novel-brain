@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   GOLDEN_THREE_REVIEW_DIMENSIONS,
+  generateGoldenThreeJobSchema,
+  goldenThreeGenerationJobSchema,
   goldenThreeCandidateBatchRequestSchema,
   goldenThreeLockRequestSchema,
   goldenThreeReviewBatchRequestSchema,
@@ -64,6 +66,49 @@ function pinnedChapter(index: number) {
 }
 
 describe("golden three contracts", () => {
+  it("queues golden three generation as a typed durable job", () => {
+    const job = generateGoldenThreeJobSchema.parse({
+      jobId: candidateAId,
+      jobType: "generate_golden_three",
+      workId,
+      branchId,
+      chapterId: chapterIds[0],
+      actorId: candidateBId,
+      modelConfigId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1e42",
+      idempotencyKey: "golden-three-job-1",
+      candidateCount: 3,
+      budget: {
+        maxCostCny: 0.2,
+        maxTokens: 40_800,
+        maxRevisionRounds: 0,
+      },
+      checkpoint: {
+        schemaVersion: 1,
+        revision: 0,
+        stage: "queued",
+        batchId,
+        stepKey: null,
+        contextPackId: null,
+        completedStepKeys: [],
+        failureClass: null,
+      },
+    });
+    expect(job.jobType).toBe("generate_golden_three");
+
+    const generationJob = goldenThreeGenerationJobSchema.parse({
+      id: job.jobId,
+      status: "running",
+      progress: 40,
+      currentStep: "golden_three.candidate.character_focus",
+      candidateCount: 3,
+      error: null,
+      createdAt: "2026-11-13T00:00:00.000Z",
+      startedAt: "2026-11-13T00:00:01.000Z",
+      finishedAt: null,
+    });
+    expect(generationJob.status).toBe("running");
+  });
+
   it("freezes 2-3 candidates, six evidence reviews and an explicit override policy", () => {
     expect(GOLDEN_THREE_REVIEW_DIMENSIONS).toEqual([
       "opening_hook",
@@ -149,6 +194,7 @@ describe("golden three contracts", () => {
     const workspace = goldenThreeWorkspaceSchema.parse({
       workId,
       branchId,
+      activeGenerationJob: null,
       candidates: [
         {
           id: candidateAId,

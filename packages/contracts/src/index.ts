@@ -4732,6 +4732,7 @@ export type WorkerReadinessData = z.infer<typeof workerReadinessDataSchema>;
 
 export const WORKER_QUEUE_NAME = "novel-brain-jobs";
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
+export const GENERATE_GOLDEN_THREE_JOB = "generate_golden_three";
 export const SUMMARY_REBUILD_JOB = "rebuild_summaries";
 export const WRITE_ACTION_JOB = "write_action";
 export const WORKER_JOB_STEPS = [
@@ -5556,8 +5557,70 @@ export const batchTickJobSchema = z
   .strict();
 export type BatchTickJob = z.infer<typeof batchTickJobSchema>;
 
+export const GOLDEN_THREE_JOB_STAGES = [
+  "queued",
+  "preparing",
+  "context",
+  "generating_candidates",
+  "committing",
+  "completed",
+  "failed",
+] as const;
+export const goldenThreeJobStageSchema = z.enum(GOLDEN_THREE_JOB_STAGES);
+export type GoldenThreeJobStage = z.infer<typeof goldenThreeJobStageSchema>;
+
+export const goldenThreeJobCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    revision: z.number().int().nonnegative(),
+    stage: goldenThreeJobStageSchema,
+    batchId: uuidV7Schema,
+    stepKey: z.string().min(1).max(200).nullable(),
+    contextPackId: uuidV7Schema.nullable(),
+    completedStepKeys: z.array(z.string().min(1).max(200)).max(3),
+    failureClass: z.string().min(1).max(100).nullable(),
+  })
+  .strict();
+export type GoldenThreeJobCheckpoint = z.infer<typeof goldenThreeJobCheckpointSchema>;
+
+export const generateGoldenThreeJobSchema = z
+  .object({
+    jobId: uuidV7Schema,
+    jobType: z.literal(GENERATE_GOLDEN_THREE_JOB),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    modelConfigId: uuidV7Schema,
+    idempotencyKey: z.string().min(1).max(200),
+    candidateCount: z.union([z.literal(2), z.literal(3)]),
+    budget: generationBudgetSchema,
+    checkpoint: goldenThreeJobCheckpointSchema,
+  })
+  .strict();
+export type GenerateGoldenThreeJob = z.infer<typeof generateGoldenThreeJobSchema>;
+
+export const goldenThreeGenerationJobSchema = z
+  .object({
+    id: uuidV7Schema,
+    status: generationJobStatusSchema,
+    progress: z.number().int().min(0).max(100),
+    currentStep: z.string().min(1).max(200),
+    candidateCount: z.union([z.literal(2), z.literal(3)]),
+    error: generationJobErrorSchema.nullable(),
+    createdAt: z.string().datetime(),
+    startedAt: z.string().datetime().nullable(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type GoldenThreeGenerationJob = z.infer<typeof goldenThreeGenerationJobSchema>;
+export const goldenThreeGenerationJobResponseSchema = apiEnvelopeSchema(
+  goldenThreeGenerationJobSchema,
+);
+
 export const workerJobSchema = z.discriminatedUnion("jobType", [
   generateChapterJobSchema,
+  generateGoldenThreeJobSchema,
   summaryRebuildJobSchema,
   writeActionJobSchema,
   batchTickJobSchema,
@@ -7900,6 +7963,7 @@ export const goldenThreeWorkspaceSchema = z
     branchId: uuidV7Schema,
     candidates: z.array(goldenThreeCandidateSchema).max(3),
     selectedCandidateId: uuidV7Schema.nullable(),
+    activeGenerationJob: goldenThreeGenerationJobSchema.nullable(),
     lock: goldenThreeLockSchema.nullable(),
     styleBaseline: goldenThreeStyleBaselineSchema.nullable(),
     gate: goldenThreeGateSchema,

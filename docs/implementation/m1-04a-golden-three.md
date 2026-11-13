@@ -15,11 +15,11 @@
 - 续写版本节点引用选定候选、选择版本节点、第一章章节版本与内容指纹，并保存受限风格摘录来源；工作区响应同步返回该来源引用。
 - 候选固定 prompt、模型、模型参数、上下文快照与 manifest 指纹；不记录明文 provider key、prompt 正文或完整上下文。
 - 候选登记只读取既有章节版本，不更新章节当前版本、状态或正文，避免候选生成覆盖既有章节。
-- 模型生成候选会保存真实 provider/model、prompt hash、ContextPack manifest、模型调用和生成轨迹引用；job、ContextPack、prompt、agent run、cost reservation 和 model call 在模型调用前落库，成功结算、失败释放。
+- 模型生成请求由 API 持久化 queued job 后立即返回 `202 + jobId`；Worker 消费 typed job，保存真实 provider/model、prompt hash、ContextPack manifest、模型调用和生成轨迹引用。job、ContextPack、prompt、agent run、cost reservation 和 model call 在模型调用前落库，成功结算、失败释放。
 - 生成预算按每个候选的完整 ContextPack 输入和最大输出累计；模型失败返回可恢复错误，不写入模板候选。
 - 同一幂等键重放原失败类型；同一创作线只允许一个活跃生成任务。每个模型步骤成功后写 `job_steps`、`job_step_attempts` 与 checkpoint，失败时释放未用 reservation 并保留已结算成本。
 - 黄金三章使用路径级数据库幂等键；迁移回填历史 job。超过时限的 `running` job 会自动失败、释放预留并允许新任务恢复；每次结果写回与最终提交都校验 lease 版本，旧执行链不能覆盖恢复后的任务。
-- 当前 generate API 仍同步等待 provider，但 persistence、lease、checkpoint 与成本边界已经按 durable job 设计。迁移到 BullMQ Worker、`202 + jobId` 和 checkpoint 自动续跑由 #190 跟踪。
+- generate API 不再在 API 进程调用 provider；Web 通过 `GET .../golden-three/generation/:jobId` 轮询状态并在完成后重新读取候选工作区。Worker 从结构化 checkpoint 恢复，已成功的候选步骤不会重复调用模型或重复计费。
 - 模型生成的候选状态保持 `draft`，不自动伪造六维评分；六维评审必须通过独立评审入口提交。
 - 六维固定为开篇钩子、主角吸引力、世界规则展示、核心冲突、读者承诺、章末追读钩子；每维保存 1–5 分、评审来源、证据原文和定位。
 - 证据必须来自该候选固定的章节版本原文；伪造、跨候选或跨章节证据会被拒绝。
@@ -50,6 +50,7 @@
 
 - `pnpm exec vitest run packages/contracts/test/golden-three.test.ts`
 - `pnpm exec vitest run --config vitest.integration.config.mts apps/api/test/golden-three.integration.test.ts`
+- Golden Three 集成测试覆盖 queued API 返回、无 provider 调用、Worker 中断、checkpoint 续跑、lease loss、幂等 replay 和成本一致性。
 - `pnpm exec playwright test apps/web/e2e/parity/golden-three.spec.ts`
 - `pnpm test:e2e:m1-closeout-stability`
 - Candidate, review, continuation or lock-gate changes must run both the page spec and the five-repeat M1 author-loop stability command.

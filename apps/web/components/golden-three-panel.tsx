@@ -6,8 +6,10 @@ import {
   GOLDEN_THREE_REVIEW_DIMENSIONS,
   GOLDEN_THREE_REVIEW_DIMENSION_LABELS,
   apiErrorSchema,
+  goldenThreeGenerationJobResponseSchema,
   goldenThreeWorkspaceResponseSchema,
   type GoldenThreeCandidate,
+  type GoldenThreeGenerationJob,
   type GoldenThreeReviewDimension,
   type GoldenThreeWorkspace,
 } from "@novel-brain/contracts";
@@ -22,6 +24,7 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
   const [busy, setBusy] = useState("");
   const [overrideRationale, setOverrideRationale] = useState("");
   const [generationKey, setGenerationKey] = useState<string | null>(null);
+  const [generationJob, setGenerationJob] = useState<GoldenThreeGenerationJob | null>(null);
   const path = `/api/v1/works/${workId}/branches/${branchId}/golden-three`;
 
   const load = useCallback(async () => {
@@ -32,7 +35,9 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
       if (!response.ok) {
         throw new Error(await readError(response, "黄金三章加载失败。"));
       }
-      setWorkspace(goldenThreeWorkspaceResponseSchema.parse(await response.json()).data);
+      const loaded = goldenThreeWorkspaceResponseSchema.parse(await response.json()).data;
+      setWorkspace(loaded);
+      setGenerationJob(loaded.activeGenerationJob);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "黄金三章加载失败。");
     } finally {
@@ -43,6 +48,55 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!generationJob) {
+      return;
+    }
+    if (generationJob.status === "completed") {
+      setGenerationJob(null);
+      void load();
+      return;
+    }
+    if (
+      generationJob.status === "failed" ||
+      generationJob.status === "cancelled" ||
+      generationJob.status === "paused"
+    ) {
+      setActionError(
+        generationJob.status === "paused"
+          ? "候选生成已暂停。"
+          : (generationJob.error?.message ?? "候选生成失败，请稍后重试。"),
+      );
+      setGenerationJob(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`${path}/generation/${generationJob.id}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error(await readError(response, "候选生成状态加载失败。"));
+        }
+        if (!cancelled) {
+          setGenerationJob(
+            goldenThreeGenerationJobResponseSchema.parse(await response.json()).data,
+          );
+        }
+      } catch (caught) {
+        if (!cancelled) {
+          setActionError(caught instanceof Error ? caught.message : "候选生成状态加载失败。");
+          setGenerationJob(null);
+        }
+      }
+    }, 1_000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [generationJob, load, path]);
 
   async function selectCandidate(candidate: GoldenThreeCandidate) {
     setBusy(`select:${candidate.id}`);
@@ -122,7 +176,7 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
       if (!response.ok) {
         throw new Error(await readError(response, "候选生成失败。"));
       }
-      setWorkspace(goldenThreeWorkspaceResponseSchema.parse(await response.json()).data);
+      setGenerationJob(goldenThreeGenerationJobResponseSchema.parse(await response.json()).data);
       setGenerationKey(null);
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "候选生成失败。");
@@ -212,20 +266,27 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
         </div>
       ) : null}
 
+      {generationJob ? (
+        <div className="story-bible-notice" role="status">
+          <LoaderCircle className="spin" size={16} aria-hidden="true" />
+          <span>正在生成黄金三章候选，当前进度 {generationJob.progress}%。</span>
+        </div>
+      ) : null}
+
       {workspace.candidates.length === 0 ? (
         <div className="golden-three-empty">
           <h3>还没有黄金三章候选</h3>
           <p>先用第 1 章的当前版本生成 2–3 个方向，作者选定后再登记第 2、3 章续写。</p>
           <button
             className="btn btn-primary"
-            disabled={busy === "generate"}
+            disabled={busy === "generate" || generationJob !== null}
             onClick={() => void generateCandidates()}
             type="button"
           >
-            {busy === "generate" ? (
+            {busy === "generate" || generationJob ? (
               <LoaderCircle className="spin" size={15} aria-hidden="true" />
             ) : null}
-            生成 3 个候选
+            {generationJob ? "正在生成候选" : "生成 3 个候选"}
           </button>
         </div>
       ) : (

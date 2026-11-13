@@ -1,29 +1,37 @@
 import { createHash } from "node:crypto";
 
-import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
-  DeepSeekProvider,
-  FakeAiProvider,
   AiProviderError,
-  decryptApiKey,
   M0_COST_PER_TOKEN_CNY,
+  type AiGateway,
   type GenerationResult,
 } from "@novel-brain/ai";
 import type {
+  GenerateGoldenThreeJob,
   GoldenThreeCandidateBatchRequest,
   GoldenThreeChapterPinInput,
   GoldenThreeContinuationRequest,
   GoldenThreeContinuationStyleSource,
   GoldenThreeGateBlockerCode,
   GoldenThreeGenerateRequest,
+  GoldenThreeGenerationJob,
+  GoldenThreeJobCheckpoint,
   GoldenThreeLockRequest,
   GoldenThreeReviewDimension,
   GoldenThreeReviewBatchRequest,
   GoldenThreeStrategy,
   GoldenThreeSelectionRequest,
   GoldenThreeWorkspace,
+  ContextPackPreview,
 } from "@novel-brain/contracts";
-import { goldenThreeContinuationStyleSourceSchema } from "@novel-brain/contracts";
+import {
+  GENERATE_GOLDEN_THREE_JOB,
+  contextPackPreviewSchema,
+  generateGoldenThreeJobSchema,
+  goldenThreeContinuationStyleSourceSchema,
+  goldenThreeGenerationJobSchema,
+  goldenThreeJobCheckpointSchema,
+} from "@novel-brain/contracts";
 import {
   auditLogs,
   agentRuns,
@@ -59,15 +67,36 @@ import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
-import { countWords } from "../imports/manuscript-import.parser";
-// Nest uses the runtime class reference for dependency injection metadata.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { GenerationService } from "../generation/generation.service";
-import type { WorksAuditContext } from "../works/works.repository";
-
 const GOLDEN_THREE_TOKEN_BUDGET = 12_000;
 const GOLDEN_THREE_MAX_OUTPUT_TOKENS = 1_600;
 const GOLDEN_THREE_DEFAULT_MAX_COST_CNY = 0.2;
+
+export const GOLDEN_THREE_CONTEXT_COMPILER = Symbol("GOLDEN_THREE_CONTEXT_COMPILER");
+
+export interface GoldenThreeAuditContext {
+  requestId: string;
+  ip: string;
+  userAgent: string;
+}
+
+export interface GoldenThreeJobScope {
+  jobId: string;
+  workId: string;
+  branchId: string;
+  chapterId: string;
+}
+
+export interface GoldenThreeContextCompiler {
+  compile(
+    userId: string,
+    input: GoldenThreeJobScope,
+    tokenBudget: number,
+  ): Promise<ContextPackPreview>;
+}
+
+export interface GoldenThreeProviderFactory {
+  create(config: InferSelectModel<typeof modelConfigs>): AiGateway;
+}
 
 interface GoldenThreePreparedCall {
   workId: string;
@@ -82,6 +111,7 @@ interface GoldenThreePreparedCall {
   reservationId: string;
   modelCallId: string;
   stepKey: string;
+  attempt: number;
   modelProvider: string;
   model: string;
   configHash: string;
@@ -144,12 +174,30 @@ export type GoldenThreeWriteResult<T> =
   | { kind: "already_locked" }
   | { kind: "generation_in_progress" };
 
-@Injectable()
-export class GoldenThreeRepository implements OnModuleDestroy {
+export type GoldenThreeEnqueueResult =
+  | {
+      kind: "ok";
+      job: GoldenThreeGenerationJob;
+      worker: GenerateGoldenThreeJob;
+      replayed: boolean;
+    }
+  | { kind: "candidates_exist" }
+  | { kind: "chapters_empty"; chapterNumbers: number[] }
+  | { kind: "model_config_missing" }
+  | { kind: "model_generation_failed"; message: string; failureClass: string }
+  | { kind: "generation_in_progress" };
+
+export class GoldenThreeRepository {
   private readonly pool: Pool;
   private readonly db: DatabaseClient;
 
-  constructor(private readonly generationService: GenerationService) {
+  constructor(
+    private readonly contextCompiler: GoldenThreeContextCompiler,
+    private readonly providerFactory: GoldenThreeProviderFactory,
+    private readonly generationStepHook?: (stepKey: string) => void | Promise<void>,
+    private readonly beforeRecordSuccessHook?: (stepKey: string) => void | Promise<void>,
+    private readonly afterClaimHook?: () => void | Promise<void>,
+  ) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required");
@@ -184,6 +232,441 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     });
   }
 
+  async enqueueGeneration(
+    userId: string,
+    context: GoldenThreeContext,
+    idempotencyKey: string,
+    input: GoldenThreeGenerateRequest,
+    audit: GoldenThreeAuditContext,
+  ): Promise<GoldenThreeEnqueueResult> {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
+      await lockBranch(transaction, context.branchId);
+      const [sameKey] = await transaction
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.userId, userId),
+            eq(jobs.workId, context.workId),
+            eq(jobs.branchId, context.branchId),
+            eq(jobs.type, "agent_workflow"),
+            eq(jobs.goldenThreeGenerationKey, idempotencyKey),
+            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+          ),
+        )
+        .limit(1);
+      if (sameKey) {
+        if (sameKey.status === "failed") {
+          return {
+            kind: "model_generation_failed" as const,
+            message: sameKey.errorMessage ?? "黄金三章生成失败",
+            failureClass:
+              typeof sameKey.checkpoint.failureClass === "string"
+                ? sameKey.checkpoint.failureClass
+                : "unknown",
+          };
+        }
+        return {
+          kind: "ok" as const,
+          job: toGoldenThreeGenerationJob(sameKey),
+          worker: toGoldenThreeWorkerJob(sameKey),
+          replayed: true,
+        };
+      }
+
+      const [existingCandidate] = await transaction
+        .select({ id: goldenThreeCandidates.id })
+        .from(goldenThreeCandidates)
+        .where(
+          and(
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
+          ),
+        )
+        .limit(1);
+      if (existingCandidate) {
+        return { kind: "candidates_exist" as const };
+      }
+
+      const configuredStaleJobMs = Number(process.env.GOLDEN_THREE_STALE_JOB_MS ?? "");
+      const staleJobMs =
+        Number.isFinite(configuredStaleJobMs) && configuredStaleJobMs >= 60_000
+          ? configuredStaleJobMs
+          : 15 * 60 * 1_000;
+      const staleBefore = new Date(Date.now() - staleJobMs);
+      const [active] = await transaction
+        .select({ id: jobs.id, status: jobs.status, updatedAt: jobs.updatedAt })
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.userId, userId),
+            eq(jobs.workId, context.workId),
+            eq(jobs.branchId, context.branchId),
+            eq(jobs.type, "agent_workflow"),
+            inArray(jobs.status, ["queued", "preparing", "running", "paused"]),
+            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+          ),
+        )
+        .limit(1);
+      if (
+        active &&
+        ["queued", "preparing", "running"].includes(active.status) &&
+        active.updatedAt < staleBefore
+      ) {
+        await expireStaleGoldenThreeJob(
+          transaction,
+          userId,
+          active.id,
+          context.workId,
+          context.branchId,
+        );
+      } else if (active) {
+        return { kind: "generation_in_progress" as const };
+      }
+
+      const [chapter] = await transaction
+        .select({ chapter: chapters, version: chapterVersions })
+        .from(chapters)
+        .leftJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
+        .where(
+          and(
+            eq(chapters.userId, userId),
+            eq(chapters.workId, context.workId),
+            eq(chapters.branchId, context.branchId),
+            eq(chapters.number, 1),
+          ),
+        )
+        .limit(1);
+      if (!chapter?.version || chapter.version.content.trim().length === 0) {
+        return { kind: "chapters_empty" as const, chapterNumbers: [1] };
+      }
+
+      const [modelConfig] = await transaction
+        .select()
+        .from(modelConfigs)
+        .where(
+          and(
+            eq(modelConfigs.userId, userId),
+            isNull(modelConfigs.deletedAt),
+            sql`${modelConfigs.purposes} @> '["writing"]'::jsonb`,
+          ),
+        )
+        .orderBy(desc(modelConfigs.isDefault), desc(modelConfigs.updatedAt))
+        .limit(1);
+      if (!modelConfig) {
+        return { kind: "model_config_missing" as const };
+      }
+
+      const candidateCount = input.candidateCount;
+      const maxCostCny = Number(
+        process.env.GOLDEN_THREE_MAX_COST_CNY ?? GOLDEN_THREE_DEFAULT_MAX_COST_CNY,
+      );
+      if (!Number.isFinite(maxCostCny) || maxCostCny <= 0) {
+        return {
+          kind: "model_generation_failed" as const,
+          message: "黄金三章生成预算不足",
+          failureClass: "budget",
+        };
+      }
+      const maxTokens =
+        (GOLDEN_THREE_TOKEN_BUDGET + GOLDEN_THREE_MAX_OUTPUT_TOKENS) * candidateCount;
+      const jobId = uuidv7();
+      const batchId = uuidv7();
+      const now = new Date();
+      const checkpoint: GoldenThreeJobCheckpoint = {
+        schemaVersion: 1,
+        revision: 0,
+        stage: "queued",
+        batchId,
+        stepKey: null,
+        contextPackId: null,
+        completedStepKeys: [],
+        failureClass: null,
+      };
+      await transaction.insert(jobs).values({
+        id: jobId,
+        workId: context.workId,
+        branchId: context.branchId,
+        userId,
+        chapterId: chapter.chapter.id,
+        modelConfigId: modelConfig.id,
+        type: "agent_workflow",
+        status: "queued",
+        progress: 0,
+        currentStep: "preparing",
+        idempotencyKey,
+        goldenThreeGenerationKey: idempotencyKey,
+        budget: { maxTokens, maxCostCny, maxRevisionRounds: 0 },
+        checkpoint,
+        checkpointVersion: 1,
+        orchestration: {
+          kind: "golden_three_generation",
+          candidateCount,
+        },
+        goldenThreeLeaseVersion: 1,
+        cost: {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          costCny: 0,
+        },
+        createdAt: now,
+        updatedAt: now,
+      });
+      await transaction.insert(jobEvents).values({
+        id: uuidv7(),
+        jobId,
+        workId: context.workId,
+        branchId: context.branchId,
+        userId,
+        sequence: 1,
+        eventType: "job.created",
+        payload: { candidateCount },
+        occurredAt: now,
+      });
+      await writeAudit(transaction, userId, audit, "golden_three.generation_queued", jobId);
+      const [created] = await transaction
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, jobId),
+            eq(jobs.userId, userId),
+            eq(jobs.workId, context.workId),
+            eq(jobs.branchId, context.branchId),
+          ),
+        )
+        .limit(1);
+      if (!created) {
+        throw new Error("Golden three queued job could not be reloaded");
+      }
+      return {
+        kind: "ok" as const,
+        job: toGoldenThreeGenerationJob(created),
+        worker: toGoldenThreeWorkerJob(created),
+        replayed: false,
+      };
+    });
+  }
+
+  async generationJob(
+    userId: string,
+    context: GoldenThreeContext,
+    jobId: string,
+  ): Promise<{ job: GoldenThreeGenerationJob; worker: GenerateGoldenThreeJob | null } | undefined> {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
+      const [initialJob] = await transaction
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, jobId),
+            eq(jobs.userId, userId),
+            eq(jobs.workId, context.workId),
+            eq(jobs.branchId, context.branchId),
+            eq(jobs.type, "agent_workflow"),
+            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+          ),
+        )
+        .limit(1);
+      let job = initialJob;
+      if (
+        job &&
+        ["queued", "preparing", "running"].includes(job.status) &&
+        job.updatedAt < goldenThreeStaleBefore()
+      ) {
+        await expireStaleGoldenThreeJob(
+          transaction,
+          userId,
+          job.id,
+          context.workId,
+          context.branchId,
+        );
+        [job] = await transaction
+          .select()
+          .from(jobs)
+          .where(
+            and(
+              eq(jobs.id, jobId),
+              eq(jobs.userId, userId),
+              eq(jobs.workId, context.workId),
+              eq(jobs.branchId, context.branchId),
+              eq(jobs.type, "agent_workflow"),
+              sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+            ),
+          )
+          .limit(1);
+      }
+      return job
+        ? {
+            job: toGoldenThreeGenerationJob(job),
+            worker: job.status === "queued" ? toGoldenThreeWorkerJob(job) : null,
+          }
+        : undefined;
+    });
+  }
+
+  async runQueuedGeneration(
+    payload: GenerateGoldenThreeJob,
+    audit: GoldenThreeAuditContext,
+  ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
+    const claimed = await withTenantTransaction(this.db, payload.actorId, async (transaction) => {
+      const [job] = await transaction
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, payload.jobId),
+            eq(jobs.userId, payload.actorId),
+            eq(jobs.workId, payload.workId),
+            eq(jobs.branchId, payload.branchId),
+            eq(jobs.type, "agent_workflow"),
+            eq(jobs.goldenThreeGenerationKey, payload.idempotencyKey),
+            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!job) {
+        return { kind: "not_found" as const };
+      }
+      if (job.status === "completed") {
+        return {
+          kind: "completed" as const,
+          batchId:
+            typeof job.checkpoint.batchId === "string"
+              ? job.checkpoint.batchId
+              : payload.checkpoint.batchId,
+        };
+      }
+      if (job.status === "failed" || job.status === "cancelled") {
+        return {
+          kind: "failed" as const,
+          message: job.errorMessage ?? "黄金三章生成任务已失败",
+          failureClass:
+            typeof job.checkpoint.failureClass === "string"
+              ? job.checkpoint.failureClass
+              : "unknown",
+        };
+      }
+      if (!["queued", "preparing", "running"].includes(job.status)) {
+        return { kind: "generation_in_progress" as const };
+      }
+      const now = new Date();
+      const durableCheckpoint = parseGoldenThreeCheckpoint(job);
+      const checkpoint = goldenThreeJobCheckpointSchema.parse({
+        ...durableCheckpoint,
+        revision: job.checkpointVersion + 1,
+        stage: "preparing",
+        failureClass: null,
+      });
+      const [claimedJob] = await transaction
+        .update(jobs)
+        .set({
+          status: "running",
+          progress: Math.max(job.progress, 5),
+          currentStep: "preparing",
+          checkpoint,
+          checkpointVersion: checkpoint.revision,
+          goldenThreeLeaseVersion: job.goldenThreeLeaseVersion + 1,
+          startedAt: job.startedAt ?? now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(jobs.id, payload.jobId),
+            eq(jobs.userId, payload.actorId),
+            eq(jobs.workId, payload.workId),
+            eq(jobs.branchId, payload.branchId),
+          ),
+        )
+        .returning({ leaseVersion: jobs.goldenThreeLeaseVersion });
+      if (!claimedJob) {
+        throw new Error("Golden three job could not be claimed");
+      }
+      const [sequence] = await transaction
+        .select({ value: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
+        .from(jobEvents)
+        .where(
+          and(
+            eq(jobEvents.jobId, payload.jobId),
+            eq(jobEvents.userId, payload.actorId),
+            eq(jobEvents.workId, payload.workId),
+            eq(jobEvents.branchId, payload.branchId),
+          ),
+        );
+      await transaction.insert(jobEvents).values({
+        id: uuidv7(),
+        jobId: payload.jobId,
+        workId: payload.workId,
+        branchId: payload.branchId,
+        userId: payload.actorId,
+        sequence: Number(sequence?.value ?? 0) + 1,
+        eventType: "job.preparing",
+        payload: { candidateCount: payload.candidateCount },
+        occurredAt: now,
+      });
+      return { kind: "claimed" as const, leaseVersion: claimedJob.leaseVersion };
+    });
+    if (claimed.kind === "not_found") {
+      return claimed;
+    }
+    if (claimed.kind === "completed") {
+      return { kind: "ok", value: { batchId: claimed.batchId } };
+    }
+    if (claimed.kind === "failed") {
+      return {
+        kind: "model_generation_failed",
+        message: claimed.message,
+        failureClass: claimed.failureClass,
+      };
+    }
+    await this.afterClaimHook?.();
+    const result = await this.generateCandidates(
+      payload.actorId,
+      { workId: payload.workId, branchId: payload.branchId },
+      payload.idempotencyKey,
+      { candidateCount: payload.candidateCount },
+      audit,
+      payload.jobId,
+      claimed.leaseVersion,
+    );
+    if (
+      result.kind === "candidates_exist" ||
+      result.kind === "chapters_empty" ||
+      result.kind === "model_config_missing"
+    ) {
+      const failure =
+        result.kind === "model_config_missing"
+          ? { failureClass: "provider", message: "作者模型配置已失效" }
+          : result.kind === "chapters_empty"
+            ? { failureClass: "schema", message: "黄金三章章节正文已失效" }
+            : { failureClass: "policy", message: "当前创作线已经有黄金三章候选" };
+      await withTenantTransaction(this.db, payload.actorId, async (transaction) => {
+        await recordGoldenThreeInitializationFailure(transaction, {
+          userId: payload.actorId,
+          workId: payload.workId,
+          branchId: payload.branchId,
+          chapterId: payload.chapterId,
+          modelConfigId: payload.modelConfigId,
+          jobId: payload.jobId,
+          idempotencyKey: payload.idempotencyKey,
+          maxTokens: payload.budget.maxTokens,
+          maxCostCny: payload.budget.maxCostCny,
+          candidateCount: payload.candidateCount,
+          failureClass: failure.failureClass,
+          message: failure.message,
+          contextPackId: payload.checkpoint.contextPackId ?? uuidv7(),
+          ...(claimed.leaseVersion === undefined
+            ? {}
+            : { expectedLeaseVersion: claimed.leaseVersion }),
+        });
+      });
+    }
+    return result;
+  }
+
   async workspace(userId: string, context: GoldenThreeContext): Promise<GoldenThreeWorkspace> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       const candidateRows = await transaction
@@ -204,8 +687,37 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           : await transaction
               .select()
               .from(goldenThreeReviews)
-              .where(inArray(goldenThreeReviews.candidateId, candidateIds))
+              .where(
+                and(
+                  inArray(goldenThreeReviews.candidateId, candidateIds),
+                  eq(goldenThreeReviews.userId, userId),
+                  eq(goldenThreeReviews.workId, context.workId),
+                  eq(goldenThreeReviews.branchId, context.branchId),
+                ),
+              )
               .orderBy(asc(goldenThreeReviews.createdAt));
+      const [activeGenerationJob] = await transaction
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.userId, userId),
+            eq(jobs.workId, context.workId),
+            eq(jobs.branchId, context.branchId),
+            eq(jobs.type, "agent_workflow"),
+            inArray(jobs.status, [
+              "queued",
+              "preparing",
+              "running",
+              "paused",
+              "failed",
+              "cancelled",
+            ]),
+            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+          ),
+        )
+        .orderBy(desc(jobs.createdAt))
+        .limit(1);
       const [lockRecord] = await transaction
         .select()
         .from(goldenThreeLocks)
@@ -221,7 +733,14 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         ? await transaction
             .select()
             .from(styleBaselines)
-            .where(eq(styleBaselines.id, lockRecord.styleBaselineId))
+            .where(
+              and(
+                eq(styleBaselines.id, lockRecord.styleBaselineId),
+                eq(styleBaselines.userId, userId),
+                eq(styleBaselines.workId, context.workId),
+                eq(styleBaselines.branchId, context.branchId),
+              ),
+            )
             .limit(1)
         : [undefined];
       const reviewsByCandidate = new Map<string, GoldenThreeReviewRecord[]>();
@@ -364,6 +883,9 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         branchId: context.branchId,
         candidates,
         selectedCandidateId,
+        activeGenerationJob: activeGenerationJob
+          ? toGoldenThreeGenerationJob(activeGenerationJob)
+          : null,
         lock: lockRecord
           ? {
               id: lockRecord.id,
@@ -414,7 +936,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     idempotencyKey: string,
     input: GoldenThreeCandidateBatchRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
     const configuredStaleJobMs = Number(process.env.GOLDEN_THREE_STALE_JOB_MS ?? "");
     const staleJobMs =
@@ -425,7 +947,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const [activeGeneration] = await transaction
-        .select({ id: jobs.id, startedAt: jobs.startedAt })
+        .select({ id: jobs.id, status: jobs.status, updatedAt: jobs.updatedAt })
         .from(jobs)
         .where(
           and(
@@ -438,7 +960,11 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           ),
         )
         .limit(1);
-      if (activeGeneration?.startedAt && activeGeneration.startedAt < staleBefore) {
+      if (
+        activeGeneration &&
+        ["queued", "preparing", "running"].includes(activeGeneration.status) &&
+        activeGeneration.updatedAt < staleBefore
+      ) {
         await expireStaleGoldenThreeJob(
           transaction,
           userId,
@@ -573,7 +1099,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         message: "创建黄金三章候选",
         createdAt: now,
       });
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await transaction.insert(auditLogs).values({
         id: uuidv7(),
         actorId: userId,
@@ -594,7 +1120,9 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     idempotencyKey: string,
     input: GoldenThreeGenerateRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
+    resumeJobId?: string,
+    expectedLeaseVersion?: number,
   ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
     const strategies = goldenThreeGenerationStrategies.slice(0, input.candidateCount);
     const configuredStaleJobMs = Number(process.env.GOLDEN_THREE_STALE_JOB_MS ?? "");
@@ -603,64 +1131,100 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         ? configuredStaleJobMs
         : 15 * 60 * 1_000;
     const staleBefore = new Date(Date.now() - (Number.isFinite(staleJobMs) ? staleJobMs : 0));
-    const existingRun = await withTenantTransaction(this.db, userId, async (transaction) => {
-      await lockBranch(transaction, context.branchId);
-      const [sameKey] = await transaction
-        .select({
-          id: jobs.id,
-          status: jobs.status,
-          checkpoint: jobs.checkpoint,
-          startedAt: jobs.startedAt,
+    const resumeJob = resumeJobId
+      ? await withTenantTransaction(this.db, userId, async (transaction) => {
+          const [job] = await transaction
+            .select()
+            .from(jobs)
+            .where(
+              and(
+                eq(jobs.id, resumeJobId),
+                eq(jobs.userId, userId),
+                eq(jobs.workId, context.workId),
+                eq(jobs.branchId, context.branchId),
+                eq(jobs.goldenThreeGenerationKey, idempotencyKey),
+                sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+              ),
+            )
+            .limit(1);
+          return job;
         })
-        .from(jobs)
-        .where(
-          and(
-            eq(jobs.userId, userId),
-            eq(jobs.workId, context.workId),
-            eq(jobs.branchId, context.branchId),
-            eq(jobs.type, "agent_workflow"),
-            eq(jobs.goldenThreeGenerationKey, idempotencyKey),
-            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
-          ),
-        )
-        .limit(1);
-      if (sameKey) {
-        return { kind: "same_key" as const, job: sameKey };
-      }
-      const [active] = await transaction
-        .select({ id: jobs.id, startedAt: jobs.startedAt })
-        .from(jobs)
-        .where(
-          and(
-            eq(jobs.userId, userId),
-            eq(jobs.workId, context.workId),
-            eq(jobs.branchId, context.branchId),
-            eq(jobs.type, "agent_workflow"),
-            inArray(jobs.status, ["queued", "preparing", "running"]),
-            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
-          ),
-        )
-        .limit(1);
-      if (active?.startedAt && active.startedAt < staleBefore) {
-        await expireStaleGoldenThreeJob(
-          transaction,
-          userId,
-          active.id,
-          context.workId,
-          context.branchId,
-        );
-        return { kind: "none" as const };
-      }
-      return active ? { kind: "in_progress" as const } : { kind: "none" as const };
-    });
+      : undefined;
+    if (resumeJobId && !resumeJob) {
+      return { kind: "not_found" };
+    }
+    if (
+      expectedLeaseVersion !== undefined &&
+      resumeJob?.goldenThreeLeaseVersion !== expectedLeaseVersion
+    ) {
+      return { kind: "generation_in_progress" };
+    }
+    const resumeCheckpoint = resumeJob ? parseGoldenThreeCheckpoint(resumeJob) : undefined;
+    const existingRun =
+      resumeJobId !== undefined
+        ? ({ kind: "none" } as const)
+        : await withTenantTransaction(this.db, userId, async (transaction) => {
+            await lockBranch(transaction, context.branchId);
+            const [sameKey] = await transaction
+              .select({
+                id: jobs.id,
+                status: jobs.status,
+                checkpoint: jobs.checkpoint,
+                startedAt: jobs.startedAt,
+                updatedAt: jobs.updatedAt,
+              })
+              .from(jobs)
+              .where(
+                and(
+                  eq(jobs.userId, userId),
+                  eq(jobs.workId, context.workId),
+                  eq(jobs.branchId, context.branchId),
+                  eq(jobs.type, "agent_workflow"),
+                  eq(jobs.goldenThreeGenerationKey, idempotencyKey),
+                  sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+                ),
+              )
+              .limit(1);
+            if (sameKey) {
+              return { kind: "same_key" as const, job: sameKey };
+            }
+            const [active] = await transaction
+              .select({ id: jobs.id, status: jobs.status, updatedAt: jobs.updatedAt })
+              .from(jobs)
+              .where(
+                and(
+                  eq(jobs.userId, userId),
+                  eq(jobs.workId, context.workId),
+                  eq(jobs.branchId, context.branchId),
+                  eq(jobs.type, "agent_workflow"),
+                  inArray(jobs.status, ["queued", "preparing", "running", "paused"]),
+                  sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+                ),
+              )
+              .limit(1);
+            if (
+              active &&
+              ["queued", "preparing", "running"].includes(active.status) &&
+              active.updatedAt < staleBefore
+            ) {
+              await expireStaleGoldenThreeJob(
+                transaction,
+                userId,
+                active.id,
+                context.workId,
+                context.branchId,
+              );
+              return { kind: "none" as const };
+            }
+            return active ? { kind: "in_progress" as const } : { kind: "none" as const };
+          });
     if (existingRun.kind === "in_progress") {
       return { kind: "generation_in_progress" };
     }
     if (existingRun.kind === "same_key") {
       if (
         ["queued", "preparing", "running"].includes(existingRun.job.status) &&
-        existingRun.job.startedAt &&
-        existingRun.job.startedAt < staleBefore
+        existingRun.job.updatedAt < staleBefore
       ) {
         await withTenantTransaction(this.db, userId, async (transaction) => {
           await expireStaleGoldenThreeJob(
@@ -730,29 +1294,49 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       if (!chapter?.version || chapter.version.content.trim().length === 0) {
         return { kind: "chapters_empty" as const, chapterNumbers: [1] };
       }
-      const [modelConfig] = await transaction
-        .select()
-        .from(modelConfigs)
-        .where(
-          and(
-            eq(modelConfigs.userId, userId),
-            isNull(modelConfigs.deletedAt),
-            sql`${modelConfigs.purposes} @> '["writing"]'::jsonb`,
-          ),
-        )
-        .orderBy(desc(modelConfigs.isDefault), desc(modelConfigs.updatedAt))
-        .limit(1);
+      const resumeModelConfigId = resumeJob?.modelConfigId;
+      const [modelConfig] = resumeModelConfigId
+        ? await transaction
+            .select()
+            .from(modelConfigs)
+            .where(
+              and(
+                eq(modelConfigs.id, resumeModelConfigId),
+                eq(modelConfigs.userId, userId),
+                isNull(modelConfigs.deletedAt),
+              ),
+            )
+            .limit(1)
+        : await transaction
+            .select()
+            .from(modelConfigs)
+            .where(
+              and(
+                eq(modelConfigs.userId, userId),
+                isNull(modelConfigs.deletedAt),
+                sql`${modelConfigs.purposes} @> '["writing"]'::jsonb`,
+              ),
+            )
+            .orderBy(desc(modelConfigs.isDefault), desc(modelConfigs.updatedAt))
+            .limit(1);
       if (!modelConfig) {
         return { kind: "model_config_missing" as const };
       }
       const [versionRow] = await transaction
         .select({ maxVersion: sql<number>`coalesce(max(${chapterVersions.version}), 0)` })
         .from(chapterVersions)
-        .where(eq(chapterVersions.chapterId, chapter.chapter.id));
+        .where(
+          and(
+            eq(chapterVersions.chapterId, chapter.chapter.id),
+            eq(chapterVersions.userId, userId),
+            eq(chapterVersions.workId, context.workId),
+            eq(chapterVersions.branchId, context.branchId),
+          ),
+        );
       return {
         kind: "ok" as const,
         replay: false,
-        batchId: uuidv7(),
+        batchId: resumeCheckpoint?.batchId ?? uuidv7(),
         chapter: chapter.chapter,
         chapterVersion: chapter.version,
         modelConfig,
@@ -774,8 +1358,8 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     const modelConfig = payload.modelConfig;
     const nextVersion = payload.nextVersion;
     const batchId = preflight.batchId;
-    const jobId = uuidv7();
-    const contextPackId = uuidv7();
+    const jobId = resumeJobId ?? uuidv7();
+    const contextPackId = resumeCheckpoint?.contextPackId ?? uuidv7();
     const maxCostCny = Number(
       process.env.GOLDEN_THREE_MAX_COST_CNY ?? GOLDEN_THREE_DEFAULT_MAX_COST_CNY,
     );
@@ -795,6 +1379,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           failureClass: "budget",
           message: "黄金三章生成预算不足",
           contextPackId,
+          ...(expectedLeaseVersion === undefined ? {} : { expectedLeaseVersion }),
         });
       });
       return {
@@ -803,13 +1388,40 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         failureClass: "budget",
       };
     }
-    let contextPack: Awaited<ReturnType<GenerationService["contextPreview"]>>;
+    let contextPack: ContextPackPreview;
     try {
-      contextPack = await this.generationService.contextPreview(
-        userId,
-        { workId: context.workId, branchId: context.branchId, chapterId: chapter.id },
-        GOLDEN_THREE_TOKEN_BUDGET,
-      );
+      if (resumeCheckpoint?.contextPackId) {
+        const [savedContext] = await withTenantTransaction(this.db, userId, async (transaction) =>
+          transaction
+            .select({ snapshot: contextPackVersions.snapshot })
+            .from(contextPackVersions)
+            .where(
+              and(
+                eq(contextPackVersions.id, resumeCheckpoint.contextPackId!),
+                eq(contextPackVersions.jobId, jobId),
+                eq(contextPackVersions.userId, userId),
+                eq(contextPackVersions.workId, context.workId),
+                eq(contextPackVersions.branchId, context.branchId),
+              ),
+            )
+            .limit(1),
+        );
+        if (!savedContext) {
+          throw new Error("Golden three checkpoint ContextPack is missing");
+        }
+        contextPack = contextPackPreviewSchema.parse(savedContext.snapshot);
+      } else {
+        contextPack = await this.contextCompiler.compile(
+          userId,
+          {
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            chapterId: chapter.id,
+          },
+          GOLDEN_THREE_TOKEN_BUDGET,
+        );
+      }
     } catch {
       await withTenantTransaction(this.db, userId, async (transaction) => {
         await recordGoldenThreeInitializationFailure(transaction, {
@@ -826,6 +1438,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           failureClass: "unknown",
           message: "黄金三章上下文编译失败",
           contextPackId,
+          ...(expectedLeaseVersion === undefined ? {} : { expectedLeaseVersion }),
         });
       });
       return {
@@ -857,6 +1470,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           contextPackId,
           contextPack,
           contextManifestHash,
+          ...(expectedLeaseVersion === undefined ? {} : { expectedLeaseVersion }),
         });
       });
       return {
@@ -883,107 +1497,29 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         systemHash: hashValue(system),
       };
     });
-    let provider: ReturnType<typeof createGoldenThreeProvider>;
+    let provider: AiGateway;
     try {
-      provider = createGoldenThreeProvider(modelConfig);
+      provider = this.providerFactory.create(modelConfig);
     } catch (error) {
-      const failureClass = error instanceof AiProviderError ? error.failureClass : "provider";
+      const failureClass = goldenThreeFailureClass(error, "provider");
       await withTenantTransaction(this.db, userId, async (transaction) => {
-        await lockBranch(transaction, context.branchId);
-        const [existingJob] = await transaction
-          .select({ id: jobs.id })
-          .from(jobs)
-          .where(
-            and(
-              eq(jobs.userId, userId),
-              eq(jobs.workId, context.workId),
-              eq(jobs.branchId, context.branchId),
-              eq(jobs.type, "agent_workflow"),
-              eq(jobs.goldenThreeGenerationKey, idempotencyKey),
-            ),
-          )
-          .limit(1);
-        if (existingJob) {
-          return;
-        }
-        const now = new Date();
-        await transaction.insert(jobs).values({
-          id: jobId,
+        await recordGoldenThreeInitializationFailure(transaction, {
+          userId,
           workId: context.workId,
           branchId: context.branchId,
-          userId,
           chapterId: chapter.id,
           modelConfigId: modelConfig.id,
-          type: "agent_workflow",
-          status: "failed",
-          progress: 0,
-          currentStep: "failed",
+          jobId,
           idempotencyKey,
-          goldenThreeGenerationKey: idempotencyKey,
-          budget: { maxTokens, maxCostCny },
-          checkpoint: { contextPackId, stage: "failed", failureClass },
-          checkpointVersion: 1,
-          orchestration: {
-            kind: "golden_three_generation",
-            candidateCount: strategies.length,
-          },
-          goldenThreeLeaseVersion: 1,
-          cost: {
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
-            costCny: 0,
-          },
-          errorCode: "GOLDEN_THREE_GENERATION_FAILED",
-          errorMessage: "作者模型初始化失败",
-          startedAt: now,
-          finishedAt: now,
-          createdAt: now,
-          updatedAt: now,
-        });
-        await transaction.insert(contextPackVersions).values({
-          id: contextPackId,
-          jobId,
-          chapterId: chapter.id,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          version: 1,
-          compilerVersion: contextPack.compilerVersion,
-          tokenBudget: contextPack.tokenBudget,
-          tokenUsed: contextPack.tokenUsed,
-          selected: contextPack.selected,
-          evicted: contextPack.evicted,
-          sourceRefs: contextPack.sourceRefs,
-          snapshot: { ...contextPack, manifestHash: contextManifestHash },
-          createdAt: now,
-        });
-        await transaction.insert(jobCheckpoints).values({
-          id: uuidv7(),
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          stepKey: "failed",
-          schemaVersion: 1,
-          revision: 1,
-          attempt: 0,
-          outputRefs: [],
-          payload: { contextPackId, failureClass, stage: "failed" },
-          errorCode: "GOLDEN_THREE_GENERATION_FAILED",
-          errorMessage: "作者模型初始化失败",
-          createdAt: now,
-        });
-        await transaction.insert(jobEvents).values({
-          id: uuidv7(),
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          sequence: 1,
-          eventType: "job.failed",
-          payload: { failureClass },
-          occurredAt: now,
+          maxTokens,
+          maxCostCny,
+          candidateCount: strategies.length,
+          failureClass,
+          message: "作者模型初始化失败",
+          contextPackId,
+          contextPack,
+          contextManifestHash,
+          ...(expectedLeaseVersion === undefined ? {} : { expectedLeaseVersion }),
         });
       });
       return {
@@ -1008,8 +1544,9 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       if (existingCandidate) {
         return { kind: "candidates_exist" as const };
       }
+      let prepareCheckpointRevision = 1;
       const [existingJob] = await transaction
-        .select({ id: jobs.id, status: jobs.status, checkpoint: jobs.checkpoint })
+        .select()
         .from(jobs)
         .where(
           and(
@@ -1023,81 +1560,138 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         )
         .limit(1);
       if (existingJob) {
-        if (existingJob.status === "failed") {
-          return {
-            kind: "model_generation_failed" as const,
-            message: "同一幂等键的生成任务已存在",
-            failureClass:
-              typeof existingJob.checkpoint.failureClass === "string"
-                ? existingJob.checkpoint.failureClass
-                : "unknown",
-          };
+        if (
+          expectedLeaseVersion !== undefined &&
+          (existingJob.status !== "running" ||
+            existingJob.goldenThreeLeaseVersion !== expectedLeaseVersion)
+        ) {
+          return { kind: "generation_in_progress" as const };
         }
-        return { kind: "generation_in_progress" as const };
-      }
-      const [activeJob] = await transaction
-        .select({ id: jobs.id })
-        .from(jobs)
-        .where(
-          and(
-            eq(jobs.userId, userId),
-            eq(jobs.workId, context.workId),
-            eq(jobs.branchId, context.branchId),
-            eq(jobs.type, "agent_workflow"),
-            inArray(jobs.status, ["queued", "preparing", "running"]),
-            sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
-          ),
-        )
-        .limit(1);
-      if (activeJob) {
-        return { kind: "generation_in_progress" as const };
+        const resumable =
+          existingJob.id === resumeJobId &&
+          ["queued", "preparing", "running"].includes(existingJob.status);
+        if (!resumable) {
+          if (existingJob.status === "failed") {
+            return {
+              kind: "model_generation_failed" as const,
+              message: "同一幂等键的生成任务已存在",
+              failureClass:
+                typeof existingJob.checkpoint.failureClass === "string"
+                  ? existingJob.checkpoint.failureClass
+                  : "unknown",
+            };
+          }
+          return { kind: "generation_in_progress" as const };
+        }
+        const now = new Date();
+        prepareCheckpointRevision = existingJob.checkpointVersion + 1;
+        await transaction
+          .update(jobs)
+          .set({
+            status: "running",
+            progress: Math.max(existingJob.progress, 5),
+            currentStep: "generating_candidates",
+            budget: { maxTokens, maxCostCny, maxRevisionRounds: 0 },
+            checkpoint: {
+              schemaVersion: 1,
+              revision: prepareCheckpointRevision,
+              stage: "generating_candidates",
+              batchId,
+              stepKey: "prepare",
+              contextPackId,
+              completedStepKeys: resumeCheckpoint?.completedStepKeys ?? [],
+              failureClass: null,
+            },
+            checkpointVersion: prepareCheckpointRevision,
+            startedAt: existingJob.startedAt ?? now,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(jobs.id, existingJob.id),
+              eq(jobs.userId, userId),
+              eq(jobs.workId, context.workId),
+              eq(jobs.branchId, context.branchId),
+            ),
+          );
+      } else {
+        const [activeJob] = await transaction
+          .select({ id: jobs.id })
+          .from(jobs)
+          .where(
+            and(
+              eq(jobs.userId, userId),
+              eq(jobs.workId, context.workId),
+              eq(jobs.branchId, context.branchId),
+              eq(jobs.type, "agent_workflow"),
+              inArray(jobs.status, ["queued", "preparing", "running", "paused"]),
+              sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
+            ),
+          )
+          .limit(1);
+        if (activeJob) {
+          return { kind: "generation_in_progress" as const };
+        }
+        const now = new Date();
+        await transaction.insert(jobs).values({
+          id: jobId,
+          workId: context.workId,
+          branchId: context.branchId,
+          userId,
+          chapterId: chapter.id,
+          modelConfigId: modelConfig.id,
+          type: "agent_workflow",
+          status: "running",
+          progress: 5,
+          currentStep: "generating_candidates",
+          idempotencyKey,
+          goldenThreeGenerationKey: idempotencyKey,
+          budget: { maxTokens, maxCostCny, maxRevisionRounds: 0 },
+          checkpoint: {
+            schemaVersion: 1,
+            revision: 1,
+            stage: "generating_candidates",
+            batchId,
+            stepKey: "prepare",
+            contextPackId,
+            completedStepKeys: [],
+            failureClass: null,
+          },
+          checkpointVersion: 1,
+          orchestration: { kind: "golden_three_generation", candidateCount: strategies.length },
+          goldenThreeLeaseVersion: 1,
+          cost: {
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+            costCny: 0,
+          },
+          startedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        });
       }
       const now = new Date();
-      await transaction.insert(jobs).values({
-        id: jobId,
-        workId: context.workId,
-        branchId: context.branchId,
-        userId,
-        chapterId: chapter.id,
-        modelConfigId: modelConfig.id,
-        type: "agent_workflow",
-        status: "running",
-        progress: 5,
-        currentStep: "generating_candidates",
-        idempotencyKey,
-        goldenThreeGenerationKey: idempotencyKey,
-        budget: { maxTokens, maxCostCny },
-        checkpoint: { contextPackId, stage: "generating_candidates" },
-        checkpointVersion: 1,
-        orchestration: { kind: "golden_three_generation", candidateCount: strategies.length },
-        goldenThreeLeaseVersion: 1,
-        cost: {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          costCny: 0,
-        },
-        startedAt: now,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await transaction.insert(contextPackVersions).values({
-        id: contextPackId,
-        jobId,
-        chapterId: chapter.id,
-        workId: context.workId,
-        branchId: context.branchId,
-        userId,
-        version: 1,
-        compilerVersion: contextPack.compilerVersion,
-        tokenBudget: contextPack.tokenBudget,
-        tokenUsed: contextPack.tokenUsed,
-        selected: contextPack.selected,
-        evicted: contextPack.evicted,
-        sourceRefs: contextPack.sourceRefs,
-        snapshot: { ...contextPack, manifestHash: contextManifestHash },
-        createdAt: now,
-      });
+      await transaction
+        .insert(contextPackVersions)
+        .values({
+          id: contextPackId,
+          jobId,
+          chapterId: chapter.id,
+          workId: context.workId,
+          branchId: context.branchId,
+          userId,
+          version: 1,
+          compilerVersion: contextPack.compilerVersion,
+          tokenBudget: contextPack.tokenBudget,
+          tokenUsed: contextPack.tokenUsed,
+          selected: contextPack.selected,
+          evicted: contextPack.evicted,
+          sourceRefs: contextPack.sourceRefs,
+          snapshot: { ...contextPack, manifestHash: contextManifestHash },
+          createdAt: now,
+        })
+        .onConflictDoNothing();
       await transaction.insert(jobCheckpoints).values({
         id: uuidv7(),
         jobId,
@@ -1106,7 +1700,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         userId,
         stepKey: "prepare",
         schemaVersion: 1,
-        revision: 1,
+        revision: prepareCheckpointRevision,
         attempt: 0,
         outputRefs: [],
         payload: {
@@ -1116,135 +1710,410 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         },
         createdAt: now,
       });
+      const [eventSequence] = await transaction
+        .select({ value: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
+        .from(jobEvents)
+        .where(
+          and(
+            eq(jobEvents.jobId, jobId),
+            eq(jobEvents.userId, userId),
+            eq(jobEvents.workId, context.workId),
+            eq(jobEvents.branchId, context.branchId),
+          ),
+        );
       await transaction.insert(jobEvents).values({
         id: uuidv7(),
         jobId,
         workId: context.workId,
         branchId: context.branchId,
         userId,
-        sequence: 1,
-        eventType: "job.created",
+        sequence: Number(eventSequence?.value ?? 0) + 1,
+        eventType: existingJob ? "job.resumed" : "job.created",
         payload: { contextPackId, candidateCount: strategies.length },
         occurredAt: now,
       });
       const calls: GoldenThreePreparedCall[] = [];
+      const completed: GoldenThreeCompletedCall[] = [];
+      const leaseVersion = expectedLeaseVersion ?? existingJob?.goldenThreeLeaseVersion ?? 1;
+      const checkpointBase = prepareCheckpointRevision;
       for (const [planIndex, plan] of promptPlans.entries()) {
-        const promptVersionId = uuidv7();
-        const agentRunId = uuidv7();
-        const reservationId = uuidv7();
-        const modelCallId = uuidv7();
         const stepKey = `golden_three.candidate.${plan.strategy}`;
+        const [existingStep] = await transaction
+          .select()
+          .from(jobSteps)
+          .where(
+            and(
+              eq(jobSteps.jobId, jobId),
+              eq(jobSteps.userId, userId),
+              eq(jobSteps.workId, context.workId),
+              eq(jobSteps.branchId, context.branchId),
+              eq(jobSteps.stepKey, stepKey),
+            ),
+          )
+          .limit(1);
+        if (existingStep?.status === "succeeded") {
+          const modelCallId =
+            typeof existingStep.output.modelCallId === "string"
+              ? existingStep.output.modelCallId
+              : undefined;
+          const [savedCall] = modelCallId
+            ? await transaction
+                .select()
+                .from(modelCalls)
+                .where(
+                  and(
+                    eq(modelCalls.id, modelCallId),
+                    eq(modelCalls.userId, userId),
+                    eq(modelCalls.workId, context.workId),
+                    eq(modelCalls.branchId, context.branchId),
+                    eq(modelCalls.jobId, jobId),
+                  ),
+                )
+                .limit(1)
+            : [];
+          const [savedRun] = savedCall
+            ? await transaction
+                .select()
+                .from(agentRuns)
+                .where(
+                  and(
+                    eq(agentRuns.id, savedCall.agentRunId),
+                    eq(agentRuns.userId, userId),
+                    eq(agentRuns.workId, context.workId),
+                    eq(agentRuns.branchId, context.branchId),
+                    eq(agentRuns.jobId, jobId),
+                  ),
+                )
+                .limit(1)
+            : [];
+          if (
+            !savedCall ||
+            !savedRun ||
+            savedRun.status !== "succeeded" ||
+            typeof savedRun.output !== "string" ||
+            savedRun.output.trim().length === 0
+          ) {
+            return {
+              kind: "model_generation_failed" as const,
+              message: "黄金三章检查点缺少可恢复的候选正文",
+              failureClass: "schema",
+            };
+          }
+          const content = savedRun.output.trim();
+          completed.push({
+            workId: context.workId,
+            branchId: context.branchId,
+            strategy: plan.strategy,
+            label: plan.label,
+            system: plan.system,
+            prompt: plan.prompt,
+            promptHash: plan.promptHash,
+            promptVersionId: savedCall.promptVersionId,
+            agentRunId: savedCall.agentRunId,
+            reservationId: savedCall.costReservationId,
+            modelCallId: savedCall.id,
+            stepKey,
+            attempt: savedCall.attempt,
+            modelProvider: savedCall.provider,
+            model: savedCall.model,
+            configHash: savedCall.configHash,
+            reservedTokens: savedCall.inputTokens + savedCall.outputTokens,
+            reservedCostCny: savedCall.costCny,
+            jobId,
+            contextPackId,
+            checkpointRevision: checkpointBase + planIndex + 1,
+            leaseVersion,
+            result: {
+              text: content,
+              model: savedCall.model,
+              usage: {
+                inputTokens: savedCall.inputTokens,
+                outputTokens: savedCall.outputTokens,
+              },
+              finishReason: "stop",
+              ...(savedCall.providerRequestId
+                ? { providerRequestId: savedCall.providerRequestId }
+                : {}),
+            },
+            content,
+            contentHash: savedCall.outputHash ?? hashValue(content),
+            wordCount: countWords(content),
+            inputTokens: savedCall.inputTokens,
+            outputTokens: savedCall.outputTokens,
+            costCny: savedCall.costCny,
+          });
+          continue;
+        }
+        let retryAttempt = 1;
+        let promptVersionId = uuidv7();
+        let agentRunId = uuidv7();
+        let reservationId = uuidv7();
+        let modelCallId = uuidv7();
+        let reusePreparedCall = false;
+        if (existingStep) {
+          const [staleCall] = await transaction
+            .select()
+            .from(modelCalls)
+            .where(
+              and(
+                eq(modelCalls.jobId, jobId),
+                eq(modelCalls.userId, userId),
+                eq(modelCalls.workId, context.workId),
+                eq(modelCalls.branchId, context.branchId),
+                eq(modelCalls.stepKey, stepKey),
+              ),
+            )
+            .orderBy(desc(modelCalls.attempt))
+            .limit(1);
+          if (staleCall && existingStep.status !== "running") {
+            retryAttempt = staleCall.attempt;
+            promptVersionId = staleCall.promptVersionId;
+            agentRunId = staleCall.agentRunId;
+            reservationId = staleCall.costReservationId;
+            modelCallId = staleCall.id;
+            reusePreparedCall = true;
+          } else {
+            retryAttempt = Math.max(existingStep.attempt + 1, 2);
+            if (staleCall) {
+              promptVersionId = staleCall.promptVersionId;
+              agentRunId = staleCall.agentRunId;
+              await transaction
+                .update(modelCalls)
+                .set({
+                  status: "failed",
+                  failureClass: "timeout",
+                  errorCode: "JOB_ATTEMPTS_EXHAUSTED",
+                  finishedAt: now,
+                })
+                .where(
+                  and(
+                    eq(modelCalls.id, staleCall.id),
+                    eq(modelCalls.userId, userId),
+                    eq(modelCalls.workId, context.workId),
+                    eq(modelCalls.branchId, context.branchId),
+                    eq(modelCalls.jobId, jobId),
+                  ),
+                );
+              await transaction
+                .update(agentRuns)
+                .set({
+                  status: "failed",
+                  failureClass: "timeout",
+                  finishedAt: now,
+                })
+                .where(
+                  and(
+                    eq(agentRuns.id, staleCall.agentRunId),
+                    eq(agentRuns.userId, userId),
+                    eq(agentRuns.workId, context.workId),
+                    eq(agentRuns.branchId, context.branchId),
+                    eq(agentRuns.jobId, jobId),
+                  ),
+                );
+              await transaction
+                .update(costReservations)
+                .set({
+                  status: "released",
+                  failureClass: "timeout",
+                  settledTokens: 0,
+                  settledCostCny: 0,
+                  settledAt: null,
+                })
+                .where(
+                  and(
+                    eq(costReservations.id, staleCall.costReservationId),
+                    eq(costReservations.userId, userId),
+                    eq(costReservations.workId, context.workId),
+                    eq(costReservations.branchId, context.branchId),
+                    eq(costReservations.jobId, jobId),
+                  ),
+                );
+            }
+            await transaction
+              .update(jobStepAttempts)
+              .set({
+                status: "failed",
+                errorCode: "JOB_ATTEMPTS_EXHAUSTED",
+                errorMessage: "上一次执行在结果提交前中断",
+                finishedAt: now,
+              })
+              .where(
+                and(
+                  eq(jobStepAttempts.jobId, jobId),
+                  eq(jobStepAttempts.userId, userId),
+                  eq(jobStepAttempts.workId, context.workId),
+                  eq(jobStepAttempts.branchId, context.branchId),
+                  eq(jobStepAttempts.stepKey, stepKey),
+                  inArray(jobStepAttempts.status, ["pending", "running"]),
+                ),
+              );
+          }
+          await transaction
+            .update(jobSteps)
+            .set({
+              status: "pending",
+              attempt: retryAttempt,
+              inputHash: plan.inputHash,
+            })
+            .where(
+              and(
+                eq(jobSteps.jobId, jobId),
+                eq(jobSteps.userId, userId),
+                eq(jobSteps.workId, context.workId),
+                eq(jobSteps.branchId, context.branchId),
+                eq(jobSteps.stepKey, stepKey),
+              ),
+            );
+        } else {
+          await transaction.insert(jobSteps).values({
+            id: uuidv7(),
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            stepKey,
+            status: "pending",
+            attempt: 0,
+            inputHash: plan.inputHash,
+            createdAt: now,
+          });
+        }
         const reservedTokens = contextPack.tokenUsed + GOLDEN_THREE_MAX_OUTPUT_TOKENS;
         const reservedCostCny = calculateModelCallCost(reservedTokens, M0_COST_PER_TOKEN_CNY);
-        await transaction.insert(jobSteps).values({
-          id: uuidv7(),
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          stepKey,
-          status: "pending",
-          attempt: 0,
-          inputHash: plan.inputHash,
-          createdAt: now,
-        });
-        await transaction.insert(jobStepAttempts).values({
-          id: uuidv7(),
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          stepKey,
-          attempt: 1,
-          status: "pending",
-          inputHash: plan.inputHash,
-          checkpointRevision: 1,
-          startedAt: now,
-          createdAt: now,
-        });
-        await transaction.insert(promptVersions).values({
-          id: promptVersionId,
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          stepKey,
-          key: "golden-three-opening",
-          version: 1,
-          role: "writer",
-          promptHash: plan.promptHash,
-          systemHash: plan.systemHash,
-          inputHash: plan.inputHash,
-          contextPackId,
-          compilerVersion: contextPack.compilerVersion,
-          createdBy: userId,
-          createdAt: now,
-        });
-        await transaction.insert(agentRuns).values({
-          id: agentRunId,
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          chapterId: chapter.id,
-          promptVersionId,
-          modelConfigId: modelConfig.id,
-          stepKey,
-          role: "writer",
-          status: "running",
-          provider: modelProvider,
-          model: modelConfig.model,
-          inputHash: plan.inputHash,
-          inputSummary: {
-            strategy: plan.strategy,
-            promptKey: "golden-three-opening",
-            promptVersion: 1,
-            contextManifestHash,
-          },
-          startedAt: now,
-        });
-        await transaction.insert(costReservations).values({
-          id: reservationId,
-          userId,
-          workId: context.workId,
-          branchId: context.branchId,
-          jobId,
-          agentRunId,
-          idempotencyKey: stepKey,
-          status: "reserved",
-          reservedTokens,
-          reservedCostCny,
-          createdAt: now,
-        });
-        await transaction.insert(modelCalls).values({
-          id: modelCallId,
-          userId,
-          workId: context.workId,
-          branchId: context.branchId,
-          chapterId: chapter.id,
-          jobId,
-          agentRunId,
-          promptVersionId,
-          costReservationId: reservationId,
-          stepKey,
-          attempt: 1,
-          status: "started",
-          provider: modelProvider,
-          model: modelConfig.model,
-          parameters: {
-            strategy: plan.strategy,
-            maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
-          },
-          configHash,
-          inputHash: plan.inputHash,
-          inputSummary: {
-            promptKey: "golden-three-opening",
-            promptVersion: 1,
-            contextManifestHash,
-          },
-          startedAt: now,
-          createdAt: now,
-        });
+        if (!reusePreparedCall) {
+          await transaction.insert(jobStepAttempts).values({
+            id: uuidv7(),
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            stepKey,
+            attempt: retryAttempt,
+            status: "pending",
+            inputHash: plan.inputHash,
+            checkpointRevision: 1,
+            startedAt: now,
+            createdAt: now,
+          });
+        }
+        if (!existingStep) {
+          await transaction.insert(promptVersions).values({
+            id: promptVersionId,
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            stepKey,
+            key: "golden-three-opening",
+            version: 1,
+            role: "writer",
+            promptHash: plan.promptHash,
+            systemHash: plan.systemHash,
+            inputHash: plan.inputHash,
+            contextPackId,
+            compilerVersion: contextPack.compilerVersion,
+            createdBy: userId,
+            createdAt: now,
+          });
+          await transaction.insert(agentRuns).values({
+            id: agentRunId,
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            chapterId: chapter.id,
+            promptVersionId,
+            modelConfigId: modelConfig.id,
+            stepKey,
+            role: "writer",
+            status: "running",
+            provider: modelProvider,
+            model: modelConfig.model,
+            inputHash: plan.inputHash,
+            inputSummary: {
+              strategy: plan.strategy,
+              promptKey: "golden-three-opening",
+              promptVersion: 1,
+              contextManifestHash,
+            },
+            startedAt: now,
+          });
+        } else if (!reusePreparedCall) {
+          await transaction
+            .update(agentRuns)
+            .set({
+              status: "running",
+              provider: modelProvider,
+              model: modelConfig.model,
+              inputHash: plan.inputHash,
+              inputSummary: {
+                strategy: plan.strategy,
+                promptKey: "golden-three-opening",
+                promptVersion: 1,
+                contextManifestHash,
+              },
+              output: "",
+              outputHash: null,
+              outputSummary: {},
+              usage: {},
+              failureClass: null,
+              finishedAt: null,
+              startedAt: now,
+            })
+            .where(
+              and(
+                eq(agentRuns.id, agentRunId),
+                eq(agentRuns.userId, userId),
+                eq(agentRuns.workId, context.workId),
+                eq(agentRuns.branchId, context.branchId),
+                eq(agentRuns.jobId, jobId),
+              ),
+            );
+        }
+        if (!reusePreparedCall) {
+          await transaction.insert(costReservations).values({
+            id: reservationId,
+            userId,
+            workId: context.workId,
+            branchId: context.branchId,
+            jobId,
+            agentRunId,
+            idempotencyKey: retryAttempt === 1 ? stepKey : `${stepKey}:attempt:${retryAttempt}`,
+            status: "reserved",
+            reservedTokens,
+            reservedCostCny,
+            createdAt: now,
+          });
+          await transaction.insert(modelCalls).values({
+            id: modelCallId,
+            userId,
+            workId: context.workId,
+            branchId: context.branchId,
+            chapterId: chapter.id,
+            jobId,
+            agentRunId,
+            promptVersionId,
+            costReservationId: reservationId,
+            stepKey,
+            attempt: retryAttempt,
+            status: "started",
+            provider: modelProvider,
+            model: modelConfig.model,
+            parameters: {
+              strategy: plan.strategy,
+              maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
+            },
+            configHash,
+            inputHash: plan.inputHash,
+            inputSummary: {
+              promptKey: "golden-three-opening",
+              promptVersion: 1,
+              contextManifestHash,
+            },
+            startedAt: now,
+            createdAt: now,
+          });
+        }
         calls.push({
           workId: context.workId,
           branchId: context.branchId,
@@ -1258,6 +2127,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           reservationId,
           modelCallId,
           stepKey,
+          attempt: retryAttempt,
           modelProvider,
           model: modelConfig.model,
           configHash,
@@ -1265,16 +2135,16 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           reservedCostCny,
           jobId,
           contextPackId,
-          checkpointRevision: planIndex + 2,
-          leaseVersion: 1,
+          checkpointRevision: checkpointBase + planIndex + 1,
+          leaseVersion,
         });
       }
-      return { kind: "ok" as const, calls };
+      return { kind: "ok" as const, calls, completed };
     });
     if (prepared.kind !== "ok") {
       return prepared;
     }
-    const firstCall = prepared.calls[0];
+    const firstCall = prepared.calls[0] ?? prepared.completed[0];
     if (!firstCall) {
       return {
         kind: "model_generation_failed",
@@ -1282,7 +2152,8 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         failureClass: "unknown",
       };
     }
-    const completed: GoldenThreeCompletedCall[] = [];
+    const completed: GoldenThreeCompletedCall[] = [...prepared.completed];
+    const preparedReservationIds = prepared.calls.map((preparedCall) => preparedCall.reservationId);
     for (const call of prepared.calls) {
       let result: GenerationResult;
       try {
@@ -1294,7 +2165,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
             .update(jobSteps)
             .set({
               status: "running",
-              attempt: 1,
+              attempt: call.attempt,
               startedAt: new Date(),
             })
             .where(
@@ -1319,7 +2190,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
                 eq(jobStepAttempts.workId, call.workId),
                 eq(jobStepAttempts.branchId, call.branchId),
                 eq(jobStepAttempts.stepKey, call.stepKey),
-                eq(jobStepAttempts.attempt, 1),
+                eq(jobStepAttempts.attempt, call.attempt),
               ),
             );
           return true;
@@ -1335,7 +2206,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
         });
       } catch (error) {
-        const failureClass = error instanceof AiProviderError ? error.failureClass : "unknown";
+        const failureClass = goldenThreeFailureClass(error, "unknown");
         await withTenantTransaction(this.db, userId, async (transaction) => {
           await recordGoldenThreeCallFailure(transaction, userId, call, failureClass, completed);
         });
@@ -1356,6 +2227,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
             "schema",
             result,
             content,
+            preparedReservationIds,
           ),
         );
         if (leaseLost) {
@@ -1379,6 +2251,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
             "budget",
             result,
             content,
+            preparedReservationIds,
           ),
         );
         if (leaseLost) {
@@ -1390,6 +2263,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           failureClass: "budget",
         };
       }
+      await this.beforeRecordSuccessHook?.(call.stepKey);
       try {
         completed.push(
           await withTenantTransaction(this.db, userId, async (transaction) =>
@@ -1399,7 +2273,14 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       } catch (error) {
         if (error instanceof GoldenThreeLeaseLostError) {
           await withTenantTransaction(this.db, userId, async (transaction) => {
-            await recordGoldenThreeLeaseLostUsage(transaction, userId, call, result, content);
+            await recordGoldenThreeLeaseLostUsage(
+              transaction,
+              userId,
+              call,
+              result,
+              content,
+              preparedReservationIds,
+            );
           });
           return { kind: "generation_in_progress" };
         }
@@ -1419,6 +2300,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           failureClass: "unknown",
         };
       }
+      await this.generationStepHook?.(call.stepKey);
     }
 
     try {
@@ -1566,15 +2448,27 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           message: "生成黄金三章候选",
           createdAt: now,
         });
-        await advanceBranchHead(transaction, context, batchNodeId, now);
+        await advanceBranchHead(transaction, userId, context, batchNodeId, now);
+        const completedStepKeys = [...new Set(completed.map((entry) => entry.stepKey))];
+        const checkpointRevision =
+          Math.max(0, ...completed.map((entry) => entry.checkpointRevision)) + 1;
         await transaction
           .update(jobs)
           .set({
             status: "completed",
             progress: 100,
             currentStep: "completed",
-            checkpoint: { contextPackId, batchId, candidateIds, stage: "completed" },
-            checkpointVersion: prepared.calls.length + 2,
+            checkpoint: {
+              schemaVersion: 1,
+              revision: checkpointRevision,
+              stage: "completed",
+              batchId,
+              stepKey: "commit",
+              contextPackId,
+              completedStepKeys,
+              failureClass: null,
+            },
+            checkpointVersion: checkpointRevision,
             cost: {
               inputTokens: totalInputTokens,
               outputTokens: totalOutputTokens,
@@ -1600,7 +2494,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           userId,
           stepKey: "completed",
           schemaVersion: 1,
-          revision: prepared.calls.length + 2,
+          revision: checkpointRevision,
           attempt: 1,
           outputRefs: completed.map((entry) => ({
             type: "model_call",
@@ -1614,13 +2508,19 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           },
           createdAt: now,
         });
+        const completedSequence = await nextGoldenThreeJobEventSequence(
+          transaction,
+          userId,
+          context,
+          jobId,
+        );
         await transaction.insert(jobEvents).values({
           id: uuidv7(),
           jobId,
           workId: context.workId,
           branchId: context.branchId,
           userId,
-          sequence: 2,
+          sequence: completedSequence,
           eventType: "job.completed",
           payload: { batchId, candidateIds, contextPackId },
           occurredAt: now,
@@ -1656,7 +2556,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     candidateId: string,
     input: GoldenThreeReviewBatchRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string }>> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
@@ -1741,6 +2641,9 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           and(
             eq(goldenThreeCandidates.id, candidate.id),
             eq(goldenThreeCandidates.version, candidate.version),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
           ),
         )
         .returning();
@@ -1768,7 +2671,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         message: "提交黄金三章六维评审",
         createdAt: now,
       });
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await writeAudit(transaction, userId, audit, "golden_three.reviews_recorded", candidate.id);
       return { kind: "ok", value: { candidateId: candidate.id } };
     });
@@ -1779,7 +2682,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     candidateId: string,
     input: GoldenThreeSelectionRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string }>> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
@@ -1824,14 +2727,28 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         const [count] = await transaction
           .select({ value: sql<number>`count(*)::int` })
           .from(goldenThreeReviews)
-          .where(eq(goldenThreeReviews.candidateId, previous.id));
+          .where(
+            and(
+              eq(goldenThreeReviews.candidateId, previous.id),
+              eq(goldenThreeReviews.userId, userId),
+              eq(goldenThreeReviews.workId, context.workId),
+              eq(goldenThreeReviews.branchId, context.branchId),
+            ),
+          );
         await transaction
           .update(goldenThreeCandidates)
           .set({
             status: Number(count?.value ?? 0) >= 6 ? "reviewed" : "draft",
             updatedAt: now,
           })
-          .where(eq(goldenThreeCandidates.id, previous.id));
+          .where(
+            and(
+              eq(goldenThreeCandidates.id, previous.id),
+              eq(goldenThreeCandidates.userId, userId),
+              eq(goldenThreeCandidates.workId, context.workId),
+              eq(goldenThreeCandidates.branchId, context.branchId),
+            ),
+          );
       }
       const [updated] = await transaction
         .update(goldenThreeCandidates)
@@ -1844,6 +2761,9 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           and(
             eq(goldenThreeCandidates.id, candidate.id),
             eq(goldenThreeCandidates.version, candidate.version),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
           ),
         )
         .returning();
@@ -1867,7 +2787,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         message: "作者选定黄金三章候选",
         createdAt: now,
       });
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await writeAudit(transaction, userId, audit, "golden_three.candidate_selected", candidate.id);
       return { kind: "ok", value: { candidateId: candidate.id } };
     });
@@ -1878,7 +2798,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     candidateId: string,
     input: GoldenThreeContinuationRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string; versionNodeId: string }>> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
@@ -2015,13 +2935,16 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           and(
             eq(goldenThreeCandidates.id, candidate.id),
             eq(goldenThreeCandidates.version, candidate.version),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
           ),
         )
         .returning();
       if (!updated) {
         return { kind: "version_conflict" };
       }
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await writeAudit(
         transaction,
         userId,
@@ -2038,7 +2961,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     candidateId: string,
     input: GoldenThreeLockRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string; alreadyLocked: boolean }>> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
@@ -2091,7 +3014,14 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       const reviews = await transaction
         .select()
         .from(goldenThreeReviews)
-        .where(eq(goldenThreeReviews.candidateId, candidate.id))
+        .where(
+          and(
+            eq(goldenThreeReviews.candidateId, candidate.id),
+            eq(goldenThreeReviews.userId, userId),
+            eq(goldenThreeReviews.workId, context.workId),
+            eq(goldenThreeReviews.branchId, context.branchId),
+          ),
+        )
         .orderBy(asc(goldenThreeReviews.dimension));
       if (reviews.length < 6) {
         return { kind: "review_incomplete", completed: reviews.length };
@@ -2225,8 +3155,15 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       await transaction
         .update(goldenThreeCandidates)
         .set({ status: "locked", version: candidate.version + 1, updatedAt: now })
-        .where(eq(goldenThreeCandidates.id, candidate.id));
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+        .where(
+          and(
+            eq(goldenThreeCandidates.id, candidate.id),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
+          ),
+        );
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await writeAudit(transaction, userId, audit, "golden_three.locked", lockId);
       return { kind: "ok", value: { candidateId: candidate.id, alreadyLocked: false } };
     });
@@ -2253,13 +3190,14 @@ async function recordGoldenThreeInitializationFailure(
     failureClass: string;
     message: string;
     contextPackId: string;
-    contextPack?: Awaited<ReturnType<GenerationService["contextPreview"]>>;
+    contextPack?: ContextPackPreview;
     contextManifestHash?: string;
+    expectedLeaseVersion?: number;
   },
 ): Promise<void> {
   await lockBranch(transaction, input.branchId);
   const [existing] = await transaction
-    .select({ id: jobs.id })
+    .select({ id: jobs.id, checkpointVersion: jobs.checkpointVersion })
     .from(jobs)
     .where(
       and(
@@ -2273,6 +3211,68 @@ async function recordGoldenThreeInitializationFailure(
     )
     .limit(1);
   if (existing) {
+    const now = new Date();
+    const revision = existing.checkpointVersion + 1;
+    const [failedJob] = await transaction
+      .update(jobs)
+      .set({
+        status: "failed",
+        progress: 0,
+        currentStep: "failed",
+        checkpoint: {
+          schemaVersion: 1,
+          revision,
+          stage: "failed",
+          batchId: uuidv7(),
+          stepKey: "failed",
+          contextPackId: input.contextPack ? input.contextPackId : null,
+          completedStepKeys: [],
+          failureClass: input.failureClass,
+        },
+        checkpointVersion: revision,
+        errorCode: "GOLDEN_THREE_GENERATION_FAILED",
+        errorMessage: input.message,
+        finishedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(jobs.id, existing.id),
+          eq(jobs.userId, input.userId),
+          eq(jobs.workId, input.workId),
+          eq(jobs.branchId, input.branchId),
+          input.expectedLeaseVersion === undefined
+            ? undefined
+            : eq(jobs.goldenThreeLeaseVersion, input.expectedLeaseVersion),
+          input.expectedLeaseVersion === undefined ? undefined : eq(jobs.status, "running"),
+        ),
+      )
+      .returning({ id: jobs.id });
+    if (!failedJob) {
+      return;
+    }
+    const [sequence] = await transaction
+      .select({ value: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
+      .from(jobEvents)
+      .where(
+        and(
+          eq(jobEvents.jobId, existing.id),
+          eq(jobEvents.userId, input.userId),
+          eq(jobEvents.workId, input.workId),
+          eq(jobEvents.branchId, input.branchId),
+        ),
+      );
+    await transaction.insert(jobEvents).values({
+      id: uuidv7(),
+      jobId: existing.id,
+      workId: input.workId,
+      branchId: input.branchId,
+      userId: input.userId,
+      sequence: Number(sequence?.value ?? 0) + 1,
+      eventType: "job.failed",
+      payload: { failureClass: input.failureClass },
+      occurredAt: now,
+    });
     return;
   }
   const now = new Date();
@@ -2289,7 +3289,11 @@ async function recordGoldenThreeInitializationFailure(
     currentStep: "failed",
     idempotencyKey: input.idempotencyKey,
     goldenThreeGenerationKey: input.idempotencyKey,
-    budget: { maxTokens: input.maxTokens, maxCostCny: input.maxCostCny },
+    budget: {
+      maxTokens: input.maxTokens,
+      maxCostCny: input.maxCostCny,
+      maxRevisionRounds: 0,
+    },
     checkpoint: {
       contextPackId: input.contextPack ? input.contextPackId : null,
       stage: "failed",
@@ -2315,27 +3319,41 @@ async function recordGoldenThreeInitializationFailure(
     updatedAt: now,
   });
   if (input.contextPack) {
-    await transaction.insert(contextPackVersions).values({
-      id: input.contextPackId,
-      jobId: input.jobId,
-      chapterId: input.chapterId,
-      workId: input.workId,
-      branchId: input.branchId,
-      userId: input.userId,
-      version: 1,
-      compilerVersion: input.contextPack.compilerVersion,
-      tokenBudget: input.contextPack.tokenBudget,
-      tokenUsed: input.contextPack.tokenUsed,
-      selected: input.contextPack.selected,
-      evicted: input.contextPack.evicted,
-      sourceRefs: input.contextPack.sourceRefs,
-      snapshot: {
-        ...input.contextPack,
-        manifestHash: input.contextManifestHash,
-      },
-      createdAt: now,
-    });
+    await transaction
+      .insert(contextPackVersions)
+      .values({
+        id: input.contextPackId,
+        jobId: input.jobId,
+        chapterId: input.chapterId,
+        workId: input.workId,
+        branchId: input.branchId,
+        userId: input.userId,
+        version: 1,
+        compilerVersion: input.contextPack.compilerVersion,
+        tokenBudget: input.contextPack.tokenBudget,
+        tokenUsed: input.contextPack.tokenUsed,
+        selected: input.contextPack.selected,
+        evicted: input.contextPack.evicted,
+        sourceRefs: input.contextPack.sourceRefs,
+        snapshot: {
+          ...input.contextPack,
+          manifestHash: input.contextManifestHash,
+        },
+        createdAt: now,
+      })
+      .onConflictDoNothing();
   }
+  const [checkpointRevisionRow] = await transaction
+    .select({ revision: sql<number>`coalesce(max(${jobCheckpoints.revision}), 0)::int` })
+    .from(jobCheckpoints)
+    .where(
+      and(
+        eq(jobCheckpoints.jobId, input.jobId),
+        eq(jobCheckpoints.userId, input.userId),
+        eq(jobCheckpoints.workId, input.workId),
+        eq(jobCheckpoints.branchId, input.branchId),
+      ),
+    );
   await transaction.insert(jobCheckpoints).values({
     id: uuidv7(),
     jobId: input.jobId,
@@ -2344,7 +3362,7 @@ async function recordGoldenThreeInitializationFailure(
     userId: input.userId,
     stepKey: "failed",
     schemaVersion: 1,
-    revision: 1,
+    revision: Number(checkpointRevisionRow?.revision ?? 0) + 1,
     attempt: 0,
     outputRefs: [],
     payload: {
@@ -2356,13 +3374,19 @@ async function recordGoldenThreeInitializationFailure(
     errorMessage: input.message,
     createdAt: now,
   });
+  const sequence = await nextGoldenThreeJobEventSequence(
+    transaction,
+    input.userId,
+    { workId: input.workId, branchId: input.branchId },
+    input.jobId,
+  );
   await transaction.insert(jobEvents).values({
     id: uuidv7(),
     jobId: input.jobId,
     workId: input.workId,
     branchId: input.branchId,
     userId: input.userId,
-    sequence: 1,
+    sequence,
     eventType: "job.failed",
     payload: { failureClass: input.failureClass },
     occurredAt: now,
@@ -2409,6 +3433,25 @@ async function recordGoldenThreeCallSuccess(
   const inputTokens = result.usage.inputTokens;
   const outputTokens = result.usage.outputTokens;
   const costCny = calculateModelCallCost(inputTokens + outputTokens, M0_COST_PER_TOKEN_CNY);
+  const [jobRow] = await transaction
+    .select({ checkpoint: jobs.checkpoint, checkpointVersion: jobs.checkpointVersion })
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.id, call.jobId),
+        eq(jobs.userId, userId),
+        eq(jobs.workId, call.workId),
+        eq(jobs.branchId, call.branchId),
+      ),
+    )
+    .limit(1);
+  const previousCheckpoint = goldenThreeJobCheckpointSchema.safeParse(jobRow?.checkpoint);
+  const completedStepKeys = [
+    ...new Set([
+      ...(previousCheckpoint.success ? previousCheckpoint.data.completedStepKeys : []),
+      call.stepKey,
+    ]),
+  ];
   await transaction
     .update(modelCalls)
     .set({
@@ -2474,7 +3517,7 @@ async function recordGoldenThreeCallSuccess(
     .update(jobSteps)
     .set({
       status: "succeeded",
-      attempt: 1,
+      attempt: call.attempt,
       output: { modelCallId: call.modelCallId, contentHash, wordCount },
       outputRefs: [{ type: "model_call", id: call.modelCallId }],
       cost: { inputTokens, outputTokens, costCny },
@@ -2504,7 +3547,7 @@ async function recordGoldenThreeCallSuccess(
         eq(jobStepAttempts.workId, call.workId),
         eq(jobStepAttempts.branchId, call.branchId),
         eq(jobStepAttempts.stepKey, call.stepKey),
-        eq(jobStepAttempts.attempt, 1),
+        eq(jobStepAttempts.attempt, call.attempt),
       ),
     );
   await transaction.insert(jobCheckpoints).values({
@@ -2516,7 +3559,7 @@ async function recordGoldenThreeCallSuccess(
     stepKey: call.stepKey,
     schemaVersion: 1,
     revision: call.checkpointRevision,
-    attempt: 1,
+    attempt: call.attempt,
     inputHash: call.promptHash,
     outputRefs: [{ type: "model_call", id: call.modelCallId }],
     payload: {
@@ -2535,10 +3578,14 @@ async function recordGoldenThreeCallSuccess(
       currentStep: call.stepKey,
       checkpointVersion: call.checkpointRevision,
       checkpoint: {
-        contextPackId: call.contextPackId,
-        stage: "model_step_completed",
+        schemaVersion: 1,
+        revision: call.checkpointRevision,
+        stage: "generating_candidates",
+        batchId: previousCheckpoint.success ? previousCheckpoint.data.batchId : uuidv7(),
         stepKey: call.stepKey,
-        modelCallId: call.modelCallId,
+        contextPackId: call.contextPackId,
+        completedStepKeys,
+        failureClass: null,
       },
       progress: Math.min(90, 5 + call.checkpointRevision * 20),
       updatedAt: now,
@@ -2755,7 +3802,7 @@ async function recordGoldenThreeCallFailure(
         eq(jobStepAttempts.workId, call.workId),
         eq(jobStepAttempts.branchId, call.branchId),
         eq(jobStepAttempts.stepKey, call.stepKey),
-        eq(jobStepAttempts.attempt, 1),
+        eq(jobStepAttempts.attempt, call.attempt),
       ),
     );
   await transaction
@@ -2823,7 +3870,7 @@ async function recordGoldenThreeCallFailure(
     stepKey: call.stepKey,
     schemaVersion: 1,
     revision: call.checkpointRevision,
-    attempt: 1,
+    attempt: call.attempt,
     inputHash: call.promptHash,
     outputRefs: result ? [{ type: "model_call", id: call.modelCallId }] : [],
     payload: {
@@ -2835,13 +3882,19 @@ async function recordGoldenThreeCallFailure(
     errorMessage: "作者模型生成失败",
     createdAt: now,
   });
+  const sequence = await nextGoldenThreeJobEventSequence(
+    transaction,
+    userId,
+    { workId: call.workId, branchId: call.branchId },
+    call.jobId,
+  );
   await transaction.insert(jobEvents).values({
     id: uuidv7(),
     jobId: call.jobId,
     workId: call.workId,
     branchId: call.branchId,
     userId,
-    sequence: 2,
+    sequence,
     eventType: "job.failed",
     payload: { failureClass, stepKey: call.stepKey },
     occurredAt: now,
@@ -2854,6 +3907,7 @@ async function recordGoldenThreeLeaseLostUsage(
   call: GoldenThreePreparedCall,
   result: GenerationResult,
   content: string,
+  preparedReservationIds: string[],
 ): Promise<void> {
   const now = new Date();
   const inputTokens = result.usage.inputTokens;
@@ -2902,6 +3956,63 @@ async function recordGoldenThreeLeaseLostUsage(
         eq(agentRuns.jobId, call.jobId),
       ),
     );
+  await transaction
+    .update(costReservations)
+    .set({
+      status: "settled",
+      settledTokens: inputTokens + outputTokens,
+      settledCostCny: costCny,
+      failureClass: "timeout",
+      settledAt: now,
+    })
+    .where(
+      and(
+        eq(costReservations.id, call.reservationId),
+        eq(costReservations.userId, userId),
+        eq(costReservations.workId, call.workId),
+        eq(costReservations.branchId, call.branchId),
+        eq(costReservations.jobId, call.jobId),
+      ),
+    );
+  const remainingReservationIds = preparedReservationIds.filter(
+    (reservationId) => reservationId !== call.reservationId,
+  );
+  const [currentJob] = await transaction
+    .select({ status: jobs.status, leaseVersion: jobs.goldenThreeLeaseVersion })
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.id, call.jobId),
+        eq(jobs.userId, userId),
+        eq(jobs.workId, call.workId),
+        eq(jobs.branchId, call.branchId),
+      ),
+    )
+    .for("update")
+    .limit(1);
+  const hasSuccessor =
+    currentJob?.status === "running" && currentJob.leaseVersion !== call.leaseVersion;
+  if (!hasSuccessor && remainingReservationIds.length > 0) {
+    await transaction
+      .update(costReservations)
+      .set({
+        status: "released",
+        settledTokens: 0,
+        settledCostCny: 0,
+        failureClass: "timeout",
+        settledAt: null,
+      })
+      .where(
+        and(
+          inArray(costReservations.id, remainingReservationIds),
+          eq(costReservations.jobId, call.jobId),
+          eq(costReservations.userId, userId),
+          eq(costReservations.workId, call.workId),
+          eq(costReservations.branchId, call.branchId),
+          eq(costReservations.status, "reserved"),
+        ),
+      );
+  }
   await transaction.insert(usageRecords).values({
     id: uuidv7(),
     userId,
@@ -2957,12 +4068,20 @@ async function recordGoldenThreeResultFailure(
   failureClass: string,
   result: GenerationResult,
   content: string,
+  preparedReservationIds: string[],
 ): Promise<boolean> {
   if (await goldenThreeLeaseActive(transaction, userId, call)) {
     await recordGoldenThreeCallFailure(transaction, userId, call, failureClass, completed, result);
     return false;
   }
-  await recordGoldenThreeLeaseLostUsage(transaction, userId, call, result, content);
+  await recordGoldenThreeLeaseLostUsage(
+    transaction,
+    userId,
+    call,
+    result,
+    content,
+    preparedReservationIds,
+  );
   return true;
 }
 
@@ -3021,7 +4140,7 @@ async function recordGoldenThreePostCallFailure(
     stepKey: "failed",
     schemaVersion: 1,
     revision,
-    attempt: 1,
+    attempt: call.attempt,
     inputHash: call.promptHash,
     outputRefs: completed.map((entry) => ({
       type: "model_call",
@@ -3036,13 +4155,19 @@ async function recordGoldenThreePostCallFailure(
     errorMessage: "生成结果提交失败",
     createdAt: now,
   });
+  const sequence = await nextGoldenThreeJobEventSequence(
+    transaction,
+    userId,
+    { workId: call.workId, branchId: call.branchId },
+    call.jobId,
+  );
   await transaction.insert(jobEvents).values({
     id: uuidv7(),
     jobId: call.jobId,
     workId: call.workId,
     branchId: call.branchId,
     userId,
-    sequence: 2,
+    sequence,
     eventType: "job.failed",
     payload: { failureClass },
     occurredAt: now,
@@ -3057,7 +4182,11 @@ async function expireStaleGoldenThreeJob(
   branchId: string,
 ): Promise<void> {
   const [job] = await transaction
-    .select({ checkpointVersion: jobs.checkpointVersion })
+    .select({
+      status: jobs.status,
+      checkpointVersion: jobs.checkpointVersion,
+      updatedAt: jobs.updatedAt,
+    })
     .from(jobs)
     .where(
       and(
@@ -3069,7 +4198,11 @@ async function expireStaleGoldenThreeJob(
     )
     .for("update")
     .limit(1);
-  if (!job) {
+  if (
+    !job ||
+    !["queued", "preparing", "running"].includes(job.status) ||
+    job.updatedAt >= goldenThreeStaleBefore()
+  ) {
     return;
   }
   const now = new Date();
@@ -3394,6 +4527,35 @@ async function lockBranch(transaction: DatabaseTransaction, branchId: string): P
   await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
 }
 
+function goldenThreeStaleBefore(now = Date.now()): Date {
+  const configuredStaleJobMs = Number(process.env.GOLDEN_THREE_STALE_JOB_MS ?? "");
+  const staleJobMs =
+    Number.isFinite(configuredStaleJobMs) && configuredStaleJobMs >= 60_000
+      ? configuredStaleJobMs
+      : 15 * 60 * 1_000;
+  return new Date(now - staleJobMs);
+}
+
+async function nextGoldenThreeJobEventSequence(
+  transaction: DatabaseTransaction,
+  userId: string,
+  context: GoldenThreeContext,
+  jobId: string,
+): Promise<number> {
+  const [event] = await transaction
+    .select({ sequence: sql<number>`coalesce(max(${jobEvents.sequence}), 0)::int` })
+    .from(jobEvents)
+    .where(
+      and(
+        eq(jobEvents.jobId, jobId),
+        eq(jobEvents.userId, userId),
+        eq(jobEvents.workId, context.workId),
+        eq(jobEvents.branchId, context.branchId),
+      ),
+    );
+  return Number(event?.sequence ?? 0) + 1;
+}
+
 async function requireBranchHead(
   transaction: DatabaseTransaction,
   userId: string,
@@ -3419,6 +4581,7 @@ async function requireBranchHead(
 
 async function advanceBranchHead(
   transaction: DatabaseTransaction,
+  userId: string,
   context: GoldenThreeContext,
   versionNodeId: string,
   now: Date,
@@ -3426,13 +4589,19 @@ async function advanceBranchHead(
   await transaction
     .update(workBranches)
     .set({ headNodeId: versionNodeId, updatedAt: now })
-    .where(eq(workBranches.id, context.branchId));
+    .where(
+      and(
+        eq(workBranches.id, context.branchId),
+        eq(workBranches.workId, context.workId),
+        eq(workBranches.userId, userId),
+      ),
+    );
 }
 
 async function writeAudit(
   transaction: DatabaseTransaction,
   userId: string,
-  audit: WorksAuditContext,
+  audit: GoldenThreeAuditContext,
   action: string,
   targetId: string,
 ): Promise<void> {
@@ -3449,32 +4618,88 @@ async function writeAudit(
   });
 }
 
-function createGoldenThreeProvider(config: InferSelectModel<typeof modelConfigs>) {
-  if (process.env.MODEL_CONNECTION_TESTER === "fake") {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Fake model provider is not allowed in production");
-    }
-    const failOnCall = Number(process.env.GOLDEN_THREE_FAKE_FAILURE_AT ?? "");
-    const usageMultiplier = Number(process.env.GOLDEN_THREE_FAKE_USAGE_MULTIPLIER ?? "1");
-    const delayMs = Number(process.env.GOLDEN_THREE_FAKE_DELAY_MS ?? "0");
-    const emptyOnCall = Number(process.env.GOLDEN_THREE_FAKE_EMPTY_AT ?? "");
-    return new FakeAiProvider({
-      failOperations:
-        process.env.GOLDEN_THREE_FAKE_FAILURE === "1" ||
-        (Number.isInteger(failOnCall) && failOnCall > 0)
-          ? ["draft"]
-          : [],
-      ...(Number.isInteger(failOnCall) && failOnCall > 0 ? { failOnCall } : {}),
-      ...(Number.isFinite(usageMultiplier) && usageMultiplier > 0 ? { usageMultiplier } : {}),
-      ...(Number.isFinite(delayMs) && delayMs > 0 ? { delayMs } : {}),
-      ...(Number.isInteger(emptyOnCall) && emptyOnCall > 0 ? { emptyOnCall } : {}),
-    });
-  }
-  return new DeepSeekProvider({
-    apiKey: decryptApiKey(config.encryptedKey),
-    baseUrl: config.baseUrl,
-    model: config.model,
+function toGoldenThreeGenerationJob(job: InferSelectModel<typeof jobs>): GoldenThreeGenerationJob {
+  return goldenThreeGenerationJobSchema.parse({
+    id: job.id,
+    status: job.status,
+    progress: job.progress,
+    currentStep: job.currentStep,
+    candidateCount: goldenThreeCandidateCount(job),
+    error:
+      job.errorCode && job.errorMessage ? { code: job.errorCode, message: job.errorMessage } : null,
+    createdAt: job.createdAt.toISOString(),
+    startedAt: job.startedAt?.toISOString() ?? null,
+    finishedAt: job.finishedAt?.toISOString() ?? null,
   });
+}
+
+function toGoldenThreeWorkerJob(job: InferSelectModel<typeof jobs>): GenerateGoldenThreeJob {
+  return generateGoldenThreeJobSchema.parse({
+    jobId: job.id,
+    jobType: GENERATE_GOLDEN_THREE_JOB,
+    workId: job.workId,
+    branchId: job.branchId,
+    chapterId: job.chapterId,
+    actorId: job.userId,
+    modelConfigId: job.modelConfigId,
+    idempotencyKey: job.idempotencyKey,
+    candidateCount: goldenThreeCandidateCount(job),
+    budget: job.budget,
+    checkpoint: parseGoldenThreeCheckpoint(job),
+  });
+}
+
+function goldenThreeCandidateCount(job: InferSelectModel<typeof jobs>): 2 | 3 {
+  const count = job.orchestration?.candidateCount;
+  return count === 2 ? 2 : 3;
+}
+
+function parseGoldenThreeCheckpoint(job: InferSelectModel<typeof jobs>): GoldenThreeJobCheckpoint {
+  const parsed = goldenThreeJobCheckpointSchema.safeParse(job.checkpoint);
+  if (parsed.success) {
+    return parsed.data;
+  }
+  const stage: GoldenThreeJobCheckpoint["stage"] =
+    job.status === "failed"
+      ? "failed"
+      : job.status === "completed"
+        ? "completed"
+        : job.status === "running"
+          ? "generating_candidates"
+          : job.status === "preparing"
+            ? "preparing"
+            : "queued";
+  return {
+    schemaVersion: 1,
+    revision: job.checkpointVersion,
+    stage,
+    batchId: typeof job.checkpoint.batchId === "string" ? job.checkpoint.batchId : uuidv7(),
+    stepKey: typeof job.currentStep === "string" ? job.currentStep : null,
+    contextPackId:
+      typeof job.checkpoint.contextPackId === "string" ? job.checkpoint.contextPackId : null,
+    completedStepKeys: Array.isArray(job.checkpoint.completedStepKeys)
+      ? job.checkpoint.completedStepKeys.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [],
+    failureClass:
+      typeof job.checkpoint.failureClass === "string" ? job.checkpoint.failureClass : null,
+  };
+}
+
+function goldenThreeFailureClass(error: unknown, fallback: string): string {
+  if (error instanceof AiProviderError) {
+    return error.failureClass;
+  }
+  if (
+    error instanceof Error &&
+    error.name === "AiProviderError" &&
+    "failureClass" in error &&
+    typeof error.failureClass === "string"
+  ) {
+    return error.failureClass;
+  }
+  return fallback;
 }
 
 function goldenThreeSystemPrompt(strategy: GoldenThreeStrategy): string {
@@ -3496,6 +4721,10 @@ function goldenThreeUserPrompt(
     .map((entry) => `【${entry.label}】\n${entry.content}`)
     .join("\n\n");
   return `为第 ${chapter.number} 章《${chapter.title}》写开篇候选正文。\n创作方向：${strategy}。\n\n可用上下文：\n${context}\n\n要求：只输出正文，约 2000–3000 字。`;
+}
+
+function countWords(text: string): number {
+  return Array.from(text.replace(/\s/gu, "")).length;
 }
 
 function hashValue(value: string): string {

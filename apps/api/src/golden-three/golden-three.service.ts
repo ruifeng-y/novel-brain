@@ -3,22 +3,28 @@ import type {
   GoldenThreeCandidateBatchRequest,
   GoldenThreeContinuationRequest,
   GoldenThreeGenerateRequest,
+  GoldenThreeGenerationJob,
   GoldenThreeLockRequest,
   GoldenThreeReviewBatchRequest,
   GoldenThreeSelectionRequest,
   GoldenThreeWorkspace,
 } from "@novel-brain/contracts";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { GoldenThreeRepository, type GoldenThreeContext } from "@novel-brain/golden-three";
 
 import { ApiError } from "../common/api-error";
 import type { WorksAuditContext } from "../works/works.repository";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { GoldenThreeRepository } from "./golden-three.repository";
-import type { GoldenThreeContext } from "./golden-three.repository";
+import { GoldenThreeQueue } from "./golden-three.queue";
 
 @Injectable()
 export class GoldenThreeService {
-  constructor(private readonly repository: GoldenThreeRepository) {}
+  constructor(
+    private readonly repository: GoldenThreeRepository,
+    private readonly queue: GoldenThreeQueue,
+  ) {}
 
   async workspace(userId: string, workId: string, branchId: string): Promise<GoldenThreeWorkspace> {
     const context = await this.requireContext(userId, workId, branchId);
@@ -94,23 +100,80 @@ export class GoldenThreeService {
     idempotencyKey: string | undefined,
     input: GoldenThreeGenerateRequest,
     audit: WorksAuditContext,
-  ): Promise<GoldenThreeWorkspace> {
+  ): Promise<GoldenThreeGenerationJob> {
     const normalizedKey = idempotencyKey?.trim();
     if (!normalizedKey || normalizedKey.length > 200) {
       throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");
     }
     const context = await this.requireContext(userId, workId, branchId);
-    const result = await this.repository.generateCandidates(
+    const result = await this.repository.enqueueGeneration(
       userId,
       context,
       normalizedKey,
       input,
       audit,
     );
-    if (result.kind !== "ok") {
-      throw this.writeError(result);
+    if (result.kind === "candidates_exist") {
+      throw new ApiError(
+        409,
+        "GOLDEN_THREE_CANDIDATES_EXIST",
+        "当前创作线已经有黄金三章候选，请在新创作线中重新生成",
+      );
     }
-    return this.repository.workspace(userId, context);
+    if (result.kind === "chapters_empty") {
+      throw new ApiError(
+        409,
+        "GOLDEN_THREE_CHAPTERS_EMPTY",
+        `第 ${result.chapterNumbers.join("、")} 章还没有正文，请先保存章节版本再生成候选`,
+        { chapterNumbers: result.chapterNumbers, retryable: true },
+      );
+    }
+    if (result.kind === "model_config_missing") {
+      throw new ApiError(409, "GOLDEN_THREE_MODEL_REQUIRED", "请先配置用于写作的作者模型");
+    }
+    if (result.kind === "model_generation_failed") {
+      throw new ApiError(502, "GOLDEN_THREE_GENERATION_FAILED", result.message, {
+        failureClass: result.failureClass,
+        retryable: true,
+      });
+    }
+    if (result.kind === "generation_in_progress") {
+      throw new ApiError(
+        409,
+        "GOLDEN_THREE_GENERATION_IN_PROGRESS",
+        "当前创作线正在生成黄金三章，请稍后刷新",
+        { retryable: true },
+      );
+    }
+    if (
+      !result.replayed ||
+      result.job.status === "queued" ||
+      result.job.status === "preparing" ||
+      result.job.status === "running"
+    ) {
+      await this.queue.enqueue(result.worker);
+    }
+    return result.job;
+  }
+
+  async generationJob(
+    userId: string,
+    workId: string,
+    branchId: string,
+    jobId: string,
+  ): Promise<GoldenThreeGenerationJob> {
+    const context = await this.requireContext(userId, workId, branchId);
+    const loaded = await this.repository.generationJob(userId, context, jobId);
+    if (!loaded) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "生成任务不存在或无权访问");
+    }
+    if (loaded.job.status === "queued") {
+      if (!loaded.worker) {
+        throw new Error("Golden three queued job is missing its worker payload");
+      }
+      await this.queue.enqueue(loaded.worker);
+    }
+    return loaded.job;
   }
 
   async selectCandidate(

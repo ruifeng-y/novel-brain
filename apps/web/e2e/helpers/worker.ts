@@ -15,6 +15,8 @@ export async function startWorker(options: { failStep?: "draft" | "verify" | "re
       DATABASE_URL: databaseUrl,
       REDIS_URL: redisUrl,
       AI_PROVIDER_MODE: "fake",
+      MODEL_CONNECTION_TESTER: "fake",
+      NODE_ENV: "test",
       LOG_LEVEL: "info",
       ...(options.failStep ? { FAKE_AI_FAILURE_STEP: options.failStep } : {}),
     },

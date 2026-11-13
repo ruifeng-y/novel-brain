@@ -150,8 +150,16 @@ test("completes the M1 author loop through outline, writing, facts and volume au
   await writeChapterVersionThroughUi(page, work.id, chapterThree.id, chapterThreeContent());
 
   await page.goto(`/workspace/${work.id}/outline`);
-  await page.getByRole("button", { name: "生成 3 个候选" }).click();
-  await expect(page.locator(".golden-three-candidate")).toHaveCount(3);
+  const goldenThreeWorker = await startWorker();
+  try {
+    await page.getByRole("button", { name: "生成 3 个候选" }).click();
+    await expect(page.getByText(/正在生成黄金三章候选/)).toBeVisible();
+    await expect(page.locator(".golden-three-candidate")).toHaveCount(3, {
+      timeout: 30_000,
+    });
+  } finally {
+    await goldenThreeWorker.stop();
+  }
   await page
     .locator(".golden-three-candidate")
     .first()
