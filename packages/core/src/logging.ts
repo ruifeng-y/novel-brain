@@ -32,7 +32,8 @@ const SENSITIVE_KEYS = new Set([
   "token",
 ]);
 
-const TOKEN_PATTERN = /(?:sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._~+/=-]{8,})/gu;
+const TOKEN_PATTERN =
+  /(?:sk-(?:live-|test-)?[A-Za-z0-9_-]{8,}|sk_live_[A-Za-z0-9_-]{8,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._~+/=-]{8,})/gu;
 const SAFE_LOG_KEYS = new Set([
   "actualCostCny",
   "actualTokens",
@@ -181,7 +182,68 @@ const ARRAY_ONLY_KEYS = new Set([
   "unresolvedHighRiskFactIds",
 ]);
 const SAFE_LOG_MACHINE_TEXT = /^[A-Za-z0-9_./:#@?=&%+,-]{1,256}$/u;
-const SAFE_STRUCTURED_KEY = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
+const SAFE_STRUCTURED_KEY_VALUES = new Set([
+  "brief",
+  "budget",
+  "ending",
+  "goldenFinger",
+  "mainPlot",
+  "main_branch",
+  "model_config",
+  "oneSentence",
+  "outline",
+  "pov",
+  "protagonist",
+  "readerPromise",
+  "required_facts",
+  "risk_approval",
+  "sellingPoints",
+  "settings",
+  "story_bible",
+  "subplots",
+  "worldLaws",
+  "world_rules",
+]);
+const SAFE_STRUCTURED_DYNAMIC_KEY =
+  /^(?:chapter|fact_risk|model_config|outline|risk|setting|setting_proposal|story_bible|world_rule):[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)?$/u;
+const SAFE_DIAGNOSTIC_STATES = new Set([
+  "approved",
+  "blocked",
+  "cancelled",
+  "completed",
+  "conflict",
+  "degraded",
+  "down",
+  "draft",
+  "failed",
+  "fresh",
+  "invalid",
+  "key_invalid",
+  "locked",
+  "missing",
+  "not_ready",
+  "partial",
+  "paused",
+  "pending",
+  "preparing",
+  "provider_error",
+  "queued",
+  "ready",
+  "running",
+  "stale",
+  "unlocked",
+  "up",
+  "waiting_review",
+]);
+const SAFE_FAILURE_CLASSES = new Set([
+  "authentication",
+  "budget",
+  "content_policy",
+  "invalid_response",
+  "provider",
+  "rate_limit",
+  "timeout",
+]);
 const SUSPICIOUS_CREDENTIAL_TEXT = /(?:api[-_]?key|bearer|credential|password|secret|token)/iu;
 const SAFE_TELEMETRY_LABEL_KEYS = new Set([
   "errorcode",
@@ -215,6 +277,25 @@ const SAFE_TELEMETRY_METHODS = new Set([
   "PATCH",
   "POST",
   "PUT",
+]);
+const SAFE_TELEMETRY_OPERATIONS = new Set([
+  "batch_tick",
+  "connection_test",
+  "draft",
+  "generate",
+  "revise",
+  "summary_rebuild",
+  "verify",
+  "writing_action",
+]);
+const SAFE_TELEMETRY_OUTCOMES = new Set([
+  "cancelled",
+  "completed",
+  "error",
+  "failure",
+  "paused",
+  "retrying",
+  "success",
 ]);
 const SAFE_TELEMETRY_PROVIDERS = new Set(["deepseek", "fake", "openai-compatible"]);
 const SAFE_TELEMETRY_SERVICES = new Set(["api", "web", "worker"]);
@@ -275,7 +356,7 @@ function sanitizeChecked(
   const sanitized = sanitizeValue(value, 0, allowedKeys, mode);
   const findings = findSensitiveLogValues(sanitized);
   for (const canary of options.canaryValues ?? []) {
-    if (canary && containsString(sanitized, canary)) {
+    if (canary && (containsString(value, canary) || containsString(sanitized, canary))) {
       findings.push("$canary");
     }
   }
@@ -398,8 +479,9 @@ function isSafeTelemetryLabelValue(key: string, value: string): boolean {
     case "method":
       return SAFE_TELEMETRY_METHODS.has(value);
     case "operation":
+      return SAFE_TELEMETRY_OPERATIONS.has(value);
     case "outcome":
-      return /^[a-z][a-z0-9_]{0,63}$/u.test(value);
+      return SAFE_TELEMETRY_OUTCOMES.has(value);
     case "provider":
       return SAFE_TELEMETRY_PROVIDERS.has(value);
     case "queue":
@@ -513,8 +595,22 @@ function isSensitiveKey(key: string): boolean {
 }
 
 function isCompatibleEntry(key: string, value: unknown): boolean {
-  if (key === "key" && (typeof value !== "string" || !SAFE_STRUCTURED_KEY.test(value))) {
-    return false;
+  if (typeof value === "string") {
+    if (key === "key" && !isSafeStructuredKeyValue(value)) {
+      return false;
+    }
+    if (key === "provider" && !SAFE_TELEMETRY_PROVIDERS.has(value)) {
+      return false;
+    }
+    if (
+      ["chapterStatus", "failureClass", "reportState", "state", "status"].includes(key) &&
+      !(
+        SAFE_DIAGNOSTIC_STATES.has(value) ||
+        (key === "failureClass" && SAFE_FAILURE_CLASSES.has(value))
+      )
+    ) {
+      return false;
+    }
   }
   if (OBJECT_ONLY_KEYS.has(key)) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -523,6 +619,13 @@ function isCompatibleEntry(key: string, value: unknown): boolean {
     return Array.isArray(value);
   }
   return true;
+}
+
+function isSafeStructuredKeyValue(value: string): boolean {
+  return (
+    SAFE_STRUCTURED_KEY_VALUES.has(value) ||
+    (isSafeDiagnosticValue(value) && SAFE_STRUCTURED_DYNAMIC_KEY.test(value))
+  );
 }
 
 function containsCredential(value: string): boolean {

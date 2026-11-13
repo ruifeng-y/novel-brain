@@ -105,6 +105,21 @@ describe("sensitive log sanitization", () => {
     expect(sanitizeLogPayload("free form english manuscript")).toBe("[REDACTED]");
     expect(sanitizeLogPayload({ key: "custom-provider-credential" })).toEqual({});
     expect(sanitizeStructuredPayload({ key: "custom-provider-credential" })).toEqual({});
+    expect(sanitizeStructuredPayload({ key: "AKIAIOSFODNN7EXAMPLE" })).toEqual({});
+    expect(sanitizeStructuredPayload({ key: "sk_live_1234567890abcdef" })).toEqual({});
+    expect(sanitizeStructuredPayload({ key: "AIzaSyDUMMY_PROVIDER_KEY_133" })).toEqual({});
+    expect(
+      sanitizeLogPayload({
+        provider: "arbitraryProviderValue",
+        status: "arbitraryStatusValue",
+      }),
+    ).toEqual({});
+    expect(
+      sanitizeLogPayload({
+        provider: "private_provider_42",
+        status: "private_status_42",
+      }),
+    ).toEqual({});
     expect(
       JSON.stringify(
         sanitizeLogPayload({
@@ -165,12 +180,12 @@ describe("sensitive log sanitization", () => {
         { canaryValues: ["CANARY_SURVIVES_133"] },
       ),
     ).toThrow(LogRedactionError);
-    expect(
+    expect(() =>
       sanitizeLogPayloadStrict(
         { MANUSCRIPT_CANARY_133: "safe-looking-value" },
         { canaryValues: ["MANUSCRIPT_CANARY_133"] },
       ),
-    ).toEqual({});
+    ).toThrow(LogRedactionError);
     expect(() =>
       sanitizeLogPayloadStrict({ status: "queued" }, { canaryValues: ["status"] }),
     ).toThrow(LogRedactionError);
@@ -329,6 +344,8 @@ describe("sensitive log sanitization", () => {
         provider: "AIzaSyCustomProviderSecret133",
       }),
     ).toEqual({});
+    expect(sanitizeTelemetryLabels({ outcome: "private_model_name" })).toEqual({});
+    expect(sanitizeTelemetryLabels({ outcome: "private_model_42" })).toEqual({});
     expect(isSafeTelemetryMetricName("worker.job.started")).toBe(true);
     expect(isSafeTelemetryMetricName("sk-live-secret-133")).toBe(false);
   });
