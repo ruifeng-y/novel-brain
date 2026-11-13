@@ -15,6 +15,14 @@ import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440] as const;
+const goldenThreeReviewDimensions = [
+  "opening_hook",
+  "protagonist_appeal",
+  "world_rules",
+  "core_conflict",
+  "reader_promise",
+  "chapter_end_hook",
+] as const;
 
 test.describe.configure({ timeout: 240_000 });
 
@@ -46,6 +54,50 @@ async function createM1Work(request: APIRequestContext): Promise<M1Work> {
     scaleTarget: "long",
     chapterLengthTarget: 3000,
   })) as M1Work;
+}
+
+async function recordGoldenThreeReviews(request: APIRequestContext, branchPath: string) {
+  const token = await getCsrf(request);
+  const workspaceResponse = await request.get(`${branchPath}/golden-three`);
+  expect(workspaceResponse.ok()).toBe(true);
+  const workspace = (await workspaceResponse.json()).data as {
+    selectedCandidateId: string | null;
+    candidates: Array<{
+      id: string;
+      version: number;
+      pins: Array<{
+        chapterId: string;
+        chapterVersionId: string;
+        content: string;
+      }>;
+    }>;
+  };
+  const candidate = workspace.candidates.find(
+    (entry) => entry.id === workspace.selectedCandidateId,
+  );
+  expect(candidate).toBeTruthy();
+  const pin = candidate!.pins[0]!;
+  const reviewResponse = await request.put(
+    `${branchPath}/golden-three/candidates/${candidate!.id}/reviews`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        version: candidate!.version,
+        reviews: goldenThreeReviewDimensions.map((dimension, index) => ({
+          dimension,
+          score: 4,
+          evidence: {
+            chapterId: pin.chapterId,
+            chapterVersionId: pin.chapterVersionId,
+            passage: pin.content,
+            locator: `第 ${index + 1} 个评审维度 · 开篇`,
+          },
+          reviewerOrigin: "critic",
+        })),
+      },
+    },
+  );
+  expect(reviewResponse.status()).toBe(200);
 }
 
 test("completes the M1 author loop through outline, writing, facts and volume audit", async ({
@@ -108,6 +160,12 @@ test("completes the M1 author loop through outline, writing, facts and volume au
   await expect(page.locator(".golden-three-candidate").first().getByText("已选定")).toBeVisible();
   await page.getByRole("button", { name: "登记第 2、3 章", exact: true }).click();
   await expect(page.getByText("续写版本已登记")).toBeVisible();
+  await recordGoldenThreeReviews(
+    request,
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`,
+  );
+  await page.reload();
+  await expect(page.getByRole("button", { name: "锁定黄金三章" })).toBeEnabled();
   await page.getByRole("button", { name: "锁定黄金三章" }).click();
   await expect(page.getByText("黄金三章已锁定")).toBeVisible();
   await expectAuthorFacingLanguage(page);

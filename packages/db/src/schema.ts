@@ -2329,6 +2329,8 @@ export const jobs = pgTable(
     currentStep: text("current_step").notNull().default("prepare"),
     priority: integer("priority").notNull().default(0),
     idempotencyKey: text("idempotency_key").notNull(),
+    goldenThreeGenerationKey: text("golden_three_generation_key"),
+    goldenThreeLeaseVersion: integer("golden_three_lease_version").notNull().default(0),
     budget: jsonb("budget").$type<Record<string, unknown>>().notNull(),
     checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull(),
     checkpointVersion: integer("checkpoint_version").notNull().default(0),
@@ -2352,7 +2354,12 @@ export const jobs = pgTable(
     ),
     uniqueIndex("jobs_workflow_idempotency_unique")
       .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
-      .where(sql`${table.type} = 'agent_workflow'`),
+      .where(
+        sql`${table.type} = 'agent_workflow' and (${table.orchestration}->>'kind' is null or ${table.orchestration}->>'kind' <> 'golden_three_generation')`,
+      ),
+    uniqueIndex("jobs_golden_three_generation_key_unique")
+      .on(table.userId, table.workId, table.branchId, table.goldenThreeGenerationKey)
+      .where(sql`${table.goldenThreeGenerationKey} is not null`),
     uniqueIndex("jobs_batch_plan_idempotency_unique")
       .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
       .where(sql`${table.type} = 'batch_plan'`),

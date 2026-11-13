@@ -57,6 +57,14 @@ export class GoldenThreeService {
     if (result.kind === "reference_invalid") {
       throw new ApiError(400, "GOLDEN_THREE_INVALID_CANDIDATES", result.message);
     }
+    if (result.kind === "generation_in_progress") {
+      throw new ApiError(
+        409,
+        "GOLDEN_THREE_GENERATION_IN_PROGRESS",
+        "当前创作线正在生成黄金三章，请稍后刷新",
+        { retryable: true },
+      );
+    }
     if (result.kind === "version_conflict") {
       throw new ApiError(409, "VERSION_CONFLICT", "候选已被其他操作更新，请刷新后重试");
     }
@@ -229,6 +237,13 @@ export class GoldenThreeService {
         });
       case "already_locked":
         return new ApiError(409, "GOLDEN_THREE_ALREADY_LOCKED", "黄金三章已经锁定");
+      case "generation_in_progress":
+        return new ApiError(
+          409,
+          "GOLDEN_THREE_GENERATION_IN_PROGRESS",
+          "当前创作线正在生成黄金三章，请稍后刷新",
+          { retryable: true },
+        );
     }
   }
 }
