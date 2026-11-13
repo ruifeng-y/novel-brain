@@ -44,12 +44,15 @@
 
 - outline 页新增“黄金三章”视图，支持候选正文并排比较、六维评分与证据比较、作者选择、失败阻断、例外理由和锁定成功态。
 - `apps/web/e2e/parity/golden-three.spec.ts` 覆盖 390/900/1180/1440 四档视口、无横向溢出、真实 API 动作和作者语言扫描。
-- outline 页仍为 `production-built`；M0 的 outline 生产 golden 不能代表 #145/#147 后的新布局，需重新拍摄并完成作者视觉签收后才能升级为 `parity-verified`。
+- outline 页生产 Golden、四档视觉签收与 Linux/CI 回归已由 #174、`docs/ui/v1-prototype-signoff.md` 和 parity matrix 补齐，当前状态为 `parity-verified`。
 
 ## 验证
 
 - `pnpm exec vitest run packages/contracts/test/golden-three.test.ts`
 - `pnpm exec vitest run --config vitest.integration.config.mts apps/api/test/golden-three.integration.test.ts`
+- `pnpm exec playwright test apps/web/e2e/parity/golden-three.spec.ts`
+- `pnpm test:e2e:m1-closeout-stability`
+- Candidate, review, continuation or lock-gate changes must run both the page spec and the five-repeat M1 author-loop stability command.
 - `pnpm --filter @novel-brain/api typecheck`
 - `pnpm --filter @novel-brain/web typecheck`
 - `pnpm --filter @novel-brain/api openapi:generate`

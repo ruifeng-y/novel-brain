@@ -3,7 +3,7 @@
 > Issue: #90
 > Capability: QUALITY-005
 > UI parity: work-overview（卷末审计）、bible、settings、entity-detail、outline、foreshadows、writing、account-settings
-> Status: implementation complete; author visual sign-off and product acceptance remain pending.
+> Status: implementation, automated acceptance and author page visual sign-off complete; fixed-sample product acceptance remains pending.
 
 ## 1. 交付范围
 
@@ -70,24 +70,24 @@ pnpm exec vitest run --config vitest.integration.config.mts apps/api/test/volume
 pnpm test:e2e -- apps/web/e2e/parity/m1-closeout.spec.ts
 ```
 
-覆盖建作品、故事圣经、七栏设定、五层大纲、黄金三章、写作、事实处理、卷末审计与作者修改意见；另对 bible/settings/entity-detail/outline/foreshadows/writing/work-overview/account-settings 在 390/900/1180/1440 四档视口检查真实路由、作者语言和横向溢出，并附加截图作为待签收证据。
+覆盖建作品、故事圣经、七栏设定、五层大纲、黄金三章、写作、事实处理、卷末审计与作者修改意见；另对 bible/settings/entity-detail/outline/foreshadows/writing/work-overview/account-settings 在 390/900/1180/1440 四档视口检查真实路由、作者语言、横向溢出和正式生产 Golden 对比。
 
 ## 4. Golden 与人工签收
 
 | 页面 | Playwright | 生产 golden | 状态 |
 | --- | --- | --- | --- |
-| work-overview | `work-overview.spec.ts`、`m1-closeout.spec.ts` | 待重新拍摄 | 待作者视觉签收 |
-| bible | `bible.spec.ts`、`m1-closeout.spec.ts` | 待重新拍摄 | 待作者视觉签收 |
-| settings | `settings.spec.ts`、`m1-closeout.spec.ts` | 待重新拍摄 | 待作者视觉签收 |
-| entity-detail | `entity-detail.spec.ts`、`m1-closeout.spec.ts` | 待重新拍摄 | 待作者视觉签收 |
-| outline | `outline.spec.ts`、`golden-three.spec.ts`、`m1-closeout.spec.ts` | 待重新拍摄 | 待作者视觉签收 |
-| foreshadows | `foreshadows.spec.ts`、`m1-closeout.spec.ts` | 待重新拍摄 | 待作者视觉签收 |
-| writing | `writing.spec.ts`、`m1-closeout.spec.ts` | 待重新拍摄 | 待作者视觉签收 |
-| account-settings | `account-settings.spec.ts`、`m1-closeout.spec.ts` | 待重新拍摄 | 待作者视觉签收 |
+| work-overview | `work-overview.spec.ts`、`m1-closeout.spec.ts` | `artifacts/ui/golden/work-overview/` | parity-verified |
+| bible | `bible.spec.ts`、`m1-closeout.spec.ts` | `artifacts/ui/golden/bible/` | parity-verified |
+| settings | `settings.spec.ts`、`m1-closeout.spec.ts` | `artifacts/ui/golden/settings/` | parity-verified |
+| entity-detail | `entity-detail.spec.ts`、`m1-closeout.spec.ts` | `artifacts/ui/golden/entity-detail/` | parity-verified |
+| outline | `outline.spec.ts`、`golden-three.spec.ts`、`m1-closeout.spec.ts` | `artifacts/ui/golden/outline/` | parity-verified |
+| foreshadows | `foreshadows.spec.ts`、`m1-closeout.spec.ts` | `artifacts/ui/golden/foreshadows/` | parity-verified |
+| writing | `writing.spec.ts`、`m1-closeout.spec.ts` | `artifacts/ui/golden/writing/` | parity-verified |
+| account-settings | `account-settings.spec.ts`、`m1-closeout.spec.ts` | `artifacts/ui/golden/account-settings/` | parity-verified |
 
-以上页面均未被本 ticket 提升为 `parity-verified`。`m1-closeout.spec.ts` 和 M0 closeout 对 M1 页面只附加截图，不伪造 golden 对比或作者签收。
+以上页面的正式 Golden 与作者视觉签收已由 #172/#174/#176/#177 和 `docs/ui/v1-prototype-signoff.md` 补齐，当前均为 `parity-verified`。
 
-人工签收记录尚未产生。集成测试中的签收动作只验证 API 状态机和审计日志，使用测试账号，不代表产品作者签收。正式签收需要作者在真实作品上完成视觉确认并记录签收意见。
+页面视觉签收已完成，但固定 40 章仙侠样片与卷末审计结果的产品签收记录仍未产生。集成测试中的签收动作只验证 API 状态机和审计日志，使用测试账号，不代表产品作者签收。#90 保持 OPEN 直到作者在真实产品流程中完成该最终签收。
 
 ## 5. 已知边界
 
