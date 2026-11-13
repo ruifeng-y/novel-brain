@@ -29,7 +29,8 @@ If two sources conflict, stop the affected work and report the conflict. Do not 
 - Keep changes within the ticket. If a missing requirement or cross-ticket contract is found, stop and raise a scoped issue.
 
 ## Local execution
-- Run local repository commands through native PowerShell and start mutating work with `git rev-parse --show-toplevel`.
+- Run every local command with native PowerShell, including passing `shell: "powershell"` to the command runner.
+- Start mutating work with `git rev-parse --show-toplevel`.
 - Before code review, record the full base and head SHAs; restart the review if either ref moves.
 - Run the executable guardrails from the repository root:
 

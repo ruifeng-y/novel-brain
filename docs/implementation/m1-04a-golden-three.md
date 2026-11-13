@@ -50,6 +50,9 @@
 
 - `pnpm exec vitest run packages/contracts/test/golden-three.test.ts`
 - `pnpm exec vitest run --config vitest.integration.config.mts apps/api/test/golden-three.integration.test.ts`
+- `pnpm exec playwright test apps/web/e2e/parity/golden-three.spec.ts`
+- `pnpm test:e2e:m1-closeout-stability`
+- Candidate, review, continuation or lock-gate changes must run both the page spec and the five-repeat M1 author-loop stability command.
 - `pnpm --filter @novel-brain/api typecheck`
 - `pnpm --filter @novel-brain/web typecheck`
 - `pnpm --filter @novel-brain/api openapi:generate`
