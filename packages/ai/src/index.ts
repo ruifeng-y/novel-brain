@@ -306,25 +306,47 @@ function estimateTokens(value: string): number {
 }
 
 export class FakeAiProvider implements AiGateway {
-  constructor(private readonly options: { failOperations?: GenerationOperation[] } = {}) {}
+  private calls = 0;
+
+  constructor(
+    private readonly options: {
+      failOperations?: GenerationOperation[];
+      failOnCall?: number;
+      usageMultiplier?: number;
+      delayMs?: number;
+      emptyOnCall?: number;
+    } = {},
+  ) {}
 
   async generateText(input: GenerationRequest): Promise<GenerationResult> {
-    if (input.operation && this.options.failOperations?.includes(input.operation)) {
+    this.calls += 1;
+    if (
+      input.operation &&
+      this.options.failOperations?.includes(input.operation) &&
+      (this.options.failOnCall === undefined || this.calls === this.options.failOnCall)
+    ) {
       throw new AiProviderError(`Fake provider failed during ${input.operation}`);
+    }
+    if (this.options.delayMs && this.options.delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.options.delayMs));
     }
     const model = input.model ?? "fake-deterministic";
     const fingerprint = stableHash(`${input.system ?? ""}\n${input.prompt}`);
-    const text = input.operation
-      ? operationText(input.operation, fingerprint, input.prompt)
-      : `fake:${fingerprint}:${input.prompt}`;
+    const text =
+      this.calls === this.options.emptyOnCall
+        ? ""
+        : input.operation
+          ? operationText(input.operation, fingerprint, input.prompt)
+          : `fake:${fingerprint}:${input.prompt}`;
 
+    const usageMultiplier = this.options.usageMultiplier ?? 1;
     return {
       text,
       model,
       finishReason: "stop",
       usage: {
-        inputTokens: estimateTokens(`${input.system ?? ""}${input.prompt}`),
-        outputTokens: estimateTokens(text),
+        inputTokens: estimateTokens(`${input.system ?? ""}${input.prompt}`) * usageMultiplier,
+        outputTokens: estimateTokens(text) * usageMultiplier,
       },
     };
   }
