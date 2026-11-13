@@ -73,7 +73,8 @@
 
 ## 尚未完成的人工/后续门禁
 
-- M1 页面生产 golden 仍需按 ADR 0027 重新拍摄和作者签收：bible、settings、entity-detail、outline、foreshadows、writing、work-overview、account-settings。#143 保持未关闭。
+- 八个 M1 验收页面的生产 Golden、四档视觉方向与正式 Linux/CI baseline 已由 #172/#174/#176/#177 补齐并签收；覆盖 bible、settings、entity-detail、outline、foreshadows、writing、work-overview、account-settings。相关 M1 leaves 已按当前代码、测试与 Golden 对账关闭。
 - M0 golden 截图用例未纳入本次“全绿”计数，因为其基线仍是旧页面；需与 M1 golden 一起重新签收。
 - #142 作品设置/归档恢复/复制仍被 #134 的永久删除与生命周期契约阻塞；本分支未绕过该依赖实现不可逆删除。
 - 真实 DeepSeek 仍只走独立 gated smoke，不进入普通测试套件。
+- #90 的产品验收仍需真实作者对固定仙侠样片与卷末审计结果完成最终签收；页面视觉签收不替代该产品签收。

@@ -1,40 +1,54 @@
 # M1 Tracker Reconciliation
 
-> Date: 2026-11-12
-> Baseline: `main@024e4ea`, PR #185
-> Source evidence: `docs/implementation/m1-spec-closeout.md`, current production code, signed Linux Golden and Production CI #43202849140
+> Date: 2026-11-13
+> Baseline: `main@37dedac`, PR #191
+> Source evidence: `docs/implementation/m1-spec-closeout.md`, current production code, signed Linux Golden and Production CI #43364350036
 
 ## Closed Leaves
 
+- #106, #107, #108: character/knowledge, faction/map/timeline and power/item domains
 - #109, #110, #111, #113, #115: Agent Runtime, ContextPack, summaries and recovery
 - #116, #117, #118: writing actions, quality critic and targeted revision
+- #119: character voice, style baseline and cross-volume drift
 - #141: account profile, pen names, password recovery and session management
 - #143: Story Bible and structured world rules
+- #144: seven-column settings, aliases, custom fields and versioned restore
 - #145, #146: five-level outline and story ledgers
+- #148: opening and generation readiness gate with precise remediation paths
 - #149, #150: batch review queue and cost hard-stop/reporting
+- #162, #165: Golden Three two-stage continuation and real-author provenance decisions
 
 ## Closed Parents
 
+- #84: Story Bible and settings foundation
+- #85: world simulation domains
 - #86: outline and story ledgers
+- #87: Golden Three and opening readiness
 - #88: Agent Runtime and continuity retrieval
+- #89: advanced writing, critique and chapter fact closure
+- #147: Golden Three candidate generation, review and lock
 - #91 and #93 were already closed by the final M2 integration.
 
-## Remaining Code Blockers
+## Closed Review/Decision Issues
 
-- #162 and #165 block #147. The Golden Three flow must follow ADR 0007 and use real author-model ContextPack provenance before the parent can close.
-- #166 blocks #144 and the affected world-domain/writing leaves #106, #107, #108 and #119. Generic setting PATCH must stop writing dedicated-domain data.
-- #84, #85, #87 and #89 remain open until their blocked children close.
-- #90 remains the M1 integration gate until #84–#89 and the review decisions are complete.
+- #162: two-stage Golden Three continuation decision
+- #165: real-author model and ContextPack provenance
+- #166: removed generic settings PATCH as a second source of truth
+
+## Remaining Gates
+
+- #90 remains open for the fixed 40-chapter / 122,696-character xianxia sample and volume-audit product sign-off. Its package dependencies and automated acceptance are complete; the real author product sign-off record is still required.
+- #190 remains the independent Golden Three durable Worker migration. It does not reopen #147, but must be completed or explicitly excepted before M1 production sign-off.
 
 ## Next Frontier
 
-After this reconciliation, #132 is the first bounded security/release task:
+After the remaining M1 gates, #133 is the next bounded security/release task:
 
-- inventory every tenant-owned M0–M2 table;
-- verify enabled and forced RLS plus policy ownership;
-- add cross-tenant API/Worker/search/export coverage;
-- fail closed when user context is missing;
-- produce a machine-readable inventory that blocks release on uncovered tables.
+- unify structured logging, error payloads, trace policy and sensitive-data filtering;
+- prove provider keys, manuscript text, prompts, ContextPacks and imported source are absent from ordinary logs;
+- test trace opt-in/off and retention behavior;
+- fail closed when secret redaction fails;
+- document the approved diagnostic path without copying sensitive content.
 
 ## Rule
 

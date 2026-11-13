@@ -33,7 +33,7 @@
 - `apps/web/components/writing-workspace.tsx` 增加单章声线检查、证据段落、成长依据与“定位证据”；定位只选中正文范围，不自动改写。
 - `apps/web/components/style-drift-findings.tsx` 统一作者语言 findings 展示。
 - `apps/web/e2e/parity/work-overview.spec.ts` 与 `apps/web/e2e/parity/writing.spec.ts` 覆盖真实 API 动作、证据定位、成长区分与 390/900/1180/1440 四档无横向溢出。
-- 两个页面仍为 `production-built`；新增布局需要按 ADR 0027 重新拍摄 golden 并由作者签收。
+- work-overview 与 writing 的四档生产 Golden、作者视觉签收与 Linux/CI 回归已记录，当前状态为 `parity-verified`。
 
 ## 验证接缝
 
