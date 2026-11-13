@@ -77,4 +77,4 @@
 - M0 golden 截图用例未纳入本次“全绿”计数，因为其基线仍是旧页面；需与 M1 golden 一起重新签收。
 - #142 作品设置/归档恢复/复制仍被 #134 的永久删除与生命周期契约阻塞；本分支未绕过该依赖实现不可逆删除。
 - 真实 DeepSeek 仍只走独立 gated smoke，不进入普通测试套件。
-- #90 的产品验收仍需真实作者对固定仙侠样片与卷末审计结果完成最终签收；页面视觉签收不替代该产品签收。
+- #90 的产品验收已由作者于 2026-11-13 完成：固定 40 章仙侠样片记录 `changes_requested`，clean volume 记录 `accepted`；证据见 `docs/implementation/m1-90-volume-audit-and-sample.md`。

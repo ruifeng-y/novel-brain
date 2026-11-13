@@ -37,12 +37,12 @@
 
 ## Remaining Gates
 
-- #90 remains open for the fixed 40-chapter / 122,696-character xianxia sample and volume-audit product sign-off. Its package dependencies and automated acceptance are complete; the real author product sign-off record is still required.
-- #190 remains the independent Golden Three durable Worker migration. It does not reopen #147, but must be completed or explicitly excepted before M1 production sign-off.
+- #90 is complete. The fixed 40-chapter / 122,696-character xianxia sample and both volume-audit sign-offs were completed by the product author on 2026-11-13; evidence is recorded in `docs/implementation/m1-90-volume-audit-and-sample.md`.
+- #190 is complete and merged through PR #193. It did not reopen #147.
 
 ## Next Frontier
 
-After the remaining M1 gates, #133 is the next bounded security/release task:
+#133 is the next bounded security/release task:
 
 - unify structured logging, error payloads, trace policy and sensitive-data filtering;
 - prove provider keys, manuscript text, prompts, ContextPacks and imported source are absent from ordinary logs;

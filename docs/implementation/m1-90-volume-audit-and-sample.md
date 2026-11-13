@@ -3,7 +3,7 @@
 > Issue: #90
 > Capability: QUALITY-005
 > UI parity: work-overview（卷末审计）、bible、settings、entity-detail、outline、foreshadows、writing、account-settings
-> Status: implementation, automated acceptance and author page visual sign-off complete; fixed-sample product acceptance remains pending.
+> Status: implementation, automated acceptance, author page visual sign-off and fixed-sample product acceptance complete.
 
 ## 1. 交付范围
 
@@ -87,9 +87,36 @@ pnpm test:e2e -- apps/web/e2e/parity/m1-closeout.spec.ts
 
 以上页面的正式 Golden 与作者视觉签收已由 #172/#174/#176/#177 和 `docs/ui/v1-prototype-signoff.md` 补齐，当前均为 `parity-verified`。
 
-页面视觉签收已完成，但固定 40 章仙侠样片与卷末审计结果的产品签收记录仍未产生。集成测试中的签收动作只验证 API 状态机和审计日志，使用测试账号，不代表产品作者签收。#90 保持 OPEN 直到作者在真实产品流程中完成该最终签收。
+页面视觉签收已完成。2026-11-13，作者账号 `1345395797@qq.com` 在本地真实产品流程中完成固定样片与 clean volume 的最终产品签收。
 
-## 5. 已知边界
+## 5. 作者产品签收
+
+- 签收账号：`1345395797@qq.com`（用户 ID `01a1d4bb-1e1b-7883-a09b-6227424259d1`）
+- 作品 ID：`01a1d4bb-1e40-7a89-8f98-40bd897214a3`
+- 分支 ID：`01a1d4bb-1e41-7f64-abd8-ae844675742e`
+- 固定样片：`m1-xianxia-sample-v1`，40 章，122,696 字，内容 source hash `b7df9ec5e031ac593f8c2d34dab08ddecf79ec94aee44e3aef09bd11dd285466`
+
+固定样片卷：
+
+- 卷节点 ID：`01a1d4bb-2065-7fbe-b687-1a01b574bfff`
+- 审计报告 ID：`01a1d551-de56-7a76-ab65-5a7a73091ce5`
+- 报告 source hash：`1f3c8ac3c3e7653cf54b8d66de3bf0d61139f82c1d7407056d94cc76206094df`
+- 状态：`blocked`
+- 作者结论：`changes_requested`
+- 签收时间：`2026-11-13T14:31:26.657Z`
+- 签收意见：确认第 1 章未收束伏笔、第 8 章战力膨胀、第 12 章反派降智、第 20 章动机断裂、第 24 章知识泄露，以及第 30/31 章时间与地点冲突均被证据定位；要求修改后重新审计。
+
+Clean volume：
+
+- 卷节点 ID：`01a1d4bb-2ad1-7c97-a421-b62014410010`
+- 审计报告 ID：`01a1d556-87f2-78c9-a1f2-e98f90a99965`
+- 报告 source hash：`acb41c90ed72b4bfcb8036c0c37d53cd51c26efe4c8cc5a1ac7d818f8c679841`
+- 状态：`passed`
+- 作者结论：`accepted`
+- 签收时间：`2026-11-13T14:36:52.633Z`
+- 签收意见：逐章核对剧情线、伏笔、连续性和证据定位，未发现阻断项，确认通过。
+
+## 6. 已知边界
 
 - 反派降智和战力膨胀是确定性保守规则，依赖正文明确句式和结构化境界名称；复杂反讽、不可靠叙述和有意失智能仍需作者判断。
 - 卷末审计只能复用已运行的 #117 章节检查；未运行章节检查的章节会出现在覆盖清单中，但不会凭空生成章节级连续性 Finding。
