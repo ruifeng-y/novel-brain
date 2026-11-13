@@ -10,6 +10,7 @@ import { createDatabasePool } from "@novel-brain/db";
 import { Queue } from "bullmq";
 import Redis from "ioredis";
 
+import { SafePinoLogger } from "./logging/safe-logger";
 import { evaluateWorkerReadiness } from "./readiness";
 
 async function checkDatabase(databaseUrl: string): Promise<DependencyCheck> {
@@ -102,7 +103,12 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : "Unknown readiness error";
-  console.error(JSON.stringify({ event: "worker.readiness.failed", message }));
+  new SafePinoLogger().error(
+    {
+      event: "worker.readiness.failed",
+      errorType: error instanceof Error ? error.name : "unknown",
+    },
+    "Worker readiness failed",
+  );
   process.exitCode = 1;
 });

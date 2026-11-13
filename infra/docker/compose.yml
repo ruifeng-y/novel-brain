@@ -81,6 +81,10 @@ services:
       ALLOW_INSECURE_LOCAL_MODEL_KEY: "true"
       MODEL_PROVIDER_ALLOWLIST: https://api.openai.com/v1
       MODEL_CONNECTION_TESTER: fake
+      TRACE_MODE: ${TRACE_MODE:-off}
+      TRACE_RETENTION_DAYS: ${TRACE_RETENTION_DAYS:-}
+      TRACE_ENDPOINT: ${TRACE_ENDPOINT:-}
+      LOG_CANARY_VALUES: ${LOG_CANARY_VALUES:-}
     ports:
       - "127.0.0.1:3001:3001"
     depends_on:
@@ -112,6 +116,10 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://novelbrain:novelbrain@postgres:5432/novelbrain}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       AI_PROVIDER_MODE: fake
+      TRACE_MODE: ${TRACE_MODE:-off}
+      TRACE_RETENTION_DAYS: ${TRACE_RETENTION_DAYS:-}
+      TRACE_ENDPOINT: ${TRACE_ENDPOINT:-}
+      LOG_CANARY_VALUES: ${LOG_CANARY_VALUES:-}
     depends_on:
       postgres:
         condition: service_healthy

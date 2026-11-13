@@ -13,9 +13,9 @@ import {
   workerJobSchema,
   type WorkerJob,
 } from "@novel-brain/contracts";
+import { emitTraceEnvelope, resolveTracePolicy, type TracePolicy } from "@novel-brain/core";
 import { Queue, Worker as BullWorker, type Job } from "bullmq";
 import Redis from "ioredis";
-import pino, { type Logger } from "pino";
 
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -32,10 +32,12 @@ import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
+import { SafePinoLogger } from "./logging/safe-logger";
 
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
-  private readonly logger: Logger;
+  private readonly logger: SafePinoLogger;
+  private readonly tracePolicy: TracePolicy;
   private readonly connection: Redis;
   private readonly queue: Queue<WorkerJob>;
   private readonly worker: BullWorker<WorkerJob, void>;
@@ -52,9 +54,14 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       throw new Error("REDIS_URL is required");
     }
 
-    this.logger = pino({
-      level: process.env.LOG_LEVEL ?? "info",
-      base: { service: "worker" },
+    const tracePolicy = resolveTracePolicy(process.env);
+    this.tracePolicy = tracePolicy;
+    this.logger = new SafePinoLogger();
+    this.logger.info({
+      event: "worker.trace_policy",
+      mode: tracePolicy.mode,
+      retentionDays: tracePolicy.retentionDays,
+      endpointConfigured: tracePolicy.endpoint !== null,
     });
     this.processor.setTraceLogger(this.logger);
     this.processor.configureRecovery({ maxAutomaticAttempts: 3 });
@@ -78,6 +85,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    await emitTraceEnvelope(this.tracePolicy, {
+      name: "service.started",
+      occurredAt: new Date().toISOString(),
+      attributes: { service: "worker", event: "worker.ready" },
+    });
     await this.queue.waitUntilReady();
     await this.worker.waitUntilReady();
     this.logger.info(
@@ -108,6 +120,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
 
   private async processJob(job: Job<WorkerJob>): Promise<void> {
     const payload = workerJobSchema.parse(job.data);
+    this.logger.metric("worker.job.started", {
+      job_type: payload.jobType,
+      queue: WORKER_QUEUE_NAME,
+    });
     this.logger.info(
       {
         event: "worker.job.started",
