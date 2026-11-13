@@ -107,6 +107,7 @@ describe("golden three HTTP integration", () => {
     jobId: string,
     options: {
       stepHook?: (stepKey: string) => void | Promise<void>;
+      beforeRecordSuccessHook?: (stepKey: string) => void | Promise<void>;
       forbidContextCompile?: boolean;
     } = {},
   ) {
@@ -155,6 +156,7 @@ describe("golden three HTTP integration", () => {
         : contextCompiler,
       { create: () => goldenThreeTestProvider() },
       options.stepHook,
+      options.beforeRecordSuccessHook,
     );
     try {
       await new GoldenThreeJobProcessor(repository).process(payload);
@@ -986,6 +988,87 @@ describe("golden three HTTP integration", () => {
       model_calls: "3",
       usage_records: "3",
       succeeded_steps: "3",
+    });
+  });
+
+  it("preserves audit rows when recovery interrupts an in-flight provider call", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-inflight-recovery@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const outlinePath = `${basePath}/golden-three`;
+    await createGoldenThreeChapters(owner, token, basePath);
+    await createModelConfig(owner, token);
+    await createGoldenThreeContext(owner, token, basePath);
+
+    const queued = await startGoldenThreeGeneration(
+      owner,
+      outlinePath,
+      "golden-three-inflight-recovery",
+      token,
+    );
+    await expect(
+      runGoldenThreeWorker(queued.id, {
+        beforeRecordSuccessHook: (stepKey) => {
+          if (stepKey.endsWith("hook_focus")) {
+            throw new Error("simulated crash before result commit");
+          }
+        },
+      }),
+    ).rejects.toThrow("simulated crash before result commit");
+
+    const interrupted = await databasePool.query<{
+      job_status: string;
+      model_call_statuses: string[];
+      reservation_statuses: string[];
+      attempt_statuses: string[];
+    }>(
+      `SELECT job.status AS job_status,
+              (SELECT array_agg(status ORDER BY attempt)
+                 FROM model_calls WHERE job_id = job.id) AS model_call_statuses,
+              (SELECT array_agg(status ORDER BY status)
+                 FROM cost_reservations WHERE job_id = job.id) AS reservation_statuses,
+              (SELECT array_agg(status ORDER BY step_key, attempt)
+                 FROM job_step_attempts WHERE job_id = job.id) AS attempt_statuses
+         FROM jobs job
+        WHERE job.id = $1`,
+      [queued.id],
+    );
+    expect(interrupted.rows[0]).toMatchObject({
+      job_status: "running",
+      model_call_statuses: ["started", "started", "started"],
+      reservation_statuses: expect.arrayContaining(["reserved"]),
+      attempt_statuses: expect.arrayContaining(["running"]),
+    });
+
+    await runGoldenThreeWorker(queued.id);
+    expect(await generationJob(owner, outlinePath, queued.id)).toMatchObject({
+      status: "completed",
+      progress: 100,
+    });
+    const recovered = await databasePool.query<{
+      model_calls: string;
+      usage_records: string;
+      failed_calls: string;
+      released_reservations: string;
+      attempts: string;
+    }>(
+      `SELECT
+         (SELECT count(*) FROM model_calls WHERE job_id = $1) AS model_calls,
+         (SELECT count(*) FROM usage_records WHERE job_id = $1) AS usage_records,
+         (SELECT count(*) FROM model_calls WHERE job_id = $1 AND status = 'failed')
+           AS failed_calls,
+         (SELECT count(*) FROM cost_reservations WHERE job_id = $1 AND status = 'released')
+           AS released_reservations,
+         (SELECT count(*) FROM job_step_attempts WHERE job_id = $1) AS attempts`,
+      [queued.id],
+    );
+    expect(recovered.rows[0]).toEqual({
+      model_calls: "4",
+      usage_records: "3",
+      failed_calls: "1",
+      released_reservations: "1",
+      attempts: "4",
     });
   });
 

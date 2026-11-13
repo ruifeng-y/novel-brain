@@ -111,6 +111,7 @@ interface GoldenThreePreparedCall {
   reservationId: string;
   modelCallId: string;
   stepKey: string;
+  attempt: number;
   modelProvider: string;
   model: string;
   configHash: string;
@@ -194,6 +195,7 @@ export class GoldenThreeRepository {
     private readonly contextCompiler: GoldenThreeContextCompiler,
     private readonly providerFactory: GoldenThreeProviderFactory,
     private readonly generationStepHook?: (stepKey: string) => void | Promise<void>,
+    private readonly beforeRecordSuccessHook?: (stepKey: string) => void | Promise<void>,
   ) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
@@ -985,7 +987,7 @@ export class GoldenThreeRepository {
         message: "创建黄金三章候选",
         createdAt: now,
       });
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await transaction.insert(auditLogs).values({
         id: uuidv7(),
         actorId: userId,
@@ -1659,6 +1661,7 @@ export class GoldenThreeRepository {
             reservationId: savedCall.costReservationId,
             modelCallId: savedCall.id,
             stepKey,
+            attempt: savedCall.attempt,
             modelProvider: savedCall.provider,
             model: savedCall.model,
             configHash: savedCall.configHash,
@@ -1689,149 +1692,276 @@ export class GoldenThreeRepository {
           });
           continue;
         }
+        let retryAttempt = 1;
+        let promptVersionId = uuidv7();
+        let agentRunId = uuidv7();
+        let reservationId = uuidv7();
+        let modelCallId = uuidv7();
+        let reusePreparedCall = false;
         if (existingStep) {
-          const staleCalls = await transaction
+          const [staleCall] = await transaction
             .select()
             .from(modelCalls)
             .where(
               and(
                 eq(modelCalls.jobId, jobId),
                 eq(modelCalls.userId, userId),
+                eq(modelCalls.workId, context.workId),
+                eq(modelCalls.branchId, context.branchId),
                 eq(modelCalls.stepKey, stepKey),
               ),
-            );
-          for (const stale of staleCalls) {
-            await transaction.delete(modelCalls).where(eq(modelCalls.id, stale.id));
-            await transaction.delete(agentRuns).where(eq(agentRuns.id, stale.agentRunId));
+            )
+            .orderBy(desc(modelCalls.attempt))
+            .limit(1);
+          if (staleCall && existingStep.status !== "running") {
+            retryAttempt = staleCall.attempt;
+            promptVersionId = staleCall.promptVersionId;
+            agentRunId = staleCall.agentRunId;
+            reservationId = staleCall.costReservationId;
+            modelCallId = staleCall.id;
+            reusePreparedCall = true;
+          } else {
+            retryAttempt = Math.max(existingStep.attempt + 1, 2);
+            if (staleCall) {
+              promptVersionId = staleCall.promptVersionId;
+              agentRunId = staleCall.agentRunId;
+              await transaction
+                .update(modelCalls)
+                .set({
+                  status: "failed",
+                  failureClass: "timeout",
+                  errorCode: "JOB_ATTEMPTS_EXHAUSTED",
+                  finishedAt: now,
+                })
+                .where(
+                  and(
+                    eq(modelCalls.id, staleCall.id),
+                    eq(modelCalls.userId, userId),
+                    eq(modelCalls.workId, context.workId),
+                    eq(modelCalls.branchId, context.branchId),
+                    eq(modelCalls.jobId, jobId),
+                  ),
+                );
+              await transaction
+                .update(agentRuns)
+                .set({
+                  status: "failed",
+                  failureClass: "timeout",
+                  finishedAt: now,
+                })
+                .where(
+                  and(
+                    eq(agentRuns.id, staleCall.agentRunId),
+                    eq(agentRuns.userId, userId),
+                    eq(agentRuns.workId, context.workId),
+                    eq(agentRuns.branchId, context.branchId),
+                    eq(agentRuns.jobId, jobId),
+                  ),
+                );
+              await transaction
+                .update(costReservations)
+                .set({
+                  status: "released",
+                  failureClass: "timeout",
+                  settledTokens: 0,
+                  settledCostCny: 0,
+                  settledAt: null,
+                })
+                .where(
+                  and(
+                    eq(costReservations.id, staleCall.costReservationId),
+                    eq(costReservations.userId, userId),
+                    eq(costReservations.workId, context.workId),
+                    eq(costReservations.branchId, context.branchId),
+                    eq(costReservations.jobId, jobId),
+                  ),
+                );
+            }
             await transaction
-              .delete(costReservations)
-              .where(eq(costReservations.id, stale.costReservationId));
-            await transaction
-              .delete(promptVersions)
-              .where(eq(promptVersions.id, stale.promptVersionId));
+              .update(jobStepAttempts)
+              .set({
+                status: "failed",
+                errorCode: "JOB_ATTEMPTS_EXHAUSTED",
+                errorMessage: "上一次执行在结果提交前中断",
+                finishedAt: now,
+              })
+              .where(
+                and(
+                  eq(jobStepAttempts.jobId, jobId),
+                  eq(jobStepAttempts.userId, userId),
+                  eq(jobStepAttempts.workId, context.workId),
+                  eq(jobStepAttempts.branchId, context.branchId),
+                  eq(jobStepAttempts.stepKey, stepKey),
+                  inArray(jobStepAttempts.status, ["pending", "running"]),
+                ),
+              );
           }
           await transaction
-            .delete(jobStepAttempts)
-            .where(and(eq(jobStepAttempts.jobId, jobId), eq(jobStepAttempts.stepKey, stepKey)));
-          await transaction
-            .delete(jobSteps)
-            .where(and(eq(jobSteps.jobId, jobId), eq(jobSteps.stepKey, stepKey)));
+            .update(jobSteps)
+            .set({
+              status: "pending",
+              attempt: retryAttempt,
+              inputHash: plan.inputHash,
+            })
+            .where(
+              and(
+                eq(jobSteps.jobId, jobId),
+                eq(jobSteps.userId, userId),
+                eq(jobSteps.workId, context.workId),
+                eq(jobSteps.branchId, context.branchId),
+                eq(jobSteps.stepKey, stepKey),
+              ),
+            );
+        } else {
+          await transaction.insert(jobSteps).values({
+            id: uuidv7(),
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            stepKey,
+            status: "pending",
+            attempt: 0,
+            inputHash: plan.inputHash,
+            createdAt: now,
+          });
         }
-        const promptVersionId = uuidv7();
-        const agentRunId = uuidv7();
-        const reservationId = uuidv7();
-        const modelCallId = uuidv7();
         const reservedTokens = contextPack.tokenUsed + GOLDEN_THREE_MAX_OUTPUT_TOKENS;
         const reservedCostCny = calculateModelCallCost(reservedTokens, M0_COST_PER_TOKEN_CNY);
-        await transaction.insert(jobSteps).values({
-          id: uuidv7(),
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          stepKey,
-          status: "pending",
-          attempt: 0,
-          inputHash: plan.inputHash,
-          createdAt: now,
-        });
-        await transaction.insert(jobStepAttempts).values({
-          id: uuidv7(),
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          stepKey,
-          attempt: 1,
-          status: "pending",
-          inputHash: plan.inputHash,
-          checkpointRevision: 1,
-          startedAt: now,
-          createdAt: now,
-        });
-        await transaction.insert(promptVersions).values({
-          id: promptVersionId,
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          stepKey,
-          key: "golden-three-opening",
-          version: 1,
-          role: "writer",
-          promptHash: plan.promptHash,
-          systemHash: plan.systemHash,
-          inputHash: plan.inputHash,
-          contextPackId,
-          compilerVersion: contextPack.compilerVersion,
-          createdBy: userId,
-          createdAt: now,
-        });
-        await transaction.insert(agentRuns).values({
-          id: agentRunId,
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          userId,
-          chapterId: chapter.id,
-          promptVersionId,
-          modelConfigId: modelConfig.id,
-          stepKey,
-          role: "writer",
-          status: "running",
-          provider: modelProvider,
-          model: modelConfig.model,
-          inputHash: plan.inputHash,
-          inputSummary: {
-            strategy: plan.strategy,
-            promptKey: "golden-three-opening",
-            promptVersion: 1,
-            contextManifestHash,
-          },
-          startedAt: now,
-        });
-        await transaction.insert(costReservations).values({
-          id: reservationId,
-          userId,
-          workId: context.workId,
-          branchId: context.branchId,
-          jobId,
-          agentRunId,
-          idempotencyKey: stepKey,
-          status: "reserved",
-          reservedTokens,
-          reservedCostCny,
-          createdAt: now,
-        });
-        await transaction.insert(modelCalls).values({
-          id: modelCallId,
-          userId,
-          workId: context.workId,
-          branchId: context.branchId,
-          chapterId: chapter.id,
-          jobId,
-          agentRunId,
-          promptVersionId,
-          costReservationId: reservationId,
-          stepKey,
-          attempt: 1,
-          status: "started",
-          provider: modelProvider,
-          model: modelConfig.model,
-          parameters: {
-            strategy: plan.strategy,
-            maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
-          },
-          configHash,
-          inputHash: plan.inputHash,
-          inputSummary: {
-            promptKey: "golden-three-opening",
-            promptVersion: 1,
-            contextManifestHash,
-          },
-          startedAt: now,
-          createdAt: now,
-        });
+        if (!reusePreparedCall) {
+          await transaction.insert(jobStepAttempts).values({
+            id: uuidv7(),
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            stepKey,
+            attempt: retryAttempt,
+            status: "pending",
+            inputHash: plan.inputHash,
+            checkpointRevision: 1,
+            startedAt: now,
+            createdAt: now,
+          });
+        }
+        if (!existingStep) {
+          await transaction.insert(promptVersions).values({
+            id: promptVersionId,
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            stepKey,
+            key: "golden-three-opening",
+            version: 1,
+            role: "writer",
+            promptHash: plan.promptHash,
+            systemHash: plan.systemHash,
+            inputHash: plan.inputHash,
+            contextPackId,
+            compilerVersion: contextPack.compilerVersion,
+            createdBy: userId,
+            createdAt: now,
+          });
+          await transaction.insert(agentRuns).values({
+            id: agentRunId,
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            chapterId: chapter.id,
+            promptVersionId,
+            modelConfigId: modelConfig.id,
+            stepKey,
+            role: "writer",
+            status: "running",
+            provider: modelProvider,
+            model: modelConfig.model,
+            inputHash: plan.inputHash,
+            inputSummary: {
+              strategy: plan.strategy,
+              promptKey: "golden-three-opening",
+              promptVersion: 1,
+              contextManifestHash,
+            },
+            startedAt: now,
+          });
+        } else if (!reusePreparedCall) {
+          await transaction
+            .update(agentRuns)
+            .set({
+              status: "running",
+              provider: modelProvider,
+              model: modelConfig.model,
+              inputHash: plan.inputHash,
+              inputSummary: {
+                strategy: plan.strategy,
+                promptKey: "golden-three-opening",
+                promptVersion: 1,
+                contextManifestHash,
+              },
+              output: "",
+              outputHash: null,
+              outputSummary: {},
+              usage: {},
+              failureClass: null,
+              finishedAt: null,
+              startedAt: now,
+            })
+            .where(
+              and(
+                eq(agentRuns.id, agentRunId),
+                eq(agentRuns.userId, userId),
+                eq(agentRuns.workId, context.workId),
+                eq(agentRuns.branchId, context.branchId),
+                eq(agentRuns.jobId, jobId),
+              ),
+            );
+        }
+        if (!reusePreparedCall) {
+          await transaction.insert(costReservations).values({
+            id: reservationId,
+            userId,
+            workId: context.workId,
+            branchId: context.branchId,
+            jobId,
+            agentRunId,
+            idempotencyKey: retryAttempt === 1 ? stepKey : `${stepKey}:attempt:${retryAttempt}`,
+            status: "reserved",
+            reservedTokens,
+            reservedCostCny,
+            createdAt: now,
+          });
+          await transaction.insert(modelCalls).values({
+            id: modelCallId,
+            userId,
+            workId: context.workId,
+            branchId: context.branchId,
+            chapterId: chapter.id,
+            jobId,
+            agentRunId,
+            promptVersionId,
+            costReservationId: reservationId,
+            stepKey,
+            attempt: retryAttempt,
+            status: "started",
+            provider: modelProvider,
+            model: modelConfig.model,
+            parameters: {
+              strategy: plan.strategy,
+              maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
+            },
+            configHash,
+            inputHash: plan.inputHash,
+            inputSummary: {
+              promptKey: "golden-three-opening",
+              promptVersion: 1,
+              contextManifestHash,
+            },
+            startedAt: now,
+            createdAt: now,
+          });
+        }
         calls.push({
           workId: context.workId,
           branchId: context.branchId,
@@ -1845,6 +1975,7 @@ export class GoldenThreeRepository {
           reservationId,
           modelCallId,
           stepKey,
+          attempt: retryAttempt,
           modelProvider,
           model: modelConfig.model,
           configHash,
@@ -1881,7 +2012,7 @@ export class GoldenThreeRepository {
             .update(jobSteps)
             .set({
               status: "running",
-              attempt: 1,
+              attempt: call.attempt,
               startedAt: new Date(),
             })
             .where(
@@ -1906,7 +2037,7 @@ export class GoldenThreeRepository {
                 eq(jobStepAttempts.workId, call.workId),
                 eq(jobStepAttempts.branchId, call.branchId),
                 eq(jobStepAttempts.stepKey, call.stepKey),
-                eq(jobStepAttempts.attempt, 1),
+                eq(jobStepAttempts.attempt, call.attempt),
               ),
             );
           return true;
@@ -1977,6 +2108,7 @@ export class GoldenThreeRepository {
           failureClass: "budget",
         };
       }
+      await this.beforeRecordSuccessHook?.(call.stepKey);
       try {
         completed.push(
           await withTenantTransaction(this.db, userId, async (transaction) =>
@@ -2154,7 +2286,7 @@ export class GoldenThreeRepository {
           message: "生成黄金三章候选",
           createdAt: now,
         });
-        await advanceBranchHead(transaction, context, batchNodeId, now);
+        await advanceBranchHead(transaction, userId, context, batchNodeId, now);
         const completedStepKeys = [...new Set(completed.map((entry) => entry.stepKey))];
         const checkpointRevision =
           Math.max(0, ...completed.map((entry) => entry.checkpointRevision)) + 1;
@@ -2342,6 +2474,9 @@ export class GoldenThreeRepository {
           and(
             eq(goldenThreeCandidates.id, candidate.id),
             eq(goldenThreeCandidates.version, candidate.version),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
           ),
         )
         .returning();
@@ -2369,7 +2504,7 @@ export class GoldenThreeRepository {
         message: "提交黄金三章六维评审",
         createdAt: now,
       });
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await writeAudit(transaction, userId, audit, "golden_three.reviews_recorded", candidate.id);
       return { kind: "ok", value: { candidateId: candidate.id } };
     });
@@ -2432,7 +2567,14 @@ export class GoldenThreeRepository {
             status: Number(count?.value ?? 0) >= 6 ? "reviewed" : "draft",
             updatedAt: now,
           })
-          .where(eq(goldenThreeCandidates.id, previous.id));
+          .where(
+            and(
+              eq(goldenThreeCandidates.id, previous.id),
+              eq(goldenThreeCandidates.userId, userId),
+              eq(goldenThreeCandidates.workId, context.workId),
+              eq(goldenThreeCandidates.branchId, context.branchId),
+            ),
+          );
       }
       const [updated] = await transaction
         .update(goldenThreeCandidates)
@@ -2445,6 +2587,9 @@ export class GoldenThreeRepository {
           and(
             eq(goldenThreeCandidates.id, candidate.id),
             eq(goldenThreeCandidates.version, candidate.version),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
           ),
         )
         .returning();
@@ -2468,7 +2613,7 @@ export class GoldenThreeRepository {
         message: "作者选定黄金三章候选",
         createdAt: now,
       });
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await writeAudit(transaction, userId, audit, "golden_three.candidate_selected", candidate.id);
       return { kind: "ok", value: { candidateId: candidate.id } };
     });
@@ -2616,13 +2761,16 @@ export class GoldenThreeRepository {
           and(
             eq(goldenThreeCandidates.id, candidate.id),
             eq(goldenThreeCandidates.version, candidate.version),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
           ),
         )
         .returning();
       if (!updated) {
         return { kind: "version_conflict" };
       }
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await writeAudit(
         transaction,
         userId,
@@ -2826,8 +2974,15 @@ export class GoldenThreeRepository {
       await transaction
         .update(goldenThreeCandidates)
         .set({ status: "locked", version: candidate.version + 1, updatedAt: now })
-        .where(eq(goldenThreeCandidates.id, candidate.id));
-      await advanceBranchHead(transaction, context, versionNodeId, now);
+        .where(
+          and(
+            eq(goldenThreeCandidates.id, candidate.id),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
+          ),
+        );
+      await advanceBranchHead(transaction, userId, context, versionNodeId, now);
       await writeAudit(transaction, userId, audit, "golden_three.locked", lockId);
       return { kind: "ok", value: { candidateId: candidate.id, alreadyLocked: false } };
     });
@@ -3152,7 +3307,7 @@ async function recordGoldenThreeCallSuccess(
     .update(jobSteps)
     .set({
       status: "succeeded",
-      attempt: 1,
+      attempt: call.attempt,
       output: { modelCallId: call.modelCallId, contentHash, wordCount },
       outputRefs: [{ type: "model_call", id: call.modelCallId }],
       cost: { inputTokens, outputTokens, costCny },
@@ -3182,7 +3337,7 @@ async function recordGoldenThreeCallSuccess(
         eq(jobStepAttempts.workId, call.workId),
         eq(jobStepAttempts.branchId, call.branchId),
         eq(jobStepAttempts.stepKey, call.stepKey),
-        eq(jobStepAttempts.attempt, 1),
+        eq(jobStepAttempts.attempt, call.attempt),
       ),
     );
   await transaction.insert(jobCheckpoints).values({
@@ -3194,7 +3349,7 @@ async function recordGoldenThreeCallSuccess(
     stepKey: call.stepKey,
     schemaVersion: 1,
     revision: call.checkpointRevision,
-    attempt: 1,
+    attempt: call.attempt,
     inputHash: call.promptHash,
     outputRefs: [{ type: "model_call", id: call.modelCallId }],
     payload: {
@@ -3437,7 +3592,7 @@ async function recordGoldenThreeCallFailure(
         eq(jobStepAttempts.workId, call.workId),
         eq(jobStepAttempts.branchId, call.branchId),
         eq(jobStepAttempts.stepKey, call.stepKey),
-        eq(jobStepAttempts.attempt, 1),
+        eq(jobStepAttempts.attempt, call.attempt),
       ),
     );
   await transaction
@@ -3505,7 +3660,7 @@ async function recordGoldenThreeCallFailure(
     stepKey: call.stepKey,
     schemaVersion: 1,
     revision: call.checkpointRevision,
-    attempt: 1,
+    attempt: call.attempt,
     inputHash: call.promptHash,
     outputRefs: result ? [{ type: "model_call", id: call.modelCallId }] : [],
     payload: {
@@ -3598,6 +3753,8 @@ async function recordGoldenThreeLeaseLostUsage(
       and(
         eq(costReservations.id, call.reservationId),
         eq(costReservations.userId, userId),
+        eq(costReservations.workId, call.workId),
+        eq(costReservations.branchId, call.branchId),
         eq(costReservations.jobId, call.jobId),
       ),
     );
@@ -3614,6 +3771,8 @@ async function recordGoldenThreeLeaseLostUsage(
       and(
         eq(costReservations.jobId, call.jobId),
         eq(costReservations.userId, userId),
+        eq(costReservations.workId, call.workId),
+        eq(costReservations.branchId, call.branchId),
         eq(costReservations.status, "reserved"),
         sql`${costReservations.id} <> ${call.reservationId}`,
       ),
@@ -3737,7 +3896,7 @@ async function recordGoldenThreePostCallFailure(
     stepKey: "failed",
     schemaVersion: 1,
     revision,
-    attempt: 1,
+    attempt: call.attempt,
     inputHash: call.promptHash,
     outputRefs: completed.map((entry) => ({
       type: "model_call",
@@ -4147,6 +4306,7 @@ async function requireBranchHead(
 
 async function advanceBranchHead(
   transaction: DatabaseTransaction,
+  userId: string,
   context: GoldenThreeContext,
   versionNodeId: string,
   now: Date,
@@ -4154,7 +4314,13 @@ async function advanceBranchHead(
   await transaction
     .update(workBranches)
     .set({ headNodeId: versionNodeId, updatedAt: now })
-    .where(eq(workBranches.id, context.branchId));
+    .where(
+      and(
+        eq(workBranches.id, context.branchId),
+        eq(workBranches.workId, context.workId),
+        eq(workBranches.userId, userId),
+      ),
+    );
 }
 
 async function writeAudit(
