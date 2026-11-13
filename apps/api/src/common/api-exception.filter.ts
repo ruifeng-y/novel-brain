@@ -5,6 +5,7 @@ import {
   createRequestId,
   isSafeDiagnosticValue,
   parseLogCanaryValues,
+  sanitizeDiagnosticText,
   sanitizeStructuredPayload,
 } from "@novel-brain/core";
 import type { Response } from "express";
@@ -31,7 +32,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         apiErrorSchema.parse({
           error: {
             code: exception.code,
-            message: publicErrorMessage(exception.status),
+            message: safePublicMessage(exception.message, exception.status, this.canaryValues),
             details: safeDetails(exception.details, this.canaryValues),
             requestId,
           },
@@ -49,7 +50,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
             details: {
               issues: exception.issues.map(({ path, message }) => ({
                 path: safeValidationPath(path, this.canaryValues),
-                message: safeValidationMessage(message, this.canaryValues),
+                message: safePublicMessage(message, 400, this.canaryValues),
               })),
             },
             requestId,
@@ -65,7 +66,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         apiErrorSchema.parse({
           error: {
             code: status === 401 ? "AUTH_SESSION_INVALID" : "INTERNAL_ERROR",
-            message: publicErrorMessage(status),
+            message: safePublicMessage(exception.message, status, this.canaryValues),
             details: {},
             requestId,
           },
@@ -143,15 +144,18 @@ function safeValidationPath(
   return safePath;
 }
 
-function safeValidationMessage(message: string, canaryValues: readonly string[]): string {
+function safePublicMessage(
+  message: string,
+  status: number,
+  canaryValues: readonly string[],
+): string {
   try {
-    sanitizeStructuredPayload(message, { canaryValues });
-    return "字段格式不正确";
-  } catch (error) {
-    if (error instanceof LogRedactionError) {
-      return "字段包含无法安全展示的内容";
-    }
-    return "字段格式不正确";
+    const sanitized = sanitizeDiagnosticText(message, { canaryValues });
+    return typeof sanitized === "string" && sanitized.trim().length > 0
+      ? sanitized
+      : publicErrorMessage(status);
+  } catch {
+    return publicErrorMessage(status);
   }
 }
 

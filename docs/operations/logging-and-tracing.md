@@ -11,7 +11,7 @@
 
 普通日志不得记录 API Key、authorization header、正文、完整 prompt、ContextPack 快照、导入原文或其他用户私有内容。自由文本消息和无法归类为机器诊断值的字符串会替换为 `[REDACTED]`。
 
-API 错误顶层文案按 HTTP 状态返回固定安全文案；`details` 只保留状态机、标识符、计数、哈希、规则码和路径等机器诊断字段。`key` 只接受登记就绪项或登记前缀，provider、status 等字段只接受对应枚举。自由文本详情不会被复制到响应。
+API 错误顶层文案必须由服务端静态编写，不得插值正文、Prompt 或 ContextPack；脱敏后出现凭据或 canary 时替换为按状态划分的安全文案。`details` 只保留状态机、标识符、计数、哈希、规则码和路径等机器诊断字段。`key` 只接受登记就绪项或登记前缀，provider、status 等字段只接受对应枚举。自由文本详情不会被复制到响应。
 
 ## 追踪
 

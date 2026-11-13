@@ -21,7 +21,7 @@ describe("API exception filter sensitive payload boundary", () => {
     const filter = new ApiExceptionFilter({ error: vi.fn() } as never, []);
 
     filter.catch(
-      new ApiError(409, "QUALITY_GATE_BLOCKED", "沈砚把断臂藏进衣袍。", {
+      new ApiError(409, "QUALITY_GATE_BLOCKED", "当前状态不允许提交", {
         code: "QUALITY_GATE_BLOCKED",
         status: "blocked",
         apiKey: "sk-api-independent-133",
@@ -47,7 +47,7 @@ describe("API exception filter sensitive payload boundary", () => {
     expect(body.error.details).not.toHaveProperty("unknownNumber");
     expect(body.error.details).not.toHaveProperty("unknownBoolean");
     expect(body.error.details).not.toHaveProperty("unknownNull");
-    expect(body.error.message).not.toContain("沈砚");
+    expect(body.error.message).toBe("当前状态不允许提交");
   });
 
   it("redacts secrets, prompts and manuscript text from API error details", () => {

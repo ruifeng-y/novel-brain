@@ -11,7 +11,7 @@
 - API 和 Worker 都通过安全 logger 写普通日志；canary 在脱敏后仍存在时丢弃原 payload，仅输出 `logging.redaction_failed`。
 - API 异常响应和 SSE job event 在返回前经过同一敏感载荷过滤。
 - API 异常的 Zod `path` 只保留字段标识符，自由文本、未知字段和不可识别路径段被移除。
-- API 错误顶层文案按状态固定输出，详情只保留机器诊断值；Worker readiness CLI 的失败日志也经过统一安全 logger。
+- API 错误顶层文案保持服务端编写的作者提示，凭据或 canary 命中时按状态降级；详情只保留机器诊断值。Worker readiness CLI 的失败日志也经过统一安全 logger。
 - 新增 trace policy 与启动 trace sink：默认关闭；`self_hosted` 必须显式配置保留期与自托管 HTTP(S) endpoint，启动时导出只含安全属性的 `service.started` envelope，失败则启动失败。
 - trace 名称、时间和属性执行格式与 canary 校验；endpoint 拒绝公开 IPv6，导出请求禁止跟随重定向。
 - 新增低基数 metrics label 白名单过滤；Worker 作业启动使用真实 `worker.job.started` 指标日志路径。
