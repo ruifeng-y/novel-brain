@@ -3,6 +3,7 @@ import { apiErrorSchema } from "@novel-brain/contracts";
 import {
   LogRedactionError,
   createRequestId,
+  isSafeDiagnosticValue,
   parseLogCanaryValues,
   sanitizeStructuredPayload,
 } from "@novel-brain/core";
@@ -132,6 +133,7 @@ function safeValidationPath(
     if (
       typeof segment !== "string" ||
       !/^[A-Za-z_$][A-Za-z0-9_$.-]{0,63}$/u.test(segment) ||
+      !isSafeDiagnosticValue(segment) ||
       canaryValues.some((canary) => canary.length > 0 && segment.includes(canary))
     ) {
       continue;

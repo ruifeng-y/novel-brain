@@ -82,7 +82,7 @@ describe("API exception filter sensitive payload boundary", () => {
     const error = new z.ZodError([
       {
         code: "custom",
-        path: [canary],
+        path: [canary, "sk-live-secret-path-133"],
         message: "Invalid field",
       },
     ]);

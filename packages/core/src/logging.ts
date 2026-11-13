@@ -181,6 +181,8 @@ const ARRAY_ONLY_KEYS = new Set([
   "unresolvedHighRiskFactIds",
 ]);
 const SAFE_LOG_MACHINE_TEXT = /^[A-Za-z0-9_./:#@?=&%+,-]{1,256}$/u;
+const SAFE_STRUCTURED_KEY = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
+const SUSPICIOUS_CREDENTIAL_TEXT = /(?:api[-_]?key|bearer|credential|password|secret|token)/iu;
 const SAFE_TELEMETRY_LABEL_KEYS = new Set([
   "errorcode",
   "jobtype",
@@ -196,6 +198,26 @@ const SAFE_TELEMETRY_LABEL_KEYS = new Set([
 const SAFE_TELEMETRY_LABEL_VALUE = /^[A-Za-z0-9_./:-]{1,128}$/u;
 const UUID_VALUE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu;
 const SAFE_TELEMETRY_ROUTES = new Set(["/api/v1/health", "/api/v1/health/ready", "/api/v1/works"]);
+const SAFE_TELEMETRY_JOB_TYPES = new Set([
+  "agent_workflow",
+  "batch_plan",
+  "batch_tick",
+  "generate_chapter",
+  "generate_golden_three",
+  "rebuild_summaries",
+  "write_action",
+]);
+const SAFE_TELEMETRY_METHODS = new Set([
+  "DELETE",
+  "GET",
+  "HEAD",
+  "OPTIONS",
+  "PATCH",
+  "POST",
+  "PUT",
+]);
+const SAFE_TELEMETRY_PROVIDERS = new Set(["deepseek", "fake", "openai-compatible"]);
+const SAFE_TELEMETRY_SERVICES = new Set(["api", "web", "worker"]);
 
 export class LogRedactionError extends Error {
   constructor(readonly findings: string[]) {
@@ -345,7 +367,11 @@ export function sanitizeTelemetryLabels(labels: Record<string, unknown>): Record
     if (!SAFE_TELEMETRY_LABEL_KEYS.has(normalizedKey)) {
       continue;
     }
-    if (typeof value !== "string" || !SAFE_TELEMETRY_LABEL_VALUE.test(value)) {
+    if (
+      typeof value !== "string" ||
+      !SAFE_TELEMETRY_LABEL_VALUE.test(value) ||
+      !isSafeTelemetryLabelValue(normalizedKey, value)
+    ) {
       continue;
     }
     if (
@@ -363,8 +389,42 @@ export function sanitizeTelemetryLabels(labels: Record<string, unknown>): Record
   return safe;
 }
 
+function isSafeTelemetryLabelValue(key: string, value: string): boolean {
+  switch (key) {
+    case "errorcode":
+      return /^[A-Z][A-Z0-9_]{2,63}$/u.test(value);
+    case "jobtype":
+      return SAFE_TELEMETRY_JOB_TYPES.has(value);
+    case "method":
+      return SAFE_TELEMETRY_METHODS.has(value);
+    case "operation":
+    case "outcome":
+      return /^[a-z][a-z0-9_]{0,63}$/u.test(value);
+    case "provider":
+      return SAFE_TELEMETRY_PROVIDERS.has(value);
+    case "queue":
+      return value === "novelbrain";
+    case "service":
+      return SAFE_TELEMETRY_SERVICES.has(value);
+    case "status":
+      return /^(?:[1-5]\d{2}|[a-z][a-z0-9_]{0,63})$/u.test(value);
+    case "route":
+      return SAFE_TELEMETRY_ROUTES.has(value);
+    default:
+      return false;
+  }
+}
+
 export function isSafeTelemetryMetricName(name: string): boolean {
   return /^[a-z][a-z0-9_.-]{0,99}$/u.test(name) && !containsCredential(name);
+}
+
+export function isSafeDiagnosticValue(value: string): boolean {
+  return (
+    SAFE_LOG_MACHINE_TEXT.test(value) &&
+    !containsCredential(value) &&
+    !SUSPICIOUS_CREDENTIAL_TEXT.test(value)
+  );
 }
 
 export function parseLogCanaryValues(value: string | undefined): string[] {
@@ -397,7 +457,7 @@ function sanitizeValue(
     return "[TRUNCATED]";
   }
   if (typeof value === "string") {
-    if (mode !== "text" && !SAFE_LOG_MACHINE_TEXT.test(value)) {
+    if (mode !== "text" && !isSafeDiagnosticValue(value)) {
       return REDACTED;
     }
     return sanitizeText(value);
@@ -453,6 +513,9 @@ function isSensitiveKey(key: string): boolean {
 }
 
 function isCompatibleEntry(key: string, value: unknown): boolean {
+  if (key === "key" && (typeof value !== "string" || !SAFE_STRUCTURED_KEY.test(value))) {
+    return false;
+  }
   if (OBJECT_ONLY_KEYS.has(key)) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
   }

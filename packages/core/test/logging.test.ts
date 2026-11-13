@@ -104,6 +104,15 @@ describe("sensitive log sanitization", () => {
     expect(sanitizeLogPayload("沈砚把断臂藏进衣袍。")).toBe("[REDACTED]");
     expect(sanitizeLogPayload("free form english manuscript")).toBe("[REDACTED]");
     expect(sanitizeLogPayload({ key: "custom-provider-credential" })).toEqual({});
+    expect(sanitizeStructuredPayload({ key: "custom-provider-credential" })).toEqual({});
+    expect(
+      JSON.stringify(
+        sanitizeLogPayload({
+          provider: "AIzaSyCustomProviderSecret133",
+          status: "custom-provider-secret-ABCDEFGH",
+        }),
+      ),
+    ).not.toContain("custom-provider");
     expect(sanitized).toEqual({ event: "provider.request.failed" });
   });
 
@@ -312,6 +321,12 @@ describe("sensitive log sanitization", () => {
     expect(
       sanitizeTelemetryLabels({
         route: "/api/v1/works/private-slug",
+      }),
+    ).toEqual({});
+    expect(
+      sanitizeTelemetryLabels({
+        outcome: "private-model-name-133",
+        provider: "AIzaSyCustomProviderSecret133",
       }),
     ).toEqual({});
     expect(isSafeTelemetryMetricName("worker.job.started")).toBe(true);

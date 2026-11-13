@@ -71,4 +71,4 @@ docker compose -f infra/docker/compose.yml up -d --build
 
 ## 指标标签
 
-指标标签通过 `sanitizeTelemetryLabels` 限制为低基数白名单字段，例如 route、method、status、operation、provider、outcome 和 error code。route 只接受已登记的生产静态路由。Worker 作业启动通过 `worker.job.started` 指标路径输出。request ID、用户内容、Prompt、正文、模型自定义名和任意动态字段不得作为指标标签。
+指标标签通过 `sanitizeTelemetryLabels` 限制为低基数白名单字段，例如 route、method、status、operation、provider、outcome 和 error code。route、job type、provider、method、service 和 queue 只接受已登记值；operation、outcome 和状态只接受低基数机器标识。Worker 作业启动通过 `worker.job.started` 指标路径输出。request ID、用户内容、Prompt、正文、模型自定义名和任意动态字段不得作为指标标签。
