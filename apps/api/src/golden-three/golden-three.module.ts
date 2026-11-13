@@ -9,6 +9,7 @@ import { AuthModule } from "../auth/auth.module";
 import { GenerationModule } from "../generation/generation.module";
 import { ApiGoldenThreeContextCompiler } from "./golden-three-context.compiler";
 import { GoldenThreeController } from "./golden-three.controller";
+import { GoldenThreeQueue } from "./golden-three.queue";
 import { GoldenThreeService } from "./golden-three.service";
 
 @Module({
@@ -26,6 +27,7 @@ import { GoldenThreeService } from "./golden-three.service";
       inject: [GOLDEN_THREE_CONTEXT_COMPILER],
       useFactory: (compiler: GoldenThreeContextCompiler) => new GoldenThreeRepository(compiler),
     },
+    GoldenThreeQueue,
     GoldenThreeService,
   ],
   exports: [GoldenThreeService],

@@ -6,6 +6,7 @@ import {
 import {
   BATCH_TICK_JOB,
   GENERATE_CHAPTER_JOB,
+  GENERATE_GOLDEN_THREE_JOB,
   SUMMARY_REBUILD_JOB,
   WORKER_QUEUE_NAME,
   WRITE_ACTION_JOB,
@@ -19,6 +20,9 @@ import pino, { type Logger } from "pino";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GenerationJobProcessor } from "./generation/generation.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { GoldenThreeJobProcessor } from "./golden-three/golden-three.processor";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { BatchPlanTickProcessor } from "./batch-plan/batch-plan.processor";
@@ -38,6 +42,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
 
   constructor(
     private readonly processor: GenerationJobProcessor,
+    private readonly goldenThreeProcessor: GoldenThreeJobProcessor,
     private readonly batchPlanProcessor: BatchPlanTickProcessor,
     private readonly summaryProcessor: SummaryRebuildProcessor,
     private readonly writingActionProcessor: WritingActionProcessor,
@@ -79,7 +84,13 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       {
         event: "worker.ready",
         queue: WORKER_QUEUE_NAME,
-        jobTypes: [GENERATE_CHAPTER_JOB, WRITE_ACTION_JOB, SUMMARY_REBUILD_JOB, BATCH_TICK_JOB],
+        jobTypes: [
+          GENERATE_CHAPTER_JOB,
+          GENERATE_GOLDEN_THREE_JOB,
+          WRITE_ACTION_JOB,
+          SUMMARY_REBUILD_JOB,
+          BATCH_TICK_JOB,
+        ],
       },
       "Worker is consuming its queue",
     );
@@ -105,7 +116,12 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
           ? { runId: payload.runId }
           : payload.jobType === BATCH_TICK_JOB
             ? { planId: payload.planId }
-            : { jobId: payload.jobId, checkpointStep: payload.checkpoint.step }),
+            : payload.jobType === GENERATE_GOLDEN_THREE_JOB
+              ? {
+                  jobId: payload.jobId,
+                  checkpointStep: payload.checkpoint.stepKey ?? payload.checkpoint.stage,
+                }
+              : { jobId: payload.jobId, checkpointStep: payload.checkpoint.step }),
       },
       "Processing typed worker job",
     );
@@ -119,6 +135,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     }
     if (payload.jobType === WRITE_ACTION_JOB) {
       await this.writingActionProcessor.process(payload);
+      return;
+    }
+    if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
+      await this.goldenThreeProcessor.process(payload);
       return;
     }
     await this.processor.process(payload);

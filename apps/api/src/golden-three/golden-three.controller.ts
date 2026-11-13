@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import {
   ApiBody,
+  ApiAcceptedResponse,
   ApiCreatedResponse,
   ApiHeader,
   ApiOkResponse,
@@ -22,6 +23,7 @@ import {
   goldenThreeCandidateBatchRequestSchema,
   goldenThreeContinuationRequestSchema,
   goldenThreeGenerateRequestSchema,
+  goldenThreeGenerationJobResponseSchema,
   goldenThreeLockRequestSchema,
   goldenThreeReviewBatchRequestSchema,
   goldenThreeSelectionRequestSchema,
@@ -46,6 +48,7 @@ function schemaOf(schema: z.ZodType, io: "input" | "output" = "output"): SchemaO
 const workspaceJsonSchema = schemaOf(goldenThreeWorkspaceResponseSchema);
 const candidateBatchBodyJsonSchema = schemaOf(goldenThreeCandidateBatchRequestSchema, "input");
 const generateBodyJsonSchema = schemaOf(goldenThreeGenerateRequestSchema, "input");
+const generationJobJsonSchema = schemaOf(goldenThreeGenerationJobResponseSchema);
 const reviewBatchBodyJsonSchema = schemaOf(goldenThreeReviewBatchRequestSchema, "input");
 const selectionBodyJsonSchema = schemaOf(goldenThreeSelectionRequestSchema, "input");
 const continuationBodyJsonSchema = schemaOf(goldenThreeContinuationRequestSchema, "input");
@@ -109,12 +112,12 @@ export class GoldenThreeController {
   }
 
   @Post("candidates/generate")
-  @HttpCode(201)
+  @HttpCode(202)
   @ApiHeader({ name: "Idempotency-Key", required: true })
   @ApiBody({ schema: generateBodyJsonSchema })
-  @ApiCreatedResponse({
-    description: "Generated golden three candidates with reviews",
-    schema: workspaceJsonSchema,
+  @ApiAcceptedResponse({
+    description: "Queued golden three generation job",
+    schema: generationJobJsonSchema,
   })
   async generateCandidates(
     @Req() request: AuthenticatedRequest,
@@ -124,7 +127,7 @@ export class GoldenThreeController {
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
-    return goldenThreeWorkspaceResponseSchema.parse({
+    return goldenThreeGenerationJobResponseSchema.parse({
       data: await this.service.generateCandidates(
         this.userId(request),
         uuidV7Schema.parse(workId),
@@ -132,6 +135,30 @@ export class GoldenThreeController {
         idempotencyKey,
         goldenThreeGenerateRequestSchema.parse(body ?? {}),
         this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Get("generation/:jobId")
+  @ApiOkResponse({
+    description: "Golden three generation job status",
+    schema: generationJobJsonSchema,
+  })
+  async generationJob(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("jobId") jobId: string,
+  ) {
+    const requestId = createRequestId();
+    return goldenThreeGenerationJobResponseSchema.parse({
+      data: await this.service.generationJob(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(jobId),
       ),
       requestId,
       meta: {},

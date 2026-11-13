@@ -29413,8 +29413,8 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Generated golden three candidates with reviews",
+          "202": {
+            "description": "Queued golden three generation job",
             "content": {
               "application/json": {
                 "schema": {
@@ -29423,823 +29423,514 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "workId": {
+                        "id": {
                           "type": "string",
                           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
                         },
-                        "branchId": {
+                        "status": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          "enum": [
+                            "queued",
+                            "preparing",
+                            "running",
+                            "paused",
+                            "waiting_review",
+                            "completed",
+                            "failed",
+                            "cancelled"
+                          ]
                         },
-                        "candidates": {
-                          "maxItems": 3,
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "batchId": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "workId": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "branchId": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "label": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 100
-                              },
-                              "strategy": {
-                                "type": "string",
-                                "enum": ["hook_focus", "character_focus", "world_focus"]
-                              },
-                              "status": {
-                                "type": "string",
-                                "enum": ["draft", "reviewed", "selected", "locked"]
-                              },
-                              "version": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "exclusiveMinimum": true,
-                                "maximum": 9007199254740991
-                              },
-                              "prompt": {
-                                "type": "object",
-                                "properties": {
-                                  "key": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 200
-                                  },
-                                  "version": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "exclusiveMinimum": true,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "hash": {
-                                    "type": "string",
-                                    "pattern": "^[a-f0-9]{64}$"
-                                  }
-                                },
-                                "required": ["key", "version", "hash"],
-                                "additionalProperties": false
-                              },
-                              "model": {
-                                "type": "object",
-                                "properties": {
-                                  "provider": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 100
-                                  },
-                                  "model": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 200
-                                  },
-                                  "parameters": {
-                                    "type": "object",
-                                    "additionalProperties": {}
-                                  }
-                                },
-                                "required": ["provider", "model", "parameters"],
-                                "additionalProperties": false
-                              },
-                              "context": {
-                                "type": "object",
-                                "properties": {
-                                  "packVersionId": {
-                                    "nullable": true,
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                  },
-                                  "manifestHash": {
-                                    "type": "string",
-                                    "pattern": "^[a-f0-9]{64}$"
-                                  }
-                                },
-                                "required": ["packVersionId", "manifestHash"],
-                                "additionalProperties": false
-                              },
-                              "pins": {
-                                "minItems": 1,
-                                "maxItems": 1,
-                                "type": "array",
-                                "items": {
-                                  "type": "object",
-                                  "properties": {
-                                    "chapterId": {
-                                      "type": "string",
-                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                    },
-                                    "chapterNumber": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "exclusiveMinimum": true,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "chapterTitle": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "maxLength": 200
-                                    },
-                                    "chapterVersionId": {
-                                      "type": "string",
-                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                    },
-                                    "chapterVersion": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "exclusiveMinimum": true,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "versionNodeId": {
-                                      "type": "string",
-                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                    },
-                                    "contentHash": {
-                                      "type": "string",
-                                      "pattern": "^[a-f0-9]{64}$"
-                                    },
-                                    "wordCount": {
-                                      "type": "integer",
-                                      "minimum": 0,
-                                      "maximum": 9007199254740991
-                                    },
-                                    "content": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "chapterId",
-                                    "chapterNumber",
-                                    "chapterTitle",
-                                    "chapterVersionId",
-                                    "chapterVersion",
-                                    "versionNodeId",
-                                    "contentHash",
-                                    "wordCount",
-                                    "content"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              },
-                              "continuation": {
-                                "nullable": true,
-                                "type": "object",
-                                "properties": {
-                                  "versionNodeId": {
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                  },
-                                  "pins": {
-                                    "minItems": 2,
-                                    "maxItems": 2,
-                                    "type": "array",
-                                    "items": {
-                                      "type": "object",
-                                      "properties": {
-                                        "chapterId": {
-                                          "type": "string",
-                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                        },
-                                        "chapterNumber": {
-                                          "type": "integer",
-                                          "minimum": 0,
-                                          "exclusiveMinimum": true,
-                                          "maximum": 9007199254740991
-                                        },
-                                        "chapterTitle": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 200
-                                        },
-                                        "chapterVersionId": {
-                                          "type": "string",
-                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                        },
-                                        "chapterVersion": {
-                                          "type": "integer",
-                                          "minimum": 0,
-                                          "exclusiveMinimum": true,
-                                          "maximum": 9007199254740991
-                                        },
-                                        "versionNodeId": {
-                                          "type": "string",
-                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                        },
-                                        "contentHash": {
-                                          "type": "string",
-                                          "pattern": "^[a-f0-9]{64}$"
-                                        },
-                                        "wordCount": {
-                                          "type": "integer",
-                                          "minimum": 0,
-                                          "maximum": 9007199254740991
-                                        },
-                                        "content": {
-                                          "type": "string"
-                                        }
-                                      },
-                                      "required": [
-                                        "chapterId",
-                                        "chapterNumber",
-                                        "chapterTitle",
-                                        "chapterVersionId",
-                                        "chapterVersion",
-                                        "versionNodeId",
-                                        "contentHash",
-                                        "wordCount",
-                                        "content"
-                                      ],
-                                      "additionalProperties": false
-                                    }
-                                  },
-                                  "styleSource": {
-                                    "type": "object",
-                                    "properties": {
-                                      "candidateId": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                      },
-                                      "selectionVersionNodeId": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                      },
-                                      "strategy": {
-                                        "type": "string",
-                                        "enum": ["hook_focus", "character_focus", "world_focus"]
-                                      },
-                                      "candidateLabel": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                        "maxLength": 100
-                                      },
-                                      "chapterId": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                      },
-                                      "chapterNumber": {
-                                        "type": "integer",
-                                        "minimum": 0,
-                                        "exclusiveMinimum": true,
-                                        "maximum": 9007199254740991
-                                      },
-                                      "chapterVersionId": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                      },
-                                      "chapterVersionNodeId": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                      },
-                                      "chapterTitle": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                        "maxLength": 200
-                                      },
-                                      "contentHash": {
-                                        "type": "string",
-                                        "pattern": "^[a-f0-9]{64}$"
-                                      },
-                                      "excerpt": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                        "maxLength": 600
-                                      }
-                                    },
-                                    "required": [
-                                      "candidateId",
-                                      "selectionVersionNodeId",
-                                      "strategy",
-                                      "candidateLabel",
-                                      "chapterId",
-                                      "chapterNumber",
-                                      "chapterVersionId",
-                                      "chapterVersionNodeId",
-                                      "chapterTitle",
-                                      "contentHash",
-                                      "excerpt"
-                                    ],
-                                    "additionalProperties": false
-                                  },
-                                  "createdAt": {
-                                    "type": "string",
-                                    "format": "date-time",
-                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                  }
-                                },
-                                "required": ["versionNodeId", "pins", "styleSource", "createdAt"],
-                                "additionalProperties": false
-                              },
-                              "trace": {
-                                "nullable": true,
-                                "type": "object",
-                                "properties": {
-                                  "jobId": {
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                  },
-                                  "agentRunId": {
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                  },
-                                  "modelCallId": {
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                  }
-                                },
-                                "required": ["jobId", "agentRunId", "modelCallId"],
-                                "additionalProperties": false
-                              },
-                              "reviews": {
-                                "maxItems": 6,
-                                "type": "array",
-                                "items": {
-                                  "type": "object",
-                                  "properties": {
-                                    "dimension": {
-                                      "type": "string",
-                                      "enum": [
-                                        "opening_hook",
-                                        "protagonist_appeal",
-                                        "world_rules",
-                                        "core_conflict",
-                                        "reader_promise",
-                                        "chapter_end_hook"
-                                      ]
-                                    },
-                                    "score": {
-                                      "type": "integer",
-                                      "minimum": 1,
-                                      "maximum": 5
-                                    },
-                                    "evidence": {
-                                      "type": "object",
-                                      "properties": {
-                                        "chapterId": {
-                                          "type": "string",
-                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                        },
-                                        "chapterVersionId": {
-                                          "type": "string",
-                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                        },
-                                        "passage": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 2000
-                                        },
-                                        "locator": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 200
-                                        }
-                                      },
-                                      "required": [
-                                        "chapterId",
-                                        "chapterVersionId",
-                                        "passage",
-                                        "locator"
-                                      ],
-                                      "additionalProperties": false
-                                    },
-                                    "reviewerOrigin": {
-                                      "type": "string",
-                                      "enum": ["model", "author", "critic"]
-                                    },
-                                    "id": {
-                                      "type": "string",
-                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                    },
-                                    "candidateId": {
-                                      "type": "string",
-                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                    },
-                                    "required": {
-                                      "type": "boolean"
-                                    },
-                                    "passed": {
-                                      "type": "boolean"
-                                    },
-                                    "createdAt": {
-                                      "type": "string",
-                                      "format": "date-time",
-                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                    },
-                                    "updatedAt": {
-                                      "type": "string",
-                                      "format": "date-time",
-                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                                    }
-                                  },
-                                  "required": [
-                                    "dimension",
-                                    "score",
-                                    "evidence",
-                                    "reviewerOrigin",
-                                    "id",
-                                    "candidateId",
-                                    "required",
-                                    "passed",
-                                    "createdAt",
-                                    "updatedAt"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              },
-                              "reviewSummary": {
-                                "type": "object",
-                                "properties": {
-                                  "completed": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 6
-                                  },
-                                  "total": {
-                                    "type": "number",
-                                    "enum": [6]
-                                  },
-                                  "requiredFailed": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 6
-                                  },
-                                  "failedDimensions": {
-                                    "maxItems": 6,
-                                    "type": "array",
-                                    "items": {
-                                      "type": "string",
-                                      "enum": [
-                                        "opening_hook",
-                                        "protagonist_appeal",
-                                        "world_rules",
-                                        "core_conflict",
-                                        "reader_promise",
-                                        "chapter_end_hook"
-                                      ]
-                                    }
-                                  }
-                                },
-                                "required": [
-                                  "completed",
-                                  "total",
-                                  "requiredFailed",
-                                  "failedDimensions"
-                                ],
-                                "additionalProperties": false
-                              },
-                              "createdAt": {
-                                "type": "string",
-                                "format": "date-time",
-                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                              },
-                              "updatedAt": {
-                                "type": "string",
-                                "format": "date-time",
-                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                              }
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "currentStep": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "candidateCount": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [2]
                             },
-                            "required": [
-                              "id",
-                              "batchId",
-                              "workId",
-                              "branchId",
-                              "label",
-                              "strategy",
-                              "status",
-                              "version",
-                              "prompt",
-                              "model",
-                              "context",
-                              "pins",
-                              "continuation",
-                              "trace",
-                              "reviews",
-                              "reviewSummary",
-                              "createdAt",
-                              "updatedAt"
-                            ],
-                            "additionalProperties": false
-                          }
+                            {
+                              "type": "number",
+                              "enum": [3]
+                            }
+                          ]
                         },
-                        "selectedCandidateId": {
+                        "error": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "VALIDATION_INVALID",
+                                "AUTH_CODE_INVALID",
+                                "AUTH_RATE_LIMITED",
+                                "AUTH_EMAIL_TAKEN",
+                                "AUTH_PASSWORD_WEAK",
+                                "AUTH_LOGIN_FAILED",
+                                "AUTH_SESSION_INVALID",
+                                "AUTH_CSRF_INVALID",
+                                "AUTH_ORIGIN_INVALID",
+                                "MODEL_KEY_INVALID",
+                                "MODEL_CONNECTION_FAILED",
+                                "MODEL_RATE_LIMITED",
+                                "MODEL_TIMEOUT",
+                                "MODEL_POLICY_BLOCKED",
+                                "MODEL_RESPONSE_INVALID",
+                                "MODEL_PROVIDER_ERROR",
+                                "GEN_READINESS_BLOCKED",
+                                "BIBLE_NOT_READY",
+                                "BIBLE_LOCKED",
+                                "BIBLE_NOT_LOCKED",
+                                "SETTING_LOCKED",
+                                "SETTING_NAME_CONFLICT",
+                                "SETTING_ALIAS_CONFLICT",
+                                "SETTING_CONFLICT_UNRESOLVED",
+                                "SETTING_PROPOSAL_STATE",
+                                "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
+                                "CUSTOM_FIELD_REQUIRED",
+                                "CUSTOM_FIELD_INVALID",
+                                "CUSTOM_FIELD_IMMUTABLE",
+                                "CUSTOM_FIELD_DUPLICATE",
+                                "CHARACTER_STATE_OVERLAP",
+                                "MAP_NODE_PARENT_MISMATCH",
+                                "MAP_LAYER_MISMATCH",
+                                "MAP_ROUTE_ENDPOINT_MISMATCH",
+                                "MAP_ROUTE_DISCONNECTED",
+                                "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+                                "CONTROL_AREA_OVERLAP",
+                                "TIMELINE_EVENT_OVERLAP",
+                                "TIMELINE_ERA_NOT_FOUND",
+                                "ITINERARY_TIME_ORDER",
+                                "ITINERARY_OVERLAP",
+                                "POWER_PATH_MISMATCH",
+                                "POWER_REALM_LADDER_INVALID",
+                                "POWER_LIFESPAN_POLICY_INVALID",
+                                "ITEM_RIGHT_CONFLICT",
+                                "ITEM_NOT_CONSUMABLE",
+                                "ITEM_QUANTITY_INSUFFICIENT",
+                                "EQUIPMENT_SLOT_CONFLICT",
+                                "ITEM_NOT_EQUIPMENT",
+                                "JOB_BUDGET_EXCEEDED",
+                                "JOB_CONTEXT_BRANCH_STALE",
+                                "JOB_CONTEXT_WINDOW_TOO_SMALL",
+                                "JOB_CANCELLED",
+                                "JOB_NOT_RECOVERABLE",
+                                "JOB_RECOVERY_CONFLICT",
+                                "JOB_RECOVERY_BUDGET_INVALID",
+                                "JOB_ATTEMPTS_EXHAUSTED",
+                                "SUMMARY_REBUILD_FAILED",
+                                "WRITING_ACTION_NOT_EDITABLE",
+                                "WRITING_ACTION_SELECTION_INVALID",
+                                "WRITING_ACTION_SOURCE_VERSION_INVALID",
+                                "FACT_DECISION_REQUIRED",
+                                "FACT_SUBMISSION_BLOCKED",
+                                "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
+                                "IMPORT_CONFLICT_UNRESOLVED",
+                                "OUTLINE_STRUCTURE_INVALID",
+                                "OUTLINE_NODE_LOCKED",
+                                "OUTLINE_PARENT_INVALID",
+                                "OUTLINE_CHAPTER_INVALID",
+                                "OUTLINE_REFERENCE_INVALID",
+                                "GOLDEN_THREE_CANDIDATES_EXIST",
+                                "GOLDEN_THREE_INVALID_CANDIDATES",
+                                "GOLDEN_THREE_CANDIDATE_LOCKED",
+                                "GOLDEN_THREE_REVIEW_FAILED",
+                                "GOLDEN_THREE_SELECTION_REQUIRED",
+                                "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
+                                "GOLDEN_THREE_GENERATION_IN_PROGRESS",
+                                "GOLDEN_THREE_ALREADY_LOCKED",
+                                "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
+                                "LEDGER_TRANSITION_INVALID",
+                                "LEDGER_SOURCE_REQUIRED",
+                                "LEDGER_EVIDENCE_REQUIRED",
+                                "LEDGER_REFERENCE_INVALID",
+                                "VERSION_CONFLICT",
+                                "AGENT_CONTRACT_INVALID",
+                                "AGENT_GRANT_INVALID",
+                                "AGENT_GRANT_EXPIRED",
+                                "AGENT_GRANT_REVOKED",
+                                "AGENT_TOOL_NOT_REGISTERED",
+                                "AGENT_TOOL_DENIED",
+                                "AGENT_BUDGET_EXCEEDED",
+                                "AGENT_APPROVAL_REQUIRED",
+                                "CRITIC_VERSION_REQUIRED",
+                                "CRITIC_FINDING_NOT_DISMISSIBLE",
+                                "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
+                                "REVISION_NOT_EDITABLE",
+                                "REVISION_SOURCE_INVALID",
+                                "REVISION_FINDING_HIGH_RISK",
+                                "REVISION_FINDING_INVALID",
+                                "REVISION_FINDING_REJECTED",
+                                "REVISION_ROUND_LIMIT_REACHED",
+                                "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
+                                "BATCH_PLAN_NOT_FOUND",
+                                "BATCH_PLAN_INVALID",
+                                "BATCH_PLAN_OUTLINE_INCOMPLETE",
+                                "BATCH_PLAN_IDEMPOTENCY_CONFLICT",
+                                "BATCH_REVIEW_CONTEXT_NOT_FOUND",
+                                "BATCH_REVIEW_CLAIM_CONFLICT",
+                                "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
+                                "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
+                                "CHANGE_NOT_FOUND",
+                                "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED",
+                                "CHANGE_INVALID_STATE",
+                                "CHANGE_TARGET_NOT_FOUND",
+                                "CHANGE_ANALYSIS_REQUIRED",
+                                "BRANCH_SOURCE_NOT_FOUND",
+                                "VERSION_NODE_NOT_FOUND",
+                                "IMPORT_NOT_READY",
+                                "FORBIDDEN_TENANT_ACCESS",
+                                "INTERNAL_ERROR"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": ["code", "message"],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "startedAt": {
                           "nullable": true,
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         },
-                        "lock": {
+                        "finishedAt": {
                           "nullable": true,
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "workId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "branchId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "candidateId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "versionNodeId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "styleBaselineId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "chapterPins": {
-                              "minItems": 3,
-                              "maxItems": 3,
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "chapterId": {
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                  },
-                                  "chapterNumber": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "exclusiveMinimum": true,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "chapterTitle": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 200
-                                  },
-                                  "chapterVersionId": {
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                  },
-                                  "chapterVersion": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "exclusiveMinimum": true,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "versionNodeId": {
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                  },
-                                  "contentHash": {
-                                    "type": "string",
-                                    "pattern": "^[a-f0-9]{64}$"
-                                  },
-                                  "wordCount": {
-                                    "type": "integer",
-                                    "minimum": 0,
-                                    "maximum": 9007199254740991
-                                  },
-                                  "content": {
-                                    "type": "string"
-                                  }
-                                },
-                                "required": [
-                                  "chapterId",
-                                  "chapterNumber",
-                                  "chapterTitle",
-                                  "chapterVersionId",
-                                  "chapterVersion",
-                                  "versionNodeId",
-                                  "contentHash",
-                                  "wordCount",
-                                  "content"
-                                ],
-                                "additionalProperties": false
-                              }
-                            },
-                            "override": {
-                              "nullable": true,
-                              "type": "object",
-                              "properties": {
-                                "policy": {
-                                  "type": "string",
-                                  "enum": ["author_override_v1"]
-                                },
-                                "rationale": {
-                                  "type": "string",
-                                  "minLength": 10,
-                                  "maxLength": 2000
-                                }
-                              },
-                              "required": ["policy", "rationale"],
-                              "additionalProperties": false
-                            },
-                            "lockedBy": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "lockedAt": {
-                              "type": "string",
-                              "format": "date-time",
-                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "workId",
-                            "branchId",
-                            "candidateId",
-                            "versionNodeId",
-                            "styleBaselineId",
-                            "chapterPins",
-                            "override",
-                            "lockedBy",
-                            "lockedAt"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "styleBaseline": {
-                          "nullable": true,
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "workId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "branchId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "sourceType": {
-                              "type": "string",
-                              "enum": ["golden_three"]
-                            },
-                            "sourceId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "version": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "exclusiveMinimum": true,
-                              "maximum": 9007199254740991
-                            },
-                            "versionNodeId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "profile": {
-                              "type": "object",
-                              "properties": {
-                                "strategy": {
-                                  "type": "string",
-                                  "enum": ["hook_focus", "character_focus", "world_focus"]
-                                },
-                                "candidateLabel": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 100
-                                },
-                                "excerpts": {
-                                  "minItems": 3,
-                                  "maxItems": 3,
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "chapterId": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                      },
-                                      "chapterVersionId": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                                      },
-                                      "excerpt": {
-                                        "type": "string",
-                                        "minLength": 1
-                                      }
-                                    },
-                                    "required": ["chapterId", "chapterVersionId", "excerpt"],
-                                    "additionalProperties": false
-                                  }
-                                }
-                              },
-                              "required": ["strategy", "candidateLabel", "excerpts"],
-                              "additionalProperties": false
-                            },
-                            "createdAt": {
-                              "type": "string",
-                              "format": "date-time",
-                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                            }
-                          },
-                          "required": [
-                            "id",
-                            "workId",
-                            "branchId",
-                            "sourceType",
-                            "sourceId",
-                            "version",
-                            "versionNodeId",
-                            "profile",
-                            "createdAt"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "gate": {
-                          "type": "object",
-                          "properties": {
-                            "candidateId": {
-                              "nullable": true,
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "canLock": {
-                              "type": "boolean"
-                            },
-                            "blockers": {
-                              "maxItems": 6,
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "code": {
-                                    "type": "string",
-                                    "enum": [
-                                      "NO_CANDIDATES",
-                                      "NO_SELECTION",
-                                      "REVIEW_INCOMPLETE",
-                                      "REQUIRED_DIMENSION_FAILED",
-                                      "CONTINUATION_REQUIRED",
-                                      "CANDIDATE_LOCKED"
-                                    ]
-                                  },
-                                  "message": {
-                                    "type": "string",
-                                    "minLength": 1
-                                  },
-                                  "dimension": {
-                                    "nullable": true,
-                                    "type": "string",
-                                    "enum": [
-                                      "opening_hook",
-                                      "protagonist_appeal",
-                                      "world_rules",
-                                      "core_conflict",
-                                      "reader_promise",
-                                      "chapter_end_hook"
-                                    ]
-                                  }
-                                },
-                                "required": ["code", "message", "dimension"],
-                                "additionalProperties": false
-                              }
-                            },
-                            "failedDimensions": {
-                              "maxItems": 6,
-                              "type": "array",
-                              "items": {
-                                "type": "string",
-                                "enum": [
-                                  "opening_hook",
-                                  "protagonist_appeal",
-                                  "world_rules",
-                                  "core_conflict",
-                                  "reader_promise",
-                                  "chapter_end_hook"
-                                ]
-                              }
-                            }
-                          },
-                          "required": ["candidateId", "canLock", "blockers", "failedDimensions"],
-                          "additionalProperties": false
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                         }
                       },
                       "required": [
-                        "workId",
-                        "branchId",
-                        "candidates",
-                        "selectedCandidateId",
-                        "lock",
-                        "styleBaseline",
-                        "gate"
+                        "id",
+                        "status",
+                        "progress",
+                        "currentStep",
+                        "candidateCount",
+                        "error",
+                        "createdAt",
+                        "startedAt",
+                        "finishedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["golden-three"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/golden-three/generation/{jobId}": {
+      "get": {
+        "operationId": "GoldenThreeController_generationJob",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Golden three generation job status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "preparing",
+                            "running",
+                            "paused",
+                            "waiting_review",
+                            "completed",
+                            "failed",
+                            "cancelled"
+                          ]
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "currentStep": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "candidateCount": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [2]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [3]
+                            }
+                          ]
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "VALIDATION_INVALID",
+                                "AUTH_CODE_INVALID",
+                                "AUTH_RATE_LIMITED",
+                                "AUTH_EMAIL_TAKEN",
+                                "AUTH_PASSWORD_WEAK",
+                                "AUTH_LOGIN_FAILED",
+                                "AUTH_SESSION_INVALID",
+                                "AUTH_CSRF_INVALID",
+                                "AUTH_ORIGIN_INVALID",
+                                "MODEL_KEY_INVALID",
+                                "MODEL_CONNECTION_FAILED",
+                                "MODEL_RATE_LIMITED",
+                                "MODEL_TIMEOUT",
+                                "MODEL_POLICY_BLOCKED",
+                                "MODEL_RESPONSE_INVALID",
+                                "MODEL_PROVIDER_ERROR",
+                                "GEN_READINESS_BLOCKED",
+                                "BIBLE_NOT_READY",
+                                "BIBLE_LOCKED",
+                                "BIBLE_NOT_LOCKED",
+                                "SETTING_LOCKED",
+                                "SETTING_NAME_CONFLICT",
+                                "SETTING_ALIAS_CONFLICT",
+                                "SETTING_CONFLICT_UNRESOLVED",
+                                "SETTING_PROPOSAL_STATE",
+                                "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
+                                "CUSTOM_FIELD_REQUIRED",
+                                "CUSTOM_FIELD_INVALID",
+                                "CUSTOM_FIELD_IMMUTABLE",
+                                "CUSTOM_FIELD_DUPLICATE",
+                                "CHARACTER_STATE_OVERLAP",
+                                "MAP_NODE_PARENT_MISMATCH",
+                                "MAP_LAYER_MISMATCH",
+                                "MAP_ROUTE_ENDPOINT_MISMATCH",
+                                "MAP_ROUTE_DISCONNECTED",
+                                "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+                                "CONTROL_AREA_OVERLAP",
+                                "TIMELINE_EVENT_OVERLAP",
+                                "TIMELINE_ERA_NOT_FOUND",
+                                "ITINERARY_TIME_ORDER",
+                                "ITINERARY_OVERLAP",
+                                "POWER_PATH_MISMATCH",
+                                "POWER_REALM_LADDER_INVALID",
+                                "POWER_LIFESPAN_POLICY_INVALID",
+                                "ITEM_RIGHT_CONFLICT",
+                                "ITEM_NOT_CONSUMABLE",
+                                "ITEM_QUANTITY_INSUFFICIENT",
+                                "EQUIPMENT_SLOT_CONFLICT",
+                                "ITEM_NOT_EQUIPMENT",
+                                "JOB_BUDGET_EXCEEDED",
+                                "JOB_CONTEXT_BRANCH_STALE",
+                                "JOB_CONTEXT_WINDOW_TOO_SMALL",
+                                "JOB_CANCELLED",
+                                "JOB_NOT_RECOVERABLE",
+                                "JOB_RECOVERY_CONFLICT",
+                                "JOB_RECOVERY_BUDGET_INVALID",
+                                "JOB_ATTEMPTS_EXHAUSTED",
+                                "SUMMARY_REBUILD_FAILED",
+                                "WRITING_ACTION_NOT_EDITABLE",
+                                "WRITING_ACTION_SELECTION_INVALID",
+                                "WRITING_ACTION_SOURCE_VERSION_INVALID",
+                                "FACT_DECISION_REQUIRED",
+                                "FACT_SUBMISSION_BLOCKED",
+                                "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
+                                "IMPORT_CONFLICT_UNRESOLVED",
+                                "OUTLINE_STRUCTURE_INVALID",
+                                "OUTLINE_NODE_LOCKED",
+                                "OUTLINE_PARENT_INVALID",
+                                "OUTLINE_CHAPTER_INVALID",
+                                "OUTLINE_REFERENCE_INVALID",
+                                "GOLDEN_THREE_CANDIDATES_EXIST",
+                                "GOLDEN_THREE_INVALID_CANDIDATES",
+                                "GOLDEN_THREE_CANDIDATE_LOCKED",
+                                "GOLDEN_THREE_REVIEW_FAILED",
+                                "GOLDEN_THREE_SELECTION_REQUIRED",
+                                "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
+                                "GOLDEN_THREE_GENERATION_IN_PROGRESS",
+                                "GOLDEN_THREE_ALREADY_LOCKED",
+                                "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
+                                "LEDGER_TRANSITION_INVALID",
+                                "LEDGER_SOURCE_REQUIRED",
+                                "LEDGER_EVIDENCE_REQUIRED",
+                                "LEDGER_REFERENCE_INVALID",
+                                "VERSION_CONFLICT",
+                                "AGENT_CONTRACT_INVALID",
+                                "AGENT_GRANT_INVALID",
+                                "AGENT_GRANT_EXPIRED",
+                                "AGENT_GRANT_REVOKED",
+                                "AGENT_TOOL_NOT_REGISTERED",
+                                "AGENT_TOOL_DENIED",
+                                "AGENT_BUDGET_EXCEEDED",
+                                "AGENT_APPROVAL_REQUIRED",
+                                "CRITIC_VERSION_REQUIRED",
+                                "CRITIC_FINDING_NOT_DISMISSIBLE",
+                                "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
+                                "REVISION_NOT_EDITABLE",
+                                "REVISION_SOURCE_INVALID",
+                                "REVISION_FINDING_HIGH_RISK",
+                                "REVISION_FINDING_INVALID",
+                                "REVISION_FINDING_REJECTED",
+                                "REVISION_ROUND_LIMIT_REACHED",
+                                "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
+                                "BATCH_PLAN_NOT_FOUND",
+                                "BATCH_PLAN_INVALID",
+                                "BATCH_PLAN_OUTLINE_INCOMPLETE",
+                                "BATCH_PLAN_IDEMPOTENCY_CONFLICT",
+                                "BATCH_REVIEW_CONTEXT_NOT_FOUND",
+                                "BATCH_REVIEW_CLAIM_CONFLICT",
+                                "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
+                                "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
+                                "CHANGE_NOT_FOUND",
+                                "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED",
+                                "CHANGE_INVALID_STATE",
+                                "CHANGE_TARGET_NOT_FOUND",
+                                "CHANGE_ANALYSIS_REQUIRED",
+                                "BRANCH_SOURCE_NOT_FOUND",
+                                "VERSION_NODE_NOT_FOUND",
+                                "IMPORT_NOT_READY",
+                                "FORBIDDEN_TENANT_ACCESS",
+                                "INTERNAL_ERROR"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": ["code", "message"],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "startedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "finishedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "progress",
+                        "currentStep",
+                        "candidateCount",
+                        "error",
+                        "createdAt",
+                        "startedAt",
+                        "finishedAt"
                       ],
                       "additionalProperties": false
                     },
