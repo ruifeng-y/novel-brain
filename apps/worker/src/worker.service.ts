@@ -13,7 +13,7 @@ import {
   workerJobSchema,
   type WorkerJob,
 } from "@novel-brain/contracts";
-import { resolveTracePolicy } from "@novel-brain/core";
+import { emitTraceEnvelope, resolveTracePolicy, type TracePolicy } from "@novel-brain/core";
 import { Queue, Worker as BullWorker, type Job } from "bullmq";
 import Redis from "ioredis";
 
@@ -37,6 +37,7 @@ import { SafePinoLogger } from "./logging/safe-logger";
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger: SafePinoLogger;
+  private readonly tracePolicy: TracePolicy;
   private readonly connection: Redis;
   private readonly queue: Queue<WorkerJob>;
   private readonly worker: BullWorker<WorkerJob, void>;
@@ -54,6 +55,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     }
 
     const tracePolicy = resolveTracePolicy(process.env);
+    this.tracePolicy = tracePolicy;
     this.logger = new SafePinoLogger();
     this.logger.info({
       event: "worker.trace_policy",
@@ -83,6 +85,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    await emitTraceEnvelope(this.tracePolicy, {
+      name: "service.started",
+      occurredAt: new Date().toISOString(),
+      attributes: { service: "worker", event: "worker.ready" },
+    });
     await this.queue.waitUntilReady();
     await this.worker.waitUntilReady();
     this.logger.info(
@@ -113,6 +120,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
 
   private async processJob(job: Job<WorkerJob>): Promise<void> {
     const payload = workerJobSchema.parse(job.data);
+    this.logger.metric("worker.job.started", {
+      job_type: payload.jobType,
+      queue: WORKER_QUEUE_NAME,
+    });
     this.logger.info(
       {
         event: "worker.job.started",

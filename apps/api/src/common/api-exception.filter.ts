@@ -1,6 +1,11 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException } from "@nestjs/common";
 import { apiErrorSchema } from "@novel-brain/contracts";
-import { LogRedactionError, createRequestId, sanitizeLogPayloadStrict } from "@novel-brain/core";
+import {
+  LogRedactionError,
+  createRequestId,
+  parseLogCanaryValues,
+  sanitizeStructuredPayload,
+} from "@novel-brain/core";
 import type { Response } from "express";
 import { ZodError } from "zod";
 
@@ -9,7 +14,12 @@ import { ApiError } from "./api-error";
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
-  constructor(private readonly logger: Pick<AppLogger, "error"> = new AppLogger()) {}
+  constructor(
+    private readonly logger: Pick<AppLogger, "error"> = new AppLogger(),
+    private readonly canaryValues: readonly string[] = parseLogCanaryValues(
+      process.env.LOG_CANARY_VALUES,
+    ),
+  ) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
@@ -20,8 +30,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
         apiErrorSchema.parse({
           error: {
             code: exception.code,
-            message: safeMessage(exception.message),
-            details: safeDetails(exception.details),
+            message: safeMessage(exception.message, this.canaryValues),
+            details: safeDetails(exception.details, this.canaryValues),
             requestId,
           },
         }),
@@ -35,12 +45,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
           error: {
             code: "VALIDATION_INVALID",
             message: "输入内容不完整或格式不正确",
-            details: safeDetails({
+            details: {
               issues: exception.issues.map(({ path, message }) => ({
                 path,
-                message: safeMessage(message),
+                message: safeMessage(message, this.canaryValues),
               })),
-            }),
+            },
             requestId,
           },
         }),
@@ -54,7 +64,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         apiErrorSchema.parse({
           error: {
             code: status === 401 ? "AUTH_SESSION_INVALID" : "INTERNAL_ERROR",
-            message: safeMessage(exception.message),
+            message: safeMessage(exception.message, this.canaryValues),
             details: {},
             requestId,
           },
@@ -84,9 +94,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
   }
 }
 
-function safeMessage(message: string): string {
+function safeMessage(message: string, canaryValues: readonly string[]): string {
   try {
-    const sanitized = sanitizeLogPayloadStrict(message);
+    const sanitized = sanitizeStructuredPayload(message, { canaryValues });
     return typeof sanitized === "string" ? sanitized : "请求处理失败";
   } catch (error) {
     if (error instanceof LogRedactionError) {
@@ -96,9 +106,12 @@ function safeMessage(message: string): string {
   }
 }
 
-function safeDetails(details: Record<string, unknown>): Record<string, unknown> {
+function safeDetails(
+  details: Record<string, unknown>,
+  canaryValues: readonly string[],
+): Record<string, unknown> {
   try {
-    const sanitized = sanitizeLogPayloadStrict(details);
+    const sanitized = sanitizeStructuredPayload(details, { canaryValues });
     return sanitized && typeof sanitized === "object" && !Array.isArray(sanitized)
       ? (sanitized as Record<string, unknown>)
       : {};

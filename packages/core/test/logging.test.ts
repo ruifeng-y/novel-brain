@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   LogRedactionError,
+  emitTraceEnvelope,
   findSensitiveLogValues,
   parseLogCanaryValues,
   resolveTracePolicy,
   sanitizeLogPayload,
   sanitizeLogPayloadStrict,
+  sanitizeStructuredPayload,
   sanitizeTelemetryLabels,
 } from "../src";
 
@@ -21,10 +23,10 @@ describe("sensitive log sanitization", () => {
       prompt: "完整提示词与上下文",
       system: "系统提示",
       manuscript: "沈砚把断臂藏进衣袍。",
+      model: "deepseek-chat",
       nested: {
         content: "完整正文",
         contextPack: { selected: ["完整上下文"] },
-        safeModel: "deepseek-chat",
       },
     });
 
@@ -72,10 +74,40 @@ describe("sensitive log sanitization", () => {
     expect(text).toContain("safe-hash");
   });
 
+  it("removes unknown fields and nested headers by default", () => {
+    const sanitized = sanitizeLogPayload({
+      event: "provider.request.failed",
+      message: "沈砚把断臂藏进衣袍。",
+      headers: { "x-api-key": "custom-provider-credential" },
+    });
+    const text = JSON.stringify(sanitized);
+
+    expect(text).not.toContain("沈砚");
+    expect(text).not.toContain("custom-provider-credential");
+    expect(text).toContain("provider.request.failed");
+  });
+
+  it("keeps operational client error fields while stripping sensitive values", () => {
+    const sanitized = sanitizeStructuredPayload({
+      branchId: "01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
+      tokenBudget: 200,
+      failedDimensions: ["world_rules"],
+      message: "沈砚把断臂藏进衣袍。",
+      prompt: "PROMPT_STRUCTURED_CANARY_133",
+    });
+    expect(sanitized).toMatchObject({
+      branchId: "01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
+      tokenBudget: 200,
+      failedDimensions: ["world_rules"],
+      message: "[REDACTED]",
+      prompt: "[REDACTED]",
+    });
+  });
+
   it("fails closed when a declared canary survives sanitization", () => {
     expect(() =>
       sanitizeLogPayloadStrict(
-        { message: "ordinary text", metadata: { value: "CANARY_SURVIVES_133" } },
+        { status: "CANARY_SURVIVES_133" },
         { canaryValues: ["CANARY_SURVIVES_133"] },
       ),
     ).toThrow(LogRedactionError);
@@ -105,6 +137,58 @@ describe("sensitive log sanitization", () => {
         TRACE_ENDPOINT: "https://third-party.example",
       }),
     ).toThrow("TRACE_MODE");
+    expect(() =>
+      resolveTracePolicy({
+        TRACE_MODE: "self_hosted",
+        TRACE_RETENTION_DAYS: "14",
+        TRACE_ENDPOINT: "https://third-party.example/otel",
+      }),
+    ).toThrow("self-hosted");
+  });
+
+  it("emits traces only when explicitly self-hosted and never includes sensitive payloads", async () => {
+    const calls: Array<{ url: string; body: string }> = [];
+    const fetcher = async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), body: String(init?.body ?? "") });
+      return new Response("{}", { status: 202 });
+    };
+
+    expect(
+      await emitTraceEnvelope(
+        { mode: "off", retentionDays: null, endpoint: null },
+        {
+          name: "service.started",
+          occurredAt: "2026-11-13T15:00:00.000Z",
+          attributes: { service: "api" },
+        },
+        fetcher,
+      ),
+    ).toBe(false);
+
+    expect(
+      await emitTraceEnvelope(
+        {
+          mode: "self_hosted",
+          retentionDays: 14,
+          endpoint: "http://langfuse.internal:3000/api/public/otel",
+        },
+        {
+          name: "service.started",
+          occurredAt: "2026-11-13T15:00:00.000Z",
+          attributes: {
+            service: "api",
+            prompt: "PROMPT_TRACE_CANARY_133",
+            manuscript: "沈砚把断臂藏进衣袍。",
+          },
+        },
+        fetcher,
+      ),
+    ).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url).toContain("langfuse.internal");
+    expect(calls[0]?.body).toContain('"retentionDays":14');
+    expect(calls[0]?.body).not.toContain("PROMPT_TRACE_CANARY_133");
+    expect(calls[0]?.body).not.toContain("沈砚");
   });
 
   it("drops sensitive and high-cardinality telemetry labels", () => {
@@ -116,8 +200,14 @@ describe("sensitive log sanitization", () => {
         request_id: "req_dynamic_133",
         manuscript_text: "沈砚把断臂藏进衣袍。",
         surprise: "dynamic-value",
+        model: "author-private-model-name",
       }),
     ).toEqual({ route: "/api/v1/works", status: "500" });
+    expect(
+      sanitizeTelemetryLabels({
+        route: "/api/v1/works/01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
+      }),
+    ).toEqual({});
   });
 
   it("parses deployment canaries from JSON or comma-separated configuration", () => {

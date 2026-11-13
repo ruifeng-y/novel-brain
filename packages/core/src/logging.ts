@@ -17,6 +17,7 @@ const SENSITIVE_KEYS = new Set([
   "manuscript",
   "manuscripttext",
   "messages",
+  "message",
   "password",
   "prompt",
   "prompttext",
@@ -30,11 +31,62 @@ const SENSITIVE_KEYS = new Set([
 ]);
 
 const TOKEN_PATTERN = /(?:sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._~+/=-]{8,})/gu;
+const SAFE_LOG_KEYS = new Set([
+  "actualTokens",
+  "action",
+  "attempt",
+  "batchId",
+  "candidateCount",
+  "candidateIds",
+  "chapterNumbers",
+  "checkpointStep",
+  "code",
+  "contentHash",
+  "contextManifestHash",
+  "contextPackId",
+  "costCny",
+  "delayMs",
+  "endpointConfigured",
+  "errorCode",
+  "errorType",
+  "event",
+  "failureClass",
+  "inputHash",
+  "inputTokens",
+  "jobId",
+  "jobType",
+  "jobTypes",
+  "latencyMs",
+  "mode",
+  "model",
+  "modelCallId",
+  "operation",
+  "outputHash",
+  "outputTokens",
+  "planId",
+  "port",
+  "promptKey",
+  "promptVersion",
+  "progress",
+  "provider",
+  "queue",
+  "requestId",
+  "reservationId",
+  "retentionDays",
+  "retryable",
+  "route",
+  "runId",
+  "service",
+  "status",
+  "stage",
+  "staleRecovery",
+  "step",
+  "stepKey",
+]);
 const SAFE_TELEMETRY_LABEL_KEYS = new Set([
   "errorcode",
   "jobtype",
   "method",
-  "model",
   "operation",
   "outcome",
   "provider",
@@ -44,6 +96,7 @@ const SAFE_TELEMETRY_LABEL_KEYS = new Set([
   "status",
 ]);
 const SAFE_TELEMETRY_LABEL_VALUE = /^[A-Za-z0-9_./:-]{1,128}$/u;
+const UUID_VALUE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu;
 
 export class LogRedactionError extends Error {
   constructor(readonly findings: string[]) {
@@ -58,8 +111,40 @@ export interface TracePolicy {
   endpoint: string | null;
 }
 
+export interface TraceEnvelope {
+  name: string;
+  occurredAt: string;
+  attributes?: Record<string, unknown>;
+}
+
+export type TraceFetch = (
+  url: string,
+  init: {
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+  },
+) => Promise<{ ok: boolean; status: number }>;
+
 export function sanitizeLogPayload(value: unknown): unknown {
-  return sanitizeValue(value, 0);
+  return sanitizeValue(value, 0, false);
+}
+
+export function sanitizeStructuredPayload(
+  value: unknown,
+  options: { canaryValues?: readonly string[] } = {},
+): unknown {
+  const sanitized = sanitizeValue(value, 0, true);
+  const findings = findSensitiveLogValues(sanitized);
+  for (const canary of options.canaryValues ?? []) {
+    if (canary && containsString(sanitized, canary)) {
+      findings.push("$canary");
+    }
+  }
+  if (findings.length > 0) {
+    throw new LogRedactionError([...new Set(findings)]);
+  }
+  return sanitized;
 }
 
 export function sanitizeLogPayloadStrict(
@@ -109,7 +194,38 @@ export function resolveTracePolicy(env: Record<string, string | undefined>): Tra
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error("TRACE_ENDPOINT must be an HTTP(S) URL");
   }
+  if (!isSelfHostedTraceHost(parsed.hostname)) {
+    throw new Error("TRACE_ENDPOINT must target a self-hosted host");
+  }
   return { mode: "self_hosted", retentionDays, endpoint };
+}
+
+export async function emitTraceEnvelope(
+  policy: TracePolicy,
+  envelope: TraceEnvelope,
+  fetcher: TraceFetch = defaultTraceFetch,
+): Promise<boolean> {
+  if (policy.mode === "off") {
+    return false;
+  }
+  if (!policy.endpoint || !policy.retentionDays) {
+    throw new Error("Self-hosted trace policy is incomplete");
+  }
+  const attributes = sanitizeLogPayloadStrict(envelope.attributes ?? {});
+  const response = await fetcher(policy.endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      name: envelope.name,
+      occurredAt: envelope.occurredAt,
+      retentionDays: policy.retentionDays,
+      attributes,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Trace export failed with HTTP ${response.status}`);
+  }
+  return true;
 }
 
 export function sanitizeTelemetryLabels(labels: Record<string, unknown>): Record<string, string> {
@@ -120,6 +236,13 @@ export function sanitizeTelemetryLabels(labels: Record<string, unknown>): Record
       continue;
     }
     if (typeof value !== "string" || !SAFE_TELEMETRY_LABEL_VALUE.test(value)) {
+      continue;
+    }
+    if (
+      UUID_VALUE.test(value) ||
+      (normalizedKey === "route" && /(?:^|\/)\d+(?:\/|$)/u.test(value)) ||
+      (normalizedKey === "status" && !/^[1-5]\d{2}$/u.test(value))
+    ) {
       continue;
     }
     if (containsCredential(value) || isSensitiveKey(key)) {
@@ -148,7 +271,7 @@ export function parseLogCanaryValues(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function sanitizeValue(value: unknown, depth: number): unknown {
+function sanitizeValue(value: unknown, depth: number, allowUnknownFields: boolean): unknown {
   if (depth > 12) {
     return "[TRUNCATED]";
   }
@@ -156,13 +279,17 @@ function sanitizeValue(value: unknown, depth: number): unknown {
     return sanitizeText(value);
   }
   if (Array.isArray(value)) {
-    return value.map((entry) => sanitizeValue(entry, depth + 1));
+    return value.map((entry) => sanitizeValue(entry, depth + 1, allowUnknownFields));
   }
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
         key,
-        isSensitiveKey(key) ? REDACTED : sanitizeValue(entry, depth + 1),
+        isSensitiveKey(key)
+          ? REDACTED
+          : allowUnknownFields || isSafeLogKey(key) || isSafeScalarValue(entry)
+            ? sanitizeValue(entry, depth + 1, allowUnknownFields)
+            : REDACTED,
       ]),
     );
   }
@@ -199,7 +326,26 @@ function inspectValue(value: unknown, path: string, findings: string[], depth: n
 }
 
 function isSensitiveKey(key: string): boolean {
-  return SENSITIVE_KEYS.has(key.toLowerCase().replace(/[_-]/gu, ""));
+  return SENSITIVE_KEYS.has(normalizeKey(key));
+}
+
+function isSafeLogKey(key: string): boolean {
+  return (
+    SAFE_LOG_KEYS.has(key) ||
+    /^[a-z][A-Za-z0-9]*(?:Id|Ids|Hash|Hashes|Count|Counts|Tokens?|Cny|Ms|Budget|Version|Code|Type|Class|Status|Scope|Step)$/u.test(
+      key,
+    )
+  );
+}
+
+function isSafeScalarValue(value: unknown): boolean {
+  return (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null ||
+    (Array.isArray(value) &&
+      value.every((entry) => typeof entry === "number" || typeof entry === "boolean"))
+  );
 }
 
 function containsCredential(value: string): boolean {
@@ -228,3 +374,46 @@ function containsString(value: unknown, expected: string, depth = 0): boolean {
   }
   return false;
 }
+
+function isSelfHostedTraceHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/gu, "");
+  if (
+    host === "localhost" ||
+    host === "::1" ||
+    host.endsWith(".internal") ||
+    host.endsWith(".local") ||
+    !host.includes(".")
+  ) {
+    return true;
+  }
+  const octets = host.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet))) {
+    return false;
+  }
+  const [first, second] = octets;
+  return (
+    first === 127 ||
+    first === 10 ||
+    (first === 192 && second === 168) ||
+    (first === 172 && second !== undefined && second >= 16 && second <= 31)
+  );
+}
+
+const defaultTraceFetch: TraceFetch = async (url, init) => {
+  const fetchImpl = (
+    globalThis as {
+      fetch?: (
+        input: string,
+        options: {
+          method: string;
+          headers: Record<string, string>;
+          body: string;
+        },
+      ) => Promise<{ ok: boolean; status: number }>;
+    }
+  ).fetch;
+  if (!fetchImpl) {
+    throw new Error("Trace export requires fetch support");
+  }
+  return fetchImpl(url, init);
+};

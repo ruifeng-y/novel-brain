@@ -1,11 +1,18 @@
 import { jobEventSchema, type JobEvent } from "@novel-brain/contracts";
-import { LogRedactionError, sanitizeLogPayloadStrict } from "@novel-brain/core";
+import {
+  LogRedactionError,
+  parseLogCanaryValues,
+  sanitizeStructuredPayload,
+} from "@novel-brain/core";
 
-export function sanitizeJobEventForDelivery(event: JobEvent): JobEvent {
+export function sanitizeJobEventForDelivery(
+  event: JobEvent,
+  canaryValues: readonly string[] = parseLogCanaryValues(process.env.LOG_CANARY_VALUES),
+): JobEvent {
   try {
     return jobEventSchema.parse({
       ...event,
-      data: sanitizeLogPayloadStrict(event.data),
+      data: sanitizeStructuredPayload(event.data, { canaryValues }),
     });
   } catch (error) {
     if (error instanceof LogRedactionError) {

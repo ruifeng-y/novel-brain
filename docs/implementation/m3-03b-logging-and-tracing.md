@@ -6,19 +6,19 @@
 
 ## 1. 实现范围
 
-- 扩展 `packages/core/src/logging.ts`：统一脱敏 API Key、authorization、正文、prompt、ContextPack、导入原文和常见别名字段。
+- 扩展 `packages/core/src/logging.ts`：敏感键和未登记字段默认移除，统一脱敏 API Key、authorization、正文、prompt、ContextPack、导入原文和常见别名字段。
 - 普通日志只输出 ID、哈希、长度、状态、错误码、模型与成本等非敏感字段。
 - API 和 Worker 都通过安全 logger 写普通日志；canary 在脱敏后仍存在时丢弃原 payload，仅输出 `logging.redaction_failed`。
 - API 异常响应和 SSE job event 在返回前经过同一敏感载荷过滤。
-- 新增 trace policy：默认关闭；`self_hosted` 必须显式配置保留期与 HTTP(S) endpoint，否则 API/Worker 启动失败。
-- 新增低基数 metrics label 白名单过滤，供后续 #135 消费。
+- 新增 trace policy 与启动 trace sink：默认关闭；`self_hosted` 必须显式配置保留期与自托管 HTTP(S) endpoint，启动时导出只含安全属性的 `service.started` envelope，失败则启动失败。
+- 新增低基数 metrics label 白名单过滤；Worker 作业启动使用真实 `worker.job.started` 指标日志路径。
 
 ## 2. 验收证据
 
 - `packages/core/test/logging.test.ts`
   - Key、manuscript、prompt、ContextPack、imported source 和 chapter body 别名脱敏。
   - canary 残留时 fail-closed。
-  - trace off/self-hosted、保留期和 endpoint 校验。
+  - trace off/self-hosted、保留期、自托管 endpoint 校验和 trace 导出 body。
   - metrics label 丢弃敏感字段与高基数字段。
 - `apps/api/test/app-logger.test.ts`
   - API 普通日志 canary 扫描。
@@ -26,6 +26,8 @@
   - 脱敏失败只输出固定错误事件。
 - `apps/worker/test/safe-logger.test.ts`
   - Worker 普通日志 canary 扫描。
+  - Key、manuscript、prompt、未知字段和 header 分别验证不泄露。
+  - metrics label 生产路径丢弃 request ID、动态 route 和自定义模型名。
   - 安全 ID 和作业类型仍可用于诊断。
 - `apps/api/test/api-exception-filter.test.ts`
   - 错误响应不返回 Key、prompt 或正文。

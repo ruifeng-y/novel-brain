@@ -2,7 +2,7 @@ import "reflect-metadata";
 
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import { resolveTracePolicy } from "@novel-brain/core";
+import { emitTraceEnvelope, resolveTracePolicy } from "@novel-brain/core";
 
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
@@ -20,6 +20,11 @@ async function bootstrap(): Promise<void> {
   const express = app.getHttpAdapter().getInstance();
   express.disable("x-powered-by");
   app.enableShutdownHooks();
+  await emitTraceEnvelope(tracePolicy, {
+    name: "service.started",
+    occurredAt: new Date().toISOString(),
+    attributes: { service: "api", event: "api.started" },
+  });
 
   const port = Number(process.env.API_PORT ?? 3001);
   await app.listen(port, "0.0.0.0");

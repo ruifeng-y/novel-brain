@@ -2,6 +2,7 @@ import {
   LogRedactionError,
   parseLogCanaryValues,
   sanitizeLogPayloadStrict,
+  sanitizeTelemetryLabels,
 } from "@novel-brain/core";
 import pino, { type Logger } from "pino";
 
@@ -44,6 +45,18 @@ export class SafePinoLogger {
 
   fatal(payload: Record<string, unknown>, message = "Worker fatal"): void {
     this.write("fatal", payload, message);
+  }
+
+  metric(name: string, labels: Record<string, unknown>, value = 1): void {
+    if (!/^[a-z][a-z0-9_.-]{0,99}$/u.test(name) || !Number.isFinite(value)) {
+      return;
+    }
+    this.logger.info({
+      event: "telemetry.metric",
+      metric: name,
+      value,
+      labels: sanitizeTelemetryLabels(labels),
+    });
   }
 
   private write(

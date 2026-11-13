@@ -23,6 +23,8 @@ TRACE_ENDPOINT=<http(s) endpoint>
 
 只设置 endpoint 或 retention、但不显式设置 `TRACE_MODE=self_hosted` 时，API/Worker 应启动失败。追踪策略在启动日志中只记录 mode、retention 和 endpoint 是否已配置，不记录 endpoint 本身。
 
+endpoint 只接受 localhost、私网 IP、`*.internal`、`*.local` 或集群内部主机名。公开第三方域名会使 API/Worker 启动失败。启用后，API/Worker 启动时会发送只含安全属性的 `service.started` trace envelope；导出失败会阻止服务启动。
+
 ## 脱敏 canary
 
 部署扫描可以设置：
@@ -33,6 +35,12 @@ LOG_CANARY_VALUES=["KEY_CANARY","PROMPT_CANARY","MANUSCRIPT_CANARY"]
 
 也可使用逗号分隔文本。任何 canary 在脱敏后仍存在时，logger 放弃原 payload，只输出 `logging.redaction_failed`。canary 扫描应覆盖 API 异常、Worker 作业日志和 SSE 事件。
 
+本地验证命令：
+
+```powershell
+pnpm exec vitest run packages/core/test/logging.test.ts apps/api/test/app-logger.test.ts apps/api/test/api-exception-filter.test.ts apps/api/test/safe-job-event.test.ts apps/worker/test/safe-logger.test.ts
+```
+
 ## 诊断路径
 
 1. 使用 request ID、job ID、run ID 和 model call ID 定位。
@@ -41,6 +49,22 @@ LOG_CANARY_VALUES=["KEY_CANARY","PROMPT_CANARY","MANUSCRIPT_CANARY"]
 4. 需要供应商排查时，只提供 provider request ID、错误码、时间窗与模型名。
 5. 普通日志保留 30 天；超出保留期的日志通过部署环境的日志生命周期策略删除。
 
+本地日志查询：
+
+```powershell
+docker compose -f infra/docker/compose.yml logs --since 720h api worker | Select-String "req_|job_|run_|model_call"
+```
+
+本地 fake provider 复现：
+
+```powershell
+$env:MODEL_CONNECTION_TESTER="fake"
+$env:AI_PROVIDER_MODE="fake"
+docker compose -f infra/docker/compose.yml up -d --build
+```
+
+生产日志驱动必须配置 30 天保留策略。Docker Compose 只提供本地 `--since 720h` 查询，不替代生产日志后端的 retention 配置。
+
 ## 指标标签
 
-指标标签通过 `sanitizeTelemetryLabels` 限制为低基数白名单字段，例如 route、method、status、operation、provider、model、outcome 和 error code。request ID、用户内容、Prompt、正文和任意动态字段不得作为指标标签。
+指标标签通过 `sanitizeTelemetryLabels` 限制为低基数白名单字段，例如 route、method、status、operation、provider、outcome 和 error code。Worker 作业启动通过 `worker.job.started` 指标路径输出。request ID、用户内容、Prompt、正文、模型自定义名和任意动态字段不得作为指标标签。
