@@ -37,6 +37,7 @@ import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
+import { sanitizeJobEventForDelivery } from "../logging/safe-job-event";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -221,11 +222,14 @@ export class WritingActionController {
         lastEventId ? uuidV7Schema.parse(lastEventId) : undefined,
       )
       .pipe(
-        map((event: JobEvent) => ({
-          id: event.eventId,
-          type: event.type,
-          data: event,
-        })),
+        map((event: JobEvent) => {
+          const safeEvent = sanitizeJobEventForDelivery(event);
+          return {
+            id: safeEvent.eventId,
+            type: safeEvent.type,
+            data: safeEvent,
+          };
+        }),
       );
   }
 

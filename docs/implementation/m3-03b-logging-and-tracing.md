@@ -1,0 +1,43 @@
+# M3-03b 日志脱敏、追踪边界与安全证据扫描
+
+> Issue: #133  
+> Capability: SEC-003  
+> Status: implementation complete
+
+## 1. 实现范围
+
+- 扩展 `packages/core/src/logging.ts`：统一脱敏 API Key、authorization、正文、prompt、ContextPack、导入原文和常见别名字段。
+- 普通日志只输出 ID、哈希、长度、状态、错误码、模型与成本等非敏感字段。
+- API 和 Worker 都通过安全 logger 写普通日志；canary 在脱敏后仍存在时丢弃原 payload，仅输出 `logging.redaction_failed`。
+- API 异常响应和 SSE job event 在返回前经过同一敏感载荷过滤。
+- 新增 trace policy：默认关闭；`self_hosted` 必须显式配置保留期与 HTTP(S) endpoint，否则 API/Worker 启动失败。
+- 新增低基数 metrics label 白名单过滤，供后续 #135 消费。
+
+## 2. 验收证据
+
+- `packages/core/test/logging.test.ts`
+  - Key、manuscript、prompt、ContextPack、imported source 和 chapter body 别名脱敏。
+  - canary 残留时 fail-closed。
+  - trace off/self-hosted、保留期和 endpoint 校验。
+  - metrics label 丢弃敏感字段与高基数字段。
+- `apps/api/test/app-logger.test.ts`
+  - API 普通日志 canary 扫描。
+  - logger context 不泄露 canary。
+  - 脱敏失败只输出固定错误事件。
+- `apps/worker/test/safe-logger.test.ts`
+  - Worker 普通日志 canary 扫描。
+  - 安全 ID 和作业类型仍可用于诊断。
+- `apps/api/test/api-exception-filter.test.ts`
+  - 错误响应不返回 Key、prompt 或正文。
+  - 未处理错误日志不包含异常原文。
+- `apps/api/test/safe-job-event.test.ts`
+  - SSE event ID 与错误码保留，敏感 payload 被移除。
+
+## 3. 运维边界
+
+诊断与追踪操作规范见 `docs/operations/logging-and-tracing.md`。
+
+- 普通日志保留 30 天，由部署环境日志生命周期策略执行。
+- 第三方追踪默认关闭。
+- 自托管追踪通过 `TRACE_MODE=self_hosted`、`TRACE_RETENTION_DAYS` 和 `TRACE_ENDPOINT` 显式启用。
+- 诊断只使用 request/job/run/model-call ID、哈希、错误码和 provider request ID，不复制正文或 Prompt。

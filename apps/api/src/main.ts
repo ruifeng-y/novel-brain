@@ -2,12 +2,14 @@ import "reflect-metadata";
 
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
+import { resolveTracePolicy } from "@novel-brain/core";
 
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
 import { AppLogger } from "./logging/app-logger";
 
 async function bootstrap(): Promise<void> {
+  const tracePolicy = resolveTracePolicy(process.env);
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   const logger = new AppLogger();
 
@@ -21,6 +23,15 @@ async function bootstrap(): Promise<void> {
 
   const port = Number(process.env.API_PORT ?? 3001);
   await app.listen(port, "0.0.0.0");
+  logger.log(
+    {
+      event: "api.trace_policy",
+      mode: tracePolicy.mode,
+      retentionDays: tracePolicy.retentionDays,
+      endpointConfigured: tracePolicy.endpoint !== null,
+    },
+    "Bootstrap",
+  );
   logger.log({ event: "api.started", port }, "Bootstrap");
 }
 

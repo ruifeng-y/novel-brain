@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { findSensitiveLogValues, sanitizeLogPayload } from "../src";
+import {
+  LogRedactionError,
+  findSensitiveLogValues,
+  parseLogCanaryValues,
+  resolveTracePolicy,
+  sanitizeLogPayload,
+  sanitizeLogPayloadStrict,
+  sanitizeTelemetryLabels,
+} from "../src";
 
 describe("sensitive log sanitization", () => {
   it("redacts API keys, prompts, manuscript and full context before logging", () => {
@@ -44,5 +52,82 @@ describe("sensitive log sanitization", () => {
         message: "key sk-embedded-secret-9999",
       }),
     ).not.toEqual([]);
+  });
+
+  it("redacts manuscript, prompt and imported-source aliases", () => {
+    const sanitized = sanitizeLogPayload({
+      manuscriptText: "沈砚把断臂藏进衣袍。",
+      promptText: "PROMPT_CANARY_133",
+      contextSnapshot: { selected: ["CONTEXT_CANARY_133"] },
+      importedSource: "IMPORT_CANARY_133",
+      chapterBody: "CHAPTER_CANARY_133",
+      contentHash: "safe-hash",
+    });
+    const text = JSON.stringify(sanitized);
+    expect(text).not.toContain("沈砚");
+    expect(text).not.toContain("PROMPT_CANARY_133");
+    expect(text).not.toContain("CONTEXT_CANARY_133");
+    expect(text).not.toContain("IMPORT_CANARY_133");
+    expect(text).not.toContain("CHAPTER_CANARY_133");
+    expect(text).toContain("safe-hash");
+  });
+
+  it("fails closed when a declared canary survives sanitization", () => {
+    expect(() =>
+      sanitizeLogPayloadStrict(
+        { message: "ordinary text", metadata: { value: "CANARY_SURVIVES_133" } },
+        { canaryValues: ["CANARY_SURVIVES_133"] },
+      ),
+    ).toThrow(LogRedactionError);
+  });
+
+  it("defaults tracing off and requires explicit self-hosted policy", () => {
+    expect(resolveTracePolicy({})).toEqual({
+      mode: "off",
+      retentionDays: null,
+      endpoint: null,
+    });
+    expect(
+      resolveTracePolicy({
+        TRACE_MODE: "self_hosted",
+        TRACE_RETENTION_DAYS: "14",
+        TRACE_ENDPOINT: "http://langfuse.internal:3000/api/public/otel",
+      }),
+    ).toEqual({
+      mode: "self_hosted",
+      retentionDays: 14,
+      endpoint: "http://langfuse.internal:3000/api/public/otel",
+    });
+    expect(() => resolveTracePolicy({ TRACE_MODE: "self_hosted" })).toThrow("TRACE_RETENTION_DAYS");
+    expect(() =>
+      resolveTracePolicy({
+        TRACE_MODE: "off",
+        TRACE_ENDPOINT: "https://third-party.example",
+      }),
+    ).toThrow("TRACE_MODE");
+  });
+
+  it("drops sensitive and high-cardinality telemetry labels", () => {
+    expect(
+      sanitizeTelemetryLabels({
+        route: "/api/v1/works",
+        status: "500",
+        api_key: "sk-should-not-appear-133",
+        request_id: "req_dynamic_133",
+        manuscript_text: "沈砚把断臂藏进衣袍。",
+        surprise: "dynamic-value",
+      }),
+    ).toEqual({ route: "/api/v1/works", status: "500" });
+  });
+
+  it("parses deployment canaries from JSON or comma-separated configuration", () => {
+    expect(parseLogCanaryValues('["KEY_CANARY_133","PROMPT_CANARY_133"]')).toEqual([
+      "KEY_CANARY_133",
+      "PROMPT_CANARY_133",
+    ]);
+    expect(parseLogCanaryValues("KEY_CANARY_133,MANUSCRIPT_CANARY_133")).toEqual([
+      "KEY_CANARY_133",
+      "MANUSCRIPT_CANARY_133",
+    ]);
   });
 });

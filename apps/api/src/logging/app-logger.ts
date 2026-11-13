@@ -1,14 +1,26 @@
 import type { LoggerService } from "@nestjs/common";
-import { sanitizeLogPayload } from "@novel-brain/core";
+import {
+  LogRedactionError,
+  parseLogCanaryValues,
+  sanitizeLogPayloadStrict,
+} from "@novel-brain/core";
 import pino, { type Logger } from "pino";
+
+interface AppLoggerOptions {
+  level?: string;
+  service?: string;
+  canaryValues?: readonly string[];
+}
 
 export class AppLogger implements LoggerService {
   private readonly logger: Logger;
+  private readonly canaryValues: readonly string[];
 
-  constructor() {
+  constructor(options: AppLoggerOptions = {}) {
+    this.canaryValues = options.canaryValues ?? parseLogCanaryValues(process.env.LOG_CANARY_VALUES);
     this.logger = pino({
-      level: process.env.LOG_LEVEL ?? "info",
-      base: { service: "api" },
+      level: options.level ?? process.env.LOG_LEVEL ?? "info",
+      base: { service: options.service ?? "api" },
     });
   }
 
@@ -44,16 +56,45 @@ export class AppLogger implements LoggerService {
   }
 
   private context(context?: string): Record<string, string> {
-    return context ? { context } : {};
+    if (!context) {
+      return {};
+    }
+    try {
+      const sanitized = sanitizeLogPayloadStrict(context, {
+        canaryValues: this.canaryValues,
+      });
+      return typeof sanitized === "string" ? { context: sanitized } : { context: "redacted" };
+    } catch {
+      return { context: "redacted" };
+    }
   }
 
   private message(message: unknown): string {
-    const sanitized = sanitizeLogPayload(message);
-    return typeof sanitized === "string" ? sanitized : JSON.stringify(sanitized);
+    try {
+      const sanitized = sanitizeLogPayloadStrict(message, {
+        canaryValues: this.canaryValues,
+      });
+      return typeof sanitized === "string" ? sanitized : JSON.stringify(sanitized);
+    } catch (error) {
+      if (error instanceof LogRedactionError) {
+        return JSON.stringify({ event: "logging.redaction_failed" });
+      }
+      return JSON.stringify({ event: "logging.serialization_failed" });
+    }
   }
 
   private stack(stack: string): string | undefined {
-    const sanitized = sanitizeLogPayload(stack);
+    let sanitized: unknown;
+    try {
+      sanitized = sanitizeLogPayloadStrict(stack, {
+        canaryValues: this.canaryValues,
+      });
+    } catch (error) {
+      if (error instanceof LogRedactionError) {
+        return undefined;
+      }
+      return undefined;
+    }
     if (typeof sanitized !== "string") {
       return undefined;
     }

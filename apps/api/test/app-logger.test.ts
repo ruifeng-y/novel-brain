@@ -31,4 +31,37 @@ describe("API logger", () => {
     expect(output).not.toContain("sk-invalid-key-4321");
     expect(output).not.toContain(arbitraryStackKey);
   });
+
+  it("drops the entire payload when declared canaries survive sanitization", () => {
+    const writes: string[] = [];
+    const canary = "API_LOG_CANARY_133";
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      writes.push(String(chunk));
+      return true;
+    });
+
+    new AppLogger({ canaryValues: [canary] }).log({
+      event: "logging.canary",
+      unknownField: canary,
+    });
+
+    const output = writes.join("");
+    expect(output).toContain("logging.redaction_failed");
+    expect(output).not.toContain(canary);
+  });
+
+  it("redacts sensitive logger context", () => {
+    const writes: string[] = [];
+    const canary = "CONTEXT_CANARY_133";
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      writes.push(String(chunk));
+      return true;
+    });
+
+    new AppLogger({ canaryValues: [canary] }).log("safe message", canary);
+
+    const output = writes.join("");
+    expect(output).not.toContain(canary);
+    expect(output).toContain("redacted");
+  });
 });
