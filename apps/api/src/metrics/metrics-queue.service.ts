@@ -17,7 +17,7 @@ interface QueueClient {
 }
 
 const QUEUE_STATES = ["wait", "active", "delayed", "failed", "completed", "paused"] as const;
-const AGE_STATES = ["wait", "active", "delayed"] as const;
+const AGE_STATES = ["wait"] as const;
 
 @Injectable()
 export class MetricsQueueService implements QueueMetricsSource {

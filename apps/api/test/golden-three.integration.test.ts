@@ -160,10 +160,12 @@ describe("golden three HTTP integration", () => {
           }
         : contextCompiler,
       { create: () => goldenThreeTestProvider() },
-      options.stepHook,
-      options.beforeRecordSuccessHook,
-      options.afterClaimHook,
-      options.modelCallObserver,
+      {
+        generationStep: options.stepHook,
+        beforeRecordSuccess: options.beforeRecordSuccessHook,
+        afterClaim: options.afterClaimHook,
+        modelCall: options.modelCallObserver,
+      },
     );
     try {
       await new GoldenThreeJobProcessor(repository).process(payload);
@@ -186,13 +188,17 @@ describe("golden three HTTP integration", () => {
         const repository = new GoldenThreeRepository(
           new WorkerGoldenThreeContextCompiler(generationRepository),
           { create: () => goldenThreeTestProvider() },
-          options.failFirstAfterStep && job.attemptsMade === 0
-            ? (stepKey) => {
-                if (stepKey.endsWith(options.failFirstAfterStep!)) {
-                  throw new Error("simulated worker crash");
+          {
+            ...(options.failFirstAfterStep && job.attemptsMade === 0
+              ? {
+                  generationStep: (stepKey: string) => {
+                    if (stepKey.endsWith(options.failFirstAfterStep!)) {
+                      throw new Error("simulated worker crash");
+                    }
+                  },
                 }
-              }
-            : undefined,
+              : {}),
+          },
         );
         try {
           await new GoldenThreeJobProcessor(repository).process(payload);
@@ -766,16 +772,11 @@ describe("golden three HTTP integration", () => {
       progress: 100,
     });
     expect(observations).toHaveLength(3);
-    expect(observations).toEqual(
-      observations.map(() =>
-        expect.objectContaining({
-          status: "succeeded",
-          inputTokens: expect.any(Number),
-          outputTokens: expect.any(Number),
-          costCny: expect.any(Number),
-        }),
-      ),
-    );
+    expect(observations.map((observation) => observation.status)).toEqual([
+      "succeeded",
+      "succeeded",
+      "succeeded",
+    ]);
     for (const observation of observations) {
       expect(observation.inputTokens + observation.outputTokens).toBeGreaterThan(0);
       expect(observation.costCny).toBeGreaterThan(0);

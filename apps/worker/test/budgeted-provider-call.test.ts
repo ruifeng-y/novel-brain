@@ -66,6 +66,10 @@ describe("budgeted provider call", () => {
         yield { text: "", done: true };
       },
     };
+    const traceLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+    };
 
     await expect(
       new BudgetedProviderCallExecutor(repository).call({
@@ -79,6 +83,7 @@ describe("budgeted provider call", () => {
         system: "只输出正文",
         citations: [],
         parameters: { operation: "draft" },
+        traceLogger,
       }),
     ).rejects.toBeInstanceOf(ProviderBudgetExceededError);
 
@@ -110,6 +115,10 @@ describe("budgeted provider call", () => {
         yield { text: "", done: true };
       },
     };
+    const traceLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+    };
 
     await expect(
       new BudgetedProviderCallExecutor(repository).call({
@@ -123,6 +132,7 @@ describe("budgeted provider call", () => {
         system: "只输出正文",
         citations: [],
         parameters: { operation: "draft" },
+        traceLogger,
       }),
     ).rejects.toBeInstanceOf(CostBudgetOverrunRecordedError);
 
@@ -134,5 +144,14 @@ describe("budgeted provider call", () => {
       result: RESULT,
     });
     expect(failModelCall).not.toHaveBeenCalled();
+    expect(traceLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "worker.model_call.budget_overrun",
+        inputTokens: RESULT.usage.inputTokens,
+        outputTokens: RESULT.usage.outputTokens,
+        costCny: expect.any(Number),
+        latencyMs: expect.any(Number),
+      }),
+    );
   });
 });

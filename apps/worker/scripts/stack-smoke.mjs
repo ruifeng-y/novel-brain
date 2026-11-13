@@ -42,9 +42,11 @@ async function main() {
   });
 
   await fetchRequired(`${mailpitUrl}/api/v1/info`);
-  const publicMetrics = await fetch(`${webUrl}/api/v1/metrics`);
-  if (publicMetrics.status !== 404) {
-    throw new Error("Metrics must not be exposed through the public Web origin");
+  for (const path of ["metrics", "METRICS"]) {
+    const publicMetrics = await fetch(`${webUrl}/api/v1/${path}`);
+    if (publicMetrics.status !== 404) {
+      throw new Error(`Metrics must not be exposed through the public Web origin: ${path}`);
+    }
   }
   await fetchRequired(storageHealthUrl);
   await fetchRequired(metricsUrl, async (response) => {

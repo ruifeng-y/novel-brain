@@ -26,7 +26,7 @@ groups:
           summary: NovelBrain worker queue backlog is above the approved threshold
           runbook: docs/operations/alerting.md#workerqueuebacklog
       - alert: WorkerQueueOldestJobAge
-        expr: novelbrain_worker_queue_oldest_job_age_seconds > 300
+        expr: novelbrain_worker_queue_oldest_job_age_seconds{state="wait"} > 300
         for: 5m
         labels:
           severity: warning

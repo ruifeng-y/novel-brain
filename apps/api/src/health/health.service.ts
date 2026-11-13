@@ -29,8 +29,7 @@ export class HealthService {
   }
 
   async getReadiness(): Promise<ReadinessData> {
-    const hasStorage =
-      this.storageProbe && (!this.storageProbe.isConfigured || this.storageProbe.isConfigured());
+    const hasStorage = this.storageProbe ? (this.storageProbe.isConfigured?.() ?? true) : false;
     const checks = await Promise.all([
       this.runProbe("database", this.databaseProbe),
       this.runProbe("queue", this.queueProbe),

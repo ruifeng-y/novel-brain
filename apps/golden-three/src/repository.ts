@@ -106,6 +106,13 @@ export interface GoldenThreeModelCallObservation {
   costCny: number;
 }
 
+export interface GoldenThreeRepositoryHooks {
+  generationStep?: (stepKey: string) => void | Promise<void>;
+  beforeRecordSuccess?: (stepKey: string) => void | Promise<void>;
+  afterClaim?: () => void | Promise<void>;
+  modelCall?: (observation: GoldenThreeModelCallObservation) => void | Promise<void>;
+}
+
 interface GoldenThreePreparedCall {
   workId: string;
   branchId: string;
@@ -202,12 +209,7 @@ export class GoldenThreeRepository {
   constructor(
     private readonly contextCompiler: GoldenThreeContextCompiler,
     private readonly providerFactory: GoldenThreeProviderFactory,
-    private readonly generationStepHook?: (stepKey: string) => void | Promise<void>,
-    private readonly beforeRecordSuccessHook?: (stepKey: string) => void | Promise<void>,
-    private readonly afterClaimHook?: () => void | Promise<void>,
-    private readonly modelCallObserver?: (
-      observation: GoldenThreeModelCallObservation,
-    ) => void | Promise<void>,
+    private readonly hooks: GoldenThreeRepositoryHooks = {},
   ) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
@@ -633,7 +635,7 @@ export class GoldenThreeRepository {
         failureClass: claimed.failureClass,
       };
     }
-    await this.afterClaimHook?.();
+    await this.hooks.afterClaim?.();
     const result = await this.generateCandidates(
       payload.actorId,
       { workId: payload.workId, branchId: payload.branchId },
@@ -2290,7 +2292,7 @@ export class GoldenThreeRepository {
           failureClass: "budget",
         };
       }
-      await this.beforeRecordSuccessHook?.(call.stepKey);
+      await this.hooks.beforeRecordSuccess?.(call.stepKey);
       try {
         completed.push(
           await withTenantTransaction(this.db, userId, async (transaction) =>
@@ -2327,7 +2329,7 @@ export class GoldenThreeRepository {
           failureClass: "unknown",
         };
       }
-      await this.generationStepHook?.(call.stepKey);
+      await this.hooks.generationStep?.(call.stepKey);
     }
 
     try {
@@ -3202,7 +3204,7 @@ export class GoldenThreeRepository {
 
   private async observeModelCall(observation: GoldenThreeModelCallObservation): Promise<void> {
     try {
-      await this.modelCallObserver?.(observation);
+      await this.hooks.modelCall?.(observation);
     } catch {
       // Operational telemetry must not change the durable generation outcome.
     }

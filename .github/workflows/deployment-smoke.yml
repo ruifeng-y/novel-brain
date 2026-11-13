@@ -35,16 +35,24 @@ jobs:
       - name: Validate production overlay
         run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml config --quiet
       - run: docker compose -f infra/docker/compose.yml config --quiet
-      - run: docker compose -f infra/docker/compose.yml up -d --build --wait --wait-timeout 600 mailpit api worker web caddy prometheus
+      - name: Start production overlay
+        env:
+          APP_ORIGIN: http://localhost
+        run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml up -d --build --wait --wait-timeout 900
       - name: Validate Prometheus configuration
         run: docker run --rm --entrypoint /bin/promtool -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yml
-      - run: pnpm stack:smoke
+      - name: Test Prometheus alert rules
+        run: docker run --rm --entrypoint /bin/promtool -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v3.5.0 test rules /etc/prometheus/alerts.test.yml
+      - name: Verify public Caddy entry
+        run: curl --fail --silent --show-error http://localhost/health
+      - name: Smoke production services
+        run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T -e API_URL=http://api:3001 -e WEB_URL=http://web:3000 -e MAILPIT_URL=http://mailpit:8025 -e METRICS_URL=http://api:3001/api/v1/metrics -e STORAGE_HEALTH_URL=http://minio:9000/minio/health/live -e REDIS_URL=redis://redis:6379 worker node apps/worker/scripts/stack-smoke.mjs
       - name: Capture deployment evidence
         if: always()
-        run: docker compose -f infra/docker/compose.yml ps
+        run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml ps
       - name: Dump compose logs
         if: failure()
-        run: docker compose -f infra/docker/compose.yml logs --no-color
+        run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml logs --no-color
       - name: Stop stack
         if: always()
-        run: docker compose -f infra/docker/compose.yml down --remove-orphans
+        run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml down --remove-orphans

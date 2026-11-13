@@ -1,7 +1,7 @@
 # M3-04a 部署、健康探针、指标与成本告警
 
-> Issue: #135  
-> Capabilities: OPS-001, OPS-003  
+> Issue: #135
+> Capabilities: OPS-001, OPS-003
 > Status: implementation complete; PR CI pending
 
 ## 1. 实现范围
@@ -19,10 +19,13 @@
 
 ## 2. 验收证据
 
-- 独立 Compose project 使用备用端口完成镜像构建和 `--wait` 启动。
+- 独立基础 Compose project 使用备用端口完成镜像构建和 `--wait` 启动。
+- 生产 overlay 使用独立 project、`APP_ORIGIN=http://localhost` 完成镜像构建和 `--wait` 启动；Caddy 公网入口返回 200。
 - `pnpm stack:smoke` 验证 Web、API readiness、Mailpit、Worker、MinIO、metrics，以及公开 Web origin 不暴露 metrics。
+- 生产 overlay 的 Worker 容器内 smoke 通过，验证内部服务名、Worker 消费、MinIO 和 metrics，同时确认公开入口拒绝大小写 metrics 路径。
 - Prometheus 两个 target 均为 `up`：`novelbrain-api`、`novelbrain-minio`。
 - Prometheus 成功加载 9 条 `novelbrain-operations` 规则。
+- `promtool test rules` 执行 `infra/observability/alerts.test.yml`，逐条验证 9 个告警的真实 PromQL 表达式。
 - 生产 overlay 在注入必填变量后通过 `docker compose config --quiet`。
 - 健康、metrics service/controller/middleware、Redis 运行时聚合、队列快照和 Worker readiness 均有定向单测。
 - Redis 指标 recorder、API 聚合读取和 `/metrics` 有数据输出均有定向测试与集成断言。

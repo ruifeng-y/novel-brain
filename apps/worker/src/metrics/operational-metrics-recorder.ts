@@ -3,8 +3,12 @@ import {
   MODEL_METRICS_KEY,
   RUNTIME_METRICS_TTL_SECONDS,
   runtimeMetricsBucketKey,
-} from "@novel-brain/contracts";
+} from "@novel-brain/core";
+import type { WorkerJob } from "@novel-brain/contracts";
 import type Redis from "ioredis";
+
+type WorkerJobType = WorkerJob["jobType"];
+type WorkerJobOutcome = "succeeded" | "failed" | "cancelled";
 
 interface MetricsRedis {
   pipeline(): {
@@ -21,7 +25,7 @@ export class WorkerOperationalMetricsRecorder {
     private readonly now: () => number = Date.now,
   ) {}
 
-  async recordJob(jobType: string, status: string): Promise<void> {
+  async recordJob(jobType: WorkerJobType, status: WorkerJobOutcome): Promise<void> {
     await this.record(runtimeMetricsBucketKey(JOB_METRICS_KEY, new Date(this.now())), [
       [`${safeField(jobType)}:${safeField(status)}`, 1],
     ]);
@@ -50,10 +54,13 @@ export class WorkerOperationalMetricsRecorder {
       return;
     }
     if (event === "worker.model_call.budget_overrun") {
-      await this.record(runtimeMetricsBucketKey(MODEL_METRICS_KEY, new Date(this.now())), [
-        ["calls:failed", 1],
-        ["tokens:overrun", positiveNumber(payload.actualTokens)],
-      ]);
+      await this.recordModelAggregate({
+        status: "failed",
+        latencyMs: positiveNumber(payload.latencyMs),
+        inputTokens: positiveNumber(payload.inputTokens),
+        outputTokens: positiveNumber(payload.outputTokens),
+        costCny: positiveNumber(payload.costCny),
+      });
     }
   }
 

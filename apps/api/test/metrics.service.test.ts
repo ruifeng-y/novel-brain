@@ -6,6 +6,7 @@ describe("prometheus metrics service", () => {
   it("renders operational metrics without dynamic or sensitive labels", async () => {
     const metrics = new PrometheusMetricsService();
     metrics.observeHttpRequest("GET", "/api/v1/works/:workId", 200, 0.12);
+    metrics.observeHttpRequest("GET", "/api/v1/works/private-slug", 200, 0.12);
     metrics.updateSnapshot({
       dependencies: { database: true, queue: true, storage: false },
       queue: {
@@ -32,6 +33,8 @@ describe("prometheus metrics service", () => {
     const text = await metrics.render();
 
     expect(text).toContain("novelbrain_api_request_duration_seconds");
+    expect(text).not.toContain('route="/api/v1/works/private-slug"');
+    expect(text).toContain('route="/unmatched"');
     expect(text).toContain('novelbrain_dependency_up{dependency="database"} 1');
     expect(text).toContain('novelbrain_dependency_up{dependency="storage"} 0');
     expect(text).toContain('novelbrain_worker_queue_jobs{state="wait"} 7');

@@ -8,22 +8,11 @@ export class MetricsRuntimeRedisService implements OnModuleDestroy {
   readonly redis: Redis;
 
   constructor() {
-    const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      throw new Error("REDIS_URL is required");
-    }
-    this.redis = new Redis(redisUrl, {
-      maxRetriesPerRequest: 1,
-      enableReadyCheck: true,
-    });
+    this.redis = createMetricsRedis();
   }
 
   async onModuleDestroy(): Promise<void> {
-    if (this.redis.status === "ready") {
-      await this.redis.quit();
-      return;
-    }
-    this.redis.disconnect();
+    await closeMetricsRedis(this.redis);
   }
 }
 
@@ -33,23 +22,31 @@ export class MetricsQueueConnectionService implements OnModuleDestroy {
   private readonly redis: Redis;
 
   constructor() {
-    const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      throw new Error("REDIS_URL is required");
-    }
-    this.redis = new Redis(redisUrl, {
-      maxRetriesPerRequest: 1,
-      enableReadyCheck: true,
-    });
+    this.redis = createMetricsRedis();
     this.queue = new Queue(WORKER_QUEUE_NAME, { connection: this.redis });
   }
 
   async onModuleDestroy(): Promise<void> {
     await this.queue.close();
-    if (this.redis.status === "ready") {
-      await this.redis.quit();
-      return;
-    }
-    this.redis.disconnect();
+    await closeMetricsRedis(this.redis);
   }
+}
+
+function createMetricsRedis(): Redis {
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    throw new Error("REDIS_URL is required");
+  }
+  return new Redis(redisUrl, {
+    maxRetriesPerRequest: 1,
+    enableReadyCheck: true,
+  });
+}
+
+async function closeMetricsRedis(redis: Redis): Promise<void> {
+  if (redis.status === "ready") {
+    await redis.quit();
+    return;
+  }
+  redis.disconnect();
 }

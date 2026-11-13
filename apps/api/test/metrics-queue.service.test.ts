@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { MetricsQueueService } from "../src/metrics/metrics-queue.service";
 
 describe("metrics queue service", () => {
-  it("reports queue depth and oldest active job age", async () => {
+  it("reports queue depth and oldest waiting job age", async () => {
     const queue = {
       waitUntilReady: vi.fn().mockResolvedValue(undefined),
       getJobCounts: vi.fn().mockResolvedValue({

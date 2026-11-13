@@ -47,6 +47,7 @@ export function evaluateAlertFixture(fixture, thresholds) {
 export function validateAlertAssets() {
   const errors = [];
   const rules = readFileSync("infra/observability/alerts.yml", "utf8");
+  const alertTests = readFileSync("infra/observability/alerts.test.yml", "utf8");
   const runbook = readFileSync("docs/operations/alerting.md", "utf8");
   const thresholds = JSON.parse(readFileSync("infra/observability/alert-thresholds.json", "utf8"));
   const thresholdKeys = [
@@ -72,6 +73,9 @@ export function validateAlertAssets() {
     }
     if (!runbook.includes(`## ${alert}`)) {
       errors.push(`missing runbook heading: ${alert}`);
+    }
+    if (!alertTests.includes(`alertname: ${alert}`)) {
+      errors.push(`missing promtool fixture: ${alert}`);
     }
   }
   const fragments = {

@@ -4,7 +4,6 @@ import {
   Activity,
   CircleCheck,
   Database,
-  HardDrive,
   RefreshCw,
   Server,
   TriangleAlert,
@@ -83,7 +82,7 @@ export function HealthDashboard() {
   const readiness = state.phase === "loaded" ? state.readiness : undefined;
   const database = dependencyCheck(readiness, "database");
   const queue = dependencyCheck(readiness, "queue");
-  const storage = dependencyCheck(readiness, "storage");
+  const visibleChecks = readiness?.data.checks.filter((check) => check.name !== "storage") ?? [];
   const ready = readiness?.data.status === "ready";
   const statusLabel =
     state.phase === "loading"
@@ -106,7 +105,7 @@ export function HealthDashboard() {
         <div>
           <p className="eyebrow">系统</p>
           <h1>服务状态</h1>
-          <p className="page-sub">查看应用、数据库、任务队列和对象存储是否可用。</p>
+          <p className="page-sub">查看应用、数据库和任务队列是否可用。</p>
         </div>
         <div className="head-actions">
           <span className={`status-pill ${statusClass}`}>
@@ -145,12 +144,6 @@ export function HealthDashboard() {
           status={state.phase === "loading" ? "loading" : (queue?.status ?? "down")}
           detail={queue ? `${queue.latencyMs} ms` : "未取得检查结果"}
         />
-        <StatusCard
-          icon={<HardDrive size={18} />}
-          label="对象存储"
-          status={state.phase === "loading" ? "loading" : (storage?.status ?? "down")}
-          detail={storage ? `${storage.latencyMs} ms` : "未取得检查结果"}
-        />
       </section>
 
       <section className="panel check-panel" aria-labelledby="check-panel-title">
@@ -170,7 +163,6 @@ export function HealthDashboard() {
           <div className="check-list" aria-label="正在检查">
             <div className="check-row skeleton" />
             <div className="check-row skeleton" />
-            <div className="check-row skeleton" />
           </div>
         ) : state.phase === "error" ? (
           <div className="check-error">
@@ -182,7 +174,7 @@ export function HealthDashboard() {
           </div>
         ) : (
           <div className="check-list">
-            {readiness?.data.checks.map((check) => (
+            {visibleChecks.map((check) => (
               <div className="check-row" key={check.name}>
                 <span className={`check-dot ${check.status}`} aria-hidden="true" />
                 <strong>{checkLabels[check.name]}</strong>

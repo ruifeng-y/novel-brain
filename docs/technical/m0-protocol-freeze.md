@@ -271,6 +271,16 @@ M0 关键错误：
 
 未完成全部分块时确认导入返回 `IMPORT_NOT_READY`。导入默认只保留原文，不自动写入语义候选或已确认设定。
 
+### 5.11 健康、就绪与运维指标
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/health` | API 进程 liveness，不访问依赖 |
+| GET | `/api/v1/health/ready` | 检查数据库、队列，并在配置对象存储时检查 storage |
+| GET | `/api/v1/metrics` | Prometheus 文本指标，不进入 OpenAPI，也不经公开 Web 代理暴露 |
+
+`DependencyCheck.name` 固定为 `database`、`queue`、`storage`，状态固定为 `up`、`down`。Metrics 标签只允许已登记的路由模板、任务类型、状态、依赖和队列状态；正文、Prompt、ContextPack、密钥和租户原始标识不得进入标签。
+
 ## 6. M0 Resource Shapes
 
 以下是字段语义冻结；具体 Zod schema 在实现时落到 `packages/contracts`。

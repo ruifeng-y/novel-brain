@@ -2,8 +2,12 @@ import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   JOB_METRICS_KEY,
   MODEL_METRICS_KEY,
+  runtimeMetricsBucketDates,
   runtimeMetricsBucketKey,
-} from "@novel-brain/contracts";
+  safeRuntimeMetricJobStatus,
+  safeRuntimeMetricJobType,
+  safeRuntimeMetricModelStatus,
+} from "@novel-brain/core";
 
 import type { RuntimeMetricsSource } from "./operational-metrics.collector";
 
@@ -26,7 +30,7 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
   ) {}
 
   async collect(): Promise<Awaited<ReturnType<RuntimeMetricsSource["collect"]>>> {
-    const bucketDates = runtimeMetricBucketDates(this.now());
+    const bucketDates = runtimeMetricsBucketDates(this.now());
     const [jobBuckets, modelBuckets] = await Promise.all([
       Promise.all(
         bucketDates.map((date) =>
@@ -54,15 +58,19 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
 
     return {
       jobs: Object.entries(jobs)
-        .map(([field, value]) => {
+        .flatMap(([field, value]) => {
           const separator = field.lastIndexOf(":");
-          return {
-            jobType: field.slice(0, separator),
-            status: field.slice(separator + 1),
-            count: integer(value),
-          };
+          if (separator <= 0 || separator === field.length - 1) {
+            return [];
+          }
+          return [
+            {
+              jobType: safeRuntimeMetricJobType(field.slice(0, separator)),
+              status: safeRuntimeMetricJobStatus(field.slice(separator + 1)),
+              count: integer(value),
+            },
+          ];
         })
-        .filter((job) => job.jobType && job.status)
         .sort(
           (left, right) =>
             left.jobType.localeCompare(right.jobType) ||
@@ -73,7 +81,7 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
         const count = integer(models[`calls:${status}`]);
         const latencySum = integer(models[`latency_sum_ms:${status}`]);
         return {
-          status,
+          status: safeRuntimeMetricModelStatus(status),
           count,
           averageLatencyMs: count > 0 ? latencySum / count : 0,
           inputTokens: integer(models[`input_tokens:${status}`]),
@@ -83,15 +91,6 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
       }),
     };
   }
-}
-
-function runtimeMetricBucketDates(now: number): Date[] {
-  const current = new Date(now);
-  current.setUTCMinutes(0, 0, 0);
-  return Array.from(
-    { length: 25 },
-    (_, offset) => new Date(current.getTime() - offset * 60 * 60 * 1_000),
-  );
 }
 
 function mergeMetricBuckets(buckets: Array<Record<string, string>>): Record<string, string> {

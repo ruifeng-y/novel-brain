@@ -21,6 +21,7 @@ describe("health API", () => {
     databaseCheck: () => Promise<void>,
     queueCheck: () => Promise<void>,
     storageCheck?: () => Promise<void>,
+    storageConfigured = true,
   ) {
     const moduleRef = await Test.createTestingModule({
       controllers: [HealthController],
@@ -28,7 +29,14 @@ describe("health API", () => {
         HealthService,
         { provide: DATABASE_PROBE, useValue: { check: databaseCheck } },
         { provide: QUEUE_PROBE, useValue: { check: queueCheck } },
-        ...(storageCheck ? [{ provide: STORAGE_PROBE, useValue: { check: storageCheck } }] : []),
+        ...(storageCheck
+          ? [
+              {
+                provide: STORAGE_PROBE,
+                useValue: { check: storageCheck, isConfigured: () => storageConfigured },
+              },
+            ]
+          : []),
       ],
     }).compile();
 
@@ -99,5 +107,24 @@ describe("health API", () => {
     expect(parsed.data.checks).toContainEqual(
       expect.objectContaining({ name: "storage", status: "down" }),
     );
+  });
+
+  it("skips object storage readiness when it is not configured", async () => {
+    const storageCheck = vi.fn().mockRejectedValue(new Error("storage unavailable"));
+    const appUnderTest = await createApp(
+      vi.fn().mockResolvedValue(undefined),
+      vi.fn().mockResolvedValue(undefined),
+      storageCheck,
+      false,
+    );
+
+    const response = await request(appUnderTest.getHttpServer())
+      .get("/api/v1/health/ready")
+      .expect(200);
+
+    const parsed = readinessResponseSchema.parse(response.body);
+    expect(parsed.data.status).toBe("ready");
+    expect(parsed.data.checks.map((check) => check.name)).toEqual(["database", "queue"]);
+    expect(storageCheck).not.toHaveBeenCalled();
   });
 });

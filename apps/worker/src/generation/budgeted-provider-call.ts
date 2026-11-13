@@ -165,6 +165,13 @@ export class BudgetedProviderCallExecutor {
         reservationId: call.reservationId,
         step: input.step,
         actualTokens: result.usage.inputTokens + result.usage.outputTokens,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+        costCny: calculateCost(
+          result.usage.inputTokens + result.usage.outputTokens,
+          M0_COST_PER_TOKEN_CNY,
+        ),
+        latencyMs: Date.now() - startedAt,
         failureClass: "budget",
       });
       throw new CostBudgetOverrunRecordedError();

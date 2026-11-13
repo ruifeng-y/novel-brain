@@ -140,7 +140,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       },
       "Processing typed worker job",
     );
-    let outcome = "succeeded";
+    let outcome: "succeeded" | "failed" = "succeeded";
     try {
       if (payload.jobType === SUMMARY_REBUILD_JOB) {
         await this.summaryProcessor.process(payload);

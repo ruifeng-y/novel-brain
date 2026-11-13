@@ -1,0 +1,132 @@
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: novelbrain operational alerts
+    interval: 1m
+    input_series:
+      - series: 'up{job="novelbrain-api"}'
+        values: "0x10"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="0.05"}'
+        values: "0+0x20"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="0.1"}'
+        values: "0+0x20"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="0.3"}'
+        values: "0+0x20"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="0.5"}'
+        values: "0+10x20"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="1"}'
+        values: "0+10x20"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="2"}'
+        values: "0+10x20"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="5"}'
+        values: "0+10x20"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="10"}'
+        values: "0+10x20"
+      - series: 'novelbrain_api_request_duration_seconds_bucket{le="+Inf"}'
+        values: "0+10x20"
+      - series: 'novelbrain_worker_queue_jobs{state="wait"}'
+        values: "25x20"
+      - series: 'novelbrain_worker_queue_oldest_job_age_seconds{state="wait"}'
+        values: "900x20"
+      - series: 'novelbrain_jobs_total{job_type="generate_chapter",status="failed"}'
+        values: "20x20"
+      - series: 'novelbrain_jobs_total{job_type="generate_chapter",status="succeeded"}'
+        values: "80x20"
+      - series: "novelbrain_model_latency_ms_overall"
+        values: "6000x20"
+      - series: 'novelbrain_model_cost_cny_total{status="succeeded"}'
+        values: "30x20"
+      - series: "minio_cluster_capacity_usable_free_bytes"
+        values: "10x40"
+      - series: "minio_cluster_capacity_usable_total_bytes"
+        values: "100x40"
+      - series: 'novelbrain_dependency_up{dependency="storage"}'
+        values: "1x40"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ApiReadinessDown
+        exp_alerts:
+          - exp_labels:
+              job: novelbrain-api
+              severity: critical
+            exp_annotations:
+              summary: NovelBrain API has an unavailable required dependency
+              runbook: docs/operations/alerting.md#apireadinessdown
+      - eval_time: 16m
+        alertname: ApiLatencyHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: NovelBrain API p95 latency is above the 300 ms target
+              runbook: docs/operations/alerting.md#apilatencyhigh
+      - eval_time: 11m
+        alertname: WorkerQueueBacklog
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              state: wait
+            exp_annotations:
+              summary: NovelBrain worker queue backlog is above the approved threshold
+              runbook: docs/operations/alerting.md#workerqueuebacklog
+      - eval_time: 6m
+        alertname: WorkerQueueOldestJobAge
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              state: wait
+            exp_annotations:
+              summary: The oldest NovelBrain queued job has waited too long
+              runbook: docs/operations/alerting.md#workerqueueoldestjobage
+      - eval_time: 16m
+        alertname: JobFailureRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: NovelBrain durable job failure rate is above 10 percent
+              runbook: docs/operations/alerting.md#jobfailureratehigh
+      - eval_time: 11m
+        alertname: ModelLatencyHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Provider model latency is above the operational target
+              runbook: docs/operations/alerting.md#modellatencyhigh
+      - eval_time: 6m
+        alertname: ModelCostDailyHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Daily model spend has exceeded the default review threshold
+              runbook: docs/operations/alerting.md#modelcostdailyhigh
+      - eval_time: 31m
+        alertname: StorageUsageHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Object storage usable free space is below 15 percent
+              runbook: docs/operations/alerting.md#storageusagehigh
+  - name: object storage unavailable alert
+    interval: 1m
+    input_series:
+      - series: 'up{job="novelbrain-api"}'
+        values: "1x10"
+      - series: 'novelbrain_dependency_up{dependency="storage"}'
+        values: "0x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: StorageUnavailable
+        exp_alerts:
+          - exp_labels:
+              dependency: storage
+              severity: critical
+            exp_annotations:
+              summary: Required object storage is unavailable
+              runbook: docs/operations/alerting.md#storageunavailable

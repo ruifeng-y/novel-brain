@@ -80,10 +80,9 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
           {
             create: (config) => ("generateText" in resolver ? resolver : resolver.create(config)),
           },
-          undefined,
-          undefined,
-          undefined,
-          (observation) => metrics.recordModelAggregate(observation),
+          {
+            modelCall: (observation) => metrics.recordModelAggregate(observation),
+          },
         ),
     },
     GoldenThreeJobProcessor,

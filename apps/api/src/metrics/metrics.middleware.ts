@@ -1,4 +1,5 @@
 import { Injectable, type NestMiddleware } from "@nestjs/common";
+import { safeApiRouteTemplate } from "@novel-brain/core";
 import type { NextFunction, Request, Response } from "express";
 
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -13,7 +14,7 @@ export class MetricsMiddleware implements NestMiddleware {
   constructor(private readonly metrics: PrometheusMetricsService) {}
 
   use(request: Request, response: Response, next: NextFunction): void {
-    if (SKIPPED_PATHS.has(request.path)) {
+    if (SKIPPED_PATHS.has(request.path.toLowerCase())) {
       next();
       return;
     }
@@ -45,5 +46,5 @@ export function normalizeRoute(route: string): string {
     .split("?")[0]
     ?.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/giu, ":id")
     .replace(/[^A-Za-z0-9_/:.-]/gu, "");
-  return normalized?.startsWith("/") && normalized.length <= 200 ? normalized : "/unmatched";
+  return safeApiRouteTemplate(normalized ?? "");
 }

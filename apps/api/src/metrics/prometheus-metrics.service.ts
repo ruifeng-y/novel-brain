@@ -1,4 +1,10 @@
 import { Injectable } from "@nestjs/common";
+import {
+  safeApiRouteTemplate,
+  safeRuntimeMetricJobStatus,
+  safeRuntimeMetricJobType,
+  safeRuntimeMetricModelStatus,
+} from "@novel-brain/core";
 
 export interface QueueMetricCounts {
   wait: number;
@@ -53,7 +59,11 @@ export class PrometheusMetricsService {
   private readonly requestHistogram = new Map<string, HistogramSeries>();
 
   observeHttpRequest(method: string, route: string, status: number, durationSeconds: number): void {
-    const labels = { method, route, status: String(status) };
+    const labels = {
+      method: /^[A-Z]+$/u.test(method) ? method : "OTHER",
+      route: safeApiRouteTemplate(route),
+      status: /^[1-5]\d{2}$/u.test(String(status)) ? String(status) : "unknown",
+    };
     const key = JSON.stringify(labels);
     const series = this.requestHistogram.get(key) ?? {
       labels,
@@ -130,7 +140,7 @@ export class PrometheusMetricsService {
     }
 
     lines.push(
-      "# HELP novelbrain_worker_queue_oldest_job_age_seconds Age of the oldest active queue job.",
+      "# HELP novelbrain_worker_queue_oldest_job_age_seconds Age of the oldest waiting queue job.",
       "# TYPE novelbrain_worker_queue_oldest_job_age_seconds gauge",
     );
     for (const [state, age] of Object.entries(snapshot.queue.oldestAgeSeconds)) {
@@ -144,8 +154,8 @@ export class PrometheusMetricsService {
       "# TYPE novelbrain_jobs_total gauge",
     );
     for (const job of snapshot.jobs) {
-      const jobType = safeMetricLabel(job.jobType);
-      const status = safeMetricLabel(job.status);
+      const jobType = safeRuntimeMetricJobType(job.jobType);
+      const status = safeRuntimeMetricJobStatus(job.status);
       lines.push(metricLine("novelbrain_jobs_total", { job_type: jobType, status }, job.count));
     }
 
@@ -162,7 +172,7 @@ export class PrometheusMetricsService {
     let modelCalls = 0;
     let latencyWeighted = 0;
     for (const call of snapshot.modelCalls) {
-      const status = safeMetricLabel(call.status);
+      const status = safeRuntimeMetricModelStatus(call.status);
       inputTokens += call.inputTokens;
       outputTokens += call.outputTokens;
       modelCalls += call.count;
@@ -205,8 +215,4 @@ function metricLine(name: string, labels: Record<string, string>, value: number)
 
 function escapeLabel(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll("\n", "\\n").replaceAll('"', '\\"');
-}
-
-function safeMetricLabel(value: string): string {
-  return /^[a-z][a-z0-9_]{0,63}$/u.test(value) ? value : "unknown";
 }

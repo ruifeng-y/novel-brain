@@ -56,8 +56,9 @@ export function validateDeploymentAssets() {
     errors.push("production compose must require secure cookies");
   }
   for (const command of [
-    "docker compose -f infra/docker/compose.yml up -d --build",
+    "docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml up -d --build --wait",
     "pnpm stack:smoke",
+    "node apps/worker/scripts/stack-smoke.mjs",
     "Rollback",
   ]) {
     if (!deployment.includes(command)) {
@@ -74,17 +75,24 @@ export function validateDeploymentAssets() {
       errors.push(`stack smoke missing ${metric}`);
     }
   }
-  if (!workflow.includes("docker compose -f infra/docker/compose.yml up -d --build --wait")) {
-    errors.push("deployment smoke workflow must build and start Compose");
+  if (
+    !workflow.includes(
+      "docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml up -d --build --wait",
+    )
+  ) {
+    errors.push("deployment smoke workflow must build and start the production overlay");
   }
-  if (!workflow.includes("pnpm stack:smoke")) {
-    errors.push("deployment smoke workflow must execute stack smoke");
+  if (!workflow.includes("node apps/worker/scripts/stack-smoke.mjs")) {
+    errors.push("deployment smoke workflow must execute production stack smoke");
   }
   if (!workflow.includes("infra/docker/compose.production.yml config --quiet")) {
     errors.push("deployment smoke workflow must validate the production overlay");
   }
   if (!workflow.includes("/bin/promtool") || !workflow.includes("check config")) {
     errors.push("deployment smoke workflow must validate Prometheus configuration");
+  }
+  if (!workflow.includes("test rules /etc/prometheus/alerts.test.yml")) {
+    errors.push("deployment smoke workflow must test Prometheus alert rules");
   }
   if (!smoke.includes("Metrics must not be exposed through the public Web origin")) {
     errors.push("stack smoke must reject public metrics exposure");

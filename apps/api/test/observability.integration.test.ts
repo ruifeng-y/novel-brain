@@ -3,11 +3,7 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
-import {
-  JOB_METRICS_KEY,
-  MODEL_METRICS_KEY,
-  runtimeMetricsBucketKey,
-} from "@novel-brain/contracts";
+import { JOB_METRICS_KEY, MODEL_METRICS_KEY, runtimeMetricsBucketKey } from "@novel-brain/core";
 import Redis from "ioredis";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
