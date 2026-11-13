@@ -103,6 +103,7 @@ describe("sensitive log sanitization", () => {
 
     expect(sanitizeLogPayload("沈砚把断臂藏进衣袍。")).toBe("[REDACTED]");
     expect(sanitizeLogPayload("free form english manuscript")).toBe("[REDACTED]");
+    expect(sanitizeLogPayload({ key: "custom-provider-credential" })).toEqual({});
     expect(sanitized).toEqual({ event: "provider.request.failed" });
   });
 
@@ -120,12 +121,22 @@ describe("sensitive log sanitization", () => {
       unknownNull: null,
       requiredTokens: 120,
       contextWindowTokens: 64,
+      findings: ["RULE_CONFLICT"],
+      items: [
+        {
+          key: "model_config",
+          state: "missing",
+          title: "DRAFT_STRUCTURED_CANARY_133",
+        },
+      ],
     });
     expect(sanitized).toMatchObject({
       branchId: "01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
       tokenBudget: 200,
       requiredTokens: 120,
       contextWindowTokens: 64,
+      findings: ["RULE_CONFLICT"],
+      items: [{ key: "model_config", state: "missing" }],
       failedDimensions: ["world_rules"],
       message: "[REDACTED]",
       prompt: "[REDACTED]",
@@ -135,6 +146,7 @@ describe("sensitive log sanitization", () => {
     expect(JSON.stringify(sanitized)).not.toContain("unknownNumber");
     expect(JSON.stringify(sanitized)).not.toContain("unknownBoolean");
     expect(JSON.stringify(sanitized)).not.toContain("unknownNull");
+    expect(JSON.stringify(sanitized)).not.toContain("DRAFT_STRUCTURED_CANARY_133");
   });
 
   it("fails closed when a declared canary survives sanitization", () => {

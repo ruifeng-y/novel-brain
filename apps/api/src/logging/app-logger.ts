@@ -2,8 +2,8 @@ import type { LoggerService } from "@nestjs/common";
 import {
   LogRedactionError,
   parseLogCanaryValues,
+  sanitizeDiagnosticText,
   sanitizeLogPayloadStrict,
-  sanitizeStructuredPayload,
 } from "@novel-brain/core";
 import pino, { type Logger } from "pino";
 
@@ -115,7 +115,7 @@ export class AppLogger implements LoggerService {
     }
     let sanitized: unknown;
     try {
-      sanitized = sanitizeStructuredPayload(frames, {
+      sanitized = sanitizeDiagnosticText(frames, {
         canaryValues: this.canaryValues,
       });
     } catch (error) {

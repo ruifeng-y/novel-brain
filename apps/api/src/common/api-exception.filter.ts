@@ -30,7 +30,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         apiErrorSchema.parse({
           error: {
             code: exception.code,
-            message: safeMessage(exception.message, this.canaryValues),
+            message: publicErrorMessage(exception.status),
             details: safeDetails(exception.details, this.canaryValues),
             requestId,
           },
@@ -48,7 +48,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
             details: {
               issues: exception.issues.map(({ path, message }) => ({
                 path: safeValidationPath(path, this.canaryValues),
-                message: safeMessage(message, this.canaryValues),
+                message: safeValidationMessage(message, this.canaryValues),
               })),
             },
             requestId,
@@ -64,7 +64,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         apiErrorSchema.parse({
           error: {
             code: status === 401 ? "AUTH_SESSION_INVALID" : "INTERNAL_ERROR",
-            message: safeMessage(exception.message, this.canaryValues),
+            message: publicErrorMessage(status),
             details: {},
             requestId,
           },
@@ -94,6 +94,31 @@ export class ApiExceptionFilter implements ExceptionFilter {
   }
 }
 
+function publicErrorMessage(status: number): string {
+  if (status === 400) {
+    return "输入内容不完整或格式不正确";
+  }
+  if (status === 401) {
+    return "登录状态已失效，请重新登录";
+  }
+  if (status === 403) {
+    return "当前账号无权执行此操作";
+  }
+  if (status === 404) {
+    return "请求的资源不存在或无权访问";
+  }
+  if (status === 409) {
+    return "当前状态不允许执行此操作，请刷新后重试";
+  }
+  if (status === 429) {
+    return "请求过于频繁，请稍后再试";
+  }
+  if (status === 502) {
+    return "模型服务暂时不可用，请稍后重试";
+  }
+  return "服务暂时不可用";
+}
+
 function safeValidationPath(
   path: readonly PropertyKey[],
   canaryValues: readonly string[],
@@ -116,15 +141,15 @@ function safeValidationPath(
   return safePath;
 }
 
-function safeMessage(message: string, canaryValues: readonly string[]): string {
+function safeValidationMessage(message: string, canaryValues: readonly string[]): string {
   try {
-    const sanitized = sanitizeStructuredPayload(message, { canaryValues });
-    return typeof sanitized === "string" ? sanitized : "请求处理失败";
+    sanitizeStructuredPayload(message, { canaryValues });
+    return "字段格式不正确";
   } catch (error) {
     if (error instanceof LogRedactionError) {
-      return "请求包含敏感信息，详细内容已隐藏";
+      return "字段包含无法安全展示的内容";
     }
-    return "请求处理失败";
+    return "字段格式不正确";
   }
 }
 

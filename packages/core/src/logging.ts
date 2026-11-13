@@ -77,7 +77,6 @@ const SAFE_LOG_KEYS = new Set([
   "jobId",
   "jobType",
   "jobTypes",
-  "key",
   "latencyMs",
   "maxCostCny",
   "maxRevisionRounds",
@@ -136,25 +135,21 @@ const SAFE_STRUCTURED_RESPONSE_KEYS = new Set([
   "blockers",
   "chapterVersionId",
   "commitId",
-  "conflictingAlias",
-  "conflictingName",
   "dependencies",
   "dependencyFingerprint",
-  "evidence",
   "fieldKey",
+  "findings",
   "findingId",
   "entityId",
   "issues",
   "items",
-  "label",
+  "key",
   "missingCards",
   "missingChapterNumbers",
   "p0Keys",
   "path",
   "pendingRequiredFactIds",
   "proposalCount",
-  "reason",
-  "remediation",
   "reportId",
   "resource",
   "resumedChapters",
@@ -162,12 +157,9 @@ const SAFE_STRUCTURED_RESPONSE_KEYS = new Set([
   "sourceVersionId",
   "severity",
   "state",
-  "summary",
-  "title",
   "uncommittedChapterNumbers",
   "unresolvedHighRiskFactIds",
   "version",
-  "violations",
   "warnings",
 ]);
 const OBJECT_ONLY_KEYS = new Set(["checkpoint", "cost", "error", "remediation", "resource"]);
@@ -176,8 +168,8 @@ const ARRAY_ONLY_KEYS = new Set([
   "candidateIds",
   "chapterNumbers",
   "dependencies",
-  "evidence",
   "failedDimensions",
+  "findings",
   "issues",
   "items",
   "missingCards",
@@ -187,7 +179,6 @@ const ARRAY_ONLY_KEYS = new Set([
   "pendingRequiredFactIds",
   "uncommittedChapterNumbers",
   "unresolvedHighRiskFactIds",
-  "violations",
 ]);
 const SAFE_LOG_MACHINE_TEXT = /^[A-Za-z0-9_./:#@?=&%+,-]{1,256}$/u;
 const SAFE_TELEMETRY_LABEL_KEYS = new Set([
@@ -243,7 +234,23 @@ export function sanitizeStructuredPayload(
   value: unknown,
   options: { canaryValues?: readonly string[] } = {},
 ): unknown {
-  const sanitized = sanitizeValue(value, 0, SAFE_STRUCTURED_RESPONSE_KEYS, "structured");
+  return sanitizeChecked(value, SAFE_STRUCTURED_RESPONSE_KEYS, "structured", options);
+}
+
+export function sanitizeDiagnosticText(
+  value: unknown,
+  options: { canaryValues?: readonly string[] } = {},
+): unknown {
+  return sanitizeChecked(value, SAFE_STRUCTURED_RESPONSE_KEYS, "text", options);
+}
+
+function sanitizeChecked(
+  value: unknown,
+  allowedKeys: ReadonlySet<string>,
+  mode: SanitizationMode,
+  options: { canaryValues?: readonly string[] },
+): unknown {
+  const sanitized = sanitizeValue(value, 0, allowedKeys, mode);
   const findings = findSensitiveLogValues(sanitized);
   for (const canary of options.canaryValues ?? []) {
     if (canary && containsString(sanitized, canary)) {
@@ -260,17 +267,7 @@ export function sanitizeLogPayloadStrict(
   value: unknown,
   options: { canaryValues?: readonly string[] } = {},
 ): unknown {
-  const sanitized = sanitizeLogPayload(value);
-  const findings = findSensitiveLogValues(sanitized);
-  for (const canary of options.canaryValues ?? []) {
-    if (canary && containsString(sanitized, canary)) {
-      findings.push("$canary");
-    }
-  }
-  if (findings.length > 0) {
-    throw new LogRedactionError([...new Set(findings)]);
-  }
-  return sanitized;
+  return sanitizeChecked(value, SAFE_LOG_KEYS, "log", options);
 }
 
 export function findSensitiveLogValues(value: unknown): string[] {
@@ -388,7 +385,7 @@ export function parseLogCanaryValues(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-type SanitizationMode = "log" | "structured";
+type SanitizationMode = "log" | "structured" | "text";
 
 function sanitizeValue(
   value: unknown,
@@ -400,7 +397,7 @@ function sanitizeValue(
     return "[TRUNCATED]";
   }
   if (typeof value === "string") {
-    if (mode === "log" && !SAFE_LOG_MACHINE_TEXT.test(value)) {
+    if (mode !== "text" && !SAFE_LOG_MACHINE_TEXT.test(value)) {
       return REDACTED;
     }
     return sanitizeText(value);
