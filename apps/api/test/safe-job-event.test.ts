@@ -4,6 +4,40 @@ import type { JobEvent } from "@novel-brain/contracts";
 import { sanitizeJobEventForDelivery } from "../src/logging/safe-job-event";
 
 describe("SSE job event sensitive payload boundary", () => {
+  it("redacts each sensitive field while preserving operational event data", () => {
+    const sanitized = sanitizeJobEventForDelivery(
+      {
+        eventId: "01a1d573-fc63-7fd2-8e45-7ee8d05f9a3d",
+        type: "job.failed",
+        occurredAt: "2026-11-13T15:00:00.000Z",
+        data: {
+          code: "MODEL_FAILED",
+          status: "failed",
+          apiKey: "sk-sse-independent-133",
+          prompt: "PROMPT_SSE_INDEPENDENT_133",
+          manuscript: "沈砚把断臂藏进衣袍。",
+          message: "MESSAGE_SSE_CANARY_133",
+          unknownNumber: 42,
+          unknownBoolean: true,
+          unknownNull: null,
+        },
+      },
+      [],
+    );
+
+    expect(sanitized.data).toMatchObject({
+      code: "MODEL_FAILED",
+      status: "failed",
+      apiKey: "[REDACTED]",
+      prompt: "[REDACTED]",
+      manuscript: "[REDACTED]",
+      message: "[REDACTED]",
+    });
+    expect(sanitized.data).not.toHaveProperty("unknownNumber");
+    expect(sanitized.data).not.toHaveProperty("unknownBoolean");
+    expect(sanitized.data).not.toHaveProperty("unknownNull");
+  });
+
   it("keeps event ids and operational fields while dropping sensitive payloads", () => {
     const promptCanary = "PROMPT_SSE_CANARY_133";
     process.env.LOG_CANARY_VALUES = JSON.stringify([promptCanary]);

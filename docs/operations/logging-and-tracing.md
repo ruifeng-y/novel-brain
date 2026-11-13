@@ -33,7 +33,7 @@ endpoint 只接受 localhost、私网 IP、`*.internal`、`*.local` 或集群内
 LOG_CANARY_VALUES=["KEY_CANARY","PROMPT_CANARY","MANUSCRIPT_CANARY"]
 ```
 
-也可使用逗号分隔文本。任何 canary 在脱敏后仍存在时，logger 放弃原 payload，只输出 `logging.redaction_failed`。canary 扫描应覆盖 API 异常、Worker 作业日志和 SSE 事件。
+也可使用逗号分隔文本。任何 canary 在脱敏后仍存在时，logger 放弃原 payload，只输出 `logging.redaction_failed`。扫描同时覆盖字段名和字段值；API 异常、Worker 作业日志、SSE 事件和 metrics 的指标名、标签名、标签值都在覆盖范围内。
 
 本地验证命令：
 
@@ -67,4 +67,4 @@ docker compose -f infra/docker/compose.yml up -d --build
 
 ## 指标标签
 
-指标标签通过 `sanitizeTelemetryLabels` 限制为低基数白名单字段，例如 route、method、status、operation、provider、outcome 和 error code。Worker 作业启动通过 `worker.job.started` 指标路径输出。request ID、用户内容、Prompt、正文、模型自定义名和任意动态字段不得作为指标标签。
+指标标签通过 `sanitizeTelemetryLabels` 限制为低基数白名单字段，例如 route、method、status、operation、provider、outcome 和 error code。route 只接受已登记的生产静态路由。Worker 作业启动通过 `worker.job.started` 指标路径输出。request ID、用户内容、Prompt、正文、模型自定义名和任意动态字段不得作为指标标签。

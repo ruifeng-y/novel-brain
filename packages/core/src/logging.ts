@@ -32,37 +32,61 @@ const SENSITIVE_KEYS = new Set([
 
 const TOKEN_PATTERN = /(?:sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._~+/=-]{8,})/gu;
 const SAFE_LOG_KEYS = new Set([
+  "actualCostCny",
   "actualTokens",
   "action",
+  "actorId",
   "attempt",
   "batchId",
+  "bindingScope",
+  "branchId",
+  "budgetAfter",
+  "budgetBefore",
   "candidateCount",
   "candidateIds",
+  "chapterId",
+  "chapterStatus",
   "chapterNumbers",
+  "checkpoint",
   "checkpointStep",
   "code",
+  "completed",
   "contentHash",
   "contextManifestHash",
   "contextPackId",
   "costCny",
+  "currentStep",
   "delayMs",
   "endpointConfigured",
+  "error",
   "errorCode",
   "errorType",
+  "estimatedCostCny",
+  "estimatedTokens",
   "event",
+  "failedDimensions",
   "failureClass",
+  "gate",
+  "id",
   "inputHash",
   "inputTokens",
   "jobId",
   "jobType",
   "jobTypes",
+  "key",
   "latencyMs",
+  "maxCostCny",
+  "maxRevisionRounds",
+  "maxTokens",
   "mode",
+  "modelConfigId",
   "model",
   "modelCallId",
   "operation",
   "outputHash",
+  "outputRefs",
   "outputTokens",
+  "kind",
   "planId",
   "port",
   "promptKey",
@@ -70,18 +94,56 @@ const SAFE_LOG_KEYS = new Set([
   "progress",
   "provider",
   "queue",
+  "ready",
   "requestId",
   "reservationId",
+  "reportState",
+  "reservedCostCny",
+  "reservedTokens",
+  "resumeStep",
+  "recoveryId",
   "retentionDays",
   "retryable",
+  "revision",
   "route",
   "runId",
+  "schemaVersion",
   "service",
   "status",
   "stage",
   "staleRecovery",
   "step",
   "stepKey",
+  "targetId",
+  "terminal",
+  "tokenBudget",
+  "total",
+  "type",
+  "userId",
+  "value",
+  "versionNodeId",
+  "workId",
+]);
+const SAFE_STRUCTURED_RESPONSE_KEYS = new Set([
+  ...SAFE_LOG_KEYS,
+  "blockers",
+  "chapterVersionId",
+  "commitId",
+  "findingId",
+  "issues",
+  "missingCards",
+  "missingChapterNumbers",
+  "path",
+  "pendingRequiredFactIds",
+  "proposalCount",
+  "reportId",
+  "resumedChapters",
+  "sourceVersionId",
+  "severity",
+  "title",
+  "uncommittedChapterNumbers",
+  "unresolvedHighRiskFactIds",
+  "violations",
 ]);
 const SAFE_TELEMETRY_LABEL_KEYS = new Set([
   "errorcode",
@@ -97,6 +159,7 @@ const SAFE_TELEMETRY_LABEL_KEYS = new Set([
 ]);
 const SAFE_TELEMETRY_LABEL_VALUE = /^[A-Za-z0-9_./:-]{1,128}$/u;
 const UUID_VALUE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu;
+const SAFE_TELEMETRY_ROUTES = new Set(["/api/v1/health", "/api/v1/health/ready", "/api/v1/works"]);
 
 export class LogRedactionError extends Error {
   constructor(readonly findings: string[]) {
@@ -123,18 +186,19 @@ export type TraceFetch = (
     method: string;
     headers: Record<string, string>;
     body: string;
+    redirect: "error";
   },
 ) => Promise<{ ok: boolean; status: number }>;
 
 export function sanitizeLogPayload(value: unknown): unknown {
-  return sanitizeValue(value, 0, false);
+  return sanitizeValue(value, 0, SAFE_LOG_KEYS);
 }
 
 export function sanitizeStructuredPayload(
   value: unknown,
   options: { canaryValues?: readonly string[] } = {},
 ): unknown {
-  const sanitized = sanitizeValue(value, 0, true);
+  const sanitized = sanitizeValue(value, 0, SAFE_STRUCTURED_RESPONSE_KEYS);
   const findings = findSensitiveLogValues(sanitized);
   for (const canary of options.canaryValues ?? []) {
     if (canary && containsString(sanitized, canary)) {
@@ -215,6 +279,7 @@ export async function emitTraceEnvelope(
   const response = await fetcher(policy.endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
+    redirect: "error",
     body: JSON.stringify({
       name: envelope.name,
       occurredAt: envelope.occurredAt,
@@ -240,7 +305,7 @@ export function sanitizeTelemetryLabels(labels: Record<string, unknown>): Record
     }
     if (
       UUID_VALUE.test(value) ||
-      (normalizedKey === "route" && /(?:^|\/)\d+(?:\/|$)/u.test(value)) ||
+      (normalizedKey === "route" && !SAFE_TELEMETRY_ROUTES.has(value)) ||
       (normalizedKey === "status" && !/^[1-5]\d{2}$/u.test(value))
     ) {
       continue;
@@ -271,7 +336,7 @@ export function parseLogCanaryValues(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function sanitizeValue(value: unknown, depth: number, allowUnknownFields: boolean): unknown {
+function sanitizeValue(value: unknown, depth: number, allowedKeys: ReadonlySet<string>): unknown {
   if (depth > 12) {
     return "[TRUNCATED]";
   }
@@ -279,19 +344,18 @@ function sanitizeValue(value: unknown, depth: number, allowUnknownFields: boolea
     return sanitizeText(value);
   }
   if (Array.isArray(value)) {
-    return value.map((entry) => sanitizeValue(entry, depth + 1, allowUnknownFields));
+    return value.map((entry) => sanitizeValue(entry, depth + 1, allowedKeys));
   }
   if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-        key,
-        isSensitiveKey(key)
-          ? REDACTED
-          : allowUnknownFields || isSafeLogKey(key) || isSafeScalarValue(entry)
-            ? sanitizeValue(entry, depth + 1, allowUnknownFields)
-            : REDACTED,
-      ]),
-    );
+    const safeEntries: Array<[string, unknown]> = [];
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      if (isSensitiveKey(key)) {
+        safeEntries.push([key, REDACTED]);
+      } else if (allowedKeys.has(key)) {
+        safeEntries.push([key, sanitizeValue(entry, depth + 1, allowedKeys)]);
+      }
+    }
+    return Object.fromEntries(safeEntries);
   }
   return value;
 }
@@ -329,25 +393,6 @@ function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEYS.has(normalizeKey(key));
 }
 
-function isSafeLogKey(key: string): boolean {
-  return (
-    SAFE_LOG_KEYS.has(key) ||
-    /^[a-z][A-Za-z0-9]*(?:Id|Ids|Hash|Hashes|Count|Counts|Tokens?|Cny|Ms|Budget|Version|Code|Type|Class|Status|Scope|Step)$/u.test(
-      key,
-    )
-  );
-}
-
-function isSafeScalarValue(value: unknown): boolean {
-  return (
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    value === null ||
-    (Array.isArray(value) &&
-      value.every((entry) => typeof entry === "number" || typeof entry === "boolean"))
-  );
-}
-
 function containsCredential(value: string): boolean {
   TOKEN_PATTERN.lastIndex = 0;
   return TOKEN_PATTERN.test(value);
@@ -368,6 +413,11 @@ function containsString(value: unknown, expected: string, depth = 0): boolean {
     return value.some((entry) => containsString(entry, expected, depth + 1));
   }
   if (value && typeof value === "object") {
+    for (const key of Object.keys(value as Record<string, unknown>)) {
+      if (key.includes(expected)) {
+        return true;
+      }
+    }
     return Object.values(value as Record<string, unknown>).some((entry) =>
       containsString(entry, expected, depth + 1),
     );
@@ -408,6 +458,7 @@ const defaultTraceFetch: TraceFetch = async (url, init) => {
           method: string;
           headers: Record<string, string>;
           body: string;
+          redirect: "error";
         },
       ) => Promise<{ ok: boolean; status: number }>;
     }

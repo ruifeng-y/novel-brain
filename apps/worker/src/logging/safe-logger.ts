@@ -48,14 +48,25 @@ export class SafePinoLogger {
   }
 
   metric(name: string, labels: Record<string, unknown>, value = 1): void {
-    if (!/^[a-z][a-z0-9_.-]{0,99}$/u.test(name) || !Number.isFinite(value)) {
+    const containsCanary = (candidate: string): boolean =>
+      this.canaryValues.some((canary) => canary.length > 0 && candidate.includes(canary));
+    if (
+      !/^[a-z][a-z0-9_.-]{0,99}$/u.test(name) ||
+      !Number.isFinite(value) ||
+      containsCanary(name)
+    ) {
       return;
     }
+    const safeLabels = Object.fromEntries(
+      Object.entries(sanitizeTelemetryLabels(labels)).filter(
+        ([key, label]) => !containsCanary(key) && !containsCanary(label),
+      ),
+    );
     this.logger.info({
       event: "telemetry.metric",
       metric: name,
       value,
-      labels: sanitizeTelemetryLabels(labels),
+      labels: safeLabels,
     });
   }
 

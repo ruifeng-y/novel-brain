@@ -79,11 +79,17 @@ describe("sensitive log sanitization", () => {
       event: "provider.request.failed",
       message: "沈砚把断臂藏进衣袍。",
       headers: { "x-api-key": "custom-provider-credential" },
+      unknownNumber: 42,
+      unknownBoolean: true,
+      unknownNull: null,
     });
     const text = JSON.stringify(sanitized);
 
     expect(text).not.toContain("沈砚");
     expect(text).not.toContain("custom-provider-credential");
+    expect(text).not.toContain("unknownNumber");
+    expect(text).not.toContain("unknownBoolean");
+    expect(text).not.toContain("unknownNull");
     expect(text).toContain("provider.request.failed");
   });
 
@@ -94,6 +100,11 @@ describe("sensitive log sanitization", () => {
       failedDimensions: ["world_rules"],
       message: "沈砚把断臂藏进衣袍。",
       prompt: "PROMPT_STRUCTURED_CANARY_133",
+      draftExcerpt: "DRAFT_STRUCTURED_CANARY_133",
+      headers: { "x-api-key": "custom-provider-credential" },
+      unknownNumber: 42,
+      unknownBoolean: true,
+      unknownNull: null,
     });
     expect(sanitized).toMatchObject({
       branchId: "01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
@@ -102,6 +113,11 @@ describe("sensitive log sanitization", () => {
       message: "[REDACTED]",
       prompt: "[REDACTED]",
     });
+    expect(JSON.stringify(sanitized)).not.toContain("DRAFT_STRUCTURED_CANARY_133");
+    expect(JSON.stringify(sanitized)).not.toContain("custom-provider-credential");
+    expect(JSON.stringify(sanitized)).not.toContain("unknownNumber");
+    expect(JSON.stringify(sanitized)).not.toContain("unknownBoolean");
+    expect(JSON.stringify(sanitized)).not.toContain("unknownNull");
   });
 
   it("fails closed when a declared canary survives sanitization", () => {
@@ -110,6 +126,15 @@ describe("sensitive log sanitization", () => {
         { status: "CANARY_SURVIVES_133" },
         { canaryValues: ["CANARY_SURVIVES_133"] },
       ),
+    ).toThrow(LogRedactionError);
+    expect(
+      sanitizeLogPayloadStrict(
+        { MANUSCRIPT_CANARY_133: "safe-looking-value" },
+        { canaryValues: ["MANUSCRIPT_CANARY_133"] },
+      ),
+    ).toEqual({});
+    expect(() =>
+      sanitizeLogPayloadStrict({ status: "queued" }, { canaryValues: ["status"] }),
     ).toThrow(LogRedactionError);
   });
 
@@ -147,9 +172,13 @@ describe("sensitive log sanitization", () => {
   });
 
   it("emits traces only when explicitly self-hosted and never includes sensitive payloads", async () => {
-    const calls: Array<{ url: string; body: string }> = [];
+    const calls: Array<{ url: string; body: string; redirect?: string }> = [];
     const fetcher = async (url: string | URL | Request, init?: RequestInit) => {
-      calls.push({ url: String(url), body: String(init?.body ?? "") });
+      calls.push({
+        url: String(url),
+        body: String(init?.body ?? ""),
+        redirect: init?.redirect,
+      });
       return new Response("{}", { status: 202 });
     };
 
@@ -187,6 +216,7 @@ describe("sensitive log sanitization", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toContain("langfuse.internal");
     expect(calls[0]?.body).toContain('"retentionDays":14');
+    expect(calls[0]?.redirect).toBe("error");
     expect(calls[0]?.body).not.toContain("PROMPT_TRACE_CANARY_133");
     expect(calls[0]?.body).not.toContain("沈砚");
   });
@@ -206,6 +236,11 @@ describe("sensitive log sanitization", () => {
     expect(
       sanitizeTelemetryLabels({
         route: "/api/v1/works/01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
+      }),
+    ).toEqual({});
+    expect(
+      sanitizeTelemetryLabels({
+        route: "/api/v1/works/private-slug",
       }),
     ).toEqual({});
   });

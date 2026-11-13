@@ -6,7 +6,7 @@
 
 ## 1. 实现范围
 
-- 扩展 `packages/core/src/logging.ts`：敏感键和未登记字段默认移除，统一脱敏 API Key、authorization、正文、prompt、ContextPack、导入原文和常见别名字段。
+- 扩展 `packages/core/src/logging.ts`：普通日志与结构化响应分别使用显式字段白名单，敏感键统一脱敏，未登记字段（包括数字、布尔和 null）一律移除。
 - 普通日志只输出 ID、哈希、长度、状态、错误码、模型与成本等非敏感字段。
 - API 和 Worker 都通过安全 logger 写普通日志；canary 在脱敏后仍存在时丢弃原 payload，仅输出 `logging.redaction_failed`。
 - API 异常响应和 SSE job event 在返回前经过同一敏感载荷过滤。
@@ -18,8 +18,9 @@
 - `packages/core/test/logging.test.ts`
   - Key、manuscript、prompt、ContextPack、imported source 和 chapter body 别名脱敏。
   - canary 残留时 fail-closed。
+  - canary 出现在字段名时同样 fail-closed。
   - trace off/self-hosted、保留期、自托管 endpoint 校验和 trace 导出 body。
-  - metrics label 丢弃敏感字段与高基数字段。
+  - metrics 指标名、标签名和标签值均执行 canary 扫描，并丢弃敏感字段与高基数字段。
 - `apps/api/test/app-logger.test.ts`
   - API 普通日志 canary 扫描。
   - logger context 不泄露 canary。

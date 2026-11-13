@@ -68,11 +68,13 @@ describe("worker safe logger", () => {
       return true;
     });
 
-    new SafePinoLogger().metric("worker.job.started", {
+    new SafePinoLogger({ canaryValues: ["ROUTE_CANARY_133"] }).metric("worker.job.started", {
       job_type: "generate_chapter",
       queue: "novelbrain",
       request_id: "req_dynamic_133",
       route: "/api/v1/works/01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1",
+      outcome: "ROUTE_CANARY_133",
+      route_canary_133: "safe-looking-value",
       model: "author-private-model",
     });
 
@@ -81,6 +83,7 @@ describe("worker safe logger", () => {
     expect(output).toContain("generate_chapter");
     expect(output).not.toContain("req_dynamic_133");
     expect(output).not.toContain("01a1d573-7f8c");
+    expect(output).not.toContain("ROUTE_CANARY_133");
     expect(output).not.toContain("author-private-model");
   });
 

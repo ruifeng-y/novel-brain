@@ -15,6 +15,39 @@ function createHost() {
 }
 
 describe("API exception filter sensitive payload boundary", () => {
+  it("redacts key, prompt and manuscript fields independently from operational details", () => {
+    const { host, response } = createHost();
+    const filter = new ApiExceptionFilter({ error: vi.fn() } as never, []);
+
+    filter.catch(
+      new ApiError(409, "QUALITY_GATE_BLOCKED", "safe message", {
+        code: "QUALITY_GATE_BLOCKED",
+        status: "blocked",
+        apiKey: "sk-api-independent-133",
+        prompt: "PROMPT_INDEPENDENT_133",
+        manuscript: "沈砚把断臂藏进衣袍。",
+        message: "MESSAGE_CANARY_133",
+        unknownNumber: 42,
+        unknownBoolean: true,
+        unknownNull: null,
+      }),
+      host as never,
+    );
+
+    const body = response.json.mock.calls[0]?.[0];
+    expect(body.error.details).toMatchObject({
+      code: "QUALITY_GATE_BLOCKED",
+      status: "blocked",
+      apiKey: "[REDACTED]",
+      prompt: "[REDACTED]",
+      manuscript: "[REDACTED]",
+      message: "[REDACTED]",
+    });
+    expect(body.error.details).not.toHaveProperty("unknownNumber");
+    expect(body.error.details).not.toHaveProperty("unknownBoolean");
+    expect(body.error.details).not.toHaveProperty("unknownNull");
+  });
+
   it("redacts secrets, prompts and manuscript text from API error details", () => {
     const { host, response } = createHost();
     const logger = { error: vi.fn() };
