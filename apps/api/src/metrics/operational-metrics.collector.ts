@@ -3,10 +3,10 @@ import { Inject, Injectable } from "@nestjs/common";
 import { HealthService } from "../health/health.service";
 import type { OperationalMetricsSnapshot, QueueMetricCounts } from "./prometheus-metrics.service";
 
-export const METRICS_DATABASE = Symbol("METRICS_DATABASE");
+export const METRICS_RUNTIME = Symbol("METRICS_RUNTIME");
 export const METRICS_QUEUE = Symbol("METRICS_QUEUE");
 
-export interface DurableMetricsSource {
+export interface RuntimeMetricsSource {
   collect(): Promise<Pick<OperationalMetricsSnapshot, "jobs" | "modelCalls">>;
 }
 
@@ -19,14 +19,14 @@ export class OperationalMetricsCollector {
   constructor(
     @Inject(HealthService)
     private readonly health: Pick<HealthService, "getReadiness">,
-    @Inject(METRICS_DATABASE) private readonly database: DurableMetricsSource,
+    @Inject(METRICS_RUNTIME) private readonly runtime: RuntimeMetricsSource,
     @Inject(METRICS_QUEUE) private readonly queue: QueueMetricsSource,
   ) {}
 
   async collect(): Promise<OperationalMetricsSnapshot> {
-    const [readinessResult, durableResult, queueResult] = await Promise.allSettled([
+    const [readinessResult, runtimeResult, queueResult] = await Promise.allSettled([
       this.health.getReadiness(),
-      this.database.collect(),
+      this.runtime.collect(),
       this.queue.collect(),
     ]);
 
@@ -34,8 +34,8 @@ export class OperationalMetricsCollector {
       readinessResult.status === "fulfilled"
         ? readinessResult.value
         : { checks: [] as Array<{ name: string; status: string }> };
-    const durable =
-      durableResult.status === "fulfilled" ? durableResult.value : { jobs: [], modelCalls: [] };
+    const runtime =
+      runtimeResult.status === "fulfilled" ? runtimeResult.value : { jobs: [], modelCalls: [] };
     const queue = queueResult.status === "fulfilled" ? queueResult.value : emptyQueueMetrics();
     const dependency = (name: "database" | "queue" | "storage"): boolean =>
       readiness.checks.some((check) => check.name === name && check.status === "up");
@@ -45,16 +45,14 @@ export class OperationalMetricsCollector {
       dependencies: {
         database: dependency("database"),
         queue: dependency("queue"),
-        storage: dependency("storage"),
+        ...(storageConfigured ? { storage: dependency("storage") } : {}),
       },
       queue,
-      jobs: durable.jobs,
-      modelCalls: durable.modelCalls,
+      jobs: runtime.jobs,
+      modelCalls: runtime.modelCalls,
       storage: {
         configured: storageConfigured,
         available: dependency("storage"),
-        objectCount: 0,
-        bytes: 0,
       },
     };
   }

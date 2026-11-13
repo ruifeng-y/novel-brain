@@ -4731,6 +4731,9 @@ export const workerReadinessDataSchema = z.object({
 export type WorkerReadinessData = z.infer<typeof workerReadinessDataSchema>;
 
 export const WORKER_QUEUE_NAME = "novel-brain-jobs";
+export const RUNTIME_METRICS_TTL_SECONDS = 90_000;
+export const JOB_METRICS_KEY = "novelbrain:metrics:jobs";
+export const MODEL_METRICS_KEY = "novelbrain:metrics:models";
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
 export const GENERATE_GOLDEN_THREE_JOB = "generate_golden_three";
 export const SUMMARY_REBUILD_JOB = "rebuild_summaries";

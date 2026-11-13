@@ -33,6 +33,7 @@ import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
+import { WorkerOperationalMetricsRecorder } from "./metrics/operational-metrics-recorder";
 
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -41,6 +42,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
   private readonly connection: Redis;
   private readonly queue: Queue<WorkerJob>;
   private readonly worker: BullWorker<WorkerJob, void>;
+  private readonly metrics: WorkerOperationalMetricsRecorder;
 
   constructor(
     private readonly processor: GenerationJobProcessor,
@@ -69,6 +71,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     this.connection = new Redis(redisUrl, {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
+    });
+    this.metrics = new WorkerOperationalMetricsRecorder(this.connection);
+    this.logger.setTelemetrySink((payload) => {
+      void this.metrics.recordModelCall(payload);
     });
     this.queue = new Queue<WorkerJob>(WORKER_QUEUE_NAME, {
       connection: this.connection,
@@ -141,23 +147,31 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       },
       "Processing typed worker job",
     );
-    if (payload.jobType === SUMMARY_REBUILD_JOB) {
-      await this.summaryProcessor.process(payload);
-      return;
+    let outcome = "succeeded";
+    try {
+      if (payload.jobType === SUMMARY_REBUILD_JOB) {
+        await this.summaryProcessor.process(payload);
+        return;
+      }
+      if (payload.jobType === BATCH_TICK_JOB) {
+        await this.batchPlanProcessor.process(payload);
+        return;
+      }
+      if (payload.jobType === WRITE_ACTION_JOB) {
+        await this.writingActionProcessor.process(payload);
+        return;
+      }
+      if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
+        await this.goldenThreeProcessor.process(payload);
+        return;
+      }
+      await this.processor.process(payload);
+      await this.batchPlanProcessor.onChildFinished(payload);
+    } catch (error) {
+      outcome = "failed";
+      throw error;
+    } finally {
+      void this.metrics.recordJob(payload.jobType, outcome);
     }
-    if (payload.jobType === BATCH_TICK_JOB) {
-      await this.batchPlanProcessor.process(payload);
-      return;
-    }
-    if (payload.jobType === WRITE_ACTION_JOB) {
-      await this.writingActionProcessor.process(payload);
-      return;
-    }
-    if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
-      await this.goldenThreeProcessor.process(payload);
-      return;
-    }
-    await this.processor.process(payload);
-    await this.batchPlanProcessor.onChildFinished(payload);
   }
 }

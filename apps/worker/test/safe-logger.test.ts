@@ -109,4 +109,26 @@ describe("worker safe logger", () => {
     expect(output).toContain("worker.job.started");
     expect(output).toContain("01a1d573-7f8c-7c9e-9f27-2a98f91bbaa1");
   });
+
+  it("forwards structured telemetry events to the runtime metric sink", () => {
+    const sink = vi.fn();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    const logger = new SafePinoLogger();
+    logger.setTelemetrySink(sink);
+
+    logger.info({
+      event: "worker.model_call.succeeded",
+      latencyMs: 800,
+      inputTokens: 1200,
+      outputTokens: 600,
+      costCny: 0.75,
+    });
+
+    expect(sink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "worker.model_call.succeeded",
+        latencyMs: 800,
+      }),
+    );
+  });
 });

@@ -26,7 +26,7 @@ describe("prometheus metrics service", () => {
           costCny: 3.25,
         },
       ],
-      storage: { configured: true, available: false, objectCount: 0, bytes: 0 },
+      storage: { configured: true, available: false },
     });
 
     const text = await metrics.render();
@@ -40,6 +40,7 @@ describe("prometheus metrics service", () => {
     expect(text).toContain('novelbrain_model_latency_ms{status="succeeded"} 850');
     expect(text).toContain('novelbrain_model_tokens_total{kind="input"} 12000');
     expect(text).toContain('novelbrain_model_cost_cny_total{status="succeeded"} 3.25');
+    expect(text).toContain("novelbrain_model_latency_ms_overall 850");
     expect(text).toContain("novelbrain_storage_available 0");
     expect(text).not.toContain("沈砚");
     expect(text).not.toContain("sk-");

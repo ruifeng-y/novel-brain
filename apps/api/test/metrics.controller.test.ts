@@ -25,7 +25,7 @@ describe("metrics API", () => {
       },
       jobs: [{ jobType: "generate_chapter", status: "completed", count: 4 }],
       modelCalls: [],
-      storage: { configured: true, available: true, objectCount: 3, bytes: 1024 },
+      storage: { configured: true, available: true },
     });
     const moduleRef = await Test.createTestingModule({
       controllers: [MetricsController],

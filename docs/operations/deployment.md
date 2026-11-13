@@ -8,10 +8,10 @@
 
 ## 首次部署
 
-从 `.env.example` 建立部署环境文件。生产 overlay 会对密钥使用必填变量，缺失时 Compose 直接失败：
+从 `.env.production.example` 建立部署环境文件，并替换全部占位值。`DATABASE_URL` 和 `REDIS_URL` 必须使用 Compose 内部主机名 `postgres`、`redis`，不能使用 localhost。生产 overlay 会对密钥使用必填变量，缺失时 Compose 直接失败：
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item .env.production.example .env
 docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml config
 docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml up -d --build
 pnpm stack:smoke
@@ -25,6 +25,8 @@ pnpm stack:smoke
 ```
 
 数据库迁移在 API/Worker 启动前由 `migrate` 一次性任务执行。MinIO bucket 由 `minio-init` 创建。Caddy 负责唯一公开入口。
+
+生产 overlay 会清空 Postgres、Redis、Mailpit、MinIO、API 和 Prometheus 的宿主机端口，只发布 Caddy 的 80/443。Caddy 使用 `Caddyfile.production` 和 `APP_ORIGIN` 配置域名 TLS。
 
 ## 健康、指标与告警
 

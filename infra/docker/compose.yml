@@ -74,7 +74,6 @@ services:
     restart: "no"
 
   fake-ai-smoke:
-    profiles: ["tools"]
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile
@@ -139,7 +138,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3001/api/v1/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3001/api/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 5s
       timeout: 3s

@@ -74,5 +74,21 @@ export function validateAlertAssets() {
       errors.push(`missing runbook heading: ${alert}`);
     }
   }
+  const fragments = {
+    ApiReadinessDown: 'absent(up{job="novelbrain-api"})',
+    ApiLatencyHigh: `> ${thresholds.apiP95LatencySeconds}`,
+    WorkerQueueBacklog: `> ${thresholds.queueBacklogJobs}`,
+    WorkerQueueOldestJobAge: `> ${thresholds.queueOldestJobAgeSeconds}`,
+    JobFailureRateHigh: `> ${thresholds.jobFailureRate}`,
+    ModelLatencyHigh: `> ${thresholds.modelAverageLatencyMs}`,
+    ModelCostDailyHigh: `> ${thresholds.modelDailyCostCny}`,
+    StorageUsageHigh: `< ${thresholds.storageFreeRatioMinimum}`,
+    StorageUnavailable: "< 1",
+  };
+  for (const [alert, fragment] of Object.entries(fragments)) {
+    if (!rules.includes(fragment)) {
+      errors.push(`alert ${alert} does not match threshold ${fragment}`);
+    }
+  }
   return errors;
 }

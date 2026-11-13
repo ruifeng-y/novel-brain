@@ -3,6 +3,7 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
+import { JOB_METRICS_KEY, MODEL_METRICS_KEY } from "@novel-brain/contracts";
 import Redis from "ioredis";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -64,6 +65,14 @@ describe("observability HTTP integration", () => {
       ]),
     );
 
+    await redis.hset(JOB_METRICS_KEY, "generate_chapter:failed", "2");
+    await redis.hset(MODEL_METRICS_KEY, {
+      "calls:succeeded": "4",
+      "latency_sum_ms:succeeded": "3200",
+      "input_tokens:succeeded": "400",
+      "output_tokens:succeeded": "200",
+      "cost_cny:succeeded": "0.5",
+    });
     const metrics = await request(app.getHttpServer()).get("/api/v1/metrics").expect(200);
     expect(metrics.headers["content-type"]).toContain("text/plain");
     expect(metrics.text).toContain("novelbrain_api_request_duration_seconds");
@@ -71,6 +80,10 @@ describe("observability HTTP integration", () => {
     expect(metrics.text).toContain("novelbrain_jobs_total");
     expect(metrics.text).toContain("novelbrain_model_cost_cny_total");
     expect(metrics.text).toContain("novelbrain_dependency_up");
+    expect(metrics.text).toContain(
+      'novelbrain_jobs_total{job_type="generate_chapter",status="failed"} 2',
+    );
+    expect(metrics.text).toContain("novelbrain_model_latency_ms_overall 800");
   });
 });
 

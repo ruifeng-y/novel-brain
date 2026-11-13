@@ -6,7 +6,7 @@
 
 ## ApiReadinessDown
 
-任一必需依赖不可用时持续 2 分钟触发，避免单次探针抖动。先检查 `/api/v1/health` 与 `/api/v1/health/ready`，再用 request ID 和依赖检查结果定位数据库、队列或对象存储。
+API 抓取失败或任一必需依赖不可用时持续 2 分钟触发，避免单次探针抖动。先检查 `/api/v1/health` 与 `/api/v1/health/ready`，再用 request ID 和依赖检查结果定位数据库、队列或对象存储。
 
 ## ApiLatencyHigh
 
@@ -26,7 +26,7 @@ API p95 超过 300ms 并持续 10 分钟触发。该阈值来自 V1 CRUD p95 目
 
 ## ModelLatencyHigh
 
-模型调用平均延迟超过 5000ms 并持续 10 分钟触发。该线对应流式首 token 5 秒目标的上游调用预算。检查 Provider 状态、限流和模型配置；重试必须遵守既有预算与幂等规则。
+全部模型调用的按调用数加权平均延迟超过 5000ms 并持续 10 分钟触发。该线对应流式首 token 5 秒目标的上游调用预算。检查 Provider 状态、限流和模型配置；重试必须遵守既有预算与幂等规则。
 
 ## ModelCostDailyHigh
 

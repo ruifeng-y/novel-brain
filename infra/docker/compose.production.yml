@@ -1,9 +1,17 @@
 services:
   postgres:
+    ports: !reset []
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
 
+  redis:
+    ports: !reset []
+
+  mailpit:
+    ports: !reset []
+
   minio:
+    ports: !reset []
     environment:
       MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY_ID:?STORAGE_ACCESS_KEY_ID is required}
       MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_ACCESS_KEY:?STORAGE_SECRET_ACCESS_KEY is required}
@@ -15,6 +23,7 @@ services:
       STORAGE_BUCKET: ${STORAGE_BUCKET:?STORAGE_BUCKET is required}
 
   api:
+    ports: !reset []
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
@@ -40,6 +49,14 @@ services:
       AI_PROVIDER_MODE: byok
 
   caddy:
-    ports:
-      - "80:80"
-      - "443:443"
+    ports: !override ["80:80", "443:443"]
+    volumes: !override ["./Caddyfile.production:/etc/caddy/Caddyfile:ro"]
+
+  web:
+    environment:
+      PROXY_IP_SECRET: ${PROXY_IP_SECRET:?PROXY_IP_SECRET is required}
+      ALLOW_INSECURE_LOCAL_PROXY_IP: "false"
+      TRUST_PROXY_HEADERS: "true"
+
+  prometheus:
+    ports: !reset []

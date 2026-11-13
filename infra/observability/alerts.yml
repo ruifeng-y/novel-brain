@@ -2,7 +2,7 @@ groups:
   - name: novelbrain-operations
     rules:
       - alert: ApiReadinessDown
-        expr: min(novelbrain_dependency_up) < 1
+        expr: up{job="novelbrain-api"} == 0 or absent(up{job="novelbrain-api"}) or min(novelbrain_dependency_up) < 1
         for: 2m
         labels:
           severity: critical
@@ -42,7 +42,7 @@ groups:
           summary: NovelBrain durable job failure rate is above 10 percent
           runbook: docs/operations/alerting.md#jobfailureratehigh
       - alert: ModelLatencyHigh
-        expr: max(novelbrain_model_latency_ms) > 5000
+        expr: novelbrain_model_latency_ms_overall > 5000
         for: 10m
         labels:
           severity: warning

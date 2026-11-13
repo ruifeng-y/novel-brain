@@ -1,0 +1,11 @@
+{
+  "apiReady": 0,
+  "apiP95LatencySeconds": 0.5,
+  "queueBacklogJobs": 25,
+  "queueOldestJobAgeSeconds": 900,
+  "jobFailureRate": 0.2,
+  "modelAverageLatencyMs": 6000,
+  "modelDailyCostCny": 30,
+  "storageFreeRatio": 0.1,
+  "storageAvailable": 0
+}

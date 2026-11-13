@@ -13,7 +13,7 @@ export interface OperationalMetricsSnapshot {
   dependencies: {
     database: boolean;
     queue: boolean;
-    storage: boolean;
+    storage?: boolean;
   };
   queue: {
     counts: QueueMetricCounts;
@@ -35,8 +35,6 @@ export interface OperationalMetricsSnapshot {
   storage: {
     configured: boolean;
     available: boolean;
-    objectCount: number;
-    bytes: number;
   };
 }
 
@@ -146,13 +144,9 @@ export class PrometheusMetricsService {
       "# TYPE novelbrain_jobs_total gauge",
     );
     for (const job of snapshot.jobs) {
-      lines.push(
-        metricLine(
-          "novelbrain_jobs_total",
-          { job_type: job.jobType, status: job.status },
-          job.count,
-        ),
-      );
+      const jobType = safeMetricLabel(job.jobType);
+      const status = safeMetricLabel(job.status);
+      lines.push(metricLine("novelbrain_jobs_total", { job_type: jobType, status }, job.count));
     }
 
     lines.push(
@@ -165,13 +159,18 @@ export class PrometheusMetricsService {
     );
     let inputTokens = 0;
     let outputTokens = 0;
+    let modelCalls = 0;
+    let latencyWeighted = 0;
     for (const call of snapshot.modelCalls) {
+      const status = safeMetricLabel(call.status);
       inputTokens += call.inputTokens;
       outputTokens += call.outputTokens;
+      modelCalls += call.count;
+      latencyWeighted += call.averageLatencyMs * call.count;
       lines.push(
-        metricLine("novelbrain_model_calls_total", { status: call.status }, call.count),
-        metricLine("novelbrain_model_latency_ms", { status: call.status }, call.averageLatencyMs),
-        metricLine("novelbrain_model_cost_cny_total", { status: call.status }, call.costCny),
+        metricLine("novelbrain_model_calls_total", { status }, call.count),
+        metricLine("novelbrain_model_latency_ms", { status }, call.averageLatencyMs),
+        metricLine("novelbrain_model_cost_cny_total", { status }, call.costCny),
       );
     }
     lines.push(
@@ -179,6 +178,13 @@ export class PrometheusMetricsService {
       "# TYPE novelbrain_model_tokens_total gauge",
       metricLine("novelbrain_model_tokens_total", { kind: "input" }, inputTokens),
       metricLine("novelbrain_model_tokens_total", { kind: "output" }, outputTokens),
+      "# HELP novelbrain_model_latency_ms_overall Weighted average model latency in the last 24 hours.",
+      "# TYPE novelbrain_model_latency_ms_overall gauge",
+      metricLine(
+        "novelbrain_model_latency_ms_overall",
+        {},
+        modelCalls > 0 ? latencyWeighted / modelCalls : 0,
+      ),
       "# HELP novelbrain_storage_configured Whether object storage metrics are configured.",
       "# TYPE novelbrain_storage_configured gauge",
       metricLine("novelbrain_storage_configured", {}, snapshot.storage.configured ? 1 : 0),
@@ -199,4 +205,8 @@ function metricLine(name: string, labels: Record<string, string>, value: number)
 
 function escapeLabel(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll("\n", "\\n").replaceAll('"', '\\"');
+}
+
+function safeMetricLabel(value: string): string {
+  return /^[a-z][a-z0-9_]{0,63}$/u.test(value) ? value : "unknown";
 }

@@ -57,7 +57,34 @@ describe("operational metrics collector", () => {
           costCny: 0.75,
         },
       ],
-      storage: { configured: true, available: false, objectCount: 0, bytes: 0 },
+      storage: { configured: true, available: false },
     });
+  });
+
+  it("omits optional storage from dependency metrics when it is not configured", async () => {
+    const collector = new OperationalMetricsCollector(
+      {
+        getReadiness: vi.fn().mockResolvedValue({
+          status: "ready",
+          service: "api",
+          timestamp: "2026-11-14T00:00:00.000Z",
+          checks: [
+            { name: "database", status: "up", latencyMs: 2 },
+            { name: "queue", status: "up", latencyMs: 3 },
+          ],
+        }),
+      },
+      { collect: vi.fn().mockResolvedValue({ jobs: [], modelCalls: [] }) },
+      {
+        collect: vi.fn().mockResolvedValue({
+          counts: { wait: 0, active: 0, delayed: 0, failed: 0, completed: 0, paused: 0 },
+          oldestAgeSeconds: {},
+        }),
+      },
+    );
+
+    const snapshot = await collector.collect();
+    expect(snapshot.dependencies).toEqual({ database: true, queue: true });
+    expect(snapshot.storage).toEqual({ configured: false, available: false });
   });
 });
