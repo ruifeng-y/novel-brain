@@ -1202,7 +1202,7 @@ describe("golden three HTTP integration", () => {
     },
   );
 
-  it("requeues a queued job when polling repairs a lost queue delivery", async () => {
+  it("requeues a queued job when polling repairs a failed queue delivery", async () => {
     const owner = await createAuthenticatedAgent("golden-three-enqueue-recovery@example.com");
     const work = await createWork(owner);
     const token = await csrf(owner);
@@ -1221,14 +1221,30 @@ describe("golden three HTTP integration", () => {
     const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
     const queue = new Queue(WORKER_QUEUE_NAME, { connection });
     const queueJobId = `golden-three-${queued.id}`;
+    const failingWorker = new Worker(
+      WORKER_QUEUE_NAME,
+      async () => {
+        throw new Error("simulated queue delivery failure");
+      },
+      { connection, concurrency: 1 },
+    );
     try {
-      await queue.remove(queueJobId);
-      expect(await queue.getJob(queueJobId)).toBeUndefined();
+      await failingWorker.waitUntilReady();
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const queueJob = await queue.getJob(queueJobId);
+        if ((await queueJob?.getState()) === "failed") {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      expect(await (await queue.getJob(queueJobId))?.getState()).toBe("failed");
+      await failingWorker.close();
       expect(await generationJob(owner, outlinePath, queued.id)).toMatchObject({
         status: "queued",
       });
-      expect(await queue.getJob(queueJobId)).toBeDefined();
+      expect(await (await queue.getJob(queueJobId))?.getState()).toBe("waiting");
     } finally {
+      await failingWorker.close();
       await queue.close();
       if (connection.status === "ready") {
         await connection.quit();
@@ -1528,6 +1544,10 @@ describe("golden three HTTP integration", () => {
     );
     process.env.GOLDEN_THREE_STALE_JOB_MS = "1000";
     try {
+      expect(await generationJob(owner, `${basePath}/golden-three`, staleJobId)).toMatchObject({
+        status: "failed",
+        error: { code: "JOB_ATTEMPTS_EXHAUSTED" },
+      });
       await owner
         .post(`${basePath}/golden-three/candidates/generate`)
         .set("Origin", origin)

@@ -24,8 +24,18 @@ export class GoldenThreeQueue implements OnModuleDestroy {
   }
 
   async enqueue(payload: GenerateGoldenThreeJob): Promise<void> {
+    const jobId = `golden-three-${payload.jobId}`;
+    const existing = await this.queue.getJob(jobId);
+    if (existing) {
+      const state = await existing.getState();
+      if (state === "failed" || state === "completed") {
+        await existing.remove();
+      } else {
+        return;
+      }
+    }
     await this.queue.add(GENERATE_GOLDEN_THREE_JOB, payload, {
-      jobId: `golden-three-${payload.jobId}`,
+      jobId,
       removeOnComplete: false,
       removeOnFail: false,
       attempts: 3,

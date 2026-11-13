@@ -168,6 +168,9 @@ export class GoldenThreeService {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "生成任务不存在或无权访问");
     }
     if (loaded.job.status === "queued") {
+      if (!loaded.worker) {
+        throw new Error("Golden three queued job is missing its worker payload");
+      }
       await this.queue.enqueue(loaded.worker);
     }
     return loaded.job;

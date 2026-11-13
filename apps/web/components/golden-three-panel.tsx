@@ -58,8 +58,16 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
       void load();
       return;
     }
-    if (generationJob.status === "failed" || generationJob.status === "cancelled") {
-      setActionError(generationJob.error?.message ?? "候选生成失败，请稍后重试。");
+    if (
+      generationJob.status === "failed" ||
+      generationJob.status === "cancelled" ||
+      generationJob.status === "paused"
+    ) {
+      setActionError(
+        generationJob.status === "paused"
+          ? "候选生成已暂停。"
+          : (generationJob.error?.message ?? "候选生成失败，请稍后重试。"),
+      );
       setGenerationJob(null);
       return;
     }
