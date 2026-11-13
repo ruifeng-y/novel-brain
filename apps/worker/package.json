@@ -14,6 +14,7 @@
     "@novel-brain/contracts": "workspace:*",
     "@novel-brain/core": "workspace:*",
     "@novel-brain/db": "workspace:*",
+    "@novel-brain/golden-three": "workspace:*",
     "bullmq": "6.6.0",
     "drizzle-orm": "0.45.4",
     "ioredis": "6.0.0",

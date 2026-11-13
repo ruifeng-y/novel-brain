@@ -8,13 +8,10 @@ import type {
   GoldenThreeSelectionRequest,
   GoldenThreeWorkspace,
 } from "@novel-brain/contracts";
+import { GoldenThreeRepository, type GoldenThreeContext } from "@novel-brain/golden-three";
 
 import { ApiError } from "../common/api-error";
 import type { WorksAuditContext } from "../works/works.repository";
-// Nest uses the runtime class reference for dependency injection metadata.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { GoldenThreeRepository } from "./golden-three.repository";
-import type { GoldenThreeContext } from "./golden-three.repository";
 
 @Injectable()
 export class GoldenThreeService {

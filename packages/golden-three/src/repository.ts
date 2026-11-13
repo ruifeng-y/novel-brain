@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 
-import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   DeepSeekProvider,
   FakeAiProvider,
@@ -22,6 +21,7 @@ import type {
   GoldenThreeStrategy,
   GoldenThreeSelectionRequest,
   GoldenThreeWorkspace,
+  ContextPackPreview,
 } from "@novel-brain/contracts";
 import { goldenThreeContinuationStyleSourceSchema } from "@novel-brain/contracts";
 import {
@@ -59,15 +59,25 @@ import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
-import { countWords } from "../imports/manuscript-import.parser";
-// Nest uses the runtime class reference for dependency injection metadata.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { GenerationService } from "../generation/generation.service";
-import type { WorksAuditContext } from "../works/works.repository";
-
 const GOLDEN_THREE_TOKEN_BUDGET = 12_000;
 const GOLDEN_THREE_MAX_OUTPUT_TOKENS = 1_600;
 const GOLDEN_THREE_DEFAULT_MAX_COST_CNY = 0.2;
+
+export const GOLDEN_THREE_CONTEXT_COMPILER = Symbol("GOLDEN_THREE_CONTEXT_COMPILER");
+
+export interface GoldenThreeAuditContext {
+  requestId: string;
+  ip: string;
+  userAgent: string;
+}
+
+export interface GoldenThreeContextCompiler {
+  compile(
+    userId: string,
+    input: { workId: string; branchId: string; chapterId: string },
+    tokenBudget: number,
+  ): Promise<ContextPackPreview>;
+}
 
 interface GoldenThreePreparedCall {
   workId: string;
@@ -144,12 +154,11 @@ export type GoldenThreeWriteResult<T> =
   | { kind: "already_locked" }
   | { kind: "generation_in_progress" };
 
-@Injectable()
-export class GoldenThreeRepository implements OnModuleDestroy {
+export class GoldenThreeRepository {
   private readonly pool: Pool;
   private readonly db: DatabaseClient;
 
-  constructor(private readonly generationService: GenerationService) {
+  constructor(private readonly contextCompiler: GoldenThreeContextCompiler) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required");
@@ -414,7 +423,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     idempotencyKey: string,
     input: GoldenThreeCandidateBatchRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
     const configuredStaleJobMs = Number(process.env.GOLDEN_THREE_STALE_JOB_MS ?? "");
     const staleJobMs =
@@ -594,7 +603,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     idempotencyKey: string,
     input: GoldenThreeGenerateRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
     const strategies = goldenThreeGenerationStrategies.slice(0, input.candidateCount);
     const configuredStaleJobMs = Number(process.env.GOLDEN_THREE_STALE_JOB_MS ?? "");
@@ -803,9 +812,9 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         failureClass: "budget",
       };
     }
-    let contextPack: Awaited<ReturnType<GenerationService["contextPreview"]>>;
+    let contextPack: ContextPackPreview;
     try {
-      contextPack = await this.generationService.contextPreview(
+      contextPack = await this.contextCompiler.compile(
         userId,
         { workId: context.workId, branchId: context.branchId, chapterId: chapter.id },
         GOLDEN_THREE_TOKEN_BUDGET,
@@ -1656,7 +1665,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     candidateId: string,
     input: GoldenThreeReviewBatchRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string }>> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
@@ -1779,7 +1788,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     candidateId: string,
     input: GoldenThreeSelectionRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string }>> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
@@ -1878,7 +1887,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     candidateId: string,
     input: GoldenThreeContinuationRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string; versionNodeId: string }>> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
@@ -2038,7 +2047,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     context: GoldenThreeContext,
     candidateId: string,
     input: GoldenThreeLockRequest,
-    audit: WorksAuditContext,
+    audit: GoldenThreeAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string; alreadyLocked: boolean }>> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
@@ -2253,7 +2262,7 @@ async function recordGoldenThreeInitializationFailure(
     failureClass: string;
     message: string;
     contextPackId: string;
-    contextPack?: Awaited<ReturnType<GenerationService["contextPreview"]>>;
+    contextPack?: ContextPackPreview;
     contextManifestHash?: string;
   },
 ): Promise<void> {
@@ -3432,7 +3441,7 @@ async function advanceBranchHead(
 async function writeAudit(
   transaction: DatabaseTransaction,
   userId: string,
-  audit: WorksAuditContext,
+  audit: GoldenThreeAuditContext,
   action: string,
   targetId: string,
 ): Promise<void> {
@@ -3496,6 +3505,10 @@ function goldenThreeUserPrompt(
     .map((entry) => `【${entry.label}】\n${entry.content}`)
     .join("\n\n");
   return `为第 ${chapter.number} 章《${chapter.title}》写开篇候选正文。\n创作方向：${strategy}。\n\n可用上下文：\n${context}\n\n要求：只输出正文，约 2000–3000 字。`;
+}
+
+function countWords(text: string): number {
+  return Array.from(text.replace(/\s/gu, "")).length;
 }
 
 function hashValue(value: string): string {
