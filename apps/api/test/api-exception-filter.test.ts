@@ -100,6 +100,18 @@ describe("API exception filter sensitive payload boundary", () => {
     expect(response.json.mock.calls[0]?.[0].error.details.issues[0].path).toEqual([]);
   });
 
+  it("fails closed when a canary reaches the top-level message", () => {
+    const { host, response } = createHost();
+    const canary = "PROMPT_TOP_LEVEL_CANARY_133";
+    const filter = new ApiExceptionFilter({ error: vi.fn() } as never, [canary]);
+
+    filter.catch(new ApiError(400, "VALIDATION_INVALID", `无效输入 ${canary}`), host as never);
+
+    const body = response.json.mock.calls[0]?.[0];
+    expect(body.error.message).toBe("输入内容不完整或格式不正确");
+    expect(JSON.stringify(body)).not.toContain(canary);
+  });
+
   it("logs unhandled errors through the redacting logger without payload text", () => {
     const { host, response } = createHost();
     const logger = { error: vi.fn() };
