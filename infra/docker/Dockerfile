@@ -4,7 +4,9 @@ RUN corepack enable && apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY scripts ./scripts
 COPY apps/api/package.json apps/api/package.json
+COPY apps/golden-three/package.json apps/golden-three/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/ai/package.json packages/ai/package.json
@@ -12,7 +14,7 @@ COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/db/package.json packages/db/package.json
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS build
 
@@ -27,6 +29,7 @@ ENV NODE_ENV=production
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json /app/pnpm-workspace.yaml ./
+COPY --from=build /app/apps/golden-three ./apps/golden-three
 COPY --from=build /app/packages ./packages
 
 FROM runtime-base AS api

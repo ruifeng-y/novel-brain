@@ -53,7 +53,7 @@ services:
       target: api
     command: ["node", "packages/db/dist/migrate.js"]
     environment:
-      DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/novelbrain
+      DATABASE_URL: ${DATABASE_URL:-postgresql://novelbrain:novelbrain@postgres:5432/novelbrain}
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,8 +67,8 @@ services:
     environment:
       NODE_ENV: development
       API_PORT: 3001
-      DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/novelbrain
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL:-postgresql://novelbrain:novelbrain@postgres:5432/novelbrain}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       AUTH_SECRET: local-development-auth-secret-change-me
       PROXY_IP_SECRET: local-development-proxy-ip-secret
       ALLOW_INSECURE_LOCAL_PROXY_IP: "true"
@@ -109,8 +109,8 @@ services:
       target: worker
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/novelbrain
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL:-postgresql://novelbrain:novelbrain@postgres:5432/novelbrain}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       AI_PROVIDER_MODE: fake
     depends_on:
       postgres:
