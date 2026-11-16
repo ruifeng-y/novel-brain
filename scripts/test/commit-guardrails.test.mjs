@@ -86,6 +86,10 @@ test("allows PascalCase and camelCase project identifiers", () => {
   );
 });
 
+test("allows smoke in Chinese technical prose", () => {
+  assert.deepEqual(validateCommitSubjects(["style(ops): 修正生产 smoke 格式"]), []);
+});
+
 test("rejects Traditional Chinese commit subjects", () => {
   const errors = validateCommitSubjects(["fix: 修正錯誤"]);
 
