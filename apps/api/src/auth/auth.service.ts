@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { randomInt } from "node:crypto";
 import {
+  authUserStatusSchema,
   authPasswordSchema,
   type AuthSessionData,
   type AuthDeviceSession,
@@ -141,7 +142,7 @@ export class AuthService {
     const email = request.email.toLowerCase();
     await this.rateLimiter.consumeLogin(email, ip);
     const user = await this.repository.findUserByEmail(email);
-    if (!user || user.status !== "active") {
+    if (!user || (user.status !== "active" && user.status !== "deletion_pending")) {
       throw new ApiError(401, "AUTH_LOGIN_FAILED", "邮箱或密码不正确");
     }
 
@@ -162,7 +163,7 @@ export class AuthService {
     await this.rateLimiter.consumePasswordResetRequest(email, ip);
     const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
     const user = await this.repository.findUserByEmail(email);
-    if (!user || user.status !== "active") {
+    if (!user || (user.status !== "active" && user.status !== "deletion_pending")) {
       return { expiresAt };
     }
 
@@ -251,6 +252,7 @@ export class AuthService {
         displayName: user.displayName,
         bio: user.bio,
         avatarUrl: user.avatarUrl,
+        status: authUserStatusSchema.parse(user.status),
         version: user.version,
         createdAt: user.createdAt.toISOString(),
       },

@@ -6,6 +6,8 @@ import { GoldenThreeRepository } from "@novel-brain/golden-three";
 import Redis from "ioredis";
 
 import { AgentGrantGuard, WorkerAgentGrantStore } from "./agent-runtime/agent-grant.guard";
+import { AccountPurgeProcessor } from "./account-lifecycle/account-purge.processor";
+import { WorkerAccountPurgeRepository } from "./account-lifecycle/account-purge.repository";
 import { AgentOrchestrator } from "./agent-runtime/agent-orchestrator";
 import { AgentOrchestratorRepository } from "./agent-runtime/agent-orchestrator.repository";
 import { BatchPlanTickProcessor } from "./batch-plan/batch-plan.processor";
@@ -32,6 +34,8 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
 @Module({
   providers: [
     WorkerService,
+    WorkerAccountPurgeRepository,
+    AccountPurgeProcessor,
     WorkerBatchPlanRepository,
     WorkerBatchPlanQueue,
     BatchPlanChildQueue,

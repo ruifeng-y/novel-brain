@@ -1,4 +1,9 @@
 import { sql } from "drizzle-orm";
+import type {
+  AccountDeletionFailure,
+  AccountDeletionStoreResult,
+  AccountExportInventoryEntry,
+} from "@novel-brain/contracts";
 import {
   boolean,
   check,
@@ -176,6 +181,70 @@ export const auditLogs = pgTable(
   (table) => [
     index("audit_logs_actor_created_idx").on(table.actorId, table.createdAt),
     index("audit_logs_target_idx").on(table.targetType, table.targetId),
+  ],
+);
+
+export const exportReceipts = pgTable(
+  "export_receipts",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    inventoryVersion: text("inventory_version").notNull(),
+    checksum: text("checksum").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    inventory: jsonb("inventory").$type<AccountExportInventoryEntry[]>().notNull(),
+    payload: text("payload").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("export_receipts_user_generated_idx").on(table.userId, table.generatedAt),
+    index("export_receipts_expires_idx").on(table.expiresAt),
+    check("export_receipts_schema_version_check", sql`${table.schemaVersion} > 0`),
+    check("export_receipts_checksum_check", sql`${table.checksum} ~ '^[a-f0-9]{64}$'`),
+    check("export_receipts_byte_size_check", sql`${table.byteSize} >= 0`),
+  ],
+);
+
+export const deletionRequests = pgTable(
+  "deletion_requests",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    exportReceiptId: uuid("export_receipt_id").references(() => exportReceipts.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("recovery_pending"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    recoverableUntil: timestamp("recoverable_until", { withTimezone: true }).notNull(),
+    purgeAfter: timestamp("purge_after", { withTimezone: true }).notNull(),
+    backupExpiresAt: timestamp("backup_expires_at", { withTimezone: true }).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    failure: jsonb("failure").$type<AccountDeletionFailure | null>(),
+    storeResults: jsonb("store_results")
+      .$type<AccountDeletionStoreResult[]>()
+      .notNull()
+      .default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("deletion_requests_user_created_idx").on(table.userId, table.createdAt),
+    index("deletion_requests_due_idx").on(table.status, table.purgeAfter),
+    uniqueIndex("deletion_requests_user_open_unique")
+      .on(table.userId)
+      .where(sql`${table.status} in ('recovery_pending', 'purging', 'failed')`),
+    check(
+      "deletion_requests_status_check",
+      sql`${table.status} in ('recovery_pending', 'purging', 'completed', 'failed', 'recovered')`,
+    ),
+    check(
+      "deletion_requests_window_check",
+      sql`${table.purgeAfter} >= ${table.recoverableUntil} and ${table.backupExpiresAt} >= ${table.purgeAfter}`,
+    ),
   ],
 );
 

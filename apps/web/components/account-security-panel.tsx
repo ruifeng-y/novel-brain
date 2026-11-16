@@ -15,7 +15,6 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
-  apiErrorSchema,
   authorPenNameDeleteResponseSchema,
   authorPenNameListResponseSchema,
   authorPenNameResponseSchema,
@@ -26,8 +25,10 @@ import {
   type AuthorPenName,
 } from "@novel-brain/contracts";
 
+import { formatDateTime, readError } from "../lib/account-ui";
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { AccountDataPrivacyPanel } from "./account-data-privacy-panel";
 
 export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser }) {
   const router = useRouter();
@@ -683,6 +684,7 @@ export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser })
           </div>
         )}
       </section>
+      <AccountDataPrivacyPanel />
     </div>
   );
 }
@@ -709,16 +711,4 @@ function deviceLabel(userAgent: string): string {
             ? "Linux"
             : "";
   return system ? `${browser} · ${system}` : browser;
-}
-
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-async function readError(response: Response, fallback: string): Promise<string> {
-  const parsed = apiErrorSchema.safeParse(await response.json().catch(() => null));
-  return parsed.success ? parsed.data.error.message : fallback;
 }

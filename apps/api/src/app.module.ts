@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { AuthModule } from "./auth/auth.module";
+import { AccountLifecycleModule } from "./account-lifecycle/account-lifecycle.module";
 import { AgentRuntimeModule } from "./agent-runtime/agent-runtime.module";
 import { BatchPlanModule } from "./batch-plan/batch-plan.module";
 import { BatchReviewModule } from "./batch-review/batch-review.module";
@@ -35,6 +36,7 @@ import { WritingActionModule } from "./writing-actions/writing-action.module";
 
 @Module({
   imports: [
+    AccountLifecycleModule,
     AuthModule,
     AgentRuntimeModule,
     BatchPlanModule,

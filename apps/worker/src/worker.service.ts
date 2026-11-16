@@ -5,6 +5,8 @@ import {
   type OnApplicationShutdown,
 } from "@nestjs/common";
 import {
+  ACCOUNT_PURGE_JOB,
+  ACCOUNT_PURGE_TICK_JOB,
   BATCH_TICK_JOB,
   GENERATE_CHAPTER_JOB,
   GENERATE_GOLDEN_THREE_JOB,
@@ -14,7 +16,16 @@ import {
   workerJobSchema,
   type WorkerJob,
 } from "@novel-brain/contracts";
-import { emitTraceEnvelope, resolveTracePolicy, type TracePolicy } from "@novel-brain/core";
+import {
+  ACCOUNT_PURGE_JOB_ATTEMPTS,
+  ACCOUNT_PURGE_RETRY_DELAY_MS,
+  accountPurgeJobId,
+  accountPurgeJobPayload,
+  accountPurgeTickJobPayload,
+  emitTraceEnvelope,
+  resolveTracePolicy,
+  type TracePolicy,
+} from "@novel-brain/core";
 import { Queue, Worker as BullWorker, type Job } from "bullmq";
 import type Redis from "ioredis";
 
@@ -33,6 +44,9 @@ import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { AccountPurgeProcessor } from "./account-lifecycle/account-purge.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
 import {
   durableJobStatusToOutcome,
@@ -58,6 +72,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     private readonly batchPlanProcessor: BatchPlanTickProcessor,
     private readonly summaryProcessor: SummaryRebuildProcessor,
     private readonly writingActionProcessor: WritingActionProcessor,
+    private readonly accountPurgeProcessor: AccountPurgeProcessor,
     private readonly generationRepository: WorkerGenerationRepository,
     @Inject(WORKER_REDIS) private readonly connection: Redis,
     @Inject(WorkerOperationalMetricsRecorder)
@@ -100,6 +115,19 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     });
     await this.queue.waitUntilReady();
     await this.worker.waitUntilReady();
+    await this.queue.upsertJobScheduler(
+      "account-purge-scan",
+      { every: 60_000 },
+      {
+        name: ACCOUNT_PURGE_TICK_JOB,
+        data: accountPurgeTickJobPayload(),
+        opts: {
+          removeOnComplete: true,
+          removeOnFail: true,
+          attempts: 1,
+        },
+      },
+    );
     this.logger.info(
       {
         event: "worker.ready",
@@ -110,6 +138,8 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
           WRITE_ACTION_JOB,
           SUMMARY_REBUILD_JOB,
           BATCH_TICK_JOB,
+          ACCOUNT_PURGE_JOB,
+          ACCOUNT_PURGE_TICK_JOB,
         ],
       },
       "Worker is consuming its queue",
@@ -136,22 +166,29 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       {
         event: "worker.job.started",
         jobType: payload.jobType,
-        ...(payload.jobType === SUMMARY_REBUILD_JOB
-          ? { runId: payload.runId }
-          : payload.jobType === BATCH_TICK_JOB
-            ? { planId: payload.planId }
-            : payload.jobType === GENERATE_GOLDEN_THREE_JOB
-              ? {
-                  jobId: payload.jobId,
-                  checkpointStep: payload.checkpoint.stepKey ?? payload.checkpoint.stage,
-                }
-              : { jobId: payload.jobId, checkpointStep: payload.checkpoint.step }),
+        ...jobLogContext(payload),
       },
       "Processing typed worker job",
     );
     let outcome: WorkerJobOutcome | undefined;
     try {
-      if (payload.jobType === SUMMARY_REBUILD_JOB) {
+      if (payload.jobType === ACCOUNT_PURGE_TICK_JOB) {
+        await this.accountPurgeProcessor.cleanupExpiredExportReceipts();
+        const dueRequestIds = await this.accountPurgeProcessor.listDueRequestIds();
+        for (const deletionRequestId of dueRequestIds) {
+          await this.queue.add(ACCOUNT_PURGE_JOB, accountPurgeJobPayload(deletionRequestId), {
+            jobId: accountPurgeJobId(deletionRequestId),
+            removeOnComplete: true,
+            removeOnFail: true,
+            attempts: ACCOUNT_PURGE_JOB_ATTEMPTS,
+            backoff: { type: "exponential", delay: ACCOUNT_PURGE_RETRY_DELAY_MS },
+          });
+        }
+        outcome = "succeeded";
+      } else if (payload.jobType === ACCOUNT_PURGE_JOB) {
+        const result = await this.accountPurgeProcessor.process(payload);
+        outcome = result.kind === "failed" ? "failed" : "succeeded";
+      } else if (payload.jobType === SUMMARY_REBUILD_JOB) {
         outcome = await this.summaryProcessor.process(payload);
       } else if (payload.jobType === BATCH_TICK_JOB) {
         await this.batchPlanProcessor.process(payload);
@@ -192,5 +229,25 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     } catch {
       return undefined;
     }
+  }
+}
+
+function jobLogContext(payload: WorkerJob): Record<string, unknown> {
+  switch (payload.jobType) {
+    case ACCOUNT_PURGE_JOB:
+      return { deletionRequestId: payload.deletionRequestId };
+    case ACCOUNT_PURGE_TICK_JOB:
+      return {};
+    case SUMMARY_REBUILD_JOB:
+      return { runId: payload.runId };
+    case BATCH_TICK_JOB:
+      return { planId: payload.planId };
+    case GENERATE_GOLDEN_THREE_JOB:
+      return {
+        jobId: payload.jobId,
+        checkpointStep: payload.checkpoint.stepKey ?? payload.checkpoint.stage,
+      };
+    default:
+      return { jobId: payload.jobId, checkpointStep: payload.checkpoint.step };
   }
 }

@@ -342,6 +342,119 @@ test("manages profile, multiple pen names and device sessions", async ({
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test("exports before deletion and recovers inside the approved window", async ({
+  page,
+  context,
+  request,
+}) => {
+  const { email } = await authenticatedPage(page, context, request);
+  const deleteButton = page.getByRole("button", { name: "先导出再删除" });
+  await expect(deleteButton).toBeDisabled();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "导出", exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^novel-brain-account-\d{4}-\d{2}-\d{2}\.json$/);
+  await expect(page.getByText("账号数据已导出，核对无误后即可申请注销。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "申请注销" })).toBeEnabled();
+
+  page.on("dialog", (dialog) => {
+    void dialog.accept();
+  });
+  await page.getByRole("button", { name: "申请注销" }).click();
+  await expect(page.getByRole("heading", { name: "账号正在注销流程中" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "恢复账号" })).toBeVisible();
+
+  await context.clearCookies();
+  await page.goto("/login");
+  await page.getByLabel("邮箱").fill(email);
+  await page.getByLabel("密码").fill("StrongPassword123");
+  await page.getByRole("button", { name: "登录" }).click();
+  await expect(page).toHaveURL(/\/workspace\/settings\/account$/);
+  await expect(page.getByRole("heading", { name: "账号正在注销流程中" })).toBeVisible();
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/workspace/settings/account");
+    await expect(page.getByRole("heading", { name: "账号正在注销流程中" })).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "恢复账号" }).click();
+  await expect(page.getByText("账号已恢复，作品和数据保持原样。")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "把写作环境准备好" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "先导出再删除" })).toBeDisabled();
+
+  const pool = new Pool({
+    connectionString:
+      process.env.E2E_DATABASE_URL ??
+      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e",
+  });
+  try {
+    const status = await pool.query<{ status: string }>(
+      "SELECT status FROM users WHERE email = $1",
+      [email],
+    );
+    expect(status.rows[0]?.status).toBe("active");
+  } finally {
+    await pool.end();
+  }
+});
+
+test("shows a partial deletion failure without exposing internal store names", async ({
+  page,
+  context,
+  request,
+}) => {
+  await page.route("**/api/v1/users/me/deletion", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1f01",
+          status: "failed",
+          exportReceiptId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1f02",
+          requestedAt: "2026-11-01T08:00:00.000Z",
+          recoverableUntil: "2026-12-01T08:00:00.000Z",
+          purgeAfter: "2026-12-01T08:00:00.000Z",
+          backupExpiresAt: "2026-12-31T08:00:00.000Z",
+          completedAt: null,
+          failure: {
+            code: "ACCOUNT_PURGE_RETRYABLE",
+            message: "账号永久删除未完成",
+            retryable: true,
+          },
+          stores: [
+            {
+              store: "works",
+              rowCount: 1,
+              status: "failed",
+              retryable: true,
+              errorCode: "STORE_DELETE_TIMEOUT",
+            },
+          ],
+        },
+        requestId: "req_account_partial",
+        meta: {},
+      }),
+    });
+  });
+
+  await authenticatedPage(page, context, request);
+  await expect(
+    page.locator(".data-lifecycle-row strong", { hasText: "部分清理失败" }),
+  ).toBeVisible();
+  await expect(page.getByText(/系统会自动重试/)).toBeVisible();
+  await expect(page.getByText("works", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "恢复账号" })).toBeVisible();
+});
+
 test("account loading states hold at four viewports", async ({ page, context, request }) => {
   await authenticatedPage(page, context, request);
   await page.route(

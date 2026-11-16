@@ -7,6 +7,7 @@ import type {
   AuthorPenNameUpdateRequest,
   ProfileUpdateRequest,
 } from "@novel-brain/contracts";
+import { authUserStatusSchema } from "@novel-brain/contracts";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
@@ -129,6 +130,7 @@ export function toProfileContract(user: UserProfileRecord): AuthUser {
     displayName: user.displayName,
     bio: user.bio,
     avatarUrl: user.avatarUrl,
+    status: authUserStatusSchema.parse(user.status),
     version: user.version,
     createdAt: user.createdAt.toISOString(),
   };

@@ -36,6 +36,7 @@ import { z } from "zod";
 
 import { ApiError } from "../common/api-error";
 import { ApiQuerySchema } from "../common/zod-openapi";
+import { AllowAccountDeletionPending } from "./allow-account-deletion-pending.decorator";
 import type { AuthenticatedRequest } from "./auth.types";
 import { randomToken } from "./auth-crypto";
 import { getClientIp } from "./client-ip";
@@ -178,6 +179,7 @@ export class AuthController {
 
   @Get("me")
   @UseGuards(SessionAuthGuard)
+  @AllowAccountDeletionPending()
   @ApiOkResponse({
     description: "Current authenticated session",
     schema: authSessionResponseJsonSchema,

@@ -107,6 +107,12 @@ settings、bible、entity-detail 的 12 张正式 Golden 已按当前生产渲�
 
 Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和四档视口。Changes Golden 覆盖 390 / 900 / 1180 / 1440，语义测试同时覆盖加载、错误、冲突、部分失败、禁用应用、旧版本拒绝、当前作品/全部作品搜索与选中平行版本上下文。正式 Linux `toHaveScreenshot` 以最终 PR 的绿色 Production CI 为准；合并前不得用本地截图替代该回归证据。
 
+## 2026-11-16 account-settings 账号生命周期视觉签收
+
+签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-134-linux/artifacts/ui/golden/account-settings/` 中账号设置常规态与 Key 错误态各四档，共 8 张 Linux candidate 作为正式 Golden。
+
+这 8 张 Golden 覆盖数据与隐私 panel、账号导出入口和导出前删除禁用；30 天恢复页、partial failure、恢复后再次注销和 fresh-login 恢复由同一 Playwright spec 的语义断言覆盖。8 张正式 Golden 已复制到 `artifacts/ui/golden/account-settings/`。Linux 生成证据为 [Production CI #43836291876](https://github.com/ruifeng-y/novel-brain/actions/runs/43836291876) 的 `update_golden` Playwright artifact；最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、无横向溢出和真实行为测试后才合并。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
