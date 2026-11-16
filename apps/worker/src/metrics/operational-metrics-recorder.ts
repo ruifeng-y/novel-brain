@@ -6,10 +6,24 @@ import {
   runtimeMetricsBucketKey,
 } from "@novel-brain/core";
 import type { WorkerJob } from "@novel-brain/contracts";
+import type { OnModuleDestroy } from "@nestjs/common";
 import type Redis from "ioredis";
 
 type WorkerJobType = WorkerJob["jobType"];
 export type WorkerJobOutcome = "succeeded" | "failed" | "cancelled";
+
+export function durableJobStatusToOutcome(status: string | null): WorkerJobOutcome | undefined {
+  if (status === "completed") {
+    return "succeeded";
+  }
+  if (status === "failed") {
+    return "failed";
+  }
+  if (status === "cancelled") {
+    return "cancelled";
+  }
+  return undefined;
+}
 
 interface MetricsRedis {
   pipeline(): {
@@ -18,13 +32,27 @@ interface MetricsRedis {
     expire(key: string, seconds: number): unknown;
     exec(): Promise<Array<[Error | null, unknown]> | null>;
   };
+  status?: string;
+  quit?(): Promise<unknown>;
+  disconnect?(): void;
 }
 
-export class WorkerOperationalMetricsRecorder {
+export class WorkerOperationalMetricsRecorder implements OnModuleDestroy {
   constructor(
     private readonly redis: MetricsRedis | Redis,
     private readonly now: () => number = Date.now,
   ) {}
+
+  async onModuleDestroy(): Promise<void> {
+    if (!this.redis.quit) {
+      return;
+    }
+    if (this.redis.status === "ready") {
+      await this.redis.quit();
+    } else {
+      this.redis.disconnect?.();
+    }
+  }
 
   async recordJob(jobType: WorkerJobType, status: WorkerJobOutcome): Promise<void> {
     await this.record(runtimeMetricsBucketKey(JOB_METRICS_KEY, new Date(this.now())), [

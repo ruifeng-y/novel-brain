@@ -18,7 +18,7 @@ import { AI_GATEWAY } from "./generation/generation.tokens";
 import { WorkerGoldenThreeContextCompiler } from "./golden-three/golden-three-context.compiler";
 import { GoldenThreeJobProcessor } from "./golden-three/golden-three.processor";
 import { WorkerOperationalMetricsRecorder } from "./metrics/operational-metrics-recorder";
-import { WORKER_REDIS } from "./metrics/operational-metrics.tokens";
+import { WORKER_METRICS_REDIS, WORKER_REDIS } from "./metrics/operational-metrics.tokens";
 import {
   ByokAiGatewayFactory,
   isFakeGenerationOperation,
@@ -63,8 +63,22 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
       },
     },
     {
+      provide: WORKER_METRICS_REDIS,
+      useFactory: () => {
+        const redisUrl = process.env.REDIS_URL;
+        if (!redisUrl) {
+          throw new Error("REDIS_URL is required");
+        }
+        return new Redis(redisUrl, {
+          maxRetriesPerRequest: 1,
+          enableOfflineQueue: false,
+          enableReadyCheck: true,
+        });
+      },
+    },
+    {
       provide: WorkerOperationalMetricsRecorder,
-      inject: [WORKER_REDIS],
+      inject: [WORKER_METRICS_REDIS],
       useFactory: (redis: Redis) => new WorkerOperationalMetricsRecorder(redis),
     },
     {

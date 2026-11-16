@@ -763,7 +763,7 @@ describe("golden three HTTP integration", () => {
     await runGoldenThreeWorker(queued.id, {
       modelCallObserver: (observation) => {
         observations.push(observation);
-        throw new Error("metrics unavailable");
+        return new Promise<void>(() => undefined);
       },
     });
     const resumedJob = await generationJob(owner, outlinePath, queued.id);

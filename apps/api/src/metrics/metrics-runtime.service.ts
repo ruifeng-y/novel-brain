@@ -42,8 +42,9 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
         ),
       ),
     ]);
-    const jobs = mergeMetricBuckets(jobBuckets);
-    const models = mergeMetricBuckets(modelBuckets);
+    const oldestBucketWeight = rollingWindowOldestBucketWeight(this.now());
+    const jobs = mergeMetricBuckets(jobBuckets, oldestBucketWeight);
+    const models = mergeMetricBuckets(modelBuckets, oldestBucketWeight);
     const statuses = new Set<string>();
     for (const field of Object.keys(models)) {
       const [kind, status] = field.split(":", 2);
@@ -65,7 +66,7 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
           return [
             {
               ...decoded,
-              count: integer(value),
+              count: nonNegativeNumber(value),
             },
           ];
         })
@@ -76,14 +77,14 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
             left.status.localeCompare(right.status),
         ),
       modelCalls: orderedStatuses.map((status) => {
-        const count = integer(models[`calls:${status}`]);
-        const latencySum = integer(models[`latency_sum_ms:${status}`]);
+        const count = nonNegativeNumber(models[`calls:${status}`]);
+        const latencySum = nonNegativeNumber(models[`latency_sum_ms:${status}`]);
         return {
           status: safeRuntimeMetricModelStatus(status),
           count,
           averageLatencyMs: count > 0 ? latencySum / count : 0,
-          inputTokens: integer(models[`input_tokens:${status}`]),
-          outputTokens: integer(models[`output_tokens:${status}`]),
+          inputTokens: nonNegativeNumber(models[`input_tokens:${status}`]),
+          outputTokens: nonNegativeNumber(models[`output_tokens:${status}`]),
           costCny: decimal(models[`cost_cny:${status}`]),
         };
       }),
@@ -91,22 +92,33 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
   }
 }
 
-function mergeMetricBuckets(buckets: Array<Record<string, string>>): Record<string, string> {
+function mergeMetricBuckets(
+  buckets: Array<Record<string, string>>,
+  oldestBucketWeight = 1,
+): Record<string, string> {
   const merged = new Map<string, number>();
-  for (const bucket of buckets) {
+  for (const [index, bucket] of buckets.entries()) {
+    const weight = index === buckets.length - 1 ? oldestBucketWeight : 1;
     for (const [field, value] of Object.entries(bucket)) {
       const parsed = Number(value);
       if (Number.isFinite(parsed)) {
-        merged.set(field, (merged.get(field) ?? 0) + parsed);
+        merged.set(field, (merged.get(field) ?? 0) + parsed * weight);
       }
     }
   }
   return Object.fromEntries([...merged].map(([field, value]) => [field, String(value)]));
 }
 
-function integer(value: unknown): number {
+function rollingWindowOldestBucketWeight(now: number): number {
+  const date = new Date(now);
+  const elapsedMinutes =
+    date.getUTCMinutes() + date.getUTCSeconds() / 60 + date.getUTCMilliseconds() / 60_000;
+  return Math.max(0, Math.min(1, 1 - elapsedMinutes / 60));
+}
+
+function nonNegativeNumber(value: unknown): number {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
 function decimal(value: unknown): number {

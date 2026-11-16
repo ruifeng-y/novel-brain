@@ -35,11 +35,15 @@ import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
 import {
+  durableJobStatusToOutcome,
   isFinalJobAttempt,
   WorkerOperationalMetricsRecorder,
   type WorkerJobOutcome,
 } from "./metrics/operational-metrics-recorder";
 import { WORKER_REDIS } from "./metrics/operational-metrics.tokens";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { WorkerGenerationRepository } from "./generation/generation.repository";
 
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -54,6 +58,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     private readonly batchPlanProcessor: BatchPlanTickProcessor,
     private readonly summaryProcessor: SummaryRebuildProcessor,
     private readonly writingActionProcessor: WritingActionProcessor,
+    private readonly generationRepository: WorkerGenerationRepository,
     @Inject(WORKER_REDIS) private readonly connection: Redis,
     @Inject(WorkerOperationalMetricsRecorder)
     private readonly metrics: WorkerOperationalMetricsRecorder,
@@ -158,7 +163,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         await this.processor.process(payload);
         await this.batchPlanProcessor.onChildFinished(payload);
       }
-      outcome = "succeeded";
+      outcome = await this.completedJobOutcome(payload);
     } catch (error) {
       if (isFinalJobAttempt(job.attemptsMade, job.opts.attempts)) {
         outcome = "failed";
@@ -168,6 +173,22 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       if (outcome) {
         void this.metrics.recordJob(payload.jobType, outcome);
       }
+    }
+  }
+
+  private async completedJobOutcome(payload: WorkerJob): Promise<WorkerJobOutcome | undefined> {
+    if (!("jobId" in payload) || !("actorId" in payload)) {
+      return "succeeded";
+    }
+    try {
+      return durableJobStatusToOutcome(
+        await this.generationRepository.jobStatus({
+          jobId: payload.jobId,
+          userId: payload.actorId,
+        }),
+      );
+    } catch {
+      return undefined;
     }
   }
 }

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { JOB_METRICS_KEY, MODEL_METRICS_KEY, runtimeMetricsBucketKey } from "@novel-brain/core";
 
 import {
+  durableJobStatusToOutcome,
   isFinalJobAttempt,
   WorkerOperationalMetricsRecorder,
 } from "../src/metrics/operational-metrics-recorder";
@@ -12,6 +13,14 @@ describe("worker operational metrics recorder", () => {
     expect(isFinalJobAttempt(1, 3)).toBe(false);
     expect(isFinalJobAttempt(2, 3)).toBe(true);
     expect(isFinalJobAttempt(0, undefined)).toBe(true);
+  });
+
+  it("maps only durable terminal statuses to final outcomes", () => {
+    expect(durableJobStatusToOutcome("completed")).toBe("succeeded");
+    expect(durableJobStatusToOutcome("failed")).toBe("failed");
+    expect(durableJobStatusToOutcome("cancelled")).toBe("cancelled");
+    expect(durableJobStatusToOutcome("paused")).toBeUndefined();
+    expect(durableJobStatusToOutcome("running")).toBeUndefined();
   });
 
   it("records job outcomes and model usage into expiring Redis hashes", async () => {

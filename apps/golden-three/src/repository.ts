@@ -2220,7 +2220,7 @@ export class GoldenThreeRepository {
           maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
         });
       } catch (error) {
-        await this.observeModelCall({
+        this.observeModelCall({
           status: "failed",
           latencyMs: Date.now() - modelCallStartedAt,
           inputTokens: 0,
@@ -2238,7 +2238,7 @@ export class GoldenThreeRepository {
         };
       }
       const callTokens = result.usage.inputTokens + result.usage.outputTokens;
-      await this.observeModelCall({
+      this.observeModelCall({
         status: "succeeded",
         latencyMs: Date.now() - modelCallStartedAt,
         inputTokens: result.usage.inputTokens,
@@ -3202,9 +3202,10 @@ export class GoldenThreeRepository {
     await this.pool.end();
   }
 
-  private async observeModelCall(observation: GoldenThreeModelCallObservation): Promise<void> {
+  private observeModelCall(observation: GoldenThreeModelCallObservation): void {
     try {
-      await this.hooks.modelCall?.(observation);
+      const result = this.hooks.modelCall?.(observation);
+      void Promise.resolve(result).catch(() => undefined);
     } catch {
       // Operational telemetry must not change the durable generation outcome.
     }

@@ -72,7 +72,7 @@ export function runtimeMetricsBucketDates(
   const current = new Date(now);
   current.setUTCMinutes(0, 0, 0);
   return Array.from(
-    { length: hours },
+    { length: hours + 1 },
     (_, offset) => new Date(current.getTime() - offset * 60 * 60 * 1_000),
   );
 }
