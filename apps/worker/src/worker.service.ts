@@ -34,7 +34,11 @@ import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
-import { WorkerOperationalMetricsRecorder } from "./metrics/operational-metrics-recorder";
+import {
+  isFinalJobAttempt,
+  WorkerOperationalMetricsRecorder,
+  type WorkerJobOutcome,
+} from "./metrics/operational-metrics-recorder";
 import { WORKER_REDIS } from "./metrics/operational-metrics.tokens";
 
 @Injectable()
@@ -140,31 +144,30 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       },
       "Processing typed worker job",
     );
-    let outcome: "succeeded" | "failed" = "succeeded";
+    let outcome: WorkerJobOutcome | undefined;
     try {
       if (payload.jobType === SUMMARY_REBUILD_JOB) {
         await this.summaryProcessor.process(payload);
-        return;
-      }
-      if (payload.jobType === BATCH_TICK_JOB) {
+      } else if (payload.jobType === BATCH_TICK_JOB) {
         await this.batchPlanProcessor.process(payload);
-        return;
-      }
-      if (payload.jobType === WRITE_ACTION_JOB) {
+      } else if (payload.jobType === WRITE_ACTION_JOB) {
         await this.writingActionProcessor.process(payload);
-        return;
-      }
-      if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
+      } else if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
         await this.goldenThreeProcessor.process(payload);
-        return;
+      } else {
+        await this.processor.process(payload);
+        await this.batchPlanProcessor.onChildFinished(payload);
       }
-      await this.processor.process(payload);
-      await this.batchPlanProcessor.onChildFinished(payload);
+      outcome = "succeeded";
     } catch (error) {
-      outcome = "failed";
+      if (isFinalJobAttempt(job.attemptsMade, job.opts.attempts)) {
+        outcome = "failed";
+      }
       throw error;
     } finally {
-      void this.metrics.recordJob(payload.jobType, outcome);
+      if (outcome) {
+        void this.metrics.recordJob(payload.jobType, outcome);
+      }
     }
   }
 }

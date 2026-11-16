@@ -1,14 +1,21 @@
+import { randomBytes } from "node:crypto";
+
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import { uuidv7 } from "uuidv7";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import { auditTenantRls } from "../../../scripts/audit-tenant-rls.mjs";
 
-const databaseUrl =
+const databaseUrl = dedicatedDatabaseUrl(
   process.env.TEST_DATABASE_URL ??
-  "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_test";
+    "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_test",
+);
 
 describe("tenant RLS audit", () => {
+  afterAll(async () => {
+    await dropDatabase(databaseUrl);
+  });
+
   it("reports every tenant table as RLS-enabled, forced and policy-covered", async () => {
     await ensureDatabaseExists(databaseUrl);
     await runMigrations(databaseUrl);
@@ -79,6 +86,29 @@ async function ensureDatabaseExists(url: string): Promise<void> {
     )) {
       throw error;
     }
+  } finally {
+    await adminPool.end();
+  }
+}
+
+function dedicatedDatabaseUrl(baseUrl: string): string {
+  const target = new URL(baseUrl);
+  target.pathname = `/novelbrain_test_tenant_rls_${randomBytes(4).toString("hex")}`;
+  return target.toString();
+}
+
+async function dropDatabase(url: string): Promise<void> {
+  const target = new URL(url);
+  const databaseName = decodeURIComponent(target.pathname.slice(1));
+  target.pathname = "/postgres";
+  const adminPool = createDatabasePool(target.toString(), {
+    query_timeout: 0,
+    statement_timeout: 0,
+  });
+  try {
+    await adminPool.query(
+      `DROP DATABASE IF EXISTS "${databaseName.replaceAll('"', '""')}" WITH (FORCE)`,
+    );
   } finally {
     await adminPool.end();
   }

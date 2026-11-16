@@ -31,13 +31,13 @@ tests:
         values: "25x20"
       - series: 'novelbrain_worker_queue_oldest_job_age_seconds{state="wait"}'
         values: "900x20"
-      - series: 'novelbrain_jobs_total{job_type="generate_chapter",status="failed"}'
+      - series: 'novelbrain_jobs_24h{job_type="generate_chapter",status="failed"}'
         values: "20x20"
-      - series: 'novelbrain_jobs_total{job_type="generate_chapter",status="succeeded"}'
+      - series: 'novelbrain_jobs_24h{job_type="generate_chapter",status="succeeded"}'
         values: "80x20"
       - series: "novelbrain_model_latency_ms_overall"
         values: "6000x20"
-      - series: 'novelbrain_model_cost_cny_total{status="succeeded"}'
+      - series: 'novelbrain_model_cost_cny_24h{status="succeeded"}'
         values: "30x20"
       - series: "minio_cluster_capacity_usable_free_bytes"
         values: "10x40"

@@ -54,8 +54,8 @@ async function main() {
     for (const metric of [
       "novelbrain_api_request_duration_seconds",
       "novelbrain_worker_queue_jobs",
-      "novelbrain_jobs_total",
-      "novelbrain_model_cost_cny_total",
+      "novelbrain_jobs_24h",
+      "novelbrain_model_cost_cny_24h",
       "novelbrain_dependency_up",
     ]) {
       if (!text.includes(metric)) {

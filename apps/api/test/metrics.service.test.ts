@@ -39,10 +39,10 @@ describe("prometheus metrics service", () => {
     expect(text).toContain('novelbrain_dependency_up{dependency="storage"} 0');
     expect(text).toContain('novelbrain_worker_queue_jobs{state="wait"} 7');
     expect(text).toContain('novelbrain_worker_queue_oldest_job_age_seconds{state="wait"} 120');
-    expect(text).toContain('novelbrain_jobs_total{job_type="generate_chapter",status="failed"} 2');
+    expect(text).toContain('novelbrain_jobs_24h{job_type="generate_chapter",status="failed"} 2');
     expect(text).toContain('novelbrain_model_latency_ms{status="succeeded"} 850');
-    expect(text).toContain('novelbrain_model_tokens_total{kind="input"} 12000');
-    expect(text).toContain('novelbrain_model_cost_cny_total{status="succeeded"} 3.25');
+    expect(text).toContain('novelbrain_model_tokens_24h{kind="input"} 12000');
+    expect(text).toContain('novelbrain_model_cost_cny_24h{status="succeeded"} 3.25');
     expect(text).toContain("novelbrain_model_latency_ms_overall 850");
     expect(text).toContain("novelbrain_storage_available 0");
     expect(text).not.toContain("沈砚");

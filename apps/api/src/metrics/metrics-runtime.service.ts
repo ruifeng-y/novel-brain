@@ -1,11 +1,10 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
+  decodeRuntimeJobMetricField,
   JOB_METRICS_KEY,
   MODEL_METRICS_KEY,
   runtimeMetricsBucketDates,
   runtimeMetricsBucketKey,
-  safeRuntimeMetricJobStatus,
-  safeRuntimeMetricJobType,
   safeRuntimeMetricModelStatus,
 } from "@novel-brain/core";
 
@@ -59,14 +58,13 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
     return {
       jobs: Object.entries(jobs)
         .flatMap(([field, value]) => {
-          const separator = field.lastIndexOf(":");
-          if (separator <= 0 || separator === field.length - 1) {
+          const decoded = decodeRuntimeJobMetricField(field);
+          if (!decoded) {
             return [];
           }
           return [
             {
-              jobType: safeRuntimeMetricJobType(field.slice(0, separator)),
-              status: safeRuntimeMetricJobStatus(field.slice(separator + 1)),
+              ...decoded,
               count: integer(value),
             },
           ];

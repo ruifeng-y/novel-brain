@@ -12,10 +12,26 @@ const SAFE_JOB_TYPES = new Set([
   "rebuild_summaries",
   "write_action",
 ]);
-const SAFE_JOB_STATUSES = new Set(["cancelled", "completed", "failed", "succeeded", "unknown"]);
-const SAFE_MODEL_STATUSES = new Set(["cancelled", "failed", "succeeded", "unknown"]);
-const SAFE_ROUTE_TEMPLATE =
-  /^\/api\/v1(?:\/[a-z][a-z0-9_-]*|\/:[A-Za-z][A-Za-z0-9]*){1,20}$/u;
+export type RuntimeJobType =
+  | "agent_workflow"
+  | "batch_plan"
+  | "batch_tick"
+  | "generate_chapter"
+  | "generate_golden_three"
+  | "rebuild_summaries"
+  | "write_action"
+  | "unknown";
+export type RuntimeJobStatus = "cancelled" | "completed" | "failed" | "succeeded" | "unknown";
+export type RuntimeModelStatus = "cancelled" | "failed" | "succeeded" | "unknown";
+const SAFE_JOB_STATUSES = new Set<string>([
+  "cancelled",
+  "completed",
+  "failed",
+  "succeeded",
+  "unknown",
+]);
+const SAFE_MODEL_STATUSES = new Set<string>(["cancelled", "failed", "succeeded", "unknown"]);
+const SAFE_ROUTE_TEMPLATE = /^\/api\/v1(?:\/[a-z][a-z0-9_-]*|\/:[A-Za-z][A-Za-z0-9]*){1,20}$/u;
 const SAFE_STATIC_ROUTE_TEMPLATES = new Set([
   "/api/v1/auth/csrf",
   "/api/v1/auth/login",
@@ -61,16 +77,38 @@ export function runtimeMetricsBucketDates(
   );
 }
 
-export function safeRuntimeMetricJobType(value: string): string {
-  return SAFE_JOB_TYPES.has(value) ? value : "unknown";
+export function safeRuntimeMetricJobType(value: string): RuntimeJobType {
+  return SAFE_JOB_TYPES.has(value) ? (value as RuntimeJobType) : "unknown";
 }
 
-export function safeRuntimeMetricJobStatus(value: string): string {
-  return SAFE_JOB_STATUSES.has(value) ? value : "unknown";
+export function safeRuntimeMetricJobStatus(value: string): RuntimeJobStatus {
+  return SAFE_JOB_STATUSES.has(value) ? (value as RuntimeJobStatus) : "unknown";
 }
 
-export function safeRuntimeMetricModelStatus(value: string): string {
-  return SAFE_MODEL_STATUSES.has(value) ? value : "unknown";
+export function safeRuntimeMetricModelStatus(value: string): RuntimeModelStatus {
+  return SAFE_MODEL_STATUSES.has(value) ? (value as RuntimeModelStatus) : "unknown";
+}
+
+export function encodeRuntimeJobMetricField(jobType: string, status: string): string {
+  return `${safeRuntimeMetricJobType(jobType)}:${safeRuntimeMetricJobStatus(status)}`;
+}
+
+export function decodeRuntimeJobMetricField(
+  field: string,
+): { jobType: RuntimeJobType; status: RuntimeJobStatus } | undefined {
+  const separator = field.lastIndexOf(":");
+  if (separator <= 0 || separator === field.length - 1) {
+    return undefined;
+  }
+  const jobType = field.slice(0, separator);
+  const status = field.slice(separator + 1);
+  if (!SAFE_JOB_TYPES.has(jobType) || !SAFE_JOB_STATUSES.has(status)) {
+    return undefined;
+  }
+  return {
+    jobType: jobType as RuntimeJobType,
+    status: status as RuntimeJobStatus,
+  };
 }
 
 export function safeApiRouteTemplate(value: string): string {

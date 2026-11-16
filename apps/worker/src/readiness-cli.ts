@@ -5,7 +5,7 @@ import {
   workerReadinessDataSchema,
   type DependencyCheck,
 } from "@novel-brain/contracts";
-import { elapsedMilliseconds } from "@novel-brain/core";
+import { checkStorageHealth, elapsedMilliseconds } from "@novel-brain/core";
 import { createDatabasePool } from "@novel-brain/db";
 import { Queue } from "bullmq";
 import Redis from "ioredis";
@@ -91,14 +91,7 @@ async function checkStorage(storageHealthUrl: string | undefined): Promise<Depen
   }
 
   try {
-    const response = await fetch(storageHealthUrl, {
-      method: "GET",
-      redirect: "error",
-      signal: AbortSignal.timeout(2_000),
-    });
-    if (!response.ok) {
-      throw new Error(`Object storage health check failed with HTTP ${response.status}`);
-    }
+    await checkStorageHealth(storageHealthUrl);
     return {
       name: "storage",
       status: "up",

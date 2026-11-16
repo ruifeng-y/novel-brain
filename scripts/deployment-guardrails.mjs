@@ -18,6 +18,12 @@ export function validateDeploymentAssets() {
   if (!compose.includes("STORAGE_HEALTH_URL: http://minio:9000/minio/health/live")) {
     errors.push("API and Worker must use the internal MinIO health endpoint");
   }
+  if (
+    !compose.includes('"$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"') ||
+    !compose.includes('"local/$${STORAGE_BUCKET}"')
+  ) {
+    errors.push("MinIO initialization must quote credentials and bucket arguments");
+  }
   if (!prometheus.includes("job_name: novelbrain-api")) {
     errors.push("Prometheus must scrape the NovelBrain API");
   }
@@ -44,6 +50,16 @@ export function validateDeploymentAssets() {
   if (!productionEnv.includes("REDIS_URL=redis://redis:")) {
     errors.push("production env must use the internal Redis hostname");
   }
+  if (!productionEnv.includes("LOG_RETENTION_DAYS=30")) {
+    errors.push("production env must require 30-day operational log retention");
+  }
+  const encryptionKey = productionEnv
+    .split(/\r?\n/u)
+    .find((line) => line.startsWith("MODEL_CONFIG_ENCRYPTION_KEY="))
+    ?.slice("MODEL_CONFIG_ENCRYPTION_KEY=".length);
+  if (!encryptionKey || Buffer.byteLength(encryptionKey, "utf8") !== 32) {
+    errors.push("production env model encryption key placeholder must be exactly 32 bytes");
+  }
   for (const service of ["postgres", "redis", "mailpit", "minio", "api", "prometheus"]) {
     if (!production.includes(`${service}:\n    ports: !reset []`)) {
       errors.push(`production compose must remove public ports for ${service}`);
@@ -68,8 +84,8 @@ export function validateDeploymentAssets() {
   for (const metric of [
     "novelbrain_api_request_duration_seconds",
     "novelbrain_worker_queue_jobs",
-    "novelbrain_jobs_total",
-    "novelbrain_model_cost_cny_total",
+    "novelbrain_jobs_24h",
+    "novelbrain_model_cost_cny_24h",
   ]) {
     if (!smoke.includes(metric)) {
       errors.push(`stack smoke missing ${metric}`);

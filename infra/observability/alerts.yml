@@ -34,7 +34,7 @@ groups:
           summary: The oldest NovelBrain queued job has waited too long
           runbook: docs/operations/alerting.md#workerqueueoldestjobage
       - alert: JobFailureRateHigh
-        expr: sum(novelbrain_jobs_total{status="failed"}) / clamp_min(sum(novelbrain_jobs_total), 1) > 0.1
+        expr: sum(novelbrain_jobs_24h{status="failed"}) / clamp_min(sum(novelbrain_jobs_24h), 1) > 0.1
         for: 15m
         labels:
           severity: warning
@@ -50,7 +50,7 @@ groups:
           summary: Provider model latency is above the operational target
           runbook: docs/operations/alerting.md#modellatencyhigh
       - alert: ModelCostDailyHigh
-        expr: sum(novelbrain_model_cost_cny_total) > 20
+        expr: sum(novelbrain_model_cost_cny_24h) > 20
         for: 5m
         labels:
           severity: warning

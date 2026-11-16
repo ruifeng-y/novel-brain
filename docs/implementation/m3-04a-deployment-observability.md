@@ -11,7 +11,7 @@
 - API liveness 只判断进程；readiness 在配置对象存储后同时检查 Postgres、Redis 和 MinIO。
 - Worker readiness CLI 检查数据库、队列消费者和 MinIO。
 - `/api/v1/metrics` 输出 Prometheus 文本，覆盖 API 延迟、队列深度/最老任务、24 小时任务结果、模型延迟/token/费用和依赖可用性。
-- Worker 将任务结果与模型调用聚合写入 25 小时过期的 Redis 计数器；API 只读取聚合值，不跨租户扫描受 RLS 保护的故事表。
+- Worker 将最终 BullMQ 尝试结果与模型调用聚合写入小时桶 Redis 计数器；API 读取最近 24 个桶，不跨租户扫描受 RLS 保护的故事表。
 - `/metrics` 不进入 OpenAPI，也不通过公开 Web 代理暴露。
 - MinIO 自带指标由 Prometheus 抓取，用于真实存储容量与使用量。
 - 告警规则、阈值说明、故障 fixture 和逐步 runbook 已纳入 guardrail。
@@ -21,6 +21,7 @@
 
 - 独立基础 Compose project 使用备用端口完成镜像构建和 `--wait` 启动。
 - 生产 overlay 使用独立 project、`APP_ORIGIN=http://localhost` 完成镜像构建和 `--wait` 启动；Caddy 公网入口返回 200。
+- 生产 Worker 容器使用 32-byte `MODEL_CONFIG_ENCRYPTION_KEY` 完成模型 Key 加密/解密 smoke。
 - `pnpm stack:smoke` 验证 Web、API readiness、Mailpit、Worker、MinIO、metrics，以及公开 Web origin 不暴露 metrics。
 - 生产 overlay 的 Worker 容器内 smoke 通过，验证内部服务名、Worker 消费、MinIO 和 metrics，同时确认公开入口拒绝大小写 metrics 路径。
 - Prometheus 两个 target 均为 `up`：`novelbrain-api`、`novelbrain-minio`。
@@ -32,6 +33,7 @@
 - AppModule 集成测试验证 liveness、readiness 与 metrics 同时可用。
 - `scripts/test/deployment-guardrails.test.mjs` 和 `scripts/test/observability-guardrails.test.mjs` 校验规则、阈值、runbook 和部署资产。
 - Production CI 新增 `Deployment Smoke` workflow，在干净 Ubuntu runner 构建并启动 Compose 后执行 smoke。
+- 外部日志后端负责 30 天 retention；Compose 通过必填 `LOG_RETENTION_DAYS=30` 和部署前置条件显式声明该边界。
 
 ## 3. 运维边界
 

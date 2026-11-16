@@ -82,7 +82,6 @@ export function HealthDashboard() {
   const readiness = state.phase === "loaded" ? state.readiness : undefined;
   const database = dependencyCheck(readiness, "database");
   const queue = dependencyCheck(readiness, "queue");
-  const visibleChecks = readiness?.data.checks.filter((check) => check.name !== "storage") ?? [];
   const ready = readiness?.data.status === "ready";
   const statusLabel =
     state.phase === "loading"
@@ -174,7 +173,7 @@ export function HealthDashboard() {
           </div>
         ) : (
           <div className="check-list">
-            {visibleChecks.map((check) => (
+            {readiness?.data.checks.map((check) => (
               <div className="check-row" key={check.name}>
                 <span className={`check-dot ${check.status}`} aria-hidden="true" />
                 <strong>{checkLabels[check.name]}</strong>

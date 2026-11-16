@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { checkStorageHealth } from "@novel-brain/core";
 
 import type { DependencyProbe } from "./health.probes";
 
@@ -13,13 +14,6 @@ export class StorageProbeService implements DependencyProbe {
     if (!healthUrl) {
       throw new Error("STORAGE_HEALTH_URL is required");
     }
-    const response = await fetch(healthUrl, {
-      method: "GET",
-      redirect: "error",
-      signal: AbortSignal.timeout(2_000),
-    });
-    if (!response.ok) {
-      throw new Error(`Object storage health check failed with HTTP ${response.status}`);
-    }
+    await checkStorageHealth(healthUrl);
   }
 }

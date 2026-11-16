@@ -1,4 +1,5 @@
 import {
+  encodeRuntimeJobMetricField,
   JOB_METRICS_KEY,
   MODEL_METRICS_KEY,
   RUNTIME_METRICS_TTL_SECONDS,
@@ -8,7 +9,7 @@ import type { WorkerJob } from "@novel-brain/contracts";
 import type Redis from "ioredis";
 
 type WorkerJobType = WorkerJob["jobType"];
-type WorkerJobOutcome = "succeeded" | "failed" | "cancelled";
+export type WorkerJobOutcome = "succeeded" | "failed" | "cancelled";
 
 interface MetricsRedis {
   pipeline(): {
@@ -27,7 +28,7 @@ export class WorkerOperationalMetricsRecorder {
 
   async recordJob(jobType: WorkerJobType, status: WorkerJobOutcome): Promise<void> {
     await this.record(runtimeMetricsBucketKey(JOB_METRICS_KEY, new Date(this.now())), [
-      [`${safeField(jobType)}:${safeField(status)}`, 1],
+      [encodeRuntimeJobMetricField(jobType, status), 1],
     ]);
   }
 
@@ -126,6 +127,6 @@ function positiveNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
 }
 
-function safeField(value: string): string {
-  return /^[a-z][a-z0-9_]{0,63}$/u.test(value) ? value : "unknown";
+export function isFinalJobAttempt(attemptsMade: number, attempts: number | undefined): boolean {
+  return attemptsMade + 1 >= Math.max(1, attempts ?? 1);
 }

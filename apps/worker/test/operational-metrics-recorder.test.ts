@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { JOB_METRICS_KEY, MODEL_METRICS_KEY, runtimeMetricsBucketKey } from "@novel-brain/core";
 
-import { WorkerOperationalMetricsRecorder } from "../src/metrics/operational-metrics-recorder";
+import {
+  isFinalJobAttempt,
+  WorkerOperationalMetricsRecorder,
+} from "../src/metrics/operational-metrics-recorder";
 
 describe("worker operational metrics recorder", () => {
+  it("records only the final BullMQ attempt", () => {
+    expect(isFinalJobAttempt(0, 3)).toBe(false);
+    expect(isFinalJobAttempt(1, 3)).toBe(false);
+    expect(isFinalJobAttempt(2, 3)).toBe(true);
+    expect(isFinalJobAttempt(0, undefined)).toBe(true);
+  });
+
   it("records job outcomes and model usage into expiring Redis hashes", async () => {
     const now = Date.UTC(2026, 10, 14, 12);
     const jobKey = runtimeMetricsBucketKey(JOB_METRICS_KEY, new Date(now));
