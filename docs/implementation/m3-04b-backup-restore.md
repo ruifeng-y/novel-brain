@@ -22,11 +22,11 @@
 2026-11-16 的 Docker drill 通过，证据位于
 `docs/implementation/evidence/m3-04b-backup-restore-2026-11-16.json`。
 
-- Schema baseline：`f1bcee46e504d76d6c8618c3528054af7ba93a93`；drill 时的 backup tool commit：`ad2fa383de1c03575d8dc9642d35ce17fa7f52e2`。
-- 数据：67 行、2 个对象、数据库明文 680,474 bytes；完整 encrypted backup 5 个文件、704,387 bytes。
+- Schema baseline：`f1bcee46e504d76d6c8618c3528054af7ba93a93`；drill 时的 backup tool commit：`184f2069952c6323c7153ed129d4dda413cf2373`。
+- 数据：67 行、2 个对象、数据库明文 680,475 bytes；完整 encrypted backup 5 个文件、704,388 bytes。
 - 离线验证：数据库和两个对象均成功解密并匹配 SHA-256。
-- 隔离恢复：实测 RTO 约 13.03 秒；恢复后 67 行、2 个对象、529 个 FK 约束全部为 0 违规。
-- 实测 RPO 约 0.087 秒；目标仍为 RPO 24h / RTO 4h。单次 drill 只作为证据，不宣称生产 SLA。
+- 隔离恢复：实测 RTO 约 13.007 秒；恢复后 67 行、2 个对象、529 个 FK 约束全部为 0 违规。
+- 实测 RPO 约 0.083 秒；目标仍为 RPO 24h / RTO 4h。单次 drill 只作为证据，不宣称生产 SLA。
 - `interrupted_backup` 在真实 `backup:create` 中注入失败，确认输出目录无明文；`missing_object`、`corrupt_object`、`interrupted_restore` 和 cleanup 也全部按预期通过。
 - orphan dry-run 检出 aged 未引用对象，随后在显式 bucket 确认下删除；dry-run 与 apply 均持久化独立 audit 文件。
 - 定向测试覆盖引用解析、路径穿越、加密认证、manifest 完整性、completion marker、恢复 parity、retention/prune 和 orphan 年龄边界。
