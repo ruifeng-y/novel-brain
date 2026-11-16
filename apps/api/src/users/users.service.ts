@@ -129,6 +129,7 @@ export function toProfileContract(user: UserProfileRecord): AuthUser {
     displayName: user.displayName,
     bio: user.bio,
     avatarUrl: user.avatarUrl,
+    status: user.status as "active" | "disabled" | "deletion_pending",
     version: user.version,
     createdAt: user.createdAt.toISOString(),
   };

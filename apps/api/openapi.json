@@ -1,6 +1,589 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/users/me/export": {
+      "post": {
+        "operationId": "AccountLifecycleController_createExport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Created account export receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "schemaVersion": {
+                          "type": "number",
+                          "enum": [1]
+                        },
+                        "inventoryVersion": {
+                          "type": "string",
+                          "enum": ["account-export-v1"]
+                        },
+                        "checksum": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "byteSize": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "inventory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "store": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                              },
+                              "rowCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": ["store", "rowCount"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "generatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "schemaVersion",
+                        "inventoryVersion",
+                        "checksum",
+                        "byteSize",
+                        "inventory",
+                        "generatedAt",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/me/export/{receiptId}/download": {
+      "get": {
+        "operationId": "AccountLifecycleController_downloadExport",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Downloaded account export package"
+          }
+        },
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/me/delete": {
+      "post": {
+        "operationId": "AccountLifecycleController_requestDeletion",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "exportReceiptId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "confirm": {
+                    "type": "boolean",
+                    "enum": [true]
+                  }
+                },
+                "required": ["exportReceiptId", "confirm"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Account deletion request accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "recovery_pending",
+                            "purging",
+                            "completed",
+                            "failed",
+                            "recovered"
+                          ]
+                        },
+                        "exportReceiptId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "requestedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "recoverableUntil": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "purgeAfter": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "backupExpiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "completedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "failure": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "retryable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["code", "message", "retryable"],
+                          "additionalProperties": false
+                        },
+                        "stores": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "store": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                              },
+                              "rowCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["deleted", "failed"]
+                              },
+                              "retryable": {
+                                "type": "boolean"
+                              },
+                              "errorCode": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": ["store", "rowCount", "status", "retryable", "errorCode"],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "exportReceiptId",
+                        "requestedAt",
+                        "recoverableUntil",
+                        "purgeAfter",
+                        "backupExpiresAt",
+                        "completedAt",
+                        "failure",
+                        "stores"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/me/deletion": {
+      "get": {
+        "operationId": "AccountLifecycleController_getDeletion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current account deletion request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "recovery_pending",
+                            "purging",
+                            "completed",
+                            "failed",
+                            "recovered"
+                          ]
+                        },
+                        "exportReceiptId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "requestedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "recoverableUntil": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "purgeAfter": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "backupExpiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "completedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "failure": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "retryable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["code", "message", "retryable"],
+                          "additionalProperties": false
+                        },
+                        "stores": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "store": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                              },
+                              "rowCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["deleted", "failed"]
+                              },
+                              "retryable": {
+                                "type": "boolean"
+                              },
+                              "errorCode": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": ["store", "rowCount", "status", "retryable", "errorCode"],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "exportReceiptId",
+                        "requestedAt",
+                        "recoverableUntil",
+                        "purgeAfter",
+                        "backupExpiresAt",
+                        "completedAt",
+                        "failure",
+                        "stores"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/me/deletion/recover": {
+      "post": {
+        "operationId": "AccountLifecycleController_recoverDeletion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Recovered account deletion request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "recovery_pending",
+                            "purging",
+                            "completed",
+                            "failed",
+                            "recovered"
+                          ]
+                        },
+                        "exportReceiptId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "requestedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "recoverableUntil": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "purgeAfter": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "backupExpiresAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "completedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "failure": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "retryable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["code", "message", "retryable"],
+                          "additionalProperties": false
+                        },
+                        "stores": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "store": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                              },
+                              "rowCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["deleted", "failed"]
+                              },
+                              "retryable": {
+                                "type": "boolean"
+                              },
+                              "errorCode": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": ["store", "rowCount", "status", "retryable", "errorCode"],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "exportReceiptId",
+                        "requestedAt",
+                        "recoverableUntil",
+                        "purgeAfter",
+                        "backupExpiresAt",
+                        "completedAt",
+                        "failure",
+                        "stores"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["users"]
+      }
+    },
     "/api/v1/auth/csrf": {
       "get": {
         "operationId": "AuthController_getCsrf",
@@ -200,6 +783,11 @@
                               "maxLength": 500,
                               "format": "uri"
                             },
+                            "status": {
+                              "default": "active",
+                              "type": "string",
+                              "enum": ["active", "disabled", "deletion_pending"]
+                            },
                             "version": {
                               "default": 1,
                               "type": "integer",
@@ -219,6 +807,7 @@
                             "displayName",
                             "bio",
                             "avatarUrl",
+                            "status",
                             "version",
                             "createdAt"
                           ],
@@ -344,6 +933,11 @@
                               "maxLength": 500,
                               "format": "uri"
                             },
+                            "status": {
+                              "default": "active",
+                              "type": "string",
+                              "enum": ["active", "disabled", "deletion_pending"]
+                            },
                             "version": {
                               "default": 1,
                               "type": "integer",
@@ -363,6 +957,7 @@
                             "displayName",
                             "bio",
                             "avatarUrl",
+                            "status",
                             "version",
                             "createdAt"
                           ],
@@ -610,6 +1205,11 @@
                               "maxLength": 500,
                               "format": "uri"
                             },
+                            "status": {
+                              "default": "active",
+                              "type": "string",
+                              "enum": ["active", "disabled", "deletion_pending"]
+                            },
                             "version": {
                               "default": 1,
                               "type": "integer",
@@ -629,6 +1229,7 @@
                             "displayName",
                             "bio",
                             "avatarUrl",
+                            "status",
                             "version",
                             "createdAt"
                           ],
@@ -2720,6 +3321,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -3528,6 +4134,11 @@
                                   "BRANCH_SOURCE_NOT_FOUND",
                                   "VERSION_NODE_NOT_FOUND",
                                   "IMPORT_NOT_READY",
+                                  "ACCOUNT_EXPORT_REQUIRED",
+                                  "ACCOUNT_EXPORT_EXPIRED",
+                                  "ACCOUNT_DELETION_NOT_FOUND",
+                                  "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                  "ACCOUNT_DELETION_INVALID_STATE",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -21372,6 +21983,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -22907,6 +23523,11 @@
                                   "BRANCH_SOURCE_NOT_FOUND",
                                   "VERSION_NODE_NOT_FOUND",
                                   "IMPORT_NOT_READY",
+                                  "ACCOUNT_EXPORT_REQUIRED",
+                                  "ACCOUNT_EXPORT_EXPIRED",
+                                  "ACCOUNT_DELETION_NOT_FOUND",
+                                  "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                  "ACCOUNT_DELETION_INVALID_STATE",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -23862,6 +24483,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -24809,6 +25435,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -25756,6 +26387,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -26752,6 +27388,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -28226,6 +28867,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -29447,6 +30093,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30065,6 +30716,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -30351,6 +31007,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -31233,6 +31894,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -32364,6 +33030,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -33511,6 +34182,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -34666,6 +35342,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -89431,6 +90112,11 @@
                                       "BRANCH_SOURCE_NOT_FOUND",
                                       "VERSION_NODE_NOT_FOUND",
                                       "IMPORT_NOT_READY",
+                                      "ACCOUNT_EXPORT_REQUIRED",
+                                      "ACCOUNT_EXPORT_EXPIRED",
+                                      "ACCOUNT_DELETION_NOT_FOUND",
+                                      "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                      "ACCOUNT_DELETION_INVALID_STATE",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -89808,6 +90494,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -90120,6 +90811,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -90264,6 +90960,11 @@
                           "maxLength": 500,
                           "format": "uri"
                         },
+                        "status": {
+                          "default": "active",
+                          "type": "string",
+                          "enum": ["active", "disabled", "deletion_pending"]
+                        },
                         "version": {
                           "default": 1,
                           "type": "integer",
@@ -90283,6 +90984,7 @@
                         "displayName",
                         "bio",
                         "avatarUrl",
+                        "status",
                         "version",
                         "createdAt"
                       ],
@@ -121043,6 +121745,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -122607,6 +123314,11 @@
                                   "BRANCH_SOURCE_NOT_FOUND",
                                   "VERSION_NODE_NOT_FOUND",
                                   "IMPORT_NOT_READY",
+                                  "ACCOUNT_EXPORT_REQUIRED",
+                                  "ACCOUNT_EXPORT_EXPIRED",
+                                  "ACCOUNT_DELETION_NOT_FOUND",
+                                  "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                  "ACCOUNT_DELETION_INVALID_STATE",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -124159,6 +124871,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -125703,6 +126420,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -127247,6 +127969,11 @@
                                 "BRANCH_SOURCE_NOT_FOUND",
                                 "VERSION_NODE_NOT_FOUND",
                                 "IMPORT_NOT_READY",
+                                "ACCOUNT_EXPORT_REQUIRED",
+                                "ACCOUNT_EXPORT_EXPIRED",
+                                "ACCOUNT_DELETION_NOT_FOUND",
+                                "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                "ACCOUNT_DELETION_INVALID_STATE",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -128850,6 +129577,11 @@
                                     "BRANCH_SOURCE_NOT_FOUND",
                                     "VERSION_NODE_NOT_FOUND",
                                     "IMPORT_NOT_READY",
+                                    "ACCOUNT_EXPORT_REQUIRED",
+                                    "ACCOUNT_EXPORT_EXPIRED",
+                                    "ACCOUNT_DELETION_NOT_FOUND",
+                                    "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+                                    "ACCOUNT_DELETION_INVALID_STATE",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]

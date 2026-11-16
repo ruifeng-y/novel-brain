@@ -137,6 +137,11 @@ export const ERROR_CODES = [
   "BRANCH_SOURCE_NOT_FOUND",
   "VERSION_NODE_NOT_FOUND",
   "IMPORT_NOT_READY",
+  "ACCOUNT_EXPORT_REQUIRED",
+  "ACCOUNT_EXPORT_EXPIRED",
+  "ACCOUNT_DELETION_NOT_FOUND",
+  "ACCOUNT_DELETION_RECOVERY_EXPIRED",
+  "ACCOUNT_DELETION_INVALID_STATE",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -239,12 +244,16 @@ export const resetPasswordRequestSchema = z.object({
 });
 export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
 
+export const authUserStatusSchema = z.enum(["active", "disabled", "deletion_pending"]);
+export type AuthUserStatus = z.infer<typeof authUserStatusSchema>;
+
 export const authUserSchema = z.object({
   id: uuidV7Schema,
   emailMasked: z.string().min(3),
   displayName: z.string().min(1),
   bio: z.string().max(500).default(""),
   avatarUrl: authorAvatarUrlSchema.nullable().default(null),
+  status: authUserStatusSchema.default("active"),
   version: z.number().int().positive().default(1),
   createdAt: z.string().datetime(),
 });
@@ -372,6 +381,85 @@ export const authorPenNameListResponseSchema = cursorListResponseSchema(
 export const authorPenNameDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
+
+export const accountExportInventoryEntrySchema = z
+  .object({
+    store: z.string().regex(/^[a-z][a-z0-9_]*$/),
+    rowCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type AccountExportInventoryEntry = z.infer<typeof accountExportInventoryEntrySchema>;
+
+export const accountExportReceiptSchema = z
+  .object({
+    id: uuidV7Schema,
+    schemaVersion: z.literal(1),
+    inventoryVersion: z.literal("account-export-v1"),
+    checksum: z.string().regex(/^[a-f0-9]{64}$/),
+    byteSize: z.number().int().nonnegative(),
+    inventory: z.array(accountExportInventoryEntrySchema),
+    generatedAt: z.string().datetime(),
+    expiresAt: z.string().datetime(),
+  })
+  .strict();
+export type AccountExportReceipt = z.infer<typeof accountExportReceiptSchema>;
+export const accountExportReceiptResponseSchema = apiEnvelopeSchema(accountExportReceiptSchema);
+
+export const accountDeletionStatusSchema = z.enum([
+  "recovery_pending",
+  "purging",
+  "completed",
+  "failed",
+  "recovered",
+]);
+export type AccountDeletionStatus = z.infer<typeof accountDeletionStatusSchema>;
+
+export const accountDeletionStoreResultSchema = z
+  .object({
+    store: z.string().regex(/^[a-z][a-z0-9_]*$/),
+    rowCount: z.number().int().nonnegative(),
+    status: z.enum(["deleted", "failed"]),
+    retryable: z.boolean(),
+    errorCode: z.string().nullable(),
+  })
+  .strict();
+export type AccountDeletionStoreResult = z.infer<typeof accountDeletionStoreResultSchema>;
+
+export const accountDeletionFailureSchema = z
+  .object({
+    code: z.string().min(1).max(100),
+    message: z.string().min(1).max(500),
+    retryable: z.boolean(),
+  })
+  .strict();
+export type AccountDeletionFailure = z.infer<typeof accountDeletionFailureSchema>;
+
+export const accountDeletionRequestSchema = z
+  .object({
+    id: uuidV7Schema,
+    status: accountDeletionStatusSchema,
+    exportReceiptId: uuidV7Schema.nullable(),
+    requestedAt: z.string().datetime(),
+    recoverableUntil: z.string().datetime(),
+    purgeAfter: z.string().datetime(),
+    backupExpiresAt: z.string().datetime(),
+    completedAt: z.string().datetime().nullable(),
+    failure: accountDeletionFailureSchema.nullable(),
+    stores: z.array(accountDeletionStoreResultSchema),
+  })
+  .strict();
+export type AccountDeletionRequest = z.infer<typeof accountDeletionRequestSchema>;
+
+export const accountDeletionCreateRequestSchema = z
+  .object({
+    exportReceiptId: uuidV7Schema,
+    confirm: z.literal(true),
+  })
+  .strict();
+export type AccountDeletionCreateRequest = z.infer<typeof accountDeletionCreateRequestSchema>;
+
+export const accountDeletionResponseSchema = apiEnvelopeSchema(accountDeletionRequestSchema);
+export const accountDeletionRecoverResponseSchema = apiEnvelopeSchema(accountDeletionRequestSchema);
 
 export const modelProviderSchema = z.enum(["deepseek", "openai-compatible"]);
 export const modelPurposeSchema = z.enum(["planning", "writing", "review"]);
@@ -4735,6 +4823,8 @@ export const GENERATE_CHAPTER_JOB = "generate_chapter";
 export const GENERATE_GOLDEN_THREE_JOB = "generate_golden_three";
 export const SUMMARY_REBUILD_JOB = "rebuild_summaries";
 export const WRITE_ACTION_JOB = "write_action";
+export const ACCOUNT_PURGE_JOB = "account_purge";
+export const ACCOUNT_PURGE_TICK_JOB = "account_purge_tick";
 export const WORKER_JOB_STEPS = [
   "prepare",
   "compile_context",
@@ -5618,12 +5708,30 @@ export const goldenThreeGenerationJobResponseSchema = apiEnvelopeSchema(
   goldenThreeGenerationJobSchema,
 );
 
+export const accountPurgeJobSchema = z
+  .object({
+    jobType: z.literal(ACCOUNT_PURGE_JOB),
+    deletionRequestId: uuidV7Schema,
+    idempotencyKey: z.string().min(1).max(200),
+  })
+  .strict();
+export type AccountPurgeJob = z.infer<typeof accountPurgeJobSchema>;
+
+export const accountPurgeTickJobSchema = z
+  .object({
+    jobType: z.literal(ACCOUNT_PURGE_TICK_JOB),
+  })
+  .strict();
+export type AccountPurgeTickJob = z.infer<typeof accountPurgeTickJobSchema>;
+
 export const workerJobSchema = z.discriminatedUnion("jobType", [
   generateChapterJobSchema,
   generateGoldenThreeJobSchema,
   summaryRebuildJobSchema,
   writeActionJobSchema,
   batchTickJobSchema,
+  accountPurgeJobSchema,
+  accountPurgeTickJobSchema,
 ]);
 export type WorkerJob = z.infer<typeof workerJobSchema>;
 

@@ -28,6 +28,7 @@ import {
 
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { AccountDataPrivacyPanel } from "./account-data-privacy-panel";
 
 export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser }) {
   const router = useRouter();
@@ -683,6 +684,7 @@ export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser })
           </div>
         )}
       </section>
+      <AccountDataPrivacyPanel />
     </div>
   );
 }

@@ -4,6 +4,86 @@
  */
 
 export interface paths {
+  "/api/v1/users/me/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AccountLifecycleController_createExport"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/me/export/{receiptId}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AccountLifecycleController_downloadExport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/me/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AccountLifecycleController_requestDeletion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/me/deletion": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AccountLifecycleController_getDeletion"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/me/deletion/recover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AccountLifecycleController_recoverDeletion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/csrf": {
     parameters: {
       query?: never;
@@ -3184,6 +3264,246 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  AccountLifecycleController_createExport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Created account export receipt */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {number} */
+              schemaVersion: 1;
+              /** @enum {string} */
+              inventoryVersion: "account-export-v1";
+              checksum: string;
+              byteSize: number;
+              inventory: {
+                store: string;
+                rowCount: number;
+              }[];
+              /** Format: date-time */
+              generatedAt: string;
+              /** Format: date-time */
+              expiresAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AccountLifecycleController_downloadExport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        receiptId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Downloaded account export package */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AccountLifecycleController_requestDeletion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          exportReceiptId: string;
+          /** @enum {boolean} */
+          confirm: true;
+        };
+      };
+    };
+    responses: {
+      /** @description Account deletion request accepted */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              status: "recovery_pending" | "purging" | "completed" | "failed" | "recovered";
+              exportReceiptId: string | null;
+              /** Format: date-time */
+              requestedAt: string;
+              /** Format: date-time */
+              recoverableUntil: string;
+              /** Format: date-time */
+              purgeAfter: string;
+              /** Format: date-time */
+              backupExpiresAt: string;
+              /** Format: date-time */
+              completedAt: string | null;
+              failure: {
+                code: string;
+                message: string;
+                retryable: boolean;
+              } | null;
+              stores: {
+                store: string;
+                rowCount: number;
+                /** @enum {string} */
+                status: "deleted" | "failed";
+                retryable: boolean;
+                errorCode: string | null;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AccountLifecycleController_getDeletion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Current account deletion request */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              status: "recovery_pending" | "purging" | "completed" | "failed" | "recovered";
+              exportReceiptId: string | null;
+              /** Format: date-time */
+              requestedAt: string;
+              /** Format: date-time */
+              recoverableUntil: string;
+              /** Format: date-time */
+              purgeAfter: string;
+              /** Format: date-time */
+              backupExpiresAt: string;
+              /** Format: date-time */
+              completedAt: string | null;
+              failure: {
+                code: string;
+                message: string;
+                retryable: boolean;
+              } | null;
+              stores: {
+                store: string;
+                rowCount: number;
+                /** @enum {string} */
+                status: "deleted" | "failed";
+                retryable: boolean;
+                errorCode: string | null;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AccountLifecycleController_recoverDeletion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Recovered account deletion request */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              status: "recovery_pending" | "purging" | "completed" | "failed" | "recovered";
+              exportReceiptId: string | null;
+              /** Format: date-time */
+              requestedAt: string;
+              /** Format: date-time */
+              recoverableUntil: string;
+              /** Format: date-time */
+              purgeAfter: string;
+              /** Format: date-time */
+              backupExpiresAt: string;
+              /** Format: date-time */
+              completedAt: string | null;
+              failure: {
+                code: string;
+                message: string;
+                retryable: boolean;
+              } | null;
+              stores: {
+                store: string;
+                rowCount: number;
+                /** @enum {string} */
+                status: "deleted" | "failed";
+                retryable: boolean;
+                errorCode: string | null;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   AuthController_getCsrf: {
     parameters: {
       query?: never;
@@ -3292,6 +3612,11 @@ export interface operations {
                  * @default null
                  */
                 avatarUrl: string | null;
+                /**
+                 * @default active
+                 * @enum {string}
+                 */
+                status: "active" | "disabled" | "deletion_pending";
                 /** @default 1 */
                 version: number;
                 /** Format: date-time */
@@ -3355,6 +3680,11 @@ export interface operations {
                  * @default null
                  */
                 avatarUrl: string | null;
+                /**
+                 * @default active
+                 * @enum {string}
+                 */
+                status: "active" | "disabled" | "deletion_pending";
                 /** @default 1 */
                 version: number;
                 /** Format: date-time */
@@ -3488,6 +3818,11 @@ export interface operations {
                  * @default null
                  */
                 avatarUrl: string | null;
+                /**
+                 * @default active
+                 * @enum {string}
+                 */
+                status: "active" | "disabled" | "deletion_pending";
                 /** @default 1 */
                 version: number;
                 /** Format: date-time */
@@ -4279,6 +4614,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -4618,6 +4958,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -10539,6 +10884,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11102,6 +11452,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11491,6 +11846,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11881,6 +12241,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12271,6 +12636,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12674,6 +13044,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13186,6 +13561,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13617,6 +13997,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13903,6 +14288,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14099,6 +14489,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14443,6 +14838,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14850,6 +15250,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15262,6 +15667,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15674,6 +16084,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32088,6 +32503,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32307,6 +32727,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -32502,6 +32927,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -32561,6 +32991,11 @@ export interface operations {
                * @default null
                */
               avatarUrl: string | null;
+              /**
+               * @default active
+               * @enum {string}
+               */
+              status: "active" | "disabled" | "deletion_pending";
               /** @default 1 */
               version: number;
               /** Format: date-time */
@@ -42782,6 +43217,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -43558,6 +43998,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44111,6 +44556,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44664,6 +45114,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45217,6 +45672,11 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_REQUIRED"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45783,6 +46243,11 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
+                    | "ACCOUNT_EXPORT_REQUIRED"
+                    | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_DELETION_NOT_FOUND"
+                    | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                    | "ACCOUNT_DELETION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;

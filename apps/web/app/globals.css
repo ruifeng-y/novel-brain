@@ -4681,6 +4681,57 @@ a:focus-visible {
   font-size: 18px;
 }
 
+.account-privacy-card {
+  grid-column: 1 / -1;
+}
+
+.data-action-list {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.data-action-list > div {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.data-action-list > div:last-child {
+  border-bottom: 0;
+}
+
+.data-action-list > div > svg {
+  flex-shrink: 0;
+  color: var(--ink-3);
+}
+
+.data-action-list > div > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.data-action-list strong {
+  font-size: 13px;
+}
+
+.data-action-list small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.data-action-list .danger-row > svg,
+.data-action-list .danger-text {
+  color: var(--cinnabar);
+}
+
 .model-config-list {
   display: grid;
   gap: 8px;
@@ -5420,6 +5471,15 @@ a:focus-visible {
 
   .account-sessions-card {
     grid-column: 1;
+  }
+
+  .data-action-list > div {
+    flex-wrap: wrap;
+  }
+
+  .data-action-list > div > button,
+  .data-action-list > div > .badge {
+    margin-left: 30px;
   }
 
   .creation-layout,
