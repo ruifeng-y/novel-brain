@@ -21,4 +21,8 @@ export class AccountPurgeProcessor {
   async listDueRequestIds(): Promise<string[]> {
     return this.repository.listDueRequestIds();
   }
+
+  async cleanupExpiredExportReceipts(): Promise<number> {
+    return this.repository.cleanupExpiredExportReceipts();
+  }
 }

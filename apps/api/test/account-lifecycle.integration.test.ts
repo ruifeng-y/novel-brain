@@ -168,6 +168,25 @@ describe("account lifecycle HTTP integration", () => {
       throw new Error("Registered user password hash is missing");
     }
     expect(serialized).not.toContain(passwordHash);
+    const exportAudit = await databasePool.query<{ action: string }>(
+      "SELECT action FROM audit_logs WHERE actor_id = $1",
+      [ownerId],
+    );
+    expect(exportAudit.rows.map((row) => row.action)).toContain("account.exported");
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await owner
+        .post("/api/v1/users/me/export")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .expect(200);
+    }
+    const limited = await owner
+      .post("/api/v1/users/me/export")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(429);
+    expect(limited.body.error.code).toBe("AUTH_RATE_LIMITED");
   });
 
   it("gates deletion on an owned export and supports an idempotent recovery window", async () => {

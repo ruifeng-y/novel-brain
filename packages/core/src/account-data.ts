@@ -28,7 +28,14 @@ export const ACCOUNT_EXPORT_SENSITIVE_COLUMNS: Record<string, string[]> = {
 };
 
 export type AccountStoreOwnership =
-  "self" | "email" | "user_id" | "work_id" | "branch_id" | "actor_id" | `column:${string}`;
+  | "self"
+  | "email"
+  | "user_id"
+  | "work_id"
+  | "branch_id"
+  | "actor_id"
+  | `column:${string}`
+  | `columns:${string}`;
 
 export interface AccountStore {
   tableName: string;
@@ -38,28 +45,41 @@ export interface AccountStore {
 export interface AccountCatalogRow {
   table_name: string;
   columns: string[];
+  user_reference_columns: string[];
 }
 
 export async function discoverAccountStores(
   query: (text: string, values?: unknown[]) => Promise<{ rows: AccountCatalogRow[] }>,
   mode: "export" | "delete",
 ): Promise<AccountStore[]> {
-  const columns = mode === "export" ? ACCOUNT_TENANT_COLUMNS : null;
   const result = await query(
-    `SELECT table_name, jsonb_agg(column_name ORDER BY column_name) AS columns
-       FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND ($1::text[] IS NULL OR column_name = ANY($1::text[]))
-      GROUP BY table_name
-      ORDER BY table_name`,
-    [columns],
+    `WITH user_references AS (
+       SELECT conrelid::regclass::text AS table_name,
+              array_agg(attribute.attname ORDER BY attribute.attname) AS columns
+         FROM pg_constraint AS constraint_record
+         JOIN pg_attribute AS attribute
+           ON attribute.attrelid = constraint_record.conrelid
+          AND attribute.attnum = ANY(constraint_record.conkey)
+        WHERE constraint_record.contype = 'f'
+          AND constraint_record.confrelid = 'users'::regclass
+        GROUP BY constraint_record.conrelid
+     )
+     SELECT column_record.table_name,
+            jsonb_agg(column_record.column_name ORDER BY column_record.column_name) AS columns,
+            COALESCE(to_jsonb(MAX(user_references.columns)), '[]'::jsonb) AS user_reference_columns
+       FROM information_schema.columns AS column_record
+       LEFT JOIN user_references
+         ON user_references.table_name = column_record.table_name
+      WHERE column_record.table_schema = 'public'
+      GROUP BY column_record.table_name
+      ORDER BY column_record.table_name`,
   );
   const excluded =
     mode === "export" ? ACCOUNT_EXPORT_EXCLUDED_TABLES : new Set(["deletion_requests"]);
   const stores = result.rows
     .filter((row) => !excluded.has(row.table_name))
     .flatMap((row) => {
-      const store = classifyAccountStore(row.table_name, row.columns);
+      const store = classifyAccountStore(row.table_name, row.columns, row.user_reference_columns);
       return store ? [store] : [];
     });
   for (const store of [
@@ -78,9 +98,39 @@ export function accountPurgeJobId(deletionRequestId: string): string {
   return `${ACCOUNT_PURGE_JOB_ID_PREFIX}${deletionRequestId}`;
 }
 
+export function accountPurgeJobPayload(deletionRequestId: string): AccountPurgeJob {
+  return {
+    jobType: "account_purge",
+    deletionRequestId,
+    workId: null,
+    branchId: null,
+    idempotencyKey: accountPurgeJobId(deletionRequestId),
+    checkpoint: {
+      schemaVersion: 1,
+      revision: 0,
+      step: "prepare",
+    },
+  };
+}
+
+export function accountPurgeTickJobPayload(): AccountPurgeTickJob {
+  return {
+    jobType: "account_purge_tick",
+    workId: null,
+    branchId: null,
+    idempotencyKey: "account-purge-tick",
+    checkpoint: {
+      schemaVersion: 1,
+      revision: 0,
+      step: "scan",
+    },
+  };
+}
+
 export function classifyAccountStore(
   tableName: string,
   tenantColumns: string[],
+  userReferenceColumns: string[] = [],
 ): AccountStore | null {
   if (tableName === "users") {
     return { tableName, ownership: "self" };
@@ -97,12 +147,19 @@ export function classifyAccountStore(
   if (tenantColumns.includes("branch_id")) {
     return { tableName, ownership: "branch_id" };
   }
-  const directColumn = tenantColumns.find((column) =>
-    ACCOUNT_DIRECT_USER_COLUMNS.includes(column as (typeof ACCOUNT_DIRECT_USER_COLUMNS)[number]),
+  const directColumns = userReferenceColumns.filter(
+    (column) =>
+      ACCOUNT_DIRECT_USER_COLUMNS.includes(
+        column as (typeof ACCOUNT_DIRECT_USER_COLUMNS)[number],
+      ) || !["id"].includes(column),
   );
-  return directColumn
-    ? { tableName, ownership: `column:${directColumn}` as `column:${string}` }
-    : null;
+  if (directColumns.length === 1) {
+    return { tableName, ownership: `column:${directColumns[0]}` };
+  }
+  if (directColumns.length > 1) {
+    return { tableName, ownership: `columns:${directColumns.join(",")}` };
+  }
+  return null;
 }
 
 export function accountOwnershipPredicate(ownership: AccountStoreOwnership): string {
@@ -119,6 +176,13 @@ export function accountOwnershipPredicate(ownership: AccountStoreOwnership): str
       throw new Error(`Unsafe account ownership column: ${column}`);
     }
     return `t.${column} = ${userId}`;
+  }
+  if (ownership.startsWith("columns:")) {
+    const columns = ownership.slice("columns:".length).split(",");
+    if (columns.length === 0 || columns.some((column) => !/^[a-z][a-z0-9_]*$/.test(column))) {
+      throw new Error(`Unsafe account ownership columns: ${ownership}`);
+    }
+    return columns.map((column) => `t.${column} = ${userId}`).join(" OR ");
   }
   switch (ownership) {
     case "user_id":
@@ -141,3 +205,4 @@ export function quoteSqlIdentifier(identifier: string): string {
   }
   return `"${identifier}"`;
 }
+import type { AccountPurgeJob, AccountPurgeTickJob } from "@novel-brain/contracts";

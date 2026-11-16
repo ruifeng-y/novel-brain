@@ -2,6 +2,9 @@ import { Injectable } from "@nestjs/common";
 import type { AccountDeletionCreateRequest, AccountDeletionRequest } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { AuthRateLimiterService } from "../auth/auth-rate-limiter.service";
 import type { LifecycleAuditContext } from "./account-lifecycle.repository";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -15,10 +18,12 @@ export class AccountLifecycleService {
   constructor(
     private readonly repository: AccountLifecycleRepository,
     private readonly purgeQueue: AccountPurgeQueue,
+    private readonly rateLimiter: AuthRateLimiterService,
   ) {}
 
-  createExport(userId: string) {
-    return this.repository.createExportReceipt(userId);
+  async createExport(userId: string, audit: LifecycleAuditContext) {
+    await this.rateLimiter.consumeAccountExport(userId, audit.ip);
+    return this.repository.createExportReceipt(userId, audit);
   }
 
   async downloadExport(userId: string, receiptId: string) {

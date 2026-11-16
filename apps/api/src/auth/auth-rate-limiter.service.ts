@@ -60,6 +60,13 @@ export class AuthRateLimiterService implements OnModuleDestroy {
     ]);
   }
 
+  async consumeAccountExport(userId: string, ip: string): Promise<void> {
+    await this.assertWithinLimits([
+      { key: `account-export:user:hour:${sha256(userId)}`, limit: 3, ttlSeconds: 3_600 },
+      { key: `account-export:ip:hour:${sha256(ip)}`, limit: 20, ttlSeconds: 3_600 },
+    ]);
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (this.redis.status === "ready") {
       await this.redis.quit();

@@ -8,12 +8,14 @@
 ## 1. 交付范围
 
 - `export_receipts` 保存账号完整导出包的版本、inventory、SHA-256、字节数、生成时间和 7 天有效期。
+- Worker 定时删除已过期 export receipt 及其 payload，避免过期导出包继续占用数据库。
 - `deletion_requests` 保存账号注销状态机、30 天恢复截止时间、永久删除时间、备份过期时间和逐 store 结果。
 - `users.status` 增加 `deletion_pending` 生命周期状态；处于该状态时只允许读取身份、读取删除状态和执行恢复，其他业务 API 仍关闭。
 - Worker 在 `purge_after` 到期后执行账号级永久删除；BullMQ 只负责投递，Postgres 中的删除请求是权威状态。
 - Worker 每分钟扫描到期的 Postgres 删除请求，防止仅依赖 Redis delayed job 造成遗漏。
 - 账号级 worker job 沿用 ADR 0024 的 typed contract：显式携带 `workId: null`、`branchId: null`、`idempotencyKey` 和版本化 checkpoint，不伪造作品或分支 ID。
 - 账号设置页提供导出、导出凭证门禁、二次确认注销、30 天恢复、恢复期展示和 partial failure 展示。
+- 账号导出按用户和 IP 限流，并写入 `account.exported` 审计记录。
 
 ## 2. 导出 inventory
 

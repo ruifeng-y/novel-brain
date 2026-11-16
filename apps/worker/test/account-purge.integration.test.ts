@@ -135,6 +135,13 @@ describe("account purge worker integration", () => {
             retryable: false,
             errorCode: null,
           },
+          {
+            store: "chapters",
+            rowCount: 1,
+            status: "pending",
+            retryable: false,
+            errorCode: null,
+          },
         ]),
       );
       const retained = await pool.query<{ count: number }>(
@@ -162,6 +169,33 @@ describe("account purge worker integration", () => {
     const completed = await inspectDeletion(pool, fixture.deletionRequestId);
     expect(completed.status).toBe("completed");
     expect(completed.failure).toBeNull();
+  });
+
+  it("deletes expired account export payloads while retaining unexpired receipts", async () => {
+    const fixture = await seedDeletionFixture(pool);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('app.user_id', $1, true)", [fixture.userId]);
+      await client.query(
+        `INSERT INTO export_receipts
+           (id, user_id, inventory_version, checksum, byte_size, inventory, payload, expires_at)
+         VALUES ($1, $2, 'account-export-v1', $3, 2, '[]'::jsonb, 'expired', now() - interval '1 day')`,
+        [uuidv7(), fixture.userId, "b".repeat(64)],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    await expect(processor.cleanupExpiredExportReceipts()).resolves.toBe(1);
+    const remaining = await pool.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM export_receipts",
+    );
+    expect(remaining.rows[0]?.count).toBe(1);
   });
 });
 

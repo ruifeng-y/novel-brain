@@ -119,6 +119,10 @@ M0 关键错误：
 - `IMPORT_CONFLICT_UNRESOLVED`
 - `VERSION_CONFLICT`
 - `FORBIDDEN_TENANT_ACCESS`
+- `ACCOUNT_EXPORT_EXPIRED`
+- `ACCOUNT_DELETION_NOT_FOUND`
+- `ACCOUNT_DELETION_RECOVERY_EXPIRED`
+- `ACCOUNT_DELETION_INVALID_STATE`
 
 ## 5. M0 API Surface
 
@@ -134,6 +138,15 @@ M0 关键错误：
 | POST | `/api/v1/auth/logout` | 撤销当前会话 |
 | GET | `/api/v1/auth/csrf` | 获取 CSRF token |
 | GET | `/api/v1/auth/me` | 当前账号和会话 |
+| POST | `/api/v1/users/me/export` | 创建版本化、带 checksum 的账号导出 receipt |
+| GET | `/api/v1/users/me/export/:receiptId/download` | 下载当前账号拥有的导出包 |
+| POST | `/api/v1/users/me/delete` | 凭有效导出 receipt 进入 30 天注销恢复期 |
+| GET | `/api/v1/users/me/deletion` | 当前注销/恢复/失败状态 |
+| POST | `/api/v1/users/me/deletion/recover` | 在恢复截止时间前恢复账号 |
+
+账号状态枚举固定为 `active`、`disabled`、`deletion_pending`。`deletion_pending` 仍可使用邮箱密码登录以跨设备恢复，但只允许访问身份、注销状态和恢复入口；其他业务 API 返回 `FORBIDDEN_TENANT_ACCESS`。
+
+账号级 Worker job 固定为 `account_purge` 与 `account_purge_tick`。两者显式使用 `workId: null`、`branchId: null`、`idempotencyKey` 和版本化 checkpoint；账号级清理不得伪造作品或分支 ID。
 
 ### 5.2 模型配置
 

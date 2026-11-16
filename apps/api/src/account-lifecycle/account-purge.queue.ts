@@ -4,6 +4,7 @@ import {
   ACCOUNT_PURGE_JOB_ATTEMPTS,
   ACCOUNT_PURGE_RETRY_DELAY_MS,
   accountPurgeJobId,
+  accountPurgeJobPayload,
 } from "@novel-brain/core";
 import { Queue } from "bullmq";
 import Redis from "ioredis";
@@ -26,29 +27,14 @@ export class AccountPurgeQueue implements OnModuleDestroy {
 
   async enqueue(deletionRequestId: string, purgeAfter: string): Promise<void> {
     const delay = Math.max(0, new Date(purgeAfter).getTime() - Date.now());
-    await this.queue.add(
-      ACCOUNT_PURGE_JOB,
-      {
-        jobType: ACCOUNT_PURGE_JOB,
-        deletionRequestId,
-        workId: null,
-        branchId: null,
-        idempotencyKey: `account-purge-${deletionRequestId}`,
-        checkpoint: {
-          schemaVersion: 1,
-          revision: 0,
-          step: "prepare",
-        },
-      },
-      {
-        jobId: accountPurgeJobId(deletionRequestId),
-        delay,
-        removeOnComplete: true,
-        removeOnFail: true,
-        attempts: ACCOUNT_PURGE_JOB_ATTEMPTS,
-        backoff: { type: "exponential", delay: ACCOUNT_PURGE_RETRY_DELAY_MS },
-      },
-    );
+    await this.queue.add(ACCOUNT_PURGE_JOB, accountPurgeJobPayload(deletionRequestId), {
+      jobId: accountPurgeJobId(deletionRequestId),
+      delay,
+      removeOnComplete: true,
+      removeOnFail: true,
+      attempts: ACCOUNT_PURGE_JOB_ATTEMPTS,
+      backoff: { type: "exponential", delay: ACCOUNT_PURGE_RETRY_DELAY_MS },
+    });
   }
 
   async cancel(deletionRequestId: string): Promise<void> {

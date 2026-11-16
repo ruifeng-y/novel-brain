@@ -20,6 +20,8 @@ import {
   ACCOUNT_PURGE_JOB_ATTEMPTS,
   ACCOUNT_PURGE_RETRY_DELAY_MS,
   accountPurgeJobId,
+  accountPurgeJobPayload,
+  accountPurgeTickJobPayload,
   emitTraceEnvelope,
   resolveTracePolicy,
   type TracePolicy,
@@ -118,17 +120,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       { every: 60_000 },
       {
         name: ACCOUNT_PURGE_TICK_JOB,
-        data: {
-          jobType: ACCOUNT_PURGE_TICK_JOB,
-          workId: null,
-          branchId: null,
-          idempotencyKey: "account-purge-tick",
-          checkpoint: {
-            schemaVersion: 1,
-            revision: 0,
-            step: "scan",
-          },
-        },
+        data: accountPurgeTickJobPayload(),
         opts: {
           removeOnComplete: true,
           removeOnFail: true,
@@ -181,30 +173,16 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     let outcome: WorkerJobOutcome | undefined;
     try {
       if (payload.jobType === ACCOUNT_PURGE_TICK_JOB) {
+        await this.accountPurgeProcessor.cleanupExpiredExportReceipts();
         const dueRequestIds = await this.accountPurgeProcessor.listDueRequestIds();
         for (const deletionRequestId of dueRequestIds) {
-          await this.queue.add(
-            ACCOUNT_PURGE_JOB,
-            {
-              jobType: ACCOUNT_PURGE_JOB,
-              deletionRequestId,
-              workId: null,
-              branchId: null,
-              idempotencyKey: `account-purge-${deletionRequestId}`,
-              checkpoint: {
-                schemaVersion: 1,
-                revision: 0,
-                step: "prepare",
-              },
-            },
-            {
-              jobId: accountPurgeJobId(deletionRequestId),
-              removeOnComplete: true,
-              removeOnFail: true,
-              attempts: ACCOUNT_PURGE_JOB_ATTEMPTS,
-              backoff: { type: "exponential", delay: ACCOUNT_PURGE_RETRY_DELAY_MS },
-            },
-          );
+          await this.queue.add(ACCOUNT_PURGE_JOB, accountPurgeJobPayload(deletionRequestId), {
+            jobId: accountPurgeJobId(deletionRequestId),
+            removeOnComplete: true,
+            removeOnFail: true,
+            attempts: ACCOUNT_PURGE_JOB_ATTEMPTS,
+            backoff: { type: "exponential", delay: ACCOUNT_PURGE_RETRY_DELAY_MS },
+          });
         }
         outcome = "succeeded";
       } else if (payload.jobType === ACCOUNT_PURGE_JOB) {

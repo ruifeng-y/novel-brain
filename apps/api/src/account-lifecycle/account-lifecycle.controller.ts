@@ -50,7 +50,10 @@ export class AccountLifecycleController {
   })
   async createExport(@Req() request: AuthenticatedRequest) {
     const requestId = createRequestId();
-    const receipt = await this.service.createExport(this.userId(request));
+    const receipt = await this.service.createExport(
+      this.userId(request),
+      this.auditContext(request, requestId),
+    );
     return accountExportReceiptResponseSchema.parse({
       data: receipt,
       requestId,

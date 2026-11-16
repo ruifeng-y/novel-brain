@@ -58,7 +58,10 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
     this.pool = createDatabasePool(databaseUrl);
   }
 
-  async createExportReceipt(userId: string): Promise<AccountExportReceipt> {
+  async createExportReceipt(
+    userId: string,
+    audit: LifecycleAuditContext,
+  ): Promise<AccountExportReceipt> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
@@ -124,6 +127,14 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
       if (!receipt) {
         throw new Error("Failed to persist account export receipt");
       }
+      await client.query(
+        `INSERT INTO audit_logs
+           (id, actor_id, action, target_type, target_id, decision,
+            correlation_id, ip, user_agent)
+         VALUES ($1, $2, 'account.exported', 'export_receipt', $3,
+                 'allowed', $4, $5, $6)`,
+        [uuidv7(), userId, receiptId, audit.requestId, audit.ip, audit.userAgent],
+      );
       await client.query("COMMIT");
       return toReceipt(receipt);
     } catch (error) {

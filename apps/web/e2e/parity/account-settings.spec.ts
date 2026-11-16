@@ -388,6 +388,7 @@ test("exports before deletion and recovers inside the approved window", async ({
   await page.getByRole("button", { name: "恢复账号" }).click();
   await expect(page.getByText("账号已恢复，作品和数据保持原样。")).toBeVisible();
   await expect(page.getByRole("heading", { name: "把写作环境准备好" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "先导出再删除" })).toBeDisabled();
 
   const pool = new Pool({
     connectionString:

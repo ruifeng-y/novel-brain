@@ -41,7 +41,8 @@ export function AccountDataPrivacyPanel() {
       if (!response.ok) {
         throw new Error(await readError(response, "账号删除状态加载失败。"));
       }
-      setDeletion(accountDeletionResponseSchema.parse(await response.json()).data);
+      const lifecycle = accountDeletionResponseSchema.parse(await response.json()).data;
+      setDeletion(lifecycle.status === "recovered" ? null : lifecycle);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "账号删除状态加载失败。");
     } finally {
@@ -110,7 +111,7 @@ export function AccountDataPrivacyPanel() {
         throw new Error(await readError(response, "账号注销申请失败。"));
       }
       const lifecycle = accountDeletionResponseSchema.parse(await response.json()).data;
-      setDeletion(lifecycle);
+      setDeletion(lifecycle.status === "recovered" ? null : lifecycle);
       setReceipt(null);
       setNotice("注销申请已提交，账号进入 30 天恢复期。");
       router.refresh();
@@ -135,7 +136,7 @@ export function AccountDataPrivacyPanel() {
         throw new Error(await readError(response, "账号恢复失败。"));
       }
       const lifecycle = accountDeletionResponseSchema.parse(await response.json()).data;
-      setDeletion(lifecycle);
+      setDeletion(lifecycle.status === "recovered" ? null : lifecycle);
       setNotice("账号已恢复，作品和数据保持原样。");
       router.refresh();
     } catch (caught) {
@@ -230,7 +231,9 @@ export function AccountDataPrivacyPanel() {
               </small>
               {deletion.status === "failed" ? (
                 <small className="danger-text">
-                  部分数据清理未完成，系统会自动重试
+                  {deletion.failure?.retryable
+                    ? "部分数据清理未完成，系统会自动重试"
+                    : "部分数据清理未完成，请稍后重试或联系支持"}
                   {failedStoreCount > 0 ? `（${failedStoreCount} 项待重试）` : ""}
                 </small>
               ) : null}

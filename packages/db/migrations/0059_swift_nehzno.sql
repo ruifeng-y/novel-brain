@@ -45,8 +45,14 @@ ALTER TABLE "export_receipts" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "export_receipts" FORCE ROW LEVEL SECURITY;--> statement-breakpoint
 DROP POLICY IF EXISTS "export_receipts_tenant_policy" ON "export_receipts";--> statement-breakpoint
 CREATE POLICY "export_receipts_tenant_policy" ON "export_receipts"
-	USING ("user_id" = NULLIF(current_setting('app.user_id', true), '')::uuid)
-	WITH CHECK ("user_id" = NULLIF(current_setting('app.user_id', true), '')::uuid);--> statement-breakpoint
+	USING (
+		"user_id" = NULLIF(current_setting('app.user_id', true), '')::uuid
+		OR current_setting('app.system_role', true) = 'account_deletion'
+	)
+	WITH CHECK (
+		"user_id" = NULLIF(current_setting('app.user_id', true), '')::uuid
+		OR current_setting('app.system_role', true) = 'account_deletion'
+	);--> statement-breakpoint
 
 ALTER TABLE "deletion_requests" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "deletion_requests" FORCE ROW LEVEL SECURITY;--> statement-breakpoint

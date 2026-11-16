@@ -1,5 +1,9 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
-import type { AccountDeletionStoreResult } from "@novel-brain/contracts";
+import type {
+  AccountDeletionFailure,
+  AccountDeletionStatus,
+  AccountDeletionStoreResult,
+} from "@novel-brain/contracts";
 import {
   ACCOUNT_DELETION_SYSTEM_ROLE,
   accountOwnershipPredicate,
@@ -14,14 +18,14 @@ interface DeletionTarget {
   id: string;
   userId: string;
   purgeAfter: Date;
-  status: string;
+  status: AccountDeletionStatus;
 }
 
 export type AccountPurgeResult =
   | { kind: "completed"; stores: AccountDeletionStoreResult[] }
   | {
       kind: "failed";
-      failure: { code: string; message: string; retryable: boolean };
+      failure: AccountDeletionFailure;
       stores: AccountDeletionStoreResult[];
       cause: unknown;
     }
@@ -62,6 +66,22 @@ export class WorkerAccountPurgeRepository implements OnModuleDestroy {
       );
       await client.query("COMMIT");
       return result.rows.map((row) => row.id);
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async cleanupExpiredExportReceipts(): Promise<number> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await setSystemRole(client);
+      const result = await client.query("DELETE FROM export_receipts WHERE expires_at <= now()");
+      await client.query("COMMIT");
+      return result.rowCount ?? 0;
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
       throw error;
@@ -159,7 +179,9 @@ export class WorkerAccountPurgeRepository implements OnModuleDestroy {
         ];
       }
       stores = stores.map((store) =>
-        store.store === failedStore ? { ...store, status: "failed", retryable, errorCode } : store,
+        store.store === failedStore
+          ? { ...store, status: "failed", retryable, errorCode }
+          : { ...store, status: "pending", retryable: false, errorCode: null },
       );
       const failure = {
         code: retryable ? "ACCOUNT_PURGE_RETRYABLE" : "ACCOUNT_PURGE_FAILED",
@@ -247,7 +269,7 @@ export class WorkerAccountPurgeRepository implements OnModuleDestroy {
 
   private async markFailed(
     deletionRequestId: string,
-    failure: { code: string; message: string; retryable: boolean },
+    failure: AccountDeletionFailure,
     stores: AccountDeletionStoreResult[],
   ): Promise<void> {
     const client = await this.pool.connect();
