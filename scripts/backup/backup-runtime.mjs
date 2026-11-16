@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream, promises as fs } from "node:fs";
 import net from "node:net";
 import os from "node:os";
@@ -7,6 +7,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
+import { BACKUP_TAG_BYTES, decryptFile, encryptFile, hashFile, sha256 } from "./backup-crypto.mjs";
 import {
   assertCompleteBackup,
   buildBackupManifest,
@@ -23,68 +24,6 @@ import {
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 const composeFile = path.join(repositoryRoot, "infra/docker/compose.yml");
 const objectReferenceConfigPath = path.join(repositoryRoot, "infra/backup/object-references.json");
-const encryptionMagic = Buffer.from("NBACKUP1", "ascii");
-const ivBytes = 12;
-const tagBytes = 16;
-
-function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-async function hashFile(filePath) {
-  const hash = createHash("sha256");
-  await pipeline(createReadStream(filePath), hash);
-  return hash.digest("hex");
-}
-
-function sha256Aad(backupId, relativePath) {
-  return Buffer.from(`NBACKUP1\0${backupId}\0${relativePath}`, "utf8");
-}
-
-async function encryptFile({ sourcePath, destinationPath, key, backupId, relativePath }) {
-  const iv = randomBytes(ivBytes);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  cipher.setAAD(sha256Aad(backupId, relativePath));
-  await fs.writeFile(destinationPath, Buffer.concat([encryptionMagic, iv]));
-  await pipeline(
-    createReadStream(sourcePath),
-    cipher,
-    createWriteStream(destinationPath, { flags: "a" }),
-  );
-  await fs.appendFile(destinationPath, cipher.getAuthTag());
-}
-
-async function decryptFile({ sourcePath, destinationPath, key, backupId, relativePath }) {
-  const stat = await fs.stat(sourcePath);
-  const headerBytes = encryptionMagic.length + ivBytes;
-  if (stat.size < headerBytes + tagBytes) {
-    throw new Error(`Backup artefact is truncated: ${relativePath}.`);
-  }
-  const file = await fs.open(sourcePath, "r");
-  try {
-    const header = Buffer.alloc(headerBytes);
-    await file.read(header, 0, header.length, 0);
-    if (!header.subarray(0, encryptionMagic.length).equals(encryptionMagic)) {
-      throw new Error(`Backup artefact has an unsupported state: ${relativePath}.`);
-    }
-    const tag = Buffer.alloc(tagBytes);
-    await file.read(tag, 0, tagBytes, stat.size - tagBytes);
-    const iv = header.subarray(encryptionMagic.length);
-    const decipher = createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAAD(sha256Aad(backupId, relativePath));
-    decipher.setAuthTag(tag);
-    await pipeline(
-      createReadStream(sourcePath, {
-        start: headerBytes,
-        end: stat.size - tagBytes - 1,
-      }),
-      decipher,
-      createWriteStream(destinationPath),
-    );
-  } finally {
-    await file.close();
-  }
-}
 
 function runCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -500,9 +439,9 @@ async function fileSizes(directory) {
   return { files, bytes };
 }
 
-async function encryptObjectDirectory({ objectsDirectory, key, backupId, entries }) {
+async function encryptObjectDirectory({ destinationObjectsDirectory, key, backupId, entries }) {
   for (const entry of entries) {
-    const encryptedPath = path.join(objectsDirectory, `${entry.key}.enc`);
+    const encryptedPath = path.join(destinationObjectsDirectory, `${entry.key}.enc`);
     await fs.mkdir(path.dirname(encryptedPath), { recursive: true });
     await encryptFile({
       sourcePath: entry.sourcePath,
@@ -550,6 +489,22 @@ function createBackupId(now, sourceCommit) {
   return `${now.toISOString().replaceAll(/[-:.]/gu, "").replace("Z", "Z")}-${sourceCommit.slice(0, 12)}-${randomUUID().slice(0, 8)}`;
 }
 
+async function pauseWriters(project, env) {
+  const result = await compose(project, ["ps", "--services", "--status", "running"], env);
+  const running = new Set(result.stdout.split(/\r?\n/u).filter(Boolean));
+  const writers = ["api", "worker"].filter((service) => running.has(service));
+  if (writers.length > 0) {
+    await compose(project, ["stop", ...writers], env);
+  }
+  return writers;
+}
+
+async function resumeWriters(project, writers, env) {
+  if (writers.length > 0) {
+    await compose(project, ["start", ...writers], env);
+  }
+}
+
 export async function createBackup({
   project,
   outputDirectory,
@@ -557,6 +512,8 @@ export async function createBackup({
   key,
   now = new Date(),
   env = {},
+  quiesceWriters = true,
+  injectFailureAt = null,
 }) {
   if (!project || !outputDirectory || !Buffer.isBuffer(key) || key.length !== 32) {
     throw new Error("Backup requires a project, output directory and 32-byte key.");
@@ -564,18 +521,25 @@ export async function createBackup({
   await fs.mkdir(outputDirectory, { recursive: true });
   const sourceCommit = await currentCommit();
   const backupId = createBackupId(now, sourceCommit);
-  const stagingDirectory = path.join(outputDirectory, `.${backupId}.incomplete`);
+  const incompleteDirectory = path.join(outputDirectory, `.${backupId}.incomplete`);
   const finalDirectory = path.join(outputDirectory, backupId);
-  const rawDatabasePath = path.join(stagingDirectory, "database.dump");
-  const rawObjectsDirectory = path.join(stagingDirectory, "objects");
+  const plaintextStaging = await fs.mkdtemp(path.join(os.tmpdir(), "novelbrain-backup-staging-"));
+  const rawDatabasePath = path.join(plaintextStaging, "database.dump");
+  const rawObjectsDirectory = path.join(plaintextStaging, "objects");
+  const encryptedObjectsDirectory = path.join(incompleteDirectory, "objects");
+  let pausedWriters = [];
+  await fs.mkdir(incompleteDirectory, { recursive: true });
   await fs.mkdir(rawObjectsDirectory, { recursive: true });
   await fs.writeFile(
-    path.join(stagingDirectory, "state.json"),
+    path.join(incompleteDirectory, "state.json"),
     `${JSON.stringify({ status: "backup_in_progress", backupId, startedAt: now.toISOString() }, null, 2)}\n`,
   );
 
   const snapshotStartedAt = new Date().toISOString();
   try {
+    if (quiesceWriters) {
+      pausedWriters = await pauseWriters(project, env);
+    }
     const [rowCounts, migrationMetadata, objectReferences, migrationFiles, environment] =
       await Promise.all([
         readRowCounts(project, env),
@@ -604,16 +568,19 @@ export async function createBackup({
     );
     const databasePlaintextBytes = (await fs.stat(rawDatabasePath)).size;
     const databasePlaintextSha256 = await hashFile(rawDatabasePath);
-    await mirrorBucketToDirectory(project, bucket, stagingDirectory, env);
+    await mirrorBucketToDirectory(project, bucket, plaintextStaging, env);
     const objectEntries = await readObjectDirectory(rawObjectsDirectory);
+    if (injectFailureAt === "before_encryption") {
+      throw new Error("Injected backup interruption before encryption.");
+    }
     await encryptObjectDirectory({
-      objectsDirectory: rawObjectsDirectory,
+      destinationObjectsDirectory: encryptedObjectsDirectory,
       key,
       backupId,
       entries: objectEntries,
     });
     const snapshotCompletedAt = new Date().toISOString();
-    const encryptedDatabasePath = path.join(stagingDirectory, "database.dump.enc");
+    const encryptedDatabasePath = path.join(incompleteDirectory, "database.dump.enc");
     await encryptFile({
       sourcePath: rawDatabasePath,
       destinationPath: encryptedDatabasePath,
@@ -623,7 +590,6 @@ export async function createBackup({
     });
     const databaseEncryptedBytes = (await fs.stat(encryptedDatabasePath)).size;
     const databaseEncryptedSha256 = await hashFile(encryptedDatabasePath);
-    await fs.rm(rawDatabasePath);
 
     const manifest = buildBackupManifest({
       backupId,
@@ -642,6 +608,7 @@ export async function createBackup({
         encryptedSha256: databaseEncryptedSha256,
         rowCounts,
         migrations: migrationMetadata,
+        writerServicesPaused: pausedWriters,
       },
       objects: {
         bucket,
@@ -654,10 +621,10 @@ export async function createBackup({
       environment,
     });
     const manifestText = `${JSON.stringify(manifest, null, 2)}\n`;
-    await fs.writeFile(path.join(stagingDirectory, "manifest.json"), manifestText, "utf8");
-    await writeBackupCompletion(stagingDirectory, sha256(manifestText));
-    await fs.rm(path.join(stagingDirectory, "state.json"));
-    await fs.rename(stagingDirectory, finalDirectory);
+    await fs.writeFile(path.join(incompleteDirectory, "manifest.json"), manifestText, "utf8");
+    await writeBackupCompletion(incompleteDirectory, sha256(manifestText));
+    await fs.rm(path.join(incompleteDirectory, "state.json"));
+    await fs.rename(incompleteDirectory, finalDirectory);
     return {
       directory: finalDirectory,
       manifest,
@@ -665,9 +632,11 @@ export async function createBackup({
       dataset: await fileSizes(finalDirectory),
     };
   } finally {
-    if (await fs.stat(stagingDirectory).catch(() => null)) {
+    await resumeWriters(project, pausedWriters, env).catch(() => {});
+    await fs.rm(plaintextStaging, { recursive: true, force: true });
+    if (await fs.stat(incompleteDirectory).catch(() => null)) {
       await fs.writeFile(
-        path.join(stagingDirectory, "state.json"),
+        path.join(incompleteDirectory, "state.json"),
         `${JSON.stringify({ status: "backup_incomplete", backupId, failedAt: new Date().toISOString() }, null, 2)}\n`,
       );
     }
@@ -968,32 +937,65 @@ async function flipFileByte(filePath) {
   const file = await fs.open(filePath, "r+");
   try {
     const byte = Buffer.alloc(1);
-    await file.read(byte, 0, 1, Math.max(0, (await file.stat()).size - tagBytes - 1));
+    await file.read(byte, 0, 1, Math.max(0, (await file.stat()).size - BACKUP_TAG_BYTES - 1));
     byte[0] ^= 0xff;
-    await file.write(byte, 0, 1, Math.max(0, (await file.stat()).size - tagBytes - 1));
+    await file.write(byte, 0, 1, Math.max(0, (await file.stat()).size - BACKUP_TAG_BYTES - 1));
   } finally {
     await file.close();
   }
 }
 
-async function runFaultScenarios({ backupDirectory, key, project }) {
+async function backupContainsPlaintext(directory) {
+  const allowed = new Set(["state.json", "manifest.json", "completion.json"]);
+  async function walk(current) {
+    for (const entry of await fs.readdir(current, { withFileTypes: true })) {
+      const childPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (await walk(childPath)) {
+          return true;
+        }
+      } else if (!allowed.has(entry.name) && !entry.name.endsWith(".enc")) {
+        return true;
+      }
+    }
+    return false;
+  }
+  return walk(directory);
+}
+
+async function runFaultScenarios({ backupDirectory, key, project, sourceProject, sourceEnv }) {
   const { manifest } = await loadBackup(backupDirectory);
   const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "novelbrain-backup-faults-"));
   const results = [];
   try {
-    const incomplete = path.join(tempRoot, "incomplete");
-    await fs.mkdir(incomplete);
-    await fs.copyFile(
-      path.join(backupDirectory, "manifest.json"),
-      path.join(incomplete, "manifest.json"),
+    const interruptedOutput = path.join(tempRoot, "interrupted-output");
+    const interrupted = await captureFault(
+      "interrupted_backup",
+      () =>
+        createBackup({
+          project: sourceProject,
+          outputDirectory: interruptedOutput,
+          bucket: manifest.objects.bucket,
+          key,
+          env: sourceEnv,
+          injectFailureAt: "before_encryption",
+        }),
+      /injected backup interruption/i,
     );
-    results.push(
-      await captureFault(
-        "interrupted_backup",
-        () => assertCompleteBackup(incomplete),
-        /completion/i,
-      ),
+    const incompleteDirectories = (await fs.readdir(interruptedOutput)).filter((name) =>
+      name.endsWith(".incomplete"),
     );
+    const storedPlaintext =
+      incompleteDirectories.length === 0 ||
+      (await backupContainsPlaintext(path.join(interruptedOutput, incompleteDirectories[0])));
+    results.push({
+      ...interrupted,
+      plaintextAbsent: !storedPlaintext,
+      passed: interrupted.passed && !storedPlaintext,
+      message: storedPlaintext
+        ? `${interrupted.message} Plaintext artefacts were retained.`
+        : `${interrupted.message} No plaintext artefacts were retained.`,
+    });
 
     const missing = path.join(tempRoot, "missing");
     await copyDirectory(backupDirectory, missing);
@@ -1095,6 +1097,8 @@ export async function runBackupDrill({ outputDirectory, key, bucket = "novelbrai
       backupDirectory: backup.directory,
       key,
       project: `novelbrain-drill-${randomUUID().slice(0, 8)}`,
+      sourceProject,
+      sourceEnv,
     });
     const orphanDryRun = await runOrphanAudit({
       backupDirectory: backup.directory,
@@ -1156,6 +1160,9 @@ export async function runBackupDrill({ outputDirectory, key, bucket = "novelbrai
         dryRunCandidates: orphanDryRun.candidates,
         deleted: orphanApply.deleted,
         auditIds: [orphanDryRun.auditId, orphanApply.auditId],
+        auditPaths: [orphanDryRun.auditPath, orphanApply.auditPath].map((auditPath) =>
+          path.relative(repositoryRoot, auditPath).replaceAll("\\", "/"),
+        ),
       },
       environment: backup.manifest.environment,
     };
@@ -1173,36 +1180,69 @@ export async function runOrphanAudit({
   confirmBucket = null,
   env = {},
   now = new Date(),
+  auditDirectory = path.join(repositoryRoot, "artifacts/backups/audits"),
 }) {
   const { manifest } = await loadBackup(backupDirectory);
   if (apply && confirmBucket !== manifest.objects.bucket) {
     throw new Error(`Orphan cleanup requires --confirm-bucket ${manifest.objects.bucket}.`);
   }
-  const plan = planOrphanCleanup({
-    objects: manifest.objects.entries,
-    references: manifest.objectReferences,
-    bucket: manifest.objects.bucket,
-    now,
-    minimumAgeMs: minimumAgeDays * 24 * 60 * 60 * 1_000,
-  });
-  const audit = {
-    formatVersion: 1,
-    auditId: randomUUID(),
-    createdAt: now.toISOString(),
-    backupId: manifest.backupId,
-    bucket: manifest.objects.bucket,
-    dryRun: !apply,
-    minimumAgeDays,
-    candidates: plan.candidates,
-    deleted: [],
-  };
-  if (apply) {
-    for (const candidate of plan.candidates) {
-      await deleteBucketObject(project, manifest.objects.bucket, candidate.key, env);
-      audit.deleted.push(candidate);
+  const inventoryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "novelbrain-orphan-audit-"));
+  try {
+    await mirrorBucketToDirectory(project, manifest.objects.bucket, inventoryDirectory, env);
+    const [objects, references] = await Promise.all([
+      readObjectDirectory(path.join(inventoryDirectory, "objects")),
+      readObjectReferences(project, env),
+    ]);
+    const plan = planOrphanCleanup({
+      objects,
+      references,
+      bucket: manifest.objects.bucket,
+      now,
+      minimumAgeMs: minimumAgeDays * 24 * 60 * 60 * 1_000,
+    });
+    const audit = {
+      formatVersion: 1,
+      auditId: randomUUID(),
+      createdAt: now.toISOString(),
+      backupId: manifest.backupId,
+      bucket: manifest.objects.bucket,
+      dryRun: !apply,
+      minimumAgeDays,
+      currentObjectCount: objects.length,
+      currentReferenceCount: references.length,
+      candidates: plan.candidates,
+      deleted: [],
+      skipped: [],
+    };
+    if (apply) {
+      for (const candidate of plan.candidates) {
+        const latestReferences = await readObjectReferences(project, env);
+        const latestKeys = new Set(
+          latestReferences.map(
+            (reference) => parseObjectReference(reference, manifest.objects.bucket).key,
+          ),
+        );
+        if (latestKeys.has(candidate.key)) {
+          audit.skipped.push({
+            ...candidate,
+            reason: "became_referenced_before_delete",
+          });
+          continue;
+        }
+        await deleteBucketObject(project, manifest.objects.bucket, candidate.key, env);
+        audit.deleted.push(candidate);
+      }
     }
+    const auditPath = path.join(
+      auditDirectory,
+      `${now.toISOString().replaceAll(/[-:.]/gu, "")}-${audit.auditId}.json`,
+    );
+    await fs.mkdir(auditDirectory, { recursive: true });
+    await fs.writeFile(auditPath, `${JSON.stringify(audit, null, 2)}\n`, "utf8");
+    return { ...audit, auditPath };
+  } finally {
+    await fs.rm(inventoryDirectory, { recursive: true, force: true });
   }
-  return audit;
 }
 
 export async function pruneBackups({ directory, now = new Date(), apply = false }) {

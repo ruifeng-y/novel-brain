@@ -1,3 +1,15 @@
+import { readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import { sha256 } from "./backup-crypto.mjs";
+
+export {
+  decryptBackupBuffer,
+  encryptBackupBuffer,
+  encryptionMetadata,
+  parseBackupKey,
+} from "./backup-crypto.mjs";
+
 function decodeObjectKey(pathname) {
   let decoded;
   try {
@@ -63,20 +75,9 @@ export function planOrphanCleanup({ objects, references, bucket, now, minimumAge
     candidates,
   };
 }
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 
-const ENCRYPTION_MAGIC = "NBACKUP1";
-const ENCRYPTION_MAGIC_BYTES = Buffer.from(ENCRYPTION_MAGIC, "ascii");
-const IV_BYTES = 12;
-const TAG_BYTES = 16;
 const RETENTION_DAYS = 30;
 const TARGETS = Object.freeze({ rpoHours: 24, rtoHours: 4 });
-
-function sha256(value) {
-  return createHash("sha256").update(value).digest("hex");
-}
 
 function assertIsoDate(value, field) {
   if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) {
@@ -90,75 +91,6 @@ function assertSha256(value, field) {
   }
 }
 
-function encryptionAad(backupId, relativePath) {
-  return Buffer.from(`${ENCRYPTION_MAGIC}\0${backupId}\0${relativePath}`, "utf8");
-}
-
-export function parseBackupKey(raw) {
-  if (
-    typeof raw !== "string" ||
-    raw.length === 0 ||
-    raw.length % 4 !== 0 ||
-    !/^[A-Za-z0-9+/]+={0,2}$/u.test(raw)
-  ) {
-    throw new Error("BACKUP_ENCRYPTION_KEY_BASE64 must be a canonical base64 value.");
-  }
-
-  const key = Buffer.from(raw, "base64");
-  if (key.length !== 32) {
-    throw new Error("BACKUP_ENCRYPTION_KEY_BASE64 must decode to exactly 32 bytes.");
-  }
-  return key;
-}
-
-export function encryptionMetadata(key) {
-  assertSha256(sha256(key), "Backup encryption key fingerprint");
-  return {
-    algorithm: "aes-256-gcm",
-    keyFingerprint: sha256(key),
-    aadTemplate: `${ENCRYPTION_MAGIC}:<backupId>:<relativePath>`,
-  };
-}
-
-export function encryptBackupBuffer(plaintext, { key, backupId, relativePath }) {
-  if (!Buffer.isBuffer(key) || key.length !== 32) {
-    throw new Error("Backup encryption key must be exactly 32 bytes.");
-  }
-  const iv = randomBytes(IV_BYTES);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  cipher.setAAD(encryptionAad(backupId, relativePath));
-  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-  return Buffer.concat([ENCRYPTION_MAGIC_BYTES, iv, ciphertext, cipher.getAuthTag()]);
-}
-
-export function decryptBackupBuffer(encrypted, { key, backupId, relativePath }) {
-  if (
-    !Buffer.isBuffer(encrypted) ||
-    encrypted.length < ENCRYPTION_MAGIC_BYTES.length + IV_BYTES + TAG_BYTES
-  ) {
-    throw new Error("Backup artefact is truncated.");
-  }
-  if (!encrypted.subarray(0, ENCRYPTION_MAGIC_BYTES.length).equals(ENCRYPTION_MAGIC_BYTES)) {
-    throw new Error("Backup artefact has an unsupported state.");
-  }
-
-  const ivStart = ENCRYPTION_MAGIC_BYTES.length;
-  const ciphertextStart = ivStart + IV_BYTES;
-  const tagStart = encrypted.length - TAG_BYTES;
-  const iv = encrypted.subarray(ivStart, ciphertextStart);
-  const ciphertext = encrypted.subarray(ciphertextStart, tagStart);
-  const tag = encrypted.subarray(tagStart);
-
-  try {
-    const decipher = createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAAD(encryptionAad(backupId, relativePath));
-    decipher.setAuthTag(tag);
-    return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-  } catch {
-    throw new Error("Backup artefact failed to authenticate.");
-  }
-}
-
 export function buildBackupManifest(input) {
   assertIsoDate(input.createdAt, "createdAt");
   assertIsoDate(input.snapshotStartedAt, "snapshotStartedAt");
@@ -166,9 +98,17 @@ export function buildBackupManifest(input) {
   const expiresAt = new Date(
     Date.parse(input.createdAt) + RETENTION_DAYS * 24 * 60 * 60 * 1_000,
   ).toISOString();
-  const objectReferences = input.objectReferences.map(
-    (reference) => parseObjectReference(reference, input.objects.bucket).uri,
+  const parsedReferences = input.objectReferences.map((reference) =>
+    parseObjectReference(reference, input.objects.bucket),
   );
+  const objectKeys = new Set(input.objects.entries.map((entry) => entry.key));
+  const missingReference = parsedReferences.find((reference) => !objectKeys.has(reference.key));
+  if (missingReference) {
+    throw new Error(
+      `Database object reference is missing from the backup: ${missingReference.uri}.`,
+    );
+  }
+  const objectReferences = parsedReferences.map((reference) => reference.uri);
   const manifest = {
     formatVersion: 1,
     inventoryVersion: "m3-backup/1",
@@ -271,7 +211,10 @@ export function validateBackupManifest(manifest) {
     throw new Error("Object manifest total bytes are invalid.");
   }
   for (const reference of manifest.objectReferences) {
-    parseObjectReference(reference, manifest.objects.bucket);
+    const parsed = parseObjectReference(reference, manifest.objects.bucket);
+    if (!objectKeys.has(parsed.key)) {
+      throw new Error(`Database object reference is missing from the backup: ${parsed.uri}.`);
+    }
   }
   for (const migration of manifest.migrationFiles) {
     assertSha256(migration.sha256, "Migration file checksum");
@@ -391,6 +334,12 @@ export function verifyRestoredState({ manifest, restored }) {
     [...expectedReferences].some((key) => !actualReferences.has(key))
   ) {
     throw new Error("Restored database object references differ from the backup manifest.");
+  }
+  const danglingReference = [...expectedReferences].find((key) => !expectedObjects.has(key));
+  if (danglingReference) {
+    throw new Error(
+      `Database object reference is missing from object storage: ${danglingReference}.`,
+    );
   }
 
   return {

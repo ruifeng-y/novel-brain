@@ -160,8 +160,15 @@ test("builds a secret-free manifest with measured targets and validates checksum
   assert.equal(JSON.stringify(manifest).includes(keyText), false);
   assert.doesNotThrow(() => validateBackupManifest(manifest));
 
-  manifest.objects.entries[0].sha256 = "not-a-checksum";
-  assert.throws(() => validateBackupManifest(manifest), /object checksum/i);
+  const danglingReference = structuredClone(manifest);
+  danglingReference.objects.entries = [];
+  danglingReference.objects.count = 0;
+  danglingReference.objects.totalBytes = 0;
+  assert.throws(() => validateBackupManifest(danglingReference), /missing from the backup/i);
+
+  const invalidChecksum = structuredClone(manifest);
+  invalidChecksum.objects.entries[0].sha256 = "not-a-checksum";
+  assert.throws(() => validateBackupManifest(invalidChecksum), /object checksum/i);
 });
 
 test("restore verification requires row, foreign-key, object and reference parity", () => {
@@ -236,5 +243,16 @@ test("restore verification requires row, foreign-key, object and reference parit
         },
       }),
     /object checksum/i,
+  );
+  assert.throws(
+    () =>
+      verifyRestoredState({
+        manifest: {
+          ...manifest,
+          objects: { ...manifest.objects, entries: [], count: 0, totalBytes: 0 },
+        },
+        restored: { ...restored, objects: [] },
+      }),
+    /missing from object storage/i,
   );
 });

@@ -25,7 +25,7 @@
 
 Postgres 使用 custom-format `pg_dump`；MinIO 使用 `mc mirror --preserve`。manifest 固化表级精确行数、FK 约束、对象 key/size/SHA-256、对象引用和 migration 文件 checksum。
 
-MinIO 没有跨数据库事务。完整生产备份必须在维护窗口内先停止 API/Worker 写入，或由未来的 advisory lock 写入门禁保证业务写入暂停；doctor 脚本会拒绝没有 `completion.json` 的中断备份。恢复前不得把备份目录复制回生产并覆盖现有 volume。
+MinIO 没有跨数据库事务。`backup:create` 默认先检查并停止正在运行的 API/Worker，完成 Postgres dump 和对象镜像后自动恢复服务；如果存在 Compose 之外的数据库或对象写入方，仍必须安排维护窗口。doctor 脚本会拒绝没有 `completion.json` 的中断备份。恢复前不得把备份目录复制回生产并覆盖现有 volume。
 
 对象与数据库的引用由 `infra/backup/object-references.json` 登记。新增对象存储列时，同一变更必须更新该登记；当前覆盖 `users.avatar_url` 和 `pen_names.avatar_url`。
 
@@ -76,7 +76,7 @@ pnpm backup:orphans -- --backup D:\backups\novelbrain\<backup-id> --project nove
 pnpm backup:orphans -- --backup D:\backups\novelbrain\<backup-id> --project novel-brain-m0 --minimum-age-days 30 --apply --confirm-bucket novelbrain
 ```
 
-只有同时满足“未被数据库引用”和“超过最小年龄”的对象才进入候选。apply 必须显式确认 bucket，输出包含 audit ID、候选、大小和删除结果。
+只有同时满足“未被当前数据库引用”和“超过最小年龄”的对象才进入候选；脚本从实时 bucket 清单和当前数据库引用计算，不复用历史备份状态。apply 必须显式确认 bucket，audit 写入 `artifacts/backups/audits/`，包含 audit ID、当前引用数、候选、大小和删除结果。
 
 ## 7. Drill 与证据
 
@@ -85,7 +85,7 @@ pnpm build:packages
 pnpm backup:drill -- --output artifacts/backups/drill --evidence docs/implementation/evidence/m3-04b-backup-restore-2026-11-16.json
 ```
 
-drill 自建隔离源库、迁移、写入引用对象和 aged orphan，完成加密备份、离线验证、隔离恢复和故障注入。实际 RPO 是最近源写入到恢复点的时间，RTO 是恢复开始到完整性验证完成的时间；每次记录 dataset size 和目标是否满足。重复 drill 必须按真实日期新增 evidence 文件。
+drill 自建隔离源库、迁移、写入引用对象和 aged orphan，完成加密备份、离线验证、隔离恢复和故障注入。`interrupted_backup` 会在真实 `backup:create` 过程中注入失败，并检查输出目录没有明文；`interrupted_restore` 会中断隔离恢复并检查 project 已清理。实际 RPO 是最近源写入到恢复点的时间，RTO 是恢复开始到完整性验证完成的时间；每次记录 dataset size 和目标是否满足。重复 drill 必须按真实日期新增 evidence 文件。
 
 ## 8. 发布门禁
 

@@ -2,18 +2,18 @@
   "formatVersion": 1,
   "ticket": 136,
   "status": "passed",
-  "drillStartedAt": "2026-11-16T13:22:03.011Z",
-  "completedAt": "2026-11-16T13:22:41.845Z",
-  "sourceCommit": "f1bcee46e504d76d6c8618c3528054af7ba93a93",
-  "backupId": "20261116T132214318Z-f1bcee46e504-f3f60277",
-  "backupPath": "artifacts/backups/drill/20261116T132214318Z-f1bcee46e504-f3f60277",
-  "snapshotStartedAt": "2026-11-16T13:22:14.401Z",
-  "snapshotCompletedAt": "2026-11-16T13:22:17.155Z",
-  "lastSourceWriteAt": "2026-11-16T13:22:14.312Z",
+  "drillStartedAt": "2026-11-16T13:38:31.423Z",
+  "completedAt": "2026-11-16T13:39:17.221Z",
+  "sourceCommit": "ad2fa383de1c03575d8dc9642d35ce17fa7f52e2",
+  "backupId": "20261116T133842860Z-ad2fa383de1c-29e2484d",
+  "backupPath": "artifacts/backups/drill/20261116T133842860Z-ad2fa383de1c-29e2484d",
+  "snapshotStartedAt": "2026-11-16T13:38:42.945Z",
+  "snapshotCompletedAt": "2026-11-16T13:38:46.032Z",
+  "lastSourceWriteAt": "2026-11-16T13:38:42.858Z",
   "dataset": {
     "backupFiles": 5,
-    "backupBytes": 704353,
-    "databasePlaintextBytes": 680472,
+    "backupBytes": 704387,
+    "databasePlaintextBytes": 680474,
     "objectCount": 2,
     "objectBytes": 46,
     "rowCount": 67
@@ -23,8 +23,8 @@
       "rpoHours": 24,
       "rtoHours": 4
     },
-    "measuredRpoSeconds": 0.089,
-    "measuredRtoSeconds": 13.173,
+    "measuredRpoSeconds": 0.087,
+    "measuredRtoSeconds": 13.03,
     "rpoWithinTarget": true,
     "rtoWithinTarget": true,
     "note": "Single deterministic drill; this does not certify a production SLA."
@@ -32,8 +32,8 @@
   "verification": {
     "offline": {
       "ok": true,
-      "backupId": "20261116T132214318Z-f1bcee46e504-f3f60277",
-      "databaseBytes": 680472,
+      "backupId": "20261116T133842860Z-ad2fa383de1c-29e2484d",
+      "databaseBytes": 680474,
       "objectCount": 2,
       "objectBytes": 46
     },
@@ -55,19 +55,20 @@
       "scenario": "interrupted_backup",
       "expectedFailure": true,
       "passed": true,
-      "message": "Backup completion record or manifest is missing."
+      "message": "Injected backup interruption before encryption. No plaintext artefacts were retained.",
+      "plaintextAbsent": true
     },
     {
       "scenario": "missing_object",
       "expectedFailure": true,
       "passed": true,
-      "message": "Encrypted object artefact is missing: users/08ede464-b693-43db-a384-d46e1b2deed9/avatar.txt."
+      "message": "Encrypted object artefact is missing: users/b62cf924-5f61-4b23-8973-9184095858be/avatar.txt."
     },
     {
       "scenario": "corrupt_object",
       "expectedFailure": true,
       "passed": true,
-      "message": "Encrypted object checksum mismatch: users/08ede464-b693-43db-a384-d46e1b2deed9/avatar.txt."
+      "message": "Encrypted object checksum mismatch: users/b62cf924-5f61-4b23-8973-9184095858be/avatar.txt."
     },
     {
       "scenario": "interrupted_restore",
@@ -85,21 +86,25 @@
   "orphanCleanup": {
     "dryRunCandidates": [
       {
-        "key": "users/08ede464-b693-43db-a384-d46e1b2deed9/trash/stale.tmp",
+        "key": "users/b62cf924-5f61-4b23-8973-9184095858be/trash/stale.tmp",
         "reason": "unreferenced_and_aged",
         "size": 26
       }
     ],
     "deleted": [
       {
-        "key": "users/08ede464-b693-43db-a384-d46e1b2deed9/trash/stale.tmp",
+        "key": "users/b62cf924-5f61-4b23-8973-9184095858be/trash/stale.tmp",
         "reason": "unreferenced_and_aged",
         "size": 26
       }
     ],
     "auditIds": [
-      "c9ae3826-0341-4f24-b44c-3b5c1bdd73a0",
-      "05e72e04-8cb5-4591-8061-9e9be2517253"
+      "e55bb381-bdc7-460f-a57d-a45ada0ceee2",
+      "40564a60-8266-47c0-a299-4ae908c539ce"
+    ],
+    "auditPaths": [
+      "artifacts/backups/audits/20261116T133912877Z-e55bb381-bdc7-460f-a57d-a45ada0ceee2.json",
+      "artifacts/backups/audits/20261116T133914313Z-40564a60-8266-47c0-a299-4ae908c539ce.json"
     ]
   },
   "environment": {

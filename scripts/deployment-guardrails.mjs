@@ -58,8 +58,8 @@ export function validateDeploymentAssets() {
     .split(/\r?\n/u)
     .find((line) => line.startsWith("BACKUP_ENCRYPTION_KEY_BASE64="))
     ?.slice("BACKUP_ENCRYPTION_KEY_BASE64=".length);
-  if (!backupEncryptionKey || Buffer.from(backupEncryptionKey, "base64").length !== 32) {
-    errors.push("production env backup encryption key placeholder must decode to 32 bytes");
+  if (!backupEncryptionKey?.startsWith("replace-with-")) {
+    errors.push("production env backup encryption key must be an explicit placeholder");
   }
   const encryptionKey = productionEnv
     .split(/\r?\n/u)
@@ -143,7 +143,7 @@ export function validateDeploymentAssets() {
       errors.push(`backup runbook missing ${command}`);
     }
   }
-  for (const invariant of ["RPO 24h", "RTO 4h", "30 days", "dry-run", "advisory lock"]) {
+  for (const invariant of ["RPO 24h", "RTO 4h", "30 days", "dry-run", "API/Worker"]) {
     if (!backupRunbook.includes(invariant)) {
       errors.push(`backup runbook missing ${invariant}`);
     }
