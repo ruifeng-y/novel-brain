@@ -17,6 +17,9 @@ import type { Pool, PoolClient } from "pg";
 import { uuidv7 } from "uuidv7";
 
 const EXPORT_RETENTION_DAYS = 7;
+const EXPORT_RECEIPT_COLUMNS = `id, job_id, work_id, branch_id, format, status, manifest,
+  checksum, byte_size, file_name, content_type, error_code, error_message,
+  created_at, completed_at, expires_at`;
 
 interface ExportContext {
   workId: string;
@@ -107,19 +110,21 @@ export class WorkExportRepository implements OnModuleDestroy {
     userId: string,
     context: ExportContext,
     idempotencyKey: string,
-  ): Promise<WorkExportReceipt | null> {
+    request: WorkExportRequest,
+  ): Promise<WorkExportReceipt | "conflict" | null> {
     const row = await this.withTenant(userId, async (client) => {
-      const result = await client.query<ExportReceiptRow>(
-        `SELECT id, job_id, work_id, branch_id, format, status, manifest, checksum,
-                byte_size, file_name, content_type, error_code, error_message,
-                created_at, completed_at, expires_at
+      const result = await client.query<ExportReceiptRow & { request_matches: boolean }>(
+        `SELECT ${EXPORT_RECEIPT_COLUMNS}, request = $5::jsonb AS request_matches
            FROM work_export_receipts
           WHERE user_id = $1 AND work_id = $2 AND branch_id = $3 AND idempotency_key = $4`,
-        [userId, context.workId, context.branchId, idempotencyKey],
+        [userId, context.workId, context.branchId, idempotencyKey, JSON.stringify(request)],
       );
       return result.rows[0] ?? null;
     });
-    return row ? toReceipt(row) : null;
+    if (!row) {
+      return null;
+    }
+    return row.request_matches ? toReceipt(row) : "conflict";
   }
 
   async createQueuedExport(input: {
@@ -133,15 +138,22 @@ export class WorkExportRepository implements OnModuleDestroy {
       await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
         `${input.userId}:${input.context.workId}:${input.context.branchId}:${input.idempotencyKey}`,
       ]);
-      const replay = await client.query<ExportReceiptRow>(
-        `SELECT id, job_id, work_id, branch_id, format, status, manifest, checksum,
-                byte_size, file_name, content_type, error_code, error_message,
-                created_at, completed_at, expires_at
+      const replay = await client.query<ExportReceiptRow & { request_matches: boolean }>(
+        `SELECT ${EXPORT_RECEIPT_COLUMNS}, request = $5::jsonb AS request_matches
            FROM work_export_receipts
           WHERE user_id = $1 AND work_id = $2 AND branch_id = $3 AND idempotency_key = $4`,
-        [input.userId, input.context.workId, input.context.branchId, input.idempotencyKey],
+        [
+          input.userId,
+          input.context.workId,
+          input.context.branchId,
+          input.idempotencyKey,
+          JSON.stringify(input.request),
+        ],
       );
       if (replay.rows[0]) {
+        if (!replay.rows[0].request_matches) {
+          throw new WorkExportIdempotencyConflictError();
+        }
         return { created: false, receipt: toReceipt(replay.rows[0]) };
       }
 
@@ -215,11 +227,10 @@ export class WorkExportRepository implements OnModuleDestroy {
         ],
       );
       const row = await client.query<ExportReceiptRow>(
-        `SELECT id, job_id, work_id, branch_id, format, status, manifest, checksum,
-                byte_size, file_name, content_type, error_code, error_message,
-                created_at, completed_at, expires_at
-           FROM work_export_receipts WHERE id = $1`,
-        [exportId],
+        `SELECT ${EXPORT_RECEIPT_COLUMNS}
+           FROM work_export_receipts
+          WHERE id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4`,
+        [exportId, input.userId, input.context.workId, input.context.branchId],
       );
       if (!row.rows[0]) {
         throw new Error("Failed to create work export receipt");
@@ -242,9 +253,7 @@ export class WorkExportRepository implements OnModuleDestroy {
       }
       values.push(page.limit + 1);
       const result = await client.query<ExportReceiptRow>(
-        `SELECT id, job_id, work_id, branch_id, format, status, manifest, checksum,
-                byte_size, file_name, content_type, error_code, error_message,
-                created_at, completed_at, expires_at
+        `SELECT ${EXPORT_RECEIPT_COLUMNS}
            FROM work_export_receipts
           WHERE user_id = $1 AND work_id = $2 AND branch_id = $3 ${cursorSql}
           ORDER BY id DESC
@@ -267,9 +276,7 @@ export class WorkExportRepository implements OnModuleDestroy {
   ): Promise<WorkExportReceipt | null> {
     return this.withTenant(userId, async (client) => {
       const result = await client.query<ExportReceiptRow>(
-        `SELECT id, job_id, work_id, branch_id, format, status, manifest, checksum,
-                byte_size, file_name, content_type, error_code, error_message,
-                created_at, completed_at, expires_at
+        `SELECT ${EXPORT_RECEIPT_COLUMNS}
            FROM work_export_receipts
           WHERE id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4`,
         [exportId, userId, context.workId, context.branchId],
@@ -284,7 +291,7 @@ export class WorkExportRepository implements OnModuleDestroy {
     exportId: string,
   ): Promise<
     | {
-        bytes: Buffer;
+        objectKey: string;
         checksum: string;
         contentType: string;
         fileName: string;
@@ -296,13 +303,13 @@ export class WorkExportRepository implements OnModuleDestroy {
     return this.withTenant(userId, async (client) => {
       const result = await client.query<{
         status: WorkExportReceipt["status"];
-        artifact_payload: string | null;
+        artifact_object_key: string | null;
         checksum: string | null;
         content_type: string | null;
         file_name: string | null;
         expires_at: Date;
       }>(
-        `SELECT status, artifact_payload, checksum, content_type, file_name, expires_at
+        `SELECT status, artifact_object_key, checksum, content_type, file_name, expires_at
            FROM work_export_receipts
           WHERE id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4`,
         [exportId, userId, context.workId, context.branchId],
@@ -314,11 +321,11 @@ export class WorkExportRepository implements OnModuleDestroy {
       if (row.status !== "completed" || row.expires_at.getTime() <= Date.now()) {
         return row.expires_at.getTime() <= Date.now() ? "expired" : "not_ready";
       }
-      if (!row.artifact_payload || !row.checksum || !row.content_type || !row.file_name) {
+      if (!row.artifact_object_key || !row.checksum || !row.content_type || !row.file_name) {
         return "not_ready";
       }
       return {
-        bytes: Buffer.from(row.artifact_payload, "base64"),
+        objectKey: row.artifact_object_key,
         checksum: row.checksum,
         contentType: row.content_type,
         fileName: row.file_name,
@@ -375,27 +382,37 @@ async function resolveExportSource(
   if (!sourceNodeId) {
     throw new WorkExportSourceInvalidError("当前分支还没有可导出的版本");
   }
-  const ancestors = await client.query<{ id: string }>(
+  const ancestors = await client.query<{ id: string; created_at: Date }>(
     `WITH RECURSIVE nodes AS (
-       SELECT id, parent_node_id FROM version_nodes
+       SELECT id, parent_node_id, created_at FROM version_nodes
         WHERE id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4
        UNION ALL
-       SELECT parent.id, parent.parent_node_id FROM version_nodes parent
+       SELECT parent.id, parent.parent_node_id, parent.created_at FROM version_nodes parent
        JOIN nodes child ON parent.id = child.parent_node_id
        WHERE parent.user_id = $2 AND parent.work_id = $3 AND parent.branch_id = $4
      )
-     SELECT id FROM nodes`,
+     SELECT id, created_at FROM nodes`,
     [sourceNodeId, input.userId, input.context.workId, input.context.branchId],
   );
   if (ancestors.rows.length === 0) {
     throw new WorkExportSourceInvalidError("指定的历史版本不属于当前分支");
   }
+  const historical = input.request.sourceVersionNodeId !== null;
+  const ancestorIds = ancestors.rows.map((row) => row.id);
+  const sourceCreatedAt = ancestors.rows.find((row) => row.id === sourceNodeId)?.created_at ?? null;
 
   const outline = await client.query<OutlineRow>(
-    `SELECT id, parent_id, level, chapter_id, title, sort_order
-       FROM outline_nodes
-      WHERE user_id = $1 AND work_id = $2 AND branch_id = $3`,
-    [input.userId, input.context.workId, input.context.branchId],
+    historical
+      ? `SELECT id, parent_id, level, chapter_id, title, sort_order
+           FROM outline_nodes
+          WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+            AND version_node_id = ANY($4::uuid[])`
+      : `SELECT id, parent_id, level, chapter_id, title, sort_order
+           FROM outline_nodes
+          WHERE user_id = $1 AND work_id = $2 AND branch_id = $3`,
+    historical
+      ? [input.userId, input.context.workId, input.context.branchId, ancestorIds]
+      : [input.userId, input.context.workId, input.context.branchId],
   );
   const chapterRows = await client.query<ChapterRow>(
     `SELECT id, number, title, current_version_id FROM chapters
@@ -403,35 +420,89 @@ async function resolveExportSource(
       ORDER BY number`,
     [input.userId, input.context.workId, input.context.branchId],
   );
-  const selectedChapters = selectChapters(chapterRows.rows, outline.rows, input.request);
+  const historicalChapterTitles = historical
+    ? await client.query<{ chapter_id: string; title: string }>(
+        `WITH title_events AS (
+           SELECT object_id AS chapter_id, payload->>'title' AS title, created_at
+             FROM version_nodes
+            WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+              AND object_type = 'chapter_brief'
+              AND id = ANY($4::uuid[])
+              AND payload->>'title' IS NOT NULL
+           UNION ALL
+           SELECT object_id, payload->'after'->>'title', created_at
+             FROM version_nodes
+            WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+              AND node_type = 'change_apply'
+              AND object_type = 'chapter'
+              AND id = ANY($4::uuid[])
+              AND payload->'after'->>'title' IS NOT NULL
+           UNION ALL
+           SELECT item.object_id,
+                  coalesce(source.payload->>'title', source.payload->'after'->>'title'),
+                  merge.created_at
+             FROM version_nodes merge
+             CROSS JOIN LATERAL jsonb_array_elements_text(merge.payload->'itemIds') AS item_id
+             JOIN merge_items item ON item.id = item_id.value::uuid
+             JOIN version_nodes source ON source.id = item.source_node_id
+            WHERE merge.user_id = $1 AND merge.work_id = $2 AND merge.branch_id = $3
+              AND merge.node_type = 'branch_merge'
+              AND merge.id = ANY($4::uuid[])
+              AND item.object_type = 'chapter'
+              AND coalesce(source.payload->>'title', source.payload->'after'->>'title') IS NOT NULL
+         )
+         SELECT DISTINCT ON (chapter_id) chapter_id, title
+           FROM title_events
+          ORDER BY chapter_id, created_at DESC`,
+        [input.userId, input.context.workId, input.context.branchId, ancestorIds],
+      )
+    : null;
+  const historicalTitleByChapter = new Map(
+    historicalChapterTitles?.rows.map((row) => [row.chapter_id, row.title]) ?? [],
+  );
+  const historicalVersions = historical
+    ? await client.query<ChapterVersionRow>(
+        `SELECT DISTINCT ON (chapter_id)
+                id, chapter_id, version, content, content_hash, version_node_id
+           FROM chapter_versions
+          WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+            AND version_node_id = ANY($4::uuid[])
+          ORDER BY chapter_id, version DESC`,
+        [input.userId, input.context.workId, input.context.branchId, ancestorIds],
+      )
+    : null;
+  const historicalVersionByChapter = new Map(
+    historicalVersions?.rows.map((row) => [row.chapter_id, row]) ?? [],
+  );
+  const selectableChapters = historical
+    ? chapterRows.rows.filter((chapter) => historicalVersionByChapter.has(chapter.id))
+    : chapterRows.rows;
+  const selectedChapters = selectChapters(selectableChapters, outline.rows, input.request);
   if (selectedChapters.length === 0) {
     throw new WorkExportSourceInvalidError("导出范围没有章节");
   }
 
   const selectedIds = selectedChapters.map((chapter) => chapter.id);
-  const ancestorIds = ancestors.rows.map((row) => row.id);
+  if (historical) {
+    await assertHistoricalChapterOutlineIsExact(client, {
+      userId: input.userId,
+      context: input.context,
+      ancestorIds,
+      chapterIds: selectedIds,
+    });
+  }
   const versions =
-    input.request.sourceVersionNodeId === null
-      ? await client.query<ChapterVersionRow>(
-          `SELECT id, chapter_id, version, content, content_hash, version_node_id
-             FROM chapter_versions
-            WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
-              AND id = ANY(
-                SELECT current_version_id FROM chapters
-                 WHERE id = ANY($4::uuid[]) AND current_version_id IS NOT NULL
-              )`,
-          [input.userId, input.context.workId, input.context.branchId, selectedIds],
-        )
-      : await client.query<ChapterVersionRow>(
-          `SELECT DISTINCT ON (chapter_id)
-                  id, chapter_id, version, content, content_hash, version_node_id
-             FROM chapter_versions
-            WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
-              AND chapter_id = ANY($4::uuid[])
-              AND version_node_id = ANY($5::uuid[])
-            ORDER BY chapter_id, version DESC`,
-          [input.userId, input.context.workId, input.context.branchId, selectedIds, ancestorIds],
-        );
+    historicalVersions ??
+    (await client.query<ChapterVersionRow>(
+      `SELECT id, chapter_id, version, content, content_hash, version_node_id
+         FROM chapter_versions
+        WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+          AND id = ANY(
+            SELECT current_version_id FROM chapters
+             WHERE id = ANY($4::uuid[]) AND current_version_id IS NOT NULL
+          )`,
+      [input.userId, input.context.workId, input.context.branchId, selectedIds],
+    ));
   const versionByChapter = new Map(versions.rows.map((row) => [row.chapter_id, row]));
   const chapterOutlines = new Map(
     outline.rows
@@ -444,12 +515,16 @@ async function resolveExportSource(
     if (!version) {
       throw new WorkExportSourceInvalidError(`章节 ${chapter.number} 在指定版本中没有正文`);
     }
+    const title = historical ? historicalTitleByChapter.get(chapter.id) : chapter.title;
+    if (!title) {
+      throw new WorkExportSourceInvalidError(`章节 ${chapter.number} 在指定版本中缺少精确标题`);
+    }
     const chapterOutline = chapterOutlines.get(chapter.id);
     const volume = chapterOutline ? findVolume(chapterOutline, outlineById) : null;
     return {
       chapterId: chapter.id,
       chapterNumber: chapter.number,
-      title: chapter.title,
+      title,
       chapterVersionId: version.id,
       versionNodeId: version.version_node_id,
       expectedContentHash: version.content_hash,
@@ -463,7 +538,8 @@ async function resolveExportSource(
     context: input.context,
     request: input.request,
     ancestorIds,
-    historical: input.request.sourceVersionNodeId !== null,
+    historical,
+    sourceCreatedAt,
   });
   return workExportSourceDescriptorSchema.parse({
     resolvedVersionNodeId: sourceNodeId,
@@ -542,6 +618,7 @@ async function resolveSupplements(
     request: WorkExportRequest;
     ancestorIds: string[];
     historical: boolean;
+    sourceCreatedAt: Date | null;
   },
 ): Promise<ExportSupplementSourceDescriptor[]> {
   const supplements: ExportSupplementSourceDescriptor[] = [];
@@ -577,11 +654,32 @@ async function resolveSupplements(
       entity_type: string;
       summary: string;
       attributes: unknown;
+      version_node_id: string | null;
     }>(
-      `SELECT name, entity_type, summary, attributes FROM entities
-        WHERE user_id = $1 AND work_id = $2 AND branch_id = $3 AND deleted_at IS NULL
-        ORDER BY entity_type, name`,
-      [input.userId, input.context.workId, input.context.branchId],
+      input.historical
+        ? `SELECT name, entity_type, summary, attributes, version_node_id
+             FROM (
+               SELECT DISTINCT ON (ev.entity_id)
+                      ev.snapshot->>'name' AS name,
+                      ev.snapshot->>'type' AS entity_type,
+                      ev.snapshot->>'summary' AS summary,
+                      ev.snapshot->'attributes' AS attributes,
+                      ev.version_node_id
+                 FROM entity_versions ev
+                 JOIN version_nodes vn ON vn.id = ev.version_node_id
+                WHERE ev.user_id = $1 AND ev.work_id = $2 AND ev.branch_id = $3
+                  AND ev.version_node_id = ANY($4::uuid[])
+                ORDER BY ev.entity_id, vn.created_at DESC, ev.version DESC
+             ) latest
+            ORDER BY entity_type, name`
+        : `SELECT name, type AS entity_type, summary, attributes,
+                  NULL::uuid AS version_node_id
+             FROM entities
+            WHERE user_id = $1 AND work_id = $2 AND branch_id = $3 AND deleted_at IS NULL
+            ORDER BY type, name`,
+      input.historical
+        ? [input.userId, input.context.workId, input.context.branchId, input.ancestorIds]
+        : [input.userId, input.context.workId, input.context.branchId],
     );
     supplements.push(
       supplement(
@@ -599,11 +697,22 @@ async function resolveSupplements(
     );
   }
   if (input.request.options.includeOutline) {
+    if (input.historical) {
+      await assertHistoricalOutlineIsExact(client, input);
+    }
     const outline = await client.query<OutlineRow>(
-      `SELECT id, parent_id, level, chapter_id, title, sort_order
-         FROM outline_nodes WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
-        ORDER BY sort_order, created_at`,
-      [input.userId, input.context.workId, input.context.branchId],
+      input.historical
+        ? `SELECT id, parent_id, level, chapter_id, title, sort_order
+             FROM outline_nodes
+            WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+              AND version_node_id = ANY($4::uuid[])
+            ORDER BY sort_order, created_at`
+        : `SELECT id, parent_id, level, chapter_id, title, sort_order
+             FROM outline_nodes WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+            ORDER BY sort_order, created_at`,
+      input.historical
+        ? [input.userId, input.context.workId, input.context.branchId, input.ancestorIds]
+        : [input.userId, input.context.workId, input.context.branchId],
     );
     supplements.push(
       supplement(
@@ -616,6 +725,9 @@ async function resolveSupplements(
     );
   }
   if (input.request.options.includeForeshadowLedger) {
+    if (input.historical) {
+      await assertHistoricalForeshadowsAreExact(client, input);
+    }
     const foreshadows = await client.query<{
       id: string;
       title: string;
@@ -624,11 +736,19 @@ async function resolveSupplements(
       target_from_chapter: number;
       target_to_chapter: number;
     }>(
-      `SELECT id, title, summary, status, target_from_chapter, target_to_chapter
-         FROM foreshadows
-        WHERE user_id = $1 AND work_id = $2 AND branch_id = $3 AND deleted_at IS NULL
-        ORDER BY target_to_chapter, title`,
-      [input.userId, input.context.workId, input.context.branchId],
+      input.historical
+        ? `SELECT id, title, summary, status, target_from_chapter, target_to_chapter
+             FROM foreshadows
+            WHERE user_id = $1 AND work_id = $2 AND branch_id = $3 AND deleted_at IS NULL
+              AND version_node_id = ANY($4::uuid[])
+            ORDER BY target_to_chapter, title`
+        : `SELECT id, title, summary, status, target_from_chapter, target_to_chapter
+             FROM foreshadows
+            WHERE user_id = $1 AND work_id = $2 AND branch_id = $3 AND deleted_at IS NULL
+            ORDER BY target_to_chapter, title`,
+      input.historical
+        ? [input.userId, input.context.workId, input.context.branchId, input.ancestorIds]
+        : [input.userId, input.context.workId, input.context.branchId],
     );
     supplements.push(
       supplement(
@@ -646,6 +766,9 @@ async function resolveSupplements(
     );
   }
   if (input.request.options.includeChangeHistory) {
+    if (input.historical && !input.sourceCreatedAt) {
+      throw new WorkExportSourceInvalidError("指定历史版本缺少可用的时间边界");
+    }
     const changes = await client.query<{
       id: string;
       title: string;
@@ -655,8 +778,11 @@ async function resolveSupplements(
     }>(
       `SELECT id, title, reason, status, created_at FROM change_requests
         WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+          ${input.historical ? "AND created_at <= $4" : ""}
         ORDER BY created_at`,
-      [input.userId, input.context.workId, input.context.branchId],
+      input.historical
+        ? [input.userId, input.context.workId, input.context.branchId, input.sourceCreatedAt]
+        : [input.userId, input.context.workId, input.context.branchId],
     );
     supplements.push(
       supplement(
@@ -673,6 +799,99 @@ async function resolveSupplements(
     );
   }
   return supplements;
+}
+
+async function assertHistoricalChapterOutlineIsExact(
+  client: PoolClient,
+  input: {
+    userId: string;
+    context: ExportContext;
+    ancestorIds: string[];
+    chapterIds: string[];
+  },
+): Promise<void> {
+  const drift = await client.query(
+    `WITH RECURSIVE lineage AS (
+       SELECT id, parent_id, version_node_id
+         FROM outline_nodes
+        WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+          AND chapter_id = ANY($4::uuid[])
+       UNION ALL
+       SELECT parent.id, parent.parent_id, parent.version_node_id
+         FROM outline_nodes parent
+         JOIN lineage child ON parent.id = child.parent_id
+        WHERE parent.user_id = $1 AND parent.work_id = $2 AND parent.branch_id = $3
+     )
+     SELECT 1
+       FROM lineage node
+      WHERE NOT (node.version_node_id = ANY($5::uuid[]))
+        AND EXISTS (
+          SELECT 1 FROM version_nodes version
+           WHERE version.user_id = $1 AND version.work_id = $2 AND version.branch_id = $3
+             AND version.object_type = 'outline_node'
+             AND version.object_id = node.id
+             AND version.id = ANY($5::uuid[])
+        )
+      LIMIT 1`,
+    [
+      input.userId,
+      input.context.workId,
+      input.context.branchId,
+      input.chapterIds,
+      input.ancestorIds,
+    ],
+  );
+  if (drift.rows[0]) {
+    throw new WorkExportSourceInvalidError("指定历史版本的章节/卷大纲已被后续修改，无法精确导出");
+  }
+}
+
+async function assertHistoricalOutlineIsExact(
+  client: PoolClient,
+  input: { userId: string; context: ExportContext; ancestorIds: string[] },
+): Promise<void> {
+  const drift = await client.query(
+    `SELECT 1
+       FROM outline_nodes node
+      WHERE node.user_id = $1 AND node.work_id = $2 AND node.branch_id = $3
+        AND NOT (node.version_node_id = ANY($4::uuid[]))
+        AND EXISTS (
+          SELECT 1 FROM version_nodes version
+           WHERE version.user_id = $1 AND version.work_id = $2 AND version.branch_id = $3
+             AND version.object_type = 'outline_node'
+             AND version.object_id = node.id
+             AND version.id = ANY($4::uuid[])
+        )
+      LIMIT 1`,
+    [input.userId, input.context.workId, input.context.branchId, input.ancestorIds],
+  );
+  if (drift.rows[0]) {
+    throw new WorkExportSourceInvalidError("指定历史版本的大纲已被后续修改，无法精确导出");
+  }
+}
+
+async function assertHistoricalForeshadowsAreExact(
+  client: PoolClient,
+  input: { userId: string; context: ExportContext; ancestorIds: string[] },
+): Promise<void> {
+  const drift = await client.query(
+    `SELECT 1
+       FROM foreshadows entry
+      WHERE entry.user_id = $1 AND entry.work_id = $2 AND entry.branch_id = $3
+        AND NOT (entry.version_node_id = ANY($4::uuid[]))
+        AND EXISTS (
+          SELECT 1 FROM version_nodes version
+           WHERE version.user_id = $1 AND version.work_id = $2 AND version.branch_id = $3
+             AND version.object_type = 'foreshadow'
+             AND version.object_id = entry.id
+             AND version.id = ANY($4::uuid[])
+        )
+      LIMIT 1`,
+    [input.userId, input.context.workId, input.context.branchId, input.ancestorIds],
+  );
+  if (drift.rows[0]) {
+    throw new WorkExportSourceInvalidError("指定历史版本的伏笔账本已被后续修改，无法精确导出");
+  }
 }
 
 function supplement(
@@ -728,8 +947,10 @@ async function appendEvent(
   },
 ): Promise<void> {
   const latest = await client.query<{ sequence: number }>(
-    `SELECT coalesce(max(sequence), 0)::int AS sequence FROM job_events WHERE job_id = $1`,
-    [input.jobId],
+    `SELECT coalesce(max(sequence), 0)::int AS sequence
+       FROM job_events
+      WHERE job_id = $1 AND user_id = $2`,
+    [input.jobId, input.userId],
   );
   await client.query(
     `INSERT INTO job_events
@@ -756,5 +977,12 @@ export class WorkExportSourceInvalidError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "WorkExportSourceInvalidError";
+  }
+}
+
+export class WorkExportIdempotencyConflictError extends Error {
+  constructor() {
+    super("The idempotency key is already bound to a different export request");
+    this.name = "WorkExportIdempotencyConflictError";
   }
 }

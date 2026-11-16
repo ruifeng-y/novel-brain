@@ -1,15 +1,26 @@
 import "reflect-metadata";
 
 import type { INestApplication } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import {
   branchCreateResponseSchema,
   chapterVersionSchema,
+  EXPORT_WORK_JOB,
+  WORKER_QUEUE_NAME,
   workExportReceiptListResponseSchema,
   workExportReceiptResponseSchema,
+  workerJobSchema,
+  type WorkerJob,
 } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
+import { FileObjectStorage, type ObjectStorage } from "@novel-brain/storage";
+import { Worker as BullWorker } from "bullmq";
 import Redis from "ioredis";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import request, { type SuperAgentTest } from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -33,11 +44,38 @@ class CapturingMailGateway implements MailGateway {
   }
 }
 
+class TransientStorage implements ObjectStorage {
+  putAttempts = 0;
+
+  constructor(private readonly inner: ObjectStorage) {}
+
+  async putObject(input: Parameters<ObjectStorage["putObject"]>[0]): Promise<void> {
+    this.putAttempts += 1;
+    if (this.putAttempts === 1) {
+      throw new Error("Transient object storage failure");
+    }
+    await this.inner.putObject(input);
+  }
+
+  getObject(key: string): Promise<Uint8Array> {
+    return this.inner.getObject(key);
+  }
+
+  deleteObject(key: string): Promise<void> {
+    return this.inner.deleteObject(key);
+  }
+
+  deleteObjects(keys: string[]): Promise<void> {
+    return this.inner.deleteObjects(keys);
+  }
+}
+
 describe("work export HTTP and worker integration", () => {
   let app: INestApplication;
   let databasePool: ReturnType<typeof createDatabasePool>;
   let redis: Redis;
   let processor: WorkExportProcessor;
+  let storageDirectory: string;
   const mail = new CapturingMailGateway();
 
   beforeAll(async () => {
@@ -53,6 +91,8 @@ describe("work export HTTP and worker integration", () => {
     process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
     process.env.MODEL_CONNECTION_TESTER = "fake";
     process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1";
+    storageDirectory = await mkdtemp(path.join(tmpdir(), "novelbrain-work-export-"));
+    process.env.STORAGE_LOCAL_DIRECTORY = storageDirectory;
 
     await runMigrations(databaseUrl);
     databasePool = createDatabasePool(databaseUrl, {
@@ -60,12 +100,16 @@ describe("work export HTTP and worker integration", () => {
       statement_timeout: 30_000,
     });
     redis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
-    processor = new WorkExportProcessor(new WorkerWorkExportRepository());
+    processor = new WorkExportProcessor(
+      new WorkerWorkExportRepository(),
+      new FileObjectStorage(storageDirectory),
+    );
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(MAIL_GATEWAY)
       .useValue(mail)
       .compile();
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication<NestExpressApplication>();
+    app.useBodyParser("json", { limit: "32mb" });
     app.setGlobalPrefix("api/v1");
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.init();
@@ -81,6 +125,7 @@ describe("work export HTTP and worker integration", () => {
   afterAll(async () => {
     await app?.close();
     await processor?.onModuleDestroy();
+    await rm(storageDirectory, { recursive: true, force: true });
     await databasePool?.end();
     redis?.disconnect();
   });
@@ -127,6 +172,15 @@ describe("work export HTTP and worker integration", () => {
       outline.chapterTwo.chapter.id,
       "第二章正文：钟声响了。",
     );
+    const setting = await createSetting(owner, token, branchPath);
+    const settingSnapshotVersion = await saveChapterVersion(
+      owner,
+      token,
+      branchPath,
+      outline.chapterOne.chapter.id,
+      "历史附录边界正文：山门已经打开。",
+    );
+    await updateSetting(owner, token, branchPath, setting);
     const branchChapter = await createChapter(owner, token, branchPath2, 1, "平行山门");
     const branchVersion = await saveChapterVersion(
       owner,
@@ -136,6 +190,16 @@ describe("work export HTTP and worker integration", () => {
       "平行版本正文：山门后另有一条路。",
     );
     await createModelConfig(owner, token);
+    const titleToken = await csrf(owner);
+    const chapterWorkspace = (
+      await owner.get(`${branchPath}/chapters/${outline.chapterOne.chapter.id}`).expect(200)
+    ).body.data as { version: number };
+    await owner
+      .patch(`${branchPath}/chapters/${outline.chapterOne.chapter.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", titleToken)
+      .send({ version: chapterWorkspace.version, title: "后续章名" })
+      .expect(200);
 
     const historical = await startExport(owner, branchPath, "historical-export", {
       format: "txt",
@@ -150,11 +214,39 @@ describe("work export HTTP and worker integration", () => {
     expect(historicalReady.manifest?.branch.resolvedVersionNodeId).toBe(firstV1.versionNodeId);
     expect(historicalReady.manifest?.chapters[0]?.versionNodeId).toBe(firstV1.versionNodeId);
     expect(historicalReady.manifest?.chapters[0]?.versionNodeId).not.toBe(firstV2.versionNodeId);
+    expect(historicalReady.manifest?.chapters[0]?.title).toBe("山门");
     const historicalDownload = await download(owner, branchPath, historical.id);
     const historicalText = historicalDownload.body.toString("utf8");
     expect(historicalText).toContain("旧版正文");
     expect(historicalText).not.toContain("主线新版");
     expect(historicalText).not.toContain(keyCanary);
+
+    const historicalBook = await startExport(owner, branchPath, "historical-book", {
+      format: "txt",
+      scope: { kind: "book" },
+      sourceVersionNodeId: firstV1.versionNodeId,
+      options: exportOptions(),
+    });
+    await runExport(historicalBook.jobId, historicalBook.id);
+    expect((await getReceipt(owner, branchPath, historicalBook.id)).manifest?.chapters).toEqual([
+      expect.objectContaining({
+        chapterId: outline.chapterOne.chapter.id,
+        versionNodeId: firstV1.versionNodeId,
+      }),
+    ]);
+
+    const historicalAppendix = await startExport(owner, branchPath, "historical-setting-appendix", {
+      format: "txt",
+      scope: { kind: "current_chapter", chapterId: outline.chapterOne.chapter.id },
+      sourceVersionNodeId: settingSnapshotVersion.versionNodeId,
+      options: { ...exportOptions(), includeSettingsAppendix: true },
+    });
+    await runExport(historicalAppendix.jobId, historicalAppendix.id);
+    const appendixText = (await download(owner, branchPath, historicalAppendix.id)).body.toString(
+      "utf8",
+    );
+    expect(appendixText).toContain("旧版设定摘要");
+    expect(appendixText).not.toContain("新版设定摘要");
 
     const range = await startExport(owner, branchPath, "range-export", {
       format: "txt",
@@ -216,14 +308,79 @@ describe("work export HTTP and worker integration", () => {
     });
     expect(replay.id).toBe(parallel.id);
 
+    const conflictToken = await csrf(owner);
+    const idempotencyConflict = await owner
+      .post(`${branchPath2}/exports`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", conflictToken)
+      .set("Idempotency-Key", "parallel-export")
+      .send({
+        format: "txt",
+        scope: { kind: "current_chapter", chapterId: branchChapter.id },
+        options: exportOptions(),
+      });
+    expect(idempotencyConflict.status).toBe(409);
+    expect(idempotencyConflict.body.error.code).toBe("WORK_EXPORT_IDEMPOTENCY_CONFLICT");
+
     const history = workExportReceiptListResponseSchema.parse(
       (await owner.get(`${branchPath2}/exports`).expect(200)).body,
     ).data;
     expect(history.map((receipt) => receipt.id)).toContain(parallel.id);
 
+    const outlineVersion = await databasePool.query<{ version: number }>(
+      "SELECT version FROM outline_nodes WHERE id = $1",
+      [outline.chapterTwo.id],
+    );
+    const outlineToken = await csrf(owner);
+    const outlinePatch = await owner
+      .patch(`${branchPath}/outline/nodes/${outline.chapterTwo.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", outlineToken)
+      .send({ version: outlineVersion.rows[0]?.version, title: "后续改名" });
+    expect(outlinePatch.status, JSON.stringify(outlinePatch.body)).toBe(200);
+    const unaffectedHistorical = await startExport(
+      owner,
+      branchPath,
+      "historical-outline-unrelated",
+      {
+        format: "txt",
+        scope: { kind: "current_chapter", chapterId: outline.chapterOne.chapter.id },
+        sourceVersionNodeId: firstV1.versionNodeId,
+        options: exportOptions(),
+      },
+    );
+    await runExport(unaffectedHistorical.jobId, unaffectedHistorical.id);
+    expect((await getReceipt(owner, branchPath, unaffectedHistorical.id)).status).toBe("completed");
+    const driftToken = await csrf(owner);
+    const driftedOutline = await owner
+      .post(`${branchPath}/exports`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", driftToken)
+      .set("Idempotency-Key", "historical-outline-drifted")
+      .send({
+        format: "txt",
+        scope: { kind: "current_chapter", chapterId: outline.chapterOne.chapter.id },
+        sourceVersionNodeId: firstV1.versionNodeId,
+        options: { ...exportOptions(), includeOutline: true },
+      });
+    expect(driftedOutline.status).toBe(400);
+    expect(driftedOutline.body.error.code).toBe("WORK_EXPORT_SOURCE_INVALID");
+
     const other = await createAuthenticatedAgent("work-export-other@example.com");
     const forbidden = await other.get(`${branchPath2}/exports/${parallel.id}`).expect(403);
     expect(forbidden.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+
+    const staleQueued = await startExport(owner, branchPath2, "stale-queued", {
+      format: "txt",
+      scope: { kind: "current_chapter", chapterId: branchChapter.id },
+      options: exportOptions(),
+    });
+    await databasePool.query(
+      "UPDATE work_export_receipts SET expires_at = now() - interval '1 second' WHERE id = $1",
+      [staleQueued.id],
+    );
+    await processor.cleanupExpiredReceipts();
+    expect((await getReceipt(owner, branchPath2, staleQueued.id)).status).toBe("expired");
 
     await databasePool.query(
       "UPDATE work_export_receipts SET expires_at = now() - interval '1 second' WHERE id = $1",
@@ -233,9 +390,108 @@ describe("work export HTTP and worker integration", () => {
     const expired = await getReceipt(owner, branchPath2, parallel.id);
     expect(expired.status).toBe("expired");
     expect(expired.byteSize).toBeGreaterThan(0);
+    const clearedPayload = await databasePool.query<{ source_descriptor: unknown }>(
+      "SELECT source_descriptor FROM work_export_receipts WHERE id = $1",
+      [parallel.id],
+    );
+    expect(clearedPayload.rows[0]?.source_descriptor).toBeNull();
     const expiredDownload = await owner.get(`${branchPath2}/exports/${parallel.id}/download`);
     expect(expiredDownload.status).toBe(410);
     expect(expiredDownload.body.error.code).toBe("WORK_EXPORT_EXPIRED");
+  });
+
+  it("runs a large export through worker checkpoints, object storage and download", async () => {
+    const owner = await createAuthenticatedAgent("work-export-large@example.com");
+    const token = await csrf(owner);
+    const work = await createWork(owner, token);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const chapter = await createChapter(owner, token, branchPath, 1, "大章");
+    const content = "龙".repeat(190_000);
+    await saveChapterVersion(owner, token, branchPath, chapter.id, content);
+
+    const receipt = await startExport(owner, branchPath, "large-export", {
+      format: "txt",
+      scope: { kind: "book" },
+      options: exportOptions(),
+    });
+    expect(await processor.listPendingJobs()).toContainEqual(
+      expect.objectContaining({
+        jobId: receipt.jobId,
+        exportId: receipt.id,
+      }),
+    );
+    const attempts = await runQueuedExport(receipt.jobId, receipt.id);
+    expect(attempts).toEqual([1, 2]);
+
+    const ready = await getReceipt(owner, branchPath, receipt.id);
+    expect(ready.status).toBe("completed");
+    expect(ready.manifest?.characterCount).toBe(190_000);
+    expect(ready.byteSize).toBeGreaterThan(190_000);
+
+    const stored = await databasePool.query<{
+      artifact_object_key: string;
+      checksum: string;
+      byte_size: number;
+    }>(
+      `SELECT artifact_object_key, checksum, byte_size
+         FROM work_export_receipts WHERE id = $1`,
+      [receipt.id],
+    );
+    const object = stored.rows[0];
+    if (!object) {
+      throw new Error("Large export object metadata is missing");
+    }
+    const bytes = await readFile(path.join(storageDirectory, object.artifact_object_key));
+    expect(bytes.byteLength).toBe(object.byte_size);
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(object.checksum);
+
+    const execution = await databasePool.query<{
+      checkpoint_version: number;
+      checkpoint_step: string;
+      steps: string[];
+      revisions: string[];
+      step_keys: string[];
+    }>(
+      `SELECT j.checkpoint_version,
+              j.checkpoint->>'step' AS checkpoint_step,
+              (SELECT array_agg(step_key ORDER BY step_key)
+                 FROM job_steps WHERE job_id = j.id AND user_id = j.user_id) AS steps,
+              (SELECT array_agg(revision ORDER BY revision)
+                 FROM job_checkpoints WHERE job_id = j.id AND user_id = j.user_id) AS revisions,
+              (SELECT array_agg(step_key ORDER BY revision)
+                 FROM job_checkpoints WHERE job_id = j.id AND user_id = j.user_id) AS step_keys
+         FROM jobs j WHERE j.id = $1`,
+      [receipt.jobId],
+    );
+    expect(execution.rows[0]).toMatchObject({
+      checkpoint_version: 3,
+      checkpoint_step: "complete",
+      steps: ["complete", "prepare", "render"],
+      revisions: [1, 2, 3],
+      step_keys: ["prepare", "render", "complete"],
+    });
+
+    await databasePool.query(
+      `UPDATE jobs
+          SET status = 'running', checkpoint_version = 2,
+              checkpoint = (
+                SELECT payload FROM job_checkpoints
+                 WHERE job_id = $1 AND revision = 2
+              )
+        WHERE id = $1`,
+      [receipt.jobId],
+    );
+    await databasePool.query(
+      "UPDATE work_export_receipts SET status = 'running', completed_at = NULL WHERE id = $1",
+      [receipt.id],
+    );
+    await runExport(receipt.jobId, receipt.id);
+    expect((await getReceipt(owner, branchPath, receipt.id)).status).toBe("completed");
+
+    const downloaded = await download(owner, branchPath, receipt.id);
+    expect(downloaded.headers["x-export-checksum"]).toBe(object.checksum);
+    expect(downloaded.headers["content-length"]).toBe(String(object.byte_size));
+    expect(downloaded.body.byteLength).toBe(object.byte_size);
   });
 
   async function startExport(
@@ -289,6 +545,57 @@ describe("work export HTTP and worker integration", () => {
         payload: {},
       },
     });
+  }
+
+  async function runQueuedExport(jobId: string, exportId: string): Promise<number[]> {
+    const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    const repository = new WorkerWorkExportRepository();
+    const queueProcessor = new WorkExportProcessor(
+      repository,
+      new TransientStorage(new FileObjectStorage(storageDirectory)),
+    );
+    const attempts: number[] = [];
+    const worker = new BullWorker<WorkerJob, void>(
+      WORKER_QUEUE_NAME,
+      async (job) => {
+        if (job.id !== jobId) {
+          return;
+        }
+        const payload = workerJobSchema.parse(job.data);
+        if (payload.jobType !== EXPORT_WORK_JOB) {
+          throw new Error("Unexpected queued work export type");
+        }
+        attempts.push(job.attemptsMade + 1);
+        await queueProcessor.process(payload, {
+          number: job.attemptsMade + 1,
+          maxAttempts: Math.max(1, job.opts.attempts ?? 1),
+        });
+      },
+      { connection },
+    );
+    try {
+      await worker.waitUntilReady();
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const result = await databasePool.query<{ status: string }>(
+          "SELECT status FROM work_export_receipts WHERE id = $1",
+          [exportId],
+        );
+        const status = result.rows[0]?.status;
+        if (status === "completed") {
+          return attempts;
+        }
+        if (status === "failed") {
+          throw new Error("Queued work export failed");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error("Queued work export did not finish before timeout");
+    } finally {
+      await worker.close();
+      await queueProcessor.onModuleDestroy();
+      connection.disconnect();
+    }
   }
 
   function download(agent: SuperAgentTest, branchPath: string, exportId: string) {
@@ -443,6 +750,46 @@ describe("work export HTTP and worker integration", () => {
         })
         .expect(201)
     ).body.data as { id: string; version: number };
+  }
+
+  async function createSetting(
+    agent: SuperAgentTest,
+    token: string,
+    branchPath: string,
+  ): Promise<{ id: string; version: number }> {
+    return (
+      await agent
+        .post(`${branchPath}/entities`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({
+          type: "world_rule",
+          name: "历史设定边界",
+          aliases: [],
+          summary: "旧版设定摘要",
+          description: "用于验证历史附录不会读取当前版本。",
+          tags: ["历史"],
+          data: { rule: "历史版本只读取祖先版本节点。" },
+        })
+        .expect(201)
+    ).body.data as { id: string; version: number };
+  }
+
+  async function updateSetting(
+    agent: SuperAgentTest,
+    token: string,
+    branchPath: string,
+    setting: { id: string; version: number },
+  ): Promise<void> {
+    await agent
+      .patch(`${branchPath}/entities/${setting.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: setting.version,
+        summary: "新版设定摘要",
+      })
+      .expect(200);
   }
 
   async function createModelConfig(agent: SuperAgentTest, token: string) {

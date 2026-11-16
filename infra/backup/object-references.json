@@ -10,6 +10,12 @@
       "table": "pen_names",
       "column": "avatar_url",
       "tenantColumn": "user_id"
+    },
+    {
+      "table": "work_export_receipts",
+      "column": "artifact_object_key",
+      "format": "objectKey",
+      "tenantColumn": "user_id"
     }
   ]
 }

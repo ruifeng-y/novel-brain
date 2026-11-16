@@ -1,16 +1,20 @@
-import { Injectable } from "@nestjs/common";
+import { createHash } from "node:crypto";
+
+import { Inject, Injectable } from "@nestjs/common";
 import {
   EXPORT_WORK_JOB,
   type ExportWorkJob,
   type WorkExportReceipt,
   type WorkExportRequest,
 } from "@novel-brain/contracts";
+import { OBJECT_STORAGE, type ObjectStorage } from "@novel-brain/storage";
 
 import { ApiError } from "../common/api-error";
 // Nest uses the runtime class references for dependency injection metadata.
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 import {
   WorkExportRepository,
+  WorkExportIdempotencyConflictError,
   WorkExportSourceInvalidError,
   type ExportAuditContext,
 } from "./work-export.repository";
@@ -27,6 +31,7 @@ export class WorkExportService {
   constructor(
     private readonly repository: WorkExportRepository,
     private readonly queue: WorkExportQueue,
+    @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
   async start(
@@ -40,7 +45,15 @@ export class WorkExportService {
     if (!normalizedKey || normalizedKey.length > 200) {
       throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");
     }
-    const existing = await this.repository.findByIdempotencyKey(userId, context, normalizedKey);
+    const existing = await this.repository.findByIdempotencyKey(
+      userId,
+      context,
+      normalizedKey,
+      request,
+    );
+    if (existing === "conflict") {
+      throw new ApiError(409, "WORK_EXPORT_IDEMPOTENCY_CONFLICT", "幂等键已绑定到不同的导出请求");
+    }
     if (existing) {
       if (existing.status === "queued") {
         await this.queue.enqueue(toWorkerJob(userId, normalizedKey, existing));
@@ -62,6 +75,9 @@ export class WorkExportService {
       }
       return result.receipt;
     } catch (error) {
+      if (error instanceof WorkExportIdempotencyConflictError) {
+        throw new ApiError(409, "WORK_EXPORT_IDEMPOTENCY_CONFLICT", "幂等键已绑定到不同的导出请求");
+      }
       if (error instanceof WorkExportSourceInvalidError) {
         throw new ApiError(400, "WORK_EXPORT_SOURCE_INVALID", error.message);
       }
@@ -100,8 +116,16 @@ export class WorkExportService {
     if (download === "expired") {
       throw new ApiError(410, "WORK_EXPORT_EXPIRED", "导出文件已过期，请重新导出");
     }
-    return download;
+    const bytes = Buffer.from(await this.storage.getObject(download.objectKey));
+    if (sha256(bytes) !== download.checksum) {
+      throw new ApiError(500, "WORK_EXPORT_INTEGRITY_FAILED", "导出文件校验失败，请重新生成");
+    }
+    return { ...download, bytes };
   }
+}
+
+function sha256(value: Uint8Array): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function toWorkerJob(

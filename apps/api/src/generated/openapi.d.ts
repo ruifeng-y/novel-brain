@@ -4698,11 +4698,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -5047,11 +5049,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -10978,11 +10982,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11551,11 +11557,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11950,11 +11958,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12350,11 +12360,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12750,11 +12762,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -13163,11 +13177,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13685,11 +13701,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14126,11 +14144,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14422,11 +14442,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14628,11 +14650,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14982,11 +15006,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15399,11 +15425,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15821,11 +15849,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16243,11 +16273,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32667,11 +32699,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32896,11 +32930,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -33101,11 +33137,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -43396,11 +43434,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44182,11 +44222,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44745,11 +44787,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45308,11 +45352,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45871,11 +45917,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46447,11 +46495,13 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                     | "WORK_EXPORT_SOURCE_INVALID"
                     | "WORK_EXPORT_NOT_READY"
                     | "WORK_EXPORT_EXPIRED"
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
+                    | "WORK_EXPORT_INTEGRITY_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -46808,11 +46858,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47191,11 +47243,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47492,11 +47546,13 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_IDEMPOTENCY_CONFLICT"
                   | "WORK_EXPORT_SOURCE_INVALID"
                   | "WORK_EXPORT_NOT_READY"
                   | "WORK_EXPORT_EXPIRED"
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
+                  | "WORK_EXPORT_INTEGRITY_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47532,11 +47588,21 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description Completed work export artifact */
       200: {
         headers: {
+          /** @description RFC 5987 encoded attachment filename */
+          "Content-Disposition"?: string;
+          /** @description SHA-256 checksum of the returned artifact */
+          "X-Export-Checksum"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "text/plain": string;
+          "text/markdown": string;
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
+          "application/epub+zip": string;
+        };
       };
     };
   };

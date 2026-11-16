@@ -3425,11 +3425,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -4243,11 +4245,13 @@
                                   "ACCOUNT_DELETION_NOT_FOUND",
                                   "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                   "ACCOUNT_DELETION_INVALID_STATE",
+                                  "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                   "WORK_EXPORT_SOURCE_INVALID",
                                   "WORK_EXPORT_NOT_READY",
                                   "WORK_EXPORT_EXPIRED",
                                   "WORK_EXPORT_SOURCE_CHANGED",
                                   "WORK_EXPORT_RENDER_FAILED",
+                                  "WORK_EXPORT_INTEGRITY_FAILED",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -22097,11 +22101,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -23642,11 +23648,13 @@
                                   "ACCOUNT_DELETION_NOT_FOUND",
                                   "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                   "ACCOUNT_DELETION_INVALID_STATE",
+                                  "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                   "WORK_EXPORT_SOURCE_INVALID",
                                   "WORK_EXPORT_NOT_READY",
                                   "WORK_EXPORT_EXPIRED",
                                   "WORK_EXPORT_SOURCE_CHANGED",
                                   "WORK_EXPORT_RENDER_FAILED",
+                                  "WORK_EXPORT_INTEGRITY_FAILED",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -24607,11 +24615,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -25564,11 +25574,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -26521,11 +26533,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -27527,11 +27541,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -29011,11 +29027,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30242,11 +30260,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30870,11 +30890,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -31166,11 +31188,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -32058,11 +32082,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -33199,11 +33225,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -34356,11 +34384,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -35521,11 +35551,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -90296,11 +90328,13 @@
                                       "ACCOUNT_DELETION_NOT_FOUND",
                                       "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                       "ACCOUNT_DELETION_INVALID_STATE",
+                                      "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                       "WORK_EXPORT_SOURCE_INVALID",
                                       "WORK_EXPORT_NOT_READY",
                                       "WORK_EXPORT_EXPIRED",
                                       "WORK_EXPORT_SOURCE_CHANGED",
                                       "WORK_EXPORT_RENDER_FAILED",
+                                      "WORK_EXPORT_INTEGRITY_FAILED",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -90683,11 +90717,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -91005,11 +91041,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -121944,11 +121982,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -123518,11 +123558,13 @@
                                   "ACCOUNT_DELETION_NOT_FOUND",
                                   "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                   "ACCOUNT_DELETION_INVALID_STATE",
+                                  "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                   "WORK_EXPORT_SOURCE_INVALID",
                                   "WORK_EXPORT_NOT_READY",
                                   "WORK_EXPORT_EXPIRED",
                                   "WORK_EXPORT_SOURCE_CHANGED",
                                   "WORK_EXPORT_RENDER_FAILED",
+                                  "WORK_EXPORT_INTEGRITY_FAILED",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -125080,11 +125122,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -126634,11 +126678,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -128188,11 +128234,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -129801,11 +129849,13 @@
                                     "ACCOUNT_DELETION_NOT_FOUND",
                                     "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                     "ACCOUNT_DELETION_INVALID_STATE",
+                                    "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                     "WORK_EXPORT_SOURCE_INVALID",
                                     "WORK_EXPORT_NOT_READY",
                                     "WORK_EXPORT_EXPIRED",
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
+                                    "WORK_EXPORT_INTEGRITY_FAILED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -130793,11 +130843,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -130891,8 +130943,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 200
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           },
           {
@@ -131471,11 +131522,13 @@
                                   "ACCOUNT_DELETION_NOT_FOUND",
                                   "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                   "ACCOUNT_DELETION_INVALID_STATE",
+                                  "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                   "WORK_EXPORT_SOURCE_INVALID",
                                   "WORK_EXPORT_NOT_READY",
                                   "WORK_EXPORT_EXPIRED",
                                   "WORK_EXPORT_SOURCE_CHANGED",
                                   "WORK_EXPORT_RENDER_FAILED",
+                                  "WORK_EXPORT_INTEGRITY_FAILED",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -132137,11 +132190,13 @@
                                 "ACCOUNT_DELETION_NOT_FOUND",
                                 "ACCOUNT_DELETION_RECOVERY_EXPIRED",
                                 "ACCOUNT_DELETION_INVALID_STATE",
+                                "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
                                 "WORK_EXPORT_SOURCE_INVALID",
                                 "WORK_EXPORT_NOT_READY",
                                 "WORK_EXPORT_EXPIRED",
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
+                                "WORK_EXPORT_INTEGRITY_FAILED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -132242,7 +132297,48 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Completed work export artifact",
+            "headers": {
+              "Content-Disposition": {
+                "description": "RFC 5987 encoded attachment filename",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Export-Checksum": {
+                "description": "SHA-256 checksum of the returned artifact",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/markdown": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/epub+zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           }
         },
         "tags": ["work-exports"]

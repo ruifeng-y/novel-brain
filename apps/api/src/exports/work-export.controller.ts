@@ -23,6 +23,7 @@ import {
   ApiBody,
   ApiHeader,
   ApiOkResponse,
+  ApiProduces,
   ApiTags,
   type SchemaObject,
 } from "@nestjs/swagger";
@@ -127,6 +128,26 @@ export class WorkExportController {
   }
 
   @Get(":exportId/download")
+  @ApiProduces(
+    "text/plain",
+    "text/markdown",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/epub+zip",
+  )
+  @ApiOkResponse({
+    description: "Completed work export artifact",
+    schema: { type: "string", format: "binary" },
+    headers: {
+      "Content-Disposition": {
+        description: "RFC 5987 encoded attachment filename",
+        schema: { type: "string" },
+      },
+      "X-Export-Checksum": {
+        description: "SHA-256 checksum of the returned artifact",
+        schema: { type: "string", pattern: "^[a-f0-9]{64}$" },
+      },
+    },
+  })
   async download(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
@@ -139,6 +160,7 @@ export class WorkExportController {
       this.context(workId, branchId),
       uuidV7Schema.parse(exportId),
     );
+    response.setHeader("content-length", String(download.bytes.byteLength));
     response.setHeader("content-type", download.contentType);
     response.setHeader(
       "content-disposition",

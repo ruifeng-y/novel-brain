@@ -264,7 +264,7 @@ function renderMarkdown(
         title: chapter.title,
       })}`,
       "",
-      formatMarkdownParagraphs(chapter.content, manifest.options),
+      formatTextParagraphs(chapter.content, manifest.options),
       "",
     );
   }
@@ -280,38 +280,51 @@ function renderDocx(
   chapters: WorkExportChapterSource[],
   supplements: WorkExportSupplementSource[],
 ): Uint8Array {
-  const paragraphs = [
-    manifest.work.title,
-    `作者：${manifest.work.penName}`,
-    `分支：${manifest.branch.name}`,
+  const paragraphs: DocxParagraph[] = [
+    { text: manifest.work.title },
+    { text: `作者：${manifest.work.penName}` },
+    { text: `分支：${manifest.branch.name}` },
   ];
+  let currentVolume: string | null = null;
   for (const chapter of chapters) {
+    const volume = chapter.volumeNumber
+      ? formatTitle(manifest.options.volumeTitleFormat, {
+          number: chapter.volumeNumber,
+          title: chapter.volumeTitle ?? "",
+        })
+      : null;
+    if (volume && volume !== currentVolume) {
+      paragraphs.push({ text: volume });
+      currentVolume = volume;
+    }
     paragraphs.push(
-      formatTitle(manifest.options.chapterTitleFormat, {
-        number: chapter.chapterNumber,
-        title: chapter.title,
-      }),
-      ...chapter.content
-        .normalize("NFC")
-        .split(/\r?\n/u)
-        .map((line) => line.trim())
-        .filter(Boolean),
+      {
+        text: formatTitle(manifest.options.chapterTitleFormat, {
+          number: chapter.chapterNumber,
+          title: chapter.title,
+        }),
+      },
+      ...docxContentParagraphs(chapter.content, manifest.options),
     );
   }
   for (const supplement of supplements) {
-    paragraphs.push(supplement.title, supplement.content.trim());
+    paragraphs.push({ text: supplement.title }, { text: supplement.content.trim() });
   }
-  paragraphs.push("版本清单", stableStringify(manifest));
+  paragraphs.push({ text: "版本清单" }, { text: stableStringify(manifest) });
 
   const documentXml = [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
     "<w:body>",
-    ...paragraphs.map((paragraph) =>
-      paragraph.includes("\n")
-        ? `<w:p><w:r><w:t xml:space="preserve">${xmlEscape(paragraph)}</w:t></w:r></w:p>`
-        : `<w:p><w:r><w:t xml:space="preserve">${xmlEscape(paragraph)}</w:t></w:r></w:p>`,
-    ),
+    ...paragraphs.map((paragraph) => {
+      if (paragraph.spacer) {
+        return "<w:p/>";
+      }
+      const properties = paragraph.firstLineIndent
+        ? '<w:pPr><w:ind w:firstLine="480"/></w:pPr>'
+        : "";
+      return `<w:p>${properties}<w:r><w:t xml:space="preserve">${xmlEscape(paragraph.text)}</w:t></w:r></w:p>`;
+    }),
     '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>',
     "</w:body>",
     "</w:document>",
@@ -383,22 +396,25 @@ function renderEpub(
   chapters: WorkExportChapterSource[],
   supplements: WorkExportSupplementSource[],
 ): Uint8Array {
+  let currentVolume: string | null = null;
   const chapterSections = chapters
-    .map(
-      (chapter) =>
-        `<section id="chapter-${chapter.chapterNumber}"><h2>${xmlEscape(
-          formatTitle(manifest.options.chapterTitleFormat, {
-            number: chapter.chapterNumber,
-            title: chapter.title,
-          }),
-        )}</h2>${chapter.content
-          .normalize("NFC")
-          .split(/\r?\n/u)
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .map((line) => `<p>${xmlEscape(line)}</p>`)
-          .join("")}</section>`,
-    )
+    .map((chapter) => {
+      const volume = chapter.volumeNumber
+        ? formatTitle(manifest.options.volumeTitleFormat, {
+            number: chapter.volumeNumber,
+            title: chapter.volumeTitle ?? "",
+          })
+        : null;
+      const volumeHeading =
+        volume && volume !== currentVolume ? `<h2 class="volume">${xmlEscape(volume)}</h2>` : "";
+      currentVolume = volume ?? currentVolume;
+      return `${volumeHeading}<section id="chapter-${chapter.chapterNumber}"><h2>${xmlEscape(
+        formatTitle(manifest.options.chapterTitleFormat, {
+          number: chapter.chapterNumber,
+          title: chapter.title,
+        }),
+      )}</h2>${epubContentParagraphs(chapter.content, manifest.options)}</section>`;
+    })
     .join("");
   const supplementSections = supplements
     .map(
@@ -412,7 +428,7 @@ function renderEpub(
     '<?xml version="1.0" encoding="UTF-8"?>',
     "<!DOCTYPE html>",
     '<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">',
-    `<head><title>${xmlEscape(manifest.work.title)}</title></head>`,
+    `<head><title>${xmlEscape(manifest.work.title)}</title><style>.volume{margin-top:1.5em}.paragraph{margin:0}.spaced{margin-bottom:1em}.compact{margin-bottom:0}.indent{text-indent:2em}</style></head>`,
     `<body><h1>${xmlEscape(manifest.work.title)}</h1><p>作者：${xmlEscape(
       manifest.work.penName,
     )}</p>${chapterSections}${supplementSections}<section><h2>版本清单</h2><pre>${xmlEscape(
@@ -436,7 +452,7 @@ function renderEpub(
     "<dc:language>zh-CN</dc:language>",
     '<meta property="dcterms:modified">1970-01-01T00:00:00Z</meta>',
     "</metadata>",
-    '<manifest><item id="text" href="text.xhtml" media-type="application/xhtml+xml"/><item id="toc" href="toc.xhtml" media-type="application/xhtml+xml"/><item id="manifest" href="version-manifest.json" media-type="application/json"/></manifest>',
+    '<manifest><item id="text" href="text.xhtml" media-type="application/xhtml+xml"/><item id="toc" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="manifest" href="version-manifest.json" media-type="application/json"/></manifest>',
     '<spine><itemref idref="text"/><itemref idref="toc"/></spine>',
     "</package>",
   ].join("");
@@ -480,11 +496,37 @@ function formatTextParagraphs(content: string, options: WorkExportOptions): stri
   return paragraphs.join(options.paragraphBlankLine ? "\n\n" : "\n");
 }
 
-function formatMarkdownParagraphs(content: string, options: WorkExportOptions): string {
-  return formatTextParagraphs(content, {
-    ...options,
-    paragraphBlankLine: true,
-  });
+interface DocxParagraph {
+  text: string;
+  firstLineIndent?: boolean;
+  spacer?: boolean;
+}
+
+function docxContentParagraphs(content: string, options: WorkExportOptions): DocxParagraph[] {
+  const lines = content
+    .normalize("NFC")
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.flatMap((line, index) => [
+    { text: line, firstLineIndent: options.firstLineIndent },
+    ...(options.paragraphBlankLine && index < lines.length - 1 ? [{ text: "", spacer: true }] : []),
+  ]);
+}
+
+function epubContentParagraphs(content: string, options: WorkExportOptions): string {
+  const classes = [
+    "paragraph",
+    options.paragraphBlankLine ? "spaced" : "compact",
+    ...(options.firstLineIndent ? ["indent"] : []),
+  ].join(" ");
+  return content
+    .normalize("NFC")
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p class="${classes}">${xmlEscape(line)}</p>`)
+    .join("");
 }
 
 function formatTitle(format: string, values: { number: number; title: string }): string {

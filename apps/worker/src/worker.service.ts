@@ -15,6 +15,7 @@ import {
   WORKER_QUEUE_NAME,
   WRITE_ACTION_JOB,
   workerJobSchema,
+  type ExportWorkJob,
   type WorkerJob,
 } from "@novel-brain/contracts";
 import {
@@ -179,9 +180,30 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     let outcome: WorkerJobOutcome | undefined;
     try {
       if (payload.jobType === ACCOUNT_PURGE_TICK_JOB) {
-        await this.accountPurgeProcessor.cleanupExpiredExportReceipts();
-        await this.workExportProcessor.cleanupExpiredReceipts();
-        const dueRequestIds = await this.accountPurgeProcessor.listDueRequestIds();
+        await this.runMaintenance(
+          "account_export_cleanup",
+          () => this.accountPurgeProcessor.cleanupExpiredExportReceipts(),
+          undefined,
+        );
+        await this.runMaintenance(
+          "work_export_cleanup",
+          () => this.workExportProcessor.cleanupExpiredReceipts(),
+          undefined,
+        );
+        await this.runMaintenance(
+          "work_export_recovery",
+          async () => {
+            for (const pending of await this.workExportProcessor.listPendingJobs()) {
+              await this.enqueueRecoveredWorkExport(pending);
+            }
+          },
+          undefined,
+        );
+        const dueRequestIds = await this.runMaintenance(
+          "account_purge_scan",
+          () => this.accountPurgeProcessor.listDueRequestIds(),
+          [],
+        );
         for (const deletionRequestId of dueRequestIds) {
           await this.queue.add(ACCOUNT_PURGE_JOB, accountPurgeJobPayload(deletionRequestId), {
             jobId: accountPurgeJobId(deletionRequestId),
@@ -202,7 +224,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       } else if (payload.jobType === WRITE_ACTION_JOB) {
         await this.writingActionProcessor.process(payload);
       } else if (payload.jobType === EXPORT_WORK_JOB) {
-        outcome = await this.workExportProcessor.process(payload);
+        outcome = await this.workExportProcessor.process(payload, {
+          number: job.attemptsMade + 1,
+          maxAttempts: Math.max(1, job.opts.attempts ?? 1),
+        });
       } else if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
         await this.goldenThreeProcessor.process(payload);
       } else {
@@ -221,6 +246,49 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       if (outcome) {
         void this.metrics.recordJob(payload.jobType, outcome);
       }
+    }
+  }
+
+  private async enqueueRecoveredWorkExport(payload: ExportWorkJob): Promise<void> {
+    const existing = await this.queue.getJob(payload.jobId);
+    if (!existing) {
+      await this.addWorkExportJob(payload);
+      return;
+    }
+    const state = await existing.getState();
+    if (state === "failed" || state === "completed") {
+      await existing.retry(state, { resetAttemptsMade: true });
+      return;
+    }
+    if (!["active", "delayed", "prioritized", "waiting", "waiting-children"].includes(state)) {
+      await existing.remove();
+      await this.addWorkExportJob(payload);
+    }
+  }
+
+  private async addWorkExportJob(payload: ExportWorkJob): Promise<void> {
+    await this.queue.add(EXPORT_WORK_JOB, payload, {
+      jobId: payload.jobId,
+      removeOnComplete: false,
+      removeOnFail: false,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 1_000 },
+    });
+  }
+
+  private async runMaintenance<T>(
+    operation: string,
+    action: () => Promise<T>,
+    fallback: T,
+  ): Promise<T> {
+    try {
+      return await action();
+    } catch {
+      this.logger.warn(
+        { event: "worker.maintenance.failed", operation },
+        "Independent maintenance task failed",
+      );
+      return fallback;
     }
   }
 

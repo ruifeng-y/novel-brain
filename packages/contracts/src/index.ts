@@ -142,11 +142,13 @@ export const ERROR_CODES = [
   "ACCOUNT_DELETION_NOT_FOUND",
   "ACCOUNT_DELETION_RECOVERY_EXPIRED",
   "ACCOUNT_DELETION_INVALID_STATE",
+  "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
   "WORK_EXPORT_SOURCE_INVALID",
   "WORK_EXPORT_NOT_READY",
   "WORK_EXPORT_EXPIRED",
   "WORK_EXPORT_SOURCE_CHANGED",
   "WORK_EXPORT_RENDER_FAILED",
+  "WORK_EXPORT_INTEGRITY_FAILED",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -5075,7 +5077,7 @@ export type WorkExportReceipt = z.infer<typeof workExportReceiptSchema>;
 
 export const workExportListQuerySchema = z
   .object({
-    cursor: z.string().trim().min(1).max(200).optional(),
+    cursor: uuidV7Schema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
   })
   .strict();

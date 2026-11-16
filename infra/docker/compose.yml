@@ -122,6 +122,11 @@ services:
       TRACE_ENDPOINT: ${TRACE_ENDPOINT:-}
       LOG_CANARY_VALUES: ${LOG_CANARY_VALUES:-}
       STORAGE_HEALTH_URL: http://minio:9000/minio/health/live
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-novelbrain}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-novelbrain-storage-secret}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-novelbrain}
     ports:
       - "127.0.0.1:${API_PORT:-3001}:3001"
     depends_on:
@@ -160,6 +165,11 @@ services:
       TRACE_ENDPOINT: ${TRACE_ENDPOINT:-}
       LOG_CANARY_VALUES: ${LOG_CANARY_VALUES:-}
       STORAGE_HEALTH_URL: http://minio:9000/minio/health/live
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-novelbrain}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-novelbrain-storage-secret}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-novelbrain}
     depends_on:
       postgres:
         condition: service_healthy

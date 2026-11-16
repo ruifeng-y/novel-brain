@@ -90,6 +90,63 @@ export class WorkerAccountPurgeRepository implements OnModuleDestroy {
     }
   }
 
+  async listExportObjectKeys(deletionRequestId: string): Promise<string[]> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await setSystemRole(client);
+      const result = await client.query<{ artifact_object_key: string }>(
+        `SELECT receipt.artifact_object_key
+           FROM deletion_requests request
+           JOIN work_export_receipts receipt ON receipt.user_id = request.user_id
+          WHERE request.id = $1
+            AND request.purge_after <= now()
+            AND request.status NOT IN ('completed', 'recovered')
+            AND request.user_id IS NOT NULL
+            AND receipt.artifact_object_key IS NOT NULL
+          ORDER BY receipt.created_at`,
+        [deletionRequestId],
+      );
+      await client.query("COMMIT");
+      return result.rows.map((row) => row.artifact_object_key);
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async markObjectDeletionFailed(deletionRequestId: string, message: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await setSystemRole(client);
+      await client.query(
+        `UPDATE deletion_requests
+            SET status = 'failed',
+                failure = $2::jsonb,
+                updated_at = now()
+          WHERE id = $1
+            AND status NOT IN ('completed', 'recovered')`,
+        [
+          deletionRequestId,
+          JSON.stringify({
+            code: "ACCOUNT_PURGE_RETRYABLE",
+            message,
+            retryable: true,
+          }),
+        ],
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async purge(deletionRequestId: string): Promise<AccountPurgeResult> {
     const target = await this.claim(deletionRequestId);
     if (typeof target === "string") {

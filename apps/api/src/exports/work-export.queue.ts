@@ -24,7 +24,8 @@ export class WorkExportQueue implements OnModuleDestroy {
       jobId: payload.jobId,
       removeOnComplete: false,
       removeOnFail: false,
-      attempts: 1,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 1_000 },
     });
   }
 

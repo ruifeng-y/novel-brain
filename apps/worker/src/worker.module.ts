@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { AgentGrantStore } from "@novel-brain/db";
 import type { AiGateway } from "@novel-brain/ai";
 import { GoldenThreeRepository } from "@novel-brain/golden-three";
+import { createObjectStorageFromEnvironment, OBJECT_STORAGE } from "@novel-brain/storage";
 import Redis from "ioredis";
 
 import { AgentGrantGuard, WorkerAgentGrantStore } from "./agent-runtime/agent-grant.guard";
@@ -110,6 +111,10 @@ import { WorkerWorkExportRepository } from "./exports/work-export.repository";
     SummaryRebuildProcessor,
     WritingActionProcessor,
     WorkerWorkExportRepository,
+    {
+      provide: OBJECT_STORAGE,
+      useFactory: () => createObjectStorageFromEnvironment(),
+    },
     WorkExportProcessor,
     {
       provide: AI_GATEWAY,

@@ -159,9 +159,49 @@ describe("work export artifact", () => {
     const xhtml = new TextDecoder().decode(
       epubEntries.find((entry) => entry.name === "OEBPS/text.xhtml")?.data,
     );
+    const packageDocument = new TextDecoder().decode(
+      epubEntries.find((entry) => entry.name === "OEBPS/content.opf")?.data,
+    );
     expect(xhtml).toContain("第一段。");
     expect(xhtml).toContain("第二段。");
     expect(xhtml).toContain(epub.manifest.manifestHash);
+    expect(packageDocument).toContain('properties="nav"');
+  });
+
+  it("applies volume titles, paragraph spacing and first-line indentation to DOCX and EPUB", () => {
+    const options = {
+      ...exportInput("docx", "第一段。\n第二段。").request.options,
+      volumeTitleFormat: "卷{number}·{title}",
+      paragraphBlankLine: false,
+      firstLineIndent: true,
+    };
+    const docx = buildWorkExportArtifact({
+      ...exportInput("docx", "第一段。\n第二段。"),
+      request: {
+        ...exportInput("docx", "第一段。\n第二段。").request,
+        options,
+      },
+    });
+    const docxXml = new TextDecoder().decode(
+      readZipEntries(docx.bytes).find((entry) => entry.name === "word/document.xml")?.data,
+    );
+    expect(docxXml).toContain("卷1·入山");
+    expect(docxXml).toContain('<w:ind w:firstLine="480"/>');
+    expect(docxXml).toContain("第一段。");
+    expect(docxXml.indexOf("第一段。")).toBeLessThan(docxXml.indexOf("第二段。"));
+
+    const epub = buildWorkExportArtifact({
+      ...exportInput("epub", "第一段。\n第二段。"),
+      request: {
+        ...exportInput("epub", "第一段。\n第二段。").request,
+        options,
+      },
+    });
+    const xhtml = new TextDecoder().decode(
+      readZipEntries(epub.bytes).find((entry) => entry.name === "OEBPS/text.xhtml")?.data,
+    );
+    expect(xhtml).toContain('class="volume">卷1·入山');
+    expect(xhtml).toContain('class="paragraph compact indent">第一段。');
   });
 
   it("handles a large manuscript without changing character accounting", () => {
@@ -170,6 +210,18 @@ describe("work export artifact", () => {
     expect(artifact.manifest.characterCount).toBe(1_200_000);
     expect(artifact.bytes.byteLength).toBeGreaterThan(1_200_000);
     expect(artifact.checksum).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("packages large DOCX and EPUB manuscripts deterministically", () => {
+    const content = "龙".repeat(190_000);
+    for (const format of ["docx", "epub"] as const) {
+      const first = buildWorkExportArtifact(exportInput(format, content));
+      const second = buildWorkExportArtifact(exportInput(format, content));
+      expect(first.manifest.characterCount).toBe(190_000);
+      expect(first.bytes.byteLength).toBeGreaterThan(1_000);
+      expect(first.bytes).toEqual(second.bytes);
+      expect(first.checksum).toBe(second.checksum);
+    }
   });
 });
 
