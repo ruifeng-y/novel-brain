@@ -25,7 +25,7 @@
 
 Postgres 使用 custom-format `pg_dump`；MinIO 使用 `mc mirror --preserve`。manifest 固化表级精确行数、FK 约束、对象 key/size/SHA-256、对象引用和 migration 文件 checksum。
 
-MinIO 没有跨数据库事务。`backup:create` 默认先检查并停止正在运行的 API/Worker，完成 Postgres dump 和对象镜像后自动恢复服务；如果存在 Compose 之外的数据库或对象写入方，仍必须安排维护窗口。doctor 脚本会拒绝没有 `completion.json` 的中断备份。恢复前不得把备份目录复制回生产并覆盖现有 volume。
+MinIO 没有跨数据库事务。`backup:create` 默认先检查并停止正在运行的 API/Worker，完成 Postgres dump 和对象镜像后自动恢复服务；如果存在 Compose 之外的数据库或对象写入方，仍必须安排维护窗口。重启失败不会被吞掉：命令返回失败并写入 `writer-restart-failed.json`，运维必须先手动启动写服务。doctor 脚本会拒绝没有 `completion.json` 的中断备份。恢复前不得把备份目录复制回生产并覆盖现有 volume。
 
 对象与数据库的引用由 `infra/backup/object-references.json` 登记。新增对象存储列时，同一变更必须更新该登记；当前覆盖 `users.avatar_url` 和 `pen_names.avatar_url`。
 
@@ -76,7 +76,7 @@ pnpm backup:orphans -- --backup D:\backups\novelbrain\<backup-id> --project nove
 pnpm backup:orphans -- --backup D:\backups\novelbrain\<backup-id> --project novel-brain-m0 --minimum-age-days 30 --apply --confirm-bucket novelbrain
 ```
 
-只有同时满足“未被当前数据库引用”和“超过最小年龄”的对象才进入候选；脚本从实时 bucket 清单和当前数据库引用计算，不复用历史备份状态。apply 必须显式确认 bucket，audit 写入 `artifacts/backups/audits/`，包含 audit ID、当前引用数、候选、大小和删除结果。
+只有同时满足“未被当前数据库引用”和“超过最小年龄”的对象才进入候选；脚本从实时 bucket 清单和当前数据库引用计算，不复用历史备份状态。apply 时先持久化 `applying` audit，删除前再次读取引用，并用 `mc rm --older-than` 让年龄限制与删除处于同一次对象操作；若同名对象在窗口内被重写，会保留并记为 skipped。audit 写入 `artifacts/backups/audits/`，包含 audit ID、当前引用数、候选、大小、跳过和删除结果。
 
 ## 7. Drill 与证据
 

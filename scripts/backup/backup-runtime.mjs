@@ -136,7 +136,7 @@ function dockerMountPath(value) {
 }
 
 async function runMinioShell(project, hostDirectory, script, env = {}) {
-  await compose(
+  return compose(
     project,
     [
       "run",
@@ -181,9 +181,21 @@ async function mirrorDirectoryToBucket(project, bucket, sourceDirectory, env = {
   );
 }
 
-async function deleteBucketObject(project, bucket, key, env = {}) {
+async function deleteBucketObject(project, bucket, key, minimumAgeDays, env = {}) {
   parseObjectReference(`storage://${bucket}/${key}`, bucket);
-  await runMinioShell(project, os.tmpdir(), mcAlias(`mc rm "local/${bucket}/${key}"`), env);
+  const result = await runMinioShell(
+    project,
+    os.tmpdir(),
+    mcAlias(
+      [
+        `if ! mc stat "local/${bucket}/${key}" >/dev/null 2>&1; then echo MISSING; exit 0; fi`,
+        `mc rm --older-than "${minimumAgeDays}d" "local/${bucket}/${key}"`,
+        `if mc stat "local/${bucket}/${key}" >/dev/null 2>&1; then echo REMAINED; else echo DELETED; fi`,
+      ].join("; "),
+    ),
+    env,
+  );
+  return result.stdout.trim().split(/\r?\n/u).at(-1);
 }
 
 async function psql(project, sql, env = {}) {
@@ -535,6 +547,8 @@ export async function createBackup({
     `${JSON.stringify({ status: "backup_in_progress", backupId, startedAt: now.toISOString() }, null, 2)}\n`,
   );
 
+  let backupResult;
+  let backupError;
   const snapshotStartedAt = new Date().toISOString();
   try {
     if (quiesceWriters) {
@@ -625,14 +639,21 @@ export async function createBackup({
     await writeBackupCompletion(incompleteDirectory, sha256(manifestText));
     await fs.rm(path.join(incompleteDirectory, "state.json"));
     await fs.rename(incompleteDirectory, finalDirectory);
-    return {
+    backupResult = {
       directory: finalDirectory,
       manifest,
       manifestSha256: sha256(manifestText),
       dataset: await fileSizes(finalDirectory),
     };
+  } catch (error) {
+    backupError = error;
   } finally {
-    await resumeWriters(project, pausedWriters, env).catch(() => {});
+    let resumeError;
+    try {
+      await resumeWriters(project, pausedWriters, env);
+    } catch (error) {
+      resumeError = error;
+    }
     await fs.rm(plaintextStaging, { recursive: true, force: true });
     if (await fs.stat(incompleteDirectory).catch(() => null)) {
       await fs.writeFile(
@@ -640,7 +661,40 @@ export async function createBackup({
         `${JSON.stringify({ status: "backup_incomplete", backupId, failedAt: new Date().toISOString() }, null, 2)}\n`,
       );
     }
+    if (resumeError) {
+      const failureDirectory = (await fs.stat(finalDirectory).catch(() => null))
+        ? finalDirectory
+        : incompleteDirectory;
+      await fs.writeFile(
+        path.join(failureDirectory, "writer-restart-failed.json"),
+        `${JSON.stringify(
+          {
+            status: "writer_restart_failed",
+            backupId,
+            failedAt: new Date().toISOString(),
+            services: pausedWriters,
+            error: resumeError instanceof Error ? resumeError.message : String(resumeError),
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
+      );
+      const restartError = new Error(
+        `Backup could not restart writer services: ${pausedWriters.join(", ")}. Start them manually before serving traffic.`,
+      );
+      backupError = backupError
+        ? new AggregateError(
+            [backupError, restartError],
+            "Backup and writer service restart both failed.",
+          )
+        : restartError;
+    }
   }
+  if (backupError) {
+    throw backupError;
+  }
+  return backupResult;
 }
 
 function resolveInside(root, relativePath) {
@@ -1214,7 +1268,17 @@ export async function runOrphanAudit({
       deleted: [],
       skipped: [],
     };
+    const auditPath = path.join(
+      auditDirectory,
+      `${now.toISOString().replaceAll(/[-:.]/gu, "")}-${audit.auditId}.json`,
+    );
+    const writeAudit = async () => {
+      await fs.mkdir(auditDirectory, { recursive: true });
+      await fs.writeFile(auditPath, `${JSON.stringify(audit, null, 2)}\n`, "utf8");
+    };
     if (apply) {
+      audit.status = "applying";
+      await writeAudit();
       for (const candidate of plan.candidates) {
         const latestReferences = await readObjectReferences(project, env);
         const latestKeys = new Set(
@@ -1227,18 +1291,34 @@ export async function runOrphanAudit({
             ...candidate,
             reason: "became_referenced_before_delete",
           });
+          await writeAudit();
           continue;
         }
-        await deleteBucketObject(project, manifest.objects.bucket, candidate.key, env);
-        audit.deleted.push(candidate);
+        const deletion = await deleteBucketObject(
+          project,
+          manifest.objects.bucket,
+          candidate.key,
+          minimumAgeDays,
+          env,
+        );
+        if (deletion === "DELETED") {
+          audit.deleted.push(candidate);
+        } else {
+          audit.skipped.push({
+            ...candidate,
+            reason:
+              deletion === "MISSING"
+                ? "object_missing_before_delete"
+                : "object_changed_before_delete",
+          });
+        }
+        await writeAudit();
       }
+      audit.status = "completed";
+    } else {
+      audit.status = "dry_run";
     }
-    const auditPath = path.join(
-      auditDirectory,
-      `${now.toISOString().replaceAll(/[-:.]/gu, "")}-${audit.auditId}.json`,
-    );
-    await fs.mkdir(auditDirectory, { recursive: true });
-    await fs.writeFile(auditPath, `${JSON.stringify(audit, null, 2)}\n`, "utf8");
+    await writeAudit();
     return { ...audit, auditPath };
   } finally {
     await fs.rm(inventoryDirectory, { recursive: true, force: true });

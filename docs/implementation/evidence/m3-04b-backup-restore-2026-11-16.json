@@ -2,18 +2,18 @@
   "formatVersion": 1,
   "ticket": 136,
   "status": "passed",
-  "drillStartedAt": "2026-11-16T13:39:56.372Z",
-  "completedAt": "2026-11-16T13:40:41.989Z",
-  "sourceCommit": "184f2069952c6323c7153ed129d4dda413cf2373",
-  "backupId": "20261116T134007802Z-184f2069952c-e6d3902f",
-  "backupPath": "artifacts/backups/drill/20261116T134007802Z-184f2069952c-e6d3902f",
-  "snapshotStartedAt": "2026-11-16T13:40:07.884Z",
-  "snapshotCompletedAt": "2026-11-16T13:40:11.067Z",
-  "lastSourceWriteAt": "2026-11-16T13:40:07.801Z",
+  "drillStartedAt": "2026-11-16T13:50:43.785Z",
+  "completedAt": "2026-11-16T13:51:30.085Z",
+  "sourceCommit": "6a1fa18df95975dfc9e5569f80c4022550cc5b37",
+  "backupId": "20261116T135055082Z-6a1fa18df959-42f64500",
+  "backupPath": "artifacts/backups/drill/20261116T135055082Z-6a1fa18df959-42f64500",
+  "snapshotStartedAt": "2026-11-16T13:50:55.293Z",
+  "snapshotCompletedAt": "2026-11-16T13:50:58.437Z",
+  "lastSourceWriteAt": "2026-11-16T13:50:55.080Z",
   "dataset": {
     "backupFiles": 5,
-    "backupBytes": 704388,
-    "databasePlaintextBytes": 680475,
+    "backupBytes": 704387,
+    "databasePlaintextBytes": 680474,
     "objectCount": 2,
     "objectBytes": 46,
     "rowCount": 67
@@ -23,8 +23,8 @@
       "rpoHours": 24,
       "rtoHours": 4
     },
-    "measuredRpoSeconds": 0.083,
-    "measuredRtoSeconds": 13.007,
+    "measuredRpoSeconds": 0.213,
+    "measuredRtoSeconds": 13.461,
     "rpoWithinTarget": true,
     "rtoWithinTarget": true,
     "note": "Single deterministic drill; this does not certify a production SLA."
@@ -32,8 +32,8 @@
   "verification": {
     "offline": {
       "ok": true,
-      "backupId": "20261116T134007802Z-184f2069952c-e6d3902f",
-      "databaseBytes": 680475,
+      "backupId": "20261116T135055082Z-6a1fa18df959-42f64500",
+      "databaseBytes": 680474,
       "objectCount": 2,
       "objectBytes": 46
     },
@@ -62,13 +62,13 @@
       "scenario": "missing_object",
       "expectedFailure": true,
       "passed": true,
-      "message": "Encrypted object artefact is missing: users/191ffbf3-3747-4bd4-a9dd-ffefde28e21a/avatar.txt."
+      "message": "Encrypted object artefact is missing: users/6db9b3c7-e3df-409b-a967-c56c35726ed8/avatar.txt."
     },
     {
       "scenario": "corrupt_object",
       "expectedFailure": true,
       "passed": true,
-      "message": "Encrypted object checksum mismatch: users/191ffbf3-3747-4bd4-a9dd-ffefde28e21a/avatar.txt."
+      "message": "Encrypted object checksum mismatch: users/6db9b3c7-e3df-409b-a967-c56c35726ed8/avatar.txt."
     },
     {
       "scenario": "interrupted_restore",
@@ -86,25 +86,25 @@
   "orphanCleanup": {
     "dryRunCandidates": [
       {
-        "key": "users/191ffbf3-3747-4bd4-a9dd-ffefde28e21a/trash/stale.tmp",
+        "key": "users/6db9b3c7-e3df-409b-a967-c56c35726ed8/trash/stale.tmp",
         "reason": "unreferenced_and_aged",
         "size": 26
       }
     ],
     "deleted": [
       {
-        "key": "users/191ffbf3-3747-4bd4-a9dd-ffefde28e21a/trash/stale.tmp",
+        "key": "users/6db9b3c7-e3df-409b-a967-c56c35726ed8/trash/stale.tmp",
         "reason": "unreferenced_and_aged",
         "size": 26
       }
     ],
     "auditIds": [
-      "39d93f45-6ed9-44de-910e-f50f48a0b000",
-      "82e7e7e1-b878-454d-9b57-640696af264a"
+      "e6cce80b-e976-4a8d-808c-5f836d1c5902",
+      "54169e3c-7da8-4bf3-9fa9-7ba82f14683f"
     ],
     "auditPaths": [
-      "artifacts/backups/audits/20261116T134037702Z-39d93f45-6ed9-44de-910e-f50f48a0b000.json",
-      "artifacts/backups/audits/20261116T134039165Z-82e7e7e1-b878-454d-9b57-640696af264a.json"
+      "artifacts/backups/audits/20261116T135125717Z-e6cce80b-e976-4a8d-808c-5f836d1c5902.json",
+      "artifacts/backups/audits/20261116T135127154Z-54169e3c-7da8-4bf3-9fa9-7ba82f14683f.json"
     ]
   },
   "environment": {
