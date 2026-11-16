@@ -21,9 +21,9 @@ export class AccountLifecycleService {
     private readonly rateLimiter: AuthRateLimiterService,
   ) {}
 
-  async createExport(userId: string, audit: LifecycleAuditContext) {
+  async createExport(userId: string, audit: LifecycleAuditContext, idempotencyKey?: string) {
     await this.rateLimiter.consumeAccountExport(userId, audit.ip);
-    return this.repository.createExportReceipt(userId, audit);
+    return this.repository.createExportReceipt(userId, audit, idempotencyKey);
   }
 
   async downloadExport(userId: string, receiptId: string) {
@@ -42,6 +42,7 @@ export class AccountLifecycleService {
     sessionId: string;
     request: AccountDeletionCreateRequest;
     audit: LifecycleAuditContext;
+    idempotencyKey?: string;
   }): Promise<AccountDeletionRequest> {
     const deletion = await this.repository.createDeletionRequest(input);
     if (deletion === "export_required") {
@@ -49,6 +50,9 @@ export class AccountLifecycleService {
     }
     if (deletion === "export_expired") {
       throw new ApiError(400, "ACCOUNT_EXPORT_EXPIRED", "导出文件已过期，请重新导出");
+    }
+    if (deletion === "export_stale") {
+      throw new ApiError(400, "ACCOUNT_EXPORT_STALE", "账号或作品已发生变化，请重新导出");
     }
     await this.purgeQueue.enqueue(deletion.id, deletion.purgeAfter);
     return deletion;

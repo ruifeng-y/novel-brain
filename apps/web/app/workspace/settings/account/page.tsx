@@ -21,8 +21,8 @@ export default async function AccountSettingsPage() {
         <section className="page-head">
           <div>
             <p className="eyebrow">账号与模型</p>
-            <h1>账号正在 30 天恢复期内</h1>
-            <p className="page-sub">恢复账号后即可继续访问作品；期满后数据将永久删除。</p>
+            <h1>账号正在注销流程中</h1>
+            <p className="page-sub">可在恢复截止前恢复账号；期满后数据将永久删除。</p>
           </div>
         </section>
         <div className="account-security-grid">

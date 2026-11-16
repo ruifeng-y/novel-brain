@@ -62,7 +62,10 @@ export function AccountDataPrivacyPanel() {
       const csrfToken = await getCsrfToken();
       const created = await fetch("/api/v1/users/me/export", {
         method: "POST",
-        headers: { "x-csrf-token": csrfToken },
+        headers: {
+          "idempotency-key": crypto.randomUUID(),
+          "x-csrf-token": csrfToken,
+        },
       });
       if (!created.ok) {
         throw new Error(await readError(created, "账号数据导出失败。"));
@@ -104,7 +107,11 @@ export function AccountDataPrivacyPanel() {
       const csrfToken = await getCsrfToken();
       const response = await fetch("/api/v1/users/me/delete", {
         method: "POST",
-        headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": crypto.randomUUID(),
+          "x-csrf-token": csrfToken,
+        },
         body: JSON.stringify({ exportReceiptId: receipt.id, confirm: true }),
       });
       if (!response.ok) {
@@ -198,7 +205,7 @@ export function AccountDataPrivacyPanel() {
           </div>
           <button
             className="btn btn-ghost btn-small"
-            disabled={busy !== "" || isRecoverable}
+            disabled={busy !== "" || deletion !== null}
             onClick={exportAccount}
             type="button"
           >
@@ -234,7 +241,9 @@ export function AccountDataPrivacyPanel() {
                   {deletion.failure?.retryable
                     ? "部分数据清理未完成，系统会自动重试"
                     : "部分数据清理未完成，请稍后重试或联系支持"}
-                  {failedStoreCount > 0 ? `（${failedStoreCount} 项待重试）` : ""}
+                  {deletion.failure?.retryable && failedStoreCount > 0
+                    ? `（${failedStoreCount} 项待重试）`
+                    : ""}
                 </small>
               ) : null}
             </div>

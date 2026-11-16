@@ -3267,7 +3267,9 @@ export interface operations {
   AccountLifecycleController_createExport: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "idempotency-key": string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -3324,14 +3326,43 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {number} */
+              schemaVersion: 1;
+              /** @enum {string} */
+              inventoryVersion: "account-export-v1";
+              receiptId: string;
+              /** Format: date-time */
+              generatedAt: string;
+              inventory: {
+                store: string;
+                rowCount: number;
+              }[];
+              data: {
+                [key: string]: {
+                  [key: string]: unknown;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };
   AccountLifecycleController_requestDeletion: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "idempotency-key": string;
+      };
       path?: never;
       cookie?: never;
     };
@@ -4615,6 +4646,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -4958,6 +4990,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -10883,6 +10916,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -11450,6 +11484,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -11843,6 +11878,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -12237,6 +12273,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -12631,6 +12668,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -13038,6 +13076,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
@@ -13554,6 +13593,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
@@ -13989,6 +14029,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
@@ -14279,6 +14320,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -14479,6 +14521,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -14827,6 +14870,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
@@ -15238,6 +15282,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
@@ -15654,6 +15699,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
@@ -16070,6 +16116,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
@@ -32488,6 +32535,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
@@ -32711,6 +32759,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -32910,6 +32959,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -43199,6 +43249,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -43979,6 +44030,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -44536,6 +44588,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -45093,6 +45146,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -45650,6 +45704,7 @@ export interface operations {
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
                   | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
@@ -46220,6 +46275,7 @@ export interface operations {
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
                     | "ACCOUNT_EXPORT_EXPIRED"
+                    | "ACCOUNT_EXPORT_STALE"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"

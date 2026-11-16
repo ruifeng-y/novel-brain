@@ -138,6 +138,7 @@ export const ERROR_CODES = [
   "VERSION_NODE_NOT_FOUND",
   "IMPORT_NOT_READY",
   "ACCOUNT_EXPORT_EXPIRED",
+  "ACCOUNT_EXPORT_STALE",
   "ACCOUNT_DELETION_NOT_FOUND",
   "ACCOUNT_DELETION_RECOVERY_EXPIRED",
   "ACCOUNT_DELETION_INVALID_STATE",
@@ -403,6 +404,19 @@ export const accountExportReceiptSchema = z
   .strict();
 export type AccountExportReceipt = z.infer<typeof accountExportReceiptSchema>;
 export const accountExportReceiptResponseSchema = apiEnvelopeSchema(accountExportReceiptSchema);
+
+export const accountExportPackageSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    inventoryVersion: z.literal("account-export-v1"),
+    receiptId: uuidV7Schema,
+    generatedAt: z.string().datetime(),
+    inventory: z.array(accountExportInventoryEntrySchema),
+    data: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))),
+  })
+  .strict();
+export type AccountExportPackage = z.infer<typeof accountExportPackageSchema>;
+export const accountExportDownloadResponseSchema = apiEnvelopeSchema(accountExportPackageSchema);
 
 export const accountDeletionStatusSchema = z.enum([
   "recovery_pending",

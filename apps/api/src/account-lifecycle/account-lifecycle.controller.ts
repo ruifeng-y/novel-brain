@@ -1,8 +1,20 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, Res, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import {
   accountDeletionCreateRequestSchema,
   accountDeletionRecoverResponseSchema,
   accountDeletionResponseSchema,
+  accountExportDownloadResponseSchema,
   accountExportReceiptResponseSchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
@@ -33,6 +45,7 @@ function schemaOf(schema: z.ZodType): SchemaObject {
 
 const deletionCreateBodySchema = schemaOf(accountDeletionCreateRequestSchema);
 const exportReceiptResponseJsonSchema = schemaOf(accountExportReceiptResponseSchema);
+const exportDownloadResponseJsonSchema = schemaOf(accountExportDownloadResponseSchema);
 const deletionResponseJsonSchema = schemaOf(accountDeletionResponseSchema);
 const deletionRecoverResponseJsonSchema = schemaOf(accountDeletionRecoverResponseSchema);
 
@@ -48,11 +61,15 @@ export class AccountLifecycleController {
     description: "Created account export receipt",
     schema: exportReceiptResponseJsonSchema,
   })
-  async createExport(@Req() request: AuthenticatedRequest) {
+  async createExport(
+    @Req() request: AuthenticatedRequest,
+    @Headers("idempotency-key") idempotencyKey?: string,
+  ) {
     const requestId = createRequestId();
     const receipt = await this.service.createExport(
       this.userId(request),
       this.auditContext(request, requestId),
+      normalizeIdempotencyKey(idempotencyKey),
     );
     return accountExportReceiptResponseSchema.parse({
       data: receipt,
@@ -63,21 +80,30 @@ export class AccountLifecycleController {
 
   @Get("export/:receiptId/download")
   @ApiProduces("application/json")
-  @ApiOkResponse({ description: "Downloaded account export package" })
+  @ApiOkResponse({
+    description: "Downloaded account export package",
+    schema: exportDownloadResponseJsonSchema,
+  })
   async downloadExport(
     @Req() request: AuthenticatedRequest,
     @Param("receiptId") receiptId: string,
     @Res() response: Response,
   ): Promise<void> {
+    const requestId = createRequestId();
     const download = await this.service.downloadExport(
       this.userId(request),
       uuidV7Schema.parse(receiptId),
     );
+    const packageBody = accountExportDownloadResponseSchema.parse({
+      data: JSON.parse(download.payload) as unknown,
+      requestId,
+      meta: {},
+    });
     response.setHeader("content-type", "application/json; charset=utf-8");
     response.setHeader("content-disposition", `attachment; filename="novel-brain-account.json"`);
     response.setHeader("x-export-checksum", download.checksum);
     response.setHeader("x-export-inventory-version", download.inventoryVersion);
-    response.send(download.payload);
+    response.send(JSON.stringify(packageBody));
   }
 
   @Post("delete")
@@ -88,16 +114,22 @@ export class AccountLifecycleController {
     description: "Account deletion request accepted",
     schema: deletionResponseJsonSchema,
   })
-  async requestDeletion(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+  async requestDeletion(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+    @Headers("idempotency-key") idempotencyKey?: string,
+  ) {
     if (!request.auth) {
       throw new Error("Authenticated request is missing auth context");
     }
     const requestId = createRequestId();
+    const normalizedIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
     const deletion = await this.service.requestDeletion({
       userId: request.auth.user.id,
       sessionId: request.auth.session.id,
       request: accountDeletionCreateRequestSchema.parse(body),
       audit: this.auditContext(request, requestId),
+      ...(normalizedIdempotencyKey ? { idempotencyKey: normalizedIdempotencyKey } : {}),
     });
     return accountDeletionResponseSchema.parse({
       data: deletion,
@@ -157,4 +189,9 @@ export class AccountLifecycleController {
       userAgent: userAgent || "unknown",
     };
   }
+}
+
+function normalizeIdempotencyKey(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized.slice(0, 200) : undefined;
 }

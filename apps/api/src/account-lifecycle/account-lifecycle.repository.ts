@@ -61,11 +61,19 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
   async createExportReceipt(
     userId: string,
     audit: LifecycleAuditContext,
+    idempotencyKey?: string,
   ): Promise<AccountExportReceipt> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
+      if (idempotencyKey) {
+        const replay = await this.idempotentExportReplay(client, userId, idempotencyKey);
+        if (replay) {
+          await client.query("COMMIT");
+          return replay;
+        }
+      }
       const generatedAt = new Date();
       const expiresAt = new Date(
         generatedAt.getTime() + ACCOUNT_EXPORT_RETENTION_DAYS * 86_400_000,
@@ -135,6 +143,14 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
                  'allowed', $4, $5, $6)`,
         [uuidv7(), userId, receiptId, audit.requestId, audit.ip, audit.userAgent],
       );
+      if (idempotencyKey) {
+        await client.query(
+          `INSERT INTO idempotency_records
+             (id, user_id, scope, idempotency_key, request_hash, resource_type, resource_id)
+           VALUES ($1, $2, 'account-export', $3, NULL, 'export_receipt', $4)`,
+          [uuidv7(), userId, idempotencyKey, receiptId],
+        );
+      }
       await client.query("COMMIT");
       return toReceipt(receipt);
     } catch (error) {
@@ -192,12 +208,24 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
     sessionId: string;
     request: AccountDeletionCreateRequest;
     audit: LifecycleAuditContext;
-  }): Promise<AccountDeletionRequest | "export_required" | "export_expired"> {
+    idempotencyKey?: string;
+  }): Promise<AccountDeletionRequest | "export_required" | "export_expired" | "export_stale"> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       await client.query("SELECT set_config('app.user_id', $1, true)", [input.userId]);
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [input.userId]);
+      if (input.idempotencyKey) {
+        const replay = await this.idempotentDeletionReplay(
+          client,
+          input.userId,
+          input.idempotencyKey,
+        );
+        if (replay) {
+          await client.query("COMMIT");
+          return replay;
+        }
+      }
       const [existing] = (
         await client.query<DeletionRequestRow>(
           `SELECT id, status, export_receipt_id, requested_at, recoverable_until,
@@ -217,8 +245,8 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
       }
 
       const [receipt] = (
-        await client.query<{ expires_at: Date }>(
-          `SELECT expires_at
+        await client.query<{ expires_at: Date; generated_at: Date }>(
+          `SELECT expires_at, generated_at
              FROM export_receipts
             WHERE id = $1 AND user_id = $2`,
           [input.request.exportReceiptId, input.userId],
@@ -231,6 +259,21 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
       if (receipt.expires_at.getTime() <= Date.now()) {
         await client.query("ROLLBACK");
         return "export_expired";
+      }
+      const [recovery] = (
+        await client.query<{ recovered_at: Date | null }>(
+          `SELECT max(updated_at) AS recovered_at
+             FROM deletion_requests
+            WHERE user_id = $1 AND status = 'recovered'`,
+          [input.userId],
+        )
+      ).rows;
+      if (
+        recovery?.recovered_at &&
+        receipt.generated_at.getTime() <= recovery.recovered_at.getTime()
+      ) {
+        await client.query("ROLLBACK");
+        return "export_stale";
       }
 
       const requestedAt = new Date();
@@ -289,6 +332,14 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
           input.audit.userAgent,
         ],
       );
+      if (input.idempotencyKey) {
+        await client.query(
+          `INSERT INTO idempotency_records
+             (id, user_id, scope, idempotency_key, request_hash, resource_type, resource_id)
+           VALUES ($1, $2, 'account-delete', $3, NULL, 'deletion_request', $4)`,
+          [uuidv7(), input.userId, input.idempotencyKey, deletionRequestId],
+        );
+      }
       await client.query("COMMIT");
       return toDeletionRequest(inserted);
     } catch (error) {
@@ -407,6 +458,88 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
     } finally {
       client.release();
     }
+  }
+
+  private async idempotentExportReplay(
+    client: PoolClient,
+    userId: string,
+    idempotencyKey: string,
+  ): Promise<AccountExportReceipt | null> {
+    const resourceId = await this.idempotentResourceId(
+      client,
+      userId,
+      "account-export",
+      idempotencyKey,
+      "export_receipt",
+    );
+    if (!resourceId) {
+      return null;
+    }
+    const [receipt] = (
+      await client.query<ExportReceiptRow>(
+        `SELECT id, inventory_version, checksum, byte_size, inventory,
+                generated_at, expires_at
+           FROM export_receipts
+          WHERE id = $1 AND user_id = $2`,
+        [resourceId, userId],
+      )
+    ).rows;
+    if (!receipt) {
+      throw new Error("Idempotent export receipt disappeared");
+    }
+    return toReceipt(receipt);
+  }
+
+  private async idempotentDeletionReplay(
+    client: PoolClient,
+    userId: string,
+    idempotencyKey: string,
+  ): Promise<AccountDeletionRequest | null> {
+    const resourceId = await this.idempotentResourceId(
+      client,
+      userId,
+      "account-delete",
+      idempotencyKey,
+      "deletion_request",
+    );
+    if (!resourceId) {
+      return null;
+    }
+    const [deletion] = (
+      await client.query<DeletionRequestRow>(
+        `SELECT id, status, export_receipt_id, requested_at, recoverable_until,
+                purge_after, backup_expires_at, completed_at, failure, store_results
+           FROM deletion_requests
+          WHERE id = $1 AND user_id = $2`,
+        [resourceId, userId],
+      )
+    ).rows;
+    if (!deletion) {
+      throw new Error("Idempotent deletion request disappeared");
+    }
+    return toDeletionRequest(deletion);
+  }
+
+  private async idempotentResourceId(
+    client: PoolClient,
+    userId: string,
+    scope: string,
+    idempotencyKey: string,
+    resourceType: string,
+  ): Promise<string | null> {
+    const [record] = (
+      await client.query<{ resource_id: string }>(
+        `SELECT resource_id
+           FROM idempotency_records
+          WHERE user_id = $1
+            AND scope = $2
+            AND idempotency_key = $3
+            AND resource_type = $4
+            AND created_at > now() - interval '24 hours'`,
+        [userId, scope, idempotencyKey, resourceType],
+      )
+    ).rows;
+    return record?.resource_id ?? null;
   }
 
   private async tenantTables(client: PoolClient): Promise<AccountStore[]> {

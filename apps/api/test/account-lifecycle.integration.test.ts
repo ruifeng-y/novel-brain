@@ -122,6 +122,7 @@ describe("account lifecycle HTTP integration", () => {
       .post("/api/v1/users/me/export")
       .set("Origin", origin)
       .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", "account-export-replay")
       .expect(200);
     const receipt = created.body.data as {
       id: string;
@@ -129,6 +130,13 @@ describe("account lifecycle HTTP integration", () => {
       checksum: string;
       inventory: Array<{ store: string; rowCount: number }>;
     };
+    const exportReplay = await owner
+      .post("/api/v1/users/me/export")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", "account-export-replay")
+      .expect(200);
+    expect(exportReplay.body.data.id).toBe(receipt.id);
     expect(receipt.inventoryVersion).toBe("account-export-v1");
     expect(receipt.inventory).toEqual(
       expect.arrayContaining([
@@ -154,10 +162,10 @@ describe("account lifecycle HTTP integration", () => {
       .expect(200);
     expect(downloaded.headers["x-export-checksum"]).toBe(receipt.checksum);
     expect(downloaded.headers["x-export-inventory-version"]).toBe("account-export-v1");
-    expect(downloaded.body.data.works[0]).toMatchObject({ title: "忘川书" });
-    expect(downloaded.body.inventoryVersion).toBe("account-export-v1");
+    expect(downloaded.body.data.data.works[0]).toMatchObject({ title: "忘川书" });
+    expect(downloaded.body.data.inventoryVersion).toBe("account-export-v1");
 
-    const serialized = JSON.stringify(downloaded.body);
+    const serialized = JSON.stringify(downloaded.body.data);
     expect(createHash("sha256").update(serialized).digest("hex")).toBe(receipt.checksum);
     expect(serialized).not.toContain("encrypted-secret-envelope");
     expect(serialized).not.toContain("encrypted_key");
@@ -174,7 +182,7 @@ describe("account lifecycle HTTP integration", () => {
     );
     expect(exportAudit.rows.map((row) => row.action)).toContain("account.exported");
 
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let attempt = 0; attempt < 1; attempt += 1) {
       await owner
         .post("/api/v1/users/me/export")
         .set("Origin", origin)
@@ -206,6 +214,7 @@ describe("account lifecycle HTTP integration", () => {
       .post("/api/v1/users/me/export")
       .set("Origin", origin)
       .set("X-CSRF-Token", ownerCsrf)
+      .set("Idempotency-Key", "delete-owner-export")
       .expect(200);
     const exportReceiptId = exportResponse.body.data.id as string;
     const foreignDownload = await other
@@ -227,6 +236,7 @@ describe("account lifecycle HTTP integration", () => {
       .post("/api/v1/users/me/delete")
       .set("Origin", origin)
       .set("X-CSRF-Token", ownerCsrf)
+      .set("Idempotency-Key", "delete-owner-request")
       .send({ exportReceiptId, confirm: true })
       .expect(202);
     const deletion = requested.body.data as {
@@ -249,6 +259,7 @@ describe("account lifecycle HTTP integration", () => {
       .post("/api/v1/users/me/delete")
       .set("Origin", origin)
       .set("X-CSRF-Token", ownerCsrf)
+      .set("Idempotency-Key", "delete-owner-request")
       .send({ exportReceiptId, confirm: true })
       .expect(202);
     expect(replayed.body.data.id).toBe(deletion.id);
@@ -278,6 +289,31 @@ describe("account lifecycle HTTP integration", () => {
       "SELECT status FROM users WHERE email = 'delete-owner@example.com'",
     );
     expect(activeStatus.rows[0]?.status).toBe("active");
+
+    const staleReceipt = await owner
+      .post("/api/v1/users/me/delete")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerCsrf)
+      .set("Idempotency-Key", "delete-owner-after-recovery")
+      .send({ exportReceiptId, confirm: true })
+      .expect(400);
+    expect(staleReceipt.body.error.code).toBe("ACCOUNT_EXPORT_STALE");
+
+    const freshReceipt = (
+      await owner
+        .post("/api/v1/users/me/export")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", ownerCsrf)
+        .set("Idempotency-Key", "delete-owner-fresh-export")
+        .expect(200)
+    ).body.data.id as string;
+    await owner
+      .post("/api/v1/users/me/delete")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerCsrf)
+      .set("Idempotency-Key", "delete-owner-fresh-request")
+      .send({ exportReceiptId: freshReceipt, confirm: true })
+      .expect(202);
   });
 
   it("rejects recovery after the approved window without deleting the request", async () => {
@@ -292,6 +328,7 @@ describe("account lifecycle HTTP integration", () => {
         .post("/api/v1/users/me/export")
         .set("Origin", origin)
         .set("X-CSRF-Token", csrfToken)
+        .set("Idempotency-Key", "expired-recovery-export")
         .expect(200)
     ).body.data.id as string;
     const deletionRequestId = (
@@ -336,6 +373,7 @@ describe("account lifecycle HTTP integration", () => {
         .post("/api/v1/users/me/export")
         .set("Origin", origin)
         .set("X-CSRF-Token", csrfToken)
+        .set("Idempotency-Key", "expired-export-receipt")
         .expect(200)
     ).body.data.id as string;
     await databasePool.query(
@@ -362,6 +400,7 @@ describe("account lifecycle HTTP integration", () => {
         .post("/api/v1/users/me/export")
         .set("Origin", origin)
         .set("X-CSRF-Token", csrfToken)
+        .set("Idempotency-Key", "recover-login-export")
         .expect(200)
     ).body.data.id as string;
 
@@ -371,6 +410,7 @@ describe("account lifecycle HTTP integration", () => {
           .post("/api/v1/users/me/delete")
           .set("Origin", origin)
           .set("X-CSRF-Token", csrfToken)
+          .set("Idempotency-Key", "recover-login-delete")
           .send({ exportReceiptId, confirm: true }),
       ),
     );

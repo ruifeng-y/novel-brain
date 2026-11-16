@@ -5,6 +5,7 @@ import {
   ACCOUNT_PURGE_TICK_JOB,
   accountDeletionCreateRequestSchema,
   accountDeletionRequestSchema,
+  accountExportDownloadResponseSchema,
   accountExportReceiptSchema,
   workerJobSchema,
 } from "../src";
@@ -49,6 +50,22 @@ describe("account lifecycle contracts", () => {
       expiresAt: "2026-11-23T08:00:00.000Z",
     });
     expect(receipt.inventoryVersion).toBe("account-export-v1");
+    expect(
+      accountExportDownloadResponseSchema.parse({
+        data: {
+          schemaVersion: 1,
+          inventoryVersion: "account-export-v1",
+          receiptId: ids.receipt,
+          generatedAt: "2026-11-16T08:00:00.000Z",
+          inventory: receipt.inventory,
+          data: {
+            users: [{ id: ids.receipt, displayName: "导出作者" }],
+          },
+        },
+        requestId: "req_account_export",
+        meta: {},
+      }).data.data.users,
+    ).toEqual([{ id: ids.receipt, displayName: "导出作者" }]);
     expect(() =>
       accountExportReceiptSchema.parse({
         ...receipt,

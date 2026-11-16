@@ -362,7 +362,7 @@ test("exports before deletion and recovers inside the approved window", async ({
     void dialog.accept();
   });
   await page.getByRole("button", { name: "申请注销" }).click();
-  await expect(page.getByRole("heading", { name: "账号正在 30 天恢复期内" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "账号正在注销流程中" })).toBeVisible();
   await expect(page.getByRole("button", { name: "恢复账号" })).toBeVisible();
 
   await context.clearCookies();
@@ -371,12 +371,12 @@ test("exports before deletion and recovers inside the approved window", async ({
   await page.getByLabel("密码").fill("StrongPassword123");
   await page.getByRole("button", { name: "登录" }).click();
   await expect(page).toHaveURL(/\/workspace\/settings\/account$/);
-  await expect(page.getByRole("heading", { name: "账号正在 30 天恢复期内" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "账号正在注销流程中" })).toBeVisible();
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/workspace/settings/account");
-    await expect(page.getByRole("heading", { name: "账号正在 30 天恢复期内" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "账号正在注销流程中" })).toBeVisible();
     await expectAuthorFacingLanguage(page);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
