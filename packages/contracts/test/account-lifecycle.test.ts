@@ -78,10 +78,27 @@ describe("account lifecycle contracts", () => {
         jobType: ACCOUNT_PURGE_JOB,
         deletionRequestId: ids.deletion,
         idempotencyKey: `account-purge:${ids.deletion}`,
+        workId: null,
+        branchId: null,
+        checkpoint: {
+          schemaVersion: 1,
+          revision: 0,
+          step: "prepare",
+        },
       }),
     ).toMatchObject({ jobType: ACCOUNT_PURGE_JOB });
-    expect(workerJobSchema.parse({ jobType: ACCOUNT_PURGE_TICK_JOB })).toEqual({
-      jobType: ACCOUNT_PURGE_TICK_JOB,
-    });
+    expect(
+      workerJobSchema.parse({
+        jobType: ACCOUNT_PURGE_TICK_JOB,
+        idempotencyKey: "account-purge-tick",
+        workId: null,
+        branchId: null,
+        checkpoint: {
+          schemaVersion: 1,
+          revision: 0,
+          step: "scan",
+        },
+      }),
+    ).toMatchObject({ jobType: ACCOUNT_PURGE_TICK_JOB });
   });
 });

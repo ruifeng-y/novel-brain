@@ -10,7 +10,9 @@ export default async function LoginPage({
 }) {
   const auth = await getCurrentAuthState();
   if (auth.status === "authenticated") {
-    redirect("/workspace");
+    redirect(
+      auth.data.user.status === "deletion_pending" ? "/workspace/settings/account" : "/workspace",
+    );
   }
   const reason = (await searchParams).reason;
 

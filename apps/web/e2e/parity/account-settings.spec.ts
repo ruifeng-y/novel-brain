@@ -365,6 +365,14 @@ test("exports before deletion and recovers inside the approved window", async ({
   await expect(page.getByRole("heading", { name: "账号正在 30 天恢复期内" })).toBeVisible();
   await expect(page.getByRole("button", { name: "恢复账号" })).toBeVisible();
 
+  await context.clearCookies();
+  await page.goto("/login");
+  await page.getByLabel("邮箱").fill(email);
+  await page.getByLabel("密码").fill("StrongPassword123");
+  await page.getByRole("button", { name: "登录" }).click();
+  await expect(page).toHaveURL(/\/workspace\/settings\/account$/);
+  await expect(page.getByRole("heading", { name: "账号正在 30 天恢复期内" })).toBeVisible();
+
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/workspace/settings/account");

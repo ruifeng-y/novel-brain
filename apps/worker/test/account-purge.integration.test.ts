@@ -46,10 +46,18 @@ describe("account purge worker integration", () => {
       jobType: ACCOUNT_PURGE_JOB,
       deletionRequestId: fixture.deletionRequestId,
       idempotencyKey: `account-purge-${fixture.deletionRequestId}`,
+      workId: null,
+      branchId: null,
+      checkpoint: {
+        schemaVersion: 1,
+        revision: 0,
+        step: "prepare",
+      },
     });
 
     const state = await inspectDeletion(pool, fixture.deletionRequestId);
     expect(state.userId).toBeNull();
+    expect(state.exportReceiptId).toBeNull();
     expect(state.status).toBe("completed");
     expect(state.failure).toBeNull();
     expect(state.stores).toEqual(
@@ -66,6 +74,9 @@ describe("account purge worker integration", () => {
         },
       ]),
     );
+    expect(
+      new Date(state.backupExpiresAt).getTime() - new Date(state.purgeAfter).getTime(),
+    ).toBeLessThanOrEqual(30 * 86_400_000);
     const remaining = await pool.query<{ count: number }>(
       `SELECT (
          (SELECT count(*) FROM users) +
@@ -92,6 +103,13 @@ describe("account purge worker integration", () => {
           jobType: ACCOUNT_PURGE_JOB,
           deletionRequestId: fixture.deletionRequestId,
           idempotencyKey: `account-purge-${fixture.deletionRequestId}`,
+          workId: null,
+          branchId: null,
+          checkpoint: {
+            schemaVersion: 1,
+            revision: 0,
+            step: "prepare",
+          },
         }),
       ).rejects.toThrow("ACCOUNT_PURGE_RETRYABLE");
 
@@ -110,6 +128,13 @@ describe("account purge worker integration", () => {
             retryable: true,
             errorCode: "STORE_DELETE_TIMEOUT",
           },
+          {
+            store: "users",
+            rowCount: 1,
+            status: "pending",
+            retryable: false,
+            errorCode: null,
+          },
         ]),
       );
       const retained = await pool.query<{ count: number }>(
@@ -126,6 +151,13 @@ describe("account purge worker integration", () => {
       jobType: ACCOUNT_PURGE_JOB,
       deletionRequestId: fixture.deletionRequestId,
       idempotencyKey: `account-purge-${fixture.deletionRequestId}`,
+      workId: null,
+      branchId: null,
+      checkpoint: {
+        schemaVersion: 1,
+        revision: 0,
+        step: "prepare",
+      },
     });
     const completed = await inspectDeletion(pool, fixture.deletionRequestId);
     expect(completed.status).toBe("completed");
@@ -206,7 +238,10 @@ async function inspectDeletion(
     await client.query("SELECT set_config('app.system_role', 'account_deletion', true)");
     const result = await client.query<{
       user_id: string | null;
+      export_receipt_id: string | null;
       status: string;
+      purge_after: Date;
+      backup_expires_at: Date;
       failure: Record<string, unknown> | null;
       store_results: Array<{
         store: string;
@@ -216,7 +251,8 @@ async function inspectDeletion(
         errorCode: string | null;
       }>;
     }>(
-      `SELECT user_id, status, failure, store_results
+      `SELECT user_id, export_receipt_id, status, purge_after, backup_expires_at,
+              failure, store_results
          FROM deletion_requests
         WHERE id = $1`,
       [deletionRequestId],
@@ -228,7 +264,10 @@ async function inspectDeletion(
     }
     return {
       userId: row.user_id,
+      exportReceiptId: row.export_receipt_id,
       status: row.status,
+      purgeAfter: row.purge_after.toISOString(),
+      backupExpiresAt: row.backup_expires_at.toISOString(),
       failure: row.failure,
       stores: row.store_results,
     };

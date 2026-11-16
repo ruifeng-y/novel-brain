@@ -2,6 +2,7 @@
 
 > Issue: #134
 > Capabilities: ACCT-005, ACCT-006, IO-006, SEC-004
+> UI parity: `account-settings`
 > Status: implementation complete; visual baseline and #136 restore evidence pending
 
 ## 1. 交付范围
@@ -11,11 +12,12 @@
 - `users.status` 增加 `deletion_pending` 生命周期状态；处于该状态时只允许读取身份、读取删除状态和执行恢复，其他业务 API 仍关闭。
 - Worker 在 `purge_after` 到期后执行账号级永久删除；BullMQ 只负责投递，Postgres 中的删除请求是权威状态。
 - Worker 每分钟扫描到期的 Postgres 删除请求，防止仅依赖 Redis delayed job 造成遗漏。
+- 账号级 worker job 沿用 ADR 0024 的 typed contract：显式携带 `workId: null`、`branchId: null`、`idempotencyKey` 和版本化 checkpoint，不伪造作品或分支 ID。
 - 账号设置页提供导出、导出凭证门禁、二次确认注销、30 天恢复、恢复期展示和 partial failure 展示。
 
 ## 2. 导出 inventory
 
-导出器从 PostgreSQL catalog 发现所有带 `user_id`、`work_id` 或 `branch_id` 的 public 表，并额外覆盖 `users` 与 `audit_logs`。当前 inventory 为 101 个 store，版本标识为 `account-export-v1`。
+导出器从 PostgreSQL catalog 发现所有带 `user_id`、`work_id` 或 `branch_id` 的 public 表，并额外覆盖 `users`、`audit_logs` 与按邮箱归属的 `email_verification_codes`。当前 inventory 为 103 个 store，版本标识为 `account-export-v1`。
 
 - 不导出 `deletion_requests` 与 `export_receipts`，避免导出包在自身生命周期元数据中递归。
 - 移除 `users.password_hash`、`sessions.token_hash`、`password_resets.token_hash`、`email_verification_codes.code_hash`、`model_configs.encrypted_key` 和 `model_configs.idempotency_key`。

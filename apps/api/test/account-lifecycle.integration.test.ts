@@ -71,7 +71,9 @@ describe("account lifecycle HTTP integration", () => {
   beforeEach(async () => {
     mail.codes.clear();
     mail.resetLinks.clear();
-    await databasePool.query("TRUNCATE TABLE users CASCADE");
+    await databasePool.query(
+      "TRUNCATE TABLE email_verification_codes, deletion_requests, users CASCADE",
+    );
     await redis.flushdb();
   });
 
@@ -101,6 +103,13 @@ describe("account lifecycle HTTP integration", () => {
                '["writing"]'::jsonb, $3, '****1234')`,
       [uuidv7(), ownerId, "encrypted-secret-envelope"],
     );
+    await databasePool.query(
+      `INSERT INTO email_verification_codes
+         (id, email, code_hash, purpose, expires_at, requested_ip)
+       VALUES ($1, 'export-owner@example.com', 'verification-code-secret-hash',
+               'register', now() + interval '1 day', '203.0.113.10')`,
+      [uuidv7()],
+    );
     const passwordHash = (
       await databasePool.query<{ password_hash: string }>(
         "SELECT password_hash FROM users WHERE id = $1",
@@ -126,6 +135,7 @@ describe("account lifecycle HTTP integration", () => {
         { store: "users", rowCount: 1 },
         { store: "works", rowCount: 1 },
         { store: "model_configs", rowCount: 1 },
+        { store: "email_verification_codes", rowCount: 2 },
       ]),
     );
     const audit = await auditTenantRls(databasePool);
@@ -135,6 +145,7 @@ describe("account lifecycle HTTP integration", () => {
         .filter((table: string) => table !== "deletion_requests" && table !== "export_receipts"),
       "audit_logs",
       "users",
+      "email_verification_codes",
     ]);
     expect(new Set(receipt.inventory.map((entry) => entry.store))).toEqual(expectedStores);
 
@@ -151,6 +162,8 @@ describe("account lifecycle HTTP integration", () => {
     expect(serialized).not.toContain("encrypted-secret-envelope");
     expect(serialized).not.toContain("encrypted_key");
     expect(serialized).not.toContain("password_hash");
+    expect(serialized).not.toContain("verification-code-secret-hash");
+    expect(serialized).not.toContain("code_hash");
     if (!passwordHash) {
       throw new Error("Registered user password hash is missing");
     }
@@ -320,6 +333,50 @@ describe("account lifecycle HTTP integration", () => {
     expect(rejected.body.error.code).toBe("ACCOUNT_EXPORT_EXPIRED");
   });
 
+  it("keeps concurrent deletion idempotent and allows recovery from a fresh login", async () => {
+    const email = "recover-login@example.com";
+    const password = "StrongPassword123";
+    const owner = await createAuthenticatedAgent(email, password, "恢复登录作者");
+    const csrfToken = await csrf(owner);
+    const exportReceiptId = (
+      await owner
+        .post("/api/v1/users/me/export")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .expect(200)
+    ).body.data.id as string;
+
+    const responses = await Promise.all(
+      Array.from({ length: 2 }, () =>
+        owner
+          .post("/api/v1/users/me/delete")
+          .set("Origin", origin)
+          .set("X-CSRF-Token", csrfToken)
+          .send({ exportReceiptId, confirm: true }),
+      ),
+    );
+    expect(responses.map((response) => response.status)).toEqual([202, 202]);
+    expect(responses[0]?.body.data.id).toBe(responses[1]?.body.data.id);
+
+    await databasePool.query(
+      `UPDATE sessions
+          SET revoked_at = now()
+        WHERE user_id = (SELECT id FROM users WHERE email = $1)`,
+      [email],
+    );
+    await owner.get("/api/v1/auth/me").expect(401);
+
+    const recoveredSession = await loginAgent(email, password);
+    const current = await recoveredSession.get("/api/v1/users/me/deletion").expect(200);
+    expect(current.body.data.id).toBe(responses[0]?.body.data.id);
+    const recoveredCsrf = await csrf(recoveredSession);
+    await recoveredSession
+      .post("/api/v1/users/me/deletion/recover")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", recoveredCsrf)
+      .expect(200);
+  });
+
   async function createAuthenticatedAgent(
     email: string,
     password: string,
@@ -344,6 +401,18 @@ describe("account lifecycle HTTP integration", () => {
 
   async function csrf(agent: SuperAgentTest): Promise<string> {
     return (await agent.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+  }
+
+  async function loginAgent(email: string, password: string): Promise<SuperAgentTest> {
+    const userAgent = request.agent(app.getHttpServer());
+    const csrfToken = await csrf(userAgent);
+    await userAgent
+      .post("/api/v1/auth/login")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ email, password })
+      .expect(200);
+    return userAgent;
   }
 
   async function userId(email: string): Promise<string> {

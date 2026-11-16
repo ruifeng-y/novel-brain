@@ -3,6 +3,9 @@ export const ACCOUNT_EXPORT_RETENTION_DAYS = 7;
 export const ACCOUNT_DELETION_RECOVERY_DAYS = 30;
 export const ACCOUNT_BACKUP_RETENTION_DAYS = 30;
 export const ACCOUNT_DELETION_SYSTEM_ROLE = "account_deletion";
+export const ACCOUNT_PURGE_JOB_ID_PREFIX = "account-purge-";
+export const ACCOUNT_PURGE_JOB_ATTEMPTS = 5;
+export const ACCOUNT_PURGE_RETRY_DELAY_MS = 60_000;
 
 export const ACCOUNT_TENANT_COLUMNS = ["user_id", "work_id", "branch_id"] as const;
 export const ACCOUNT_DIRECT_USER_COLUMNS = [
@@ -30,6 +33,49 @@ export type AccountStoreOwnership =
 export interface AccountStore {
   tableName: string;
   ownership: AccountStoreOwnership;
+}
+
+export interface AccountCatalogRow {
+  table_name: string;
+  columns: string[];
+}
+
+export async function discoverAccountStores(
+  query: (text: string, values?: unknown[]) => Promise<{ rows: AccountCatalogRow[] }>,
+  mode: "export" | "delete",
+): Promise<AccountStore[]> {
+  const columns = mode === "export" ? ACCOUNT_TENANT_COLUMNS : null;
+  const result = await query(
+    `SELECT table_name, jsonb_agg(column_name ORDER BY column_name) AS columns
+       FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND ($1::text[] IS NULL OR column_name = ANY($1::text[]))
+      GROUP BY table_name
+      ORDER BY table_name`,
+    [columns],
+  );
+  const excluded =
+    mode === "export" ? ACCOUNT_EXPORT_EXCLUDED_TABLES : new Set(["deletion_requests"]);
+  const stores = result.rows
+    .filter((row) => !excluded.has(row.table_name))
+    .flatMap((row) => {
+      const store = classifyAccountStore(row.table_name, row.columns);
+      return store ? [store] : [];
+    });
+  for (const store of [
+    { tableName: "email_verification_codes", ownership: "email" as const },
+    { tableName: "audit_logs", ownership: "actor_id" as const },
+    { tableName: "users", ownership: "self" as const },
+  ]) {
+    if (!stores.some((candidate) => candidate.tableName === store.tableName)) {
+      stores.unshift(store);
+    }
+  }
+  return stores;
+}
+
+export function accountPurgeJobId(deletionRequestId: string): string {
+  return `${ACCOUNT_PURGE_JOB_ID_PREFIX}${deletionRequestId}`;
 }
 
 export function classifyAccountStore(

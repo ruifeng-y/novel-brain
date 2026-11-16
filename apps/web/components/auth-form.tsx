@@ -97,14 +97,16 @@ export function AuthForm({ mode, sessionExpired, permissionDenied }: AuthFormPro
     setSuccess("");
     setSubmitting(true);
     try {
-      authSessionResponseSchema.parse(
+      const session = authSessionResponseSchema.parse(
         await postJson(
           `/api/v1/auth/${mode === "login" ? "login" : "register"}`,
           csrfToken,
           mode === "login" ? { email, password } : { email, password, code, displayName },
         ),
+      ).data;
+      router.replace(
+        session.user.status === "deletion_pending" ? "/workspace/settings/account" : "/workspace",
       );
-      router.replace("/workspace");
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "登录失败，请稍后重试。");

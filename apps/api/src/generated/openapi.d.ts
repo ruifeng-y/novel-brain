@@ -3376,7 +3376,7 @@ export interface operations {
                 store: string;
                 rowCount: number;
                 /** @enum {string} */
-                status: "deleted" | "failed";
+                status: "pending" | "deleted" | "failed";
                 retryable: boolean;
                 errorCode: string | null;
               }[];
@@ -3432,7 +3432,7 @@ export interface operations {
                 store: string;
                 rowCount: number;
                 /** @enum {string} */
-                status: "deleted" | "failed";
+                status: "pending" | "deleted" | "failed";
                 retryable: boolean;
                 errorCode: string | null;
               }[];
@@ -3488,7 +3488,7 @@ export interface operations {
                 store: string;
                 rowCount: number;
                 /** @enum {string} */
-                status: "deleted" | "failed";
+                status: "pending" | "deleted" | "failed";
                 retryable: boolean;
                 errorCode: string | null;
               }[];
@@ -4614,7 +4614,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -4958,7 +4957,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -10884,7 +10882,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -11452,7 +11449,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -11846,7 +11842,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -12241,7 +12236,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -12636,7 +12630,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -13044,7 +13037,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -13561,7 +13553,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -13997,7 +13988,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -14288,7 +14278,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -14489,7 +14478,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -14838,7 +14826,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -15250,7 +15237,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -15667,7 +15653,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -16084,7 +16069,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -32503,7 +32487,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -32727,7 +32710,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -32927,7 +32909,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -43217,7 +43198,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -43998,7 +43978,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -44556,7 +44535,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -45114,7 +45092,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -45672,7 +45649,6 @@ export interface operations {
                   | "BRANCH_SOURCE_NOT_FOUND"
                   | "VERSION_NODE_NOT_FOUND"
                   | "IMPORT_NOT_READY"
-                  | "ACCOUNT_EXPORT_REQUIRED"
                   | "ACCOUNT_EXPORT_EXPIRED"
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
@@ -46243,7 +46219,6 @@ export interface operations {
                     | "BRANCH_SOURCE_NOT_FOUND"
                     | "VERSION_NODE_NOT_FOUND"
                     | "IMPORT_NOT_READY"
-                    | "ACCOUNT_EXPORT_REQUIRED"
                     | "ACCOUNT_EXPORT_EXPIRED"
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"

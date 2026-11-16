@@ -1,5 +1,10 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import { ACCOUNT_PURGE_JOB, WORKER_QUEUE_NAME, type AccountPurgeJob } from "@novel-brain/contracts";
+import {
+  ACCOUNT_PURGE_JOB_ATTEMPTS,
+  ACCOUNT_PURGE_RETRY_DELAY_MS,
+  accountPurgeJobId,
+} from "@novel-brain/core";
 import { Queue } from "bullmq";
 import Redis from "ioredis";
 
@@ -26,21 +31,28 @@ export class AccountPurgeQueue implements OnModuleDestroy {
       {
         jobType: ACCOUNT_PURGE_JOB,
         deletionRequestId,
+        workId: null,
+        branchId: null,
         idempotencyKey: `account-purge-${deletionRequestId}`,
+        checkpoint: {
+          schemaVersion: 1,
+          revision: 0,
+          step: "prepare",
+        },
       },
       {
-        jobId: `account-purge-${deletionRequestId}`,
+        jobId: accountPurgeJobId(deletionRequestId),
         delay,
         removeOnComplete: true,
         removeOnFail: true,
-        attempts: 5,
-        backoff: { type: "exponential", delay: 60_000 },
+        attempts: ACCOUNT_PURGE_JOB_ATTEMPTS,
+        backoff: { type: "exponential", delay: ACCOUNT_PURGE_RETRY_DELAY_MS },
       },
     );
   }
 
   async cancel(deletionRequestId: string): Promise<void> {
-    const job = await this.queue.getJob(`account-purge-${deletionRequestId}`);
+    const job = await this.queue.getJob(accountPurgeJobId(deletionRequestId));
     if (job) {
       await job.remove().catch(() => undefined);
     }

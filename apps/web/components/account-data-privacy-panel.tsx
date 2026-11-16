@@ -14,11 +14,11 @@ import { useCallback, useEffect, useState } from "react";
 import {
   accountDeletionResponseSchema,
   accountExportReceiptResponseSchema,
-  apiErrorSchema,
   type AccountDeletionRequest,
   type AccountExportReceipt,
 } from "@novel-brain/contracts";
 
+import { formatDateTime, readError } from "../lib/account-ui";
 import { getCsrfToken } from "../lib/csrf-client";
 
 export function AccountDataPrivacyPanel() {
@@ -281,16 +281,4 @@ function statusLabel(status: AccountDeletionRequest["status"]): string {
     case "recovered":
       return "账号已恢复";
   }
-}
-
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-async function readError(response: Response, fallback: string): Promise<string> {
-  const parsed = apiErrorSchema.safeParse(await response.json().catch(() => null));
-  return parsed.success ? parsed.data.error.message : fallback;
 }

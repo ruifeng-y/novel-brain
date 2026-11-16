@@ -16,7 +16,14 @@ import {
   workerJobSchema,
   type WorkerJob,
 } from "@novel-brain/contracts";
-import { emitTraceEnvelope, resolveTracePolicy, type TracePolicy } from "@novel-brain/core";
+import {
+  ACCOUNT_PURGE_JOB_ATTEMPTS,
+  ACCOUNT_PURGE_RETRY_DELAY_MS,
+  accountPurgeJobId,
+  emitTraceEnvelope,
+  resolveTracePolicy,
+  type TracePolicy,
+} from "@novel-brain/core";
 import { Queue, Worker as BullWorker, type Job } from "bullmq";
 import type Redis from "ioredis";
 
@@ -111,7 +118,17 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       { every: 60_000 },
       {
         name: ACCOUNT_PURGE_TICK_JOB,
-        data: { jobType: ACCOUNT_PURGE_TICK_JOB },
+        data: {
+          jobType: ACCOUNT_PURGE_TICK_JOB,
+          workId: null,
+          branchId: null,
+          idempotencyKey: "account-purge-tick",
+          checkpoint: {
+            schemaVersion: 1,
+            revision: 0,
+            step: "scan",
+          },
+        },
         opts: {
           removeOnComplete: true,
           removeOnFail: true,
@@ -171,21 +188,28 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
             {
               jobType: ACCOUNT_PURGE_JOB,
               deletionRequestId,
+              workId: null,
+              branchId: null,
               idempotencyKey: `account-purge-${deletionRequestId}`,
+              checkpoint: {
+                schemaVersion: 1,
+                revision: 0,
+                step: "prepare",
+              },
             },
             {
-              jobId: `account-purge-${deletionRequestId}`,
+              jobId: accountPurgeJobId(deletionRequestId),
               removeOnComplete: true,
               removeOnFail: true,
-              attempts: 5,
-              backoff: { type: "exponential", delay: 60_000 },
+              attempts: ACCOUNT_PURGE_JOB_ATTEMPTS,
+              backoff: { type: "exponential", delay: ACCOUNT_PURGE_RETRY_DELAY_MS },
             },
           );
         }
         outcome = "succeeded";
       } else if (payload.jobType === ACCOUNT_PURGE_JOB) {
-        await this.accountPurgeProcessor.process(payload);
-        outcome = "succeeded";
+        const result = await this.accountPurgeProcessor.process(payload);
+        outcome = result.kind === "failed" ? "failed" : "succeeded";
       } else if (payload.jobType === SUMMARY_REBUILD_JOB) {
         outcome = await this.summaryProcessor.process(payload);
       } else if (payload.jobType === BATCH_TICK_JOB) {

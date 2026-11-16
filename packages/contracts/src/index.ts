@@ -137,7 +137,6 @@ export const ERROR_CODES = [
   "BRANCH_SOURCE_NOT_FOUND",
   "VERSION_NODE_NOT_FOUND",
   "IMPORT_NOT_READY",
-  "ACCOUNT_EXPORT_REQUIRED",
   "ACCOUNT_EXPORT_EXPIRED",
   "ACCOUNT_DELETION_NOT_FOUND",
   "ACCOUNT_DELETION_RECOVERY_EXPIRED",
@@ -418,7 +417,7 @@ export const accountDeletionStoreResultSchema = z
   .object({
     store: z.string().regex(/^[a-z][a-z0-9_]*$/),
     rowCount: z.number().int().nonnegative(),
-    status: z.enum(["deleted", "failed"]),
+    status: z.enum(["pending", "deleted", "failed"]),
     retryable: z.boolean(),
     errorCode: z.string().nullable(),
   })
@@ -5712,7 +5711,16 @@ export const accountPurgeJobSchema = z
   .object({
     jobType: z.literal(ACCOUNT_PURGE_JOB),
     deletionRequestId: uuidV7Schema,
+    workId: z.null(),
+    branchId: z.null(),
     idempotencyKey: z.string().min(1).max(200),
+    checkpoint: z
+      .object({
+        schemaVersion: z.literal(1),
+        revision: z.number().int().nonnegative(),
+        step: z.enum(["prepare", "delete_stores", "delete_account", "complete"]),
+      })
+      .strict(),
   })
   .strict();
 export type AccountPurgeJob = z.infer<typeof accountPurgeJobSchema>;
@@ -5720,6 +5728,16 @@ export type AccountPurgeJob = z.infer<typeof accountPurgeJobSchema>;
 export const accountPurgeTickJobSchema = z
   .object({
     jobType: z.literal(ACCOUNT_PURGE_TICK_JOB),
+    workId: z.null(),
+    branchId: z.null(),
+    idempotencyKey: z.literal("account-purge-tick"),
+    checkpoint: z
+      .object({
+        schemaVersion: z.literal(1),
+        revision: z.number().int().nonnegative(),
+        step: z.literal("scan"),
+      })
+      .strict(),
   })
   .strict();
 export type AccountPurgeTickJob = z.infer<typeof accountPurgeTickJobSchema>;

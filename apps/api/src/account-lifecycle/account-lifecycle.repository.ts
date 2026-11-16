@@ -11,13 +11,11 @@ import type {
 import {
   ACCOUNT_BACKUP_RETENTION_DAYS,
   ACCOUNT_DELETION_RECOVERY_DAYS,
-  ACCOUNT_EXPORT_EXCLUDED_TABLES,
   ACCOUNT_EXPORT_INVENTORY_VERSION,
   ACCOUNT_EXPORT_RETENTION_DAYS,
   ACCOUNT_EXPORT_SENSITIVE_COLUMNS,
-  ACCOUNT_TENANT_COLUMNS,
   accountOwnershipPredicate,
-  classifyAccountStore,
+  discoverAccountStores,
   quoteSqlIdentifier,
   type AccountStore,
 } from "@novel-brain/core";
@@ -188,6 +186,7 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
     try {
       await client.query("BEGIN");
       await client.query("SELECT set_config('app.user_id', $1, true)", [input.userId]);
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [input.userId]);
       const [existing] = (
         await client.query<DeletionRequestRow>(
           `SELECT id, status, export_receipt_id, requested_at, recoverable_until,
@@ -400,29 +399,7 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
   }
 
   private async tenantTables(client: PoolClient): Promise<AccountStore[]> {
-    const result = await client.query<{ table_name: string; tenant_columns: string[] }>(
-      `SELECT table_name,
-              jsonb_agg(column_name ORDER BY column_name) AS tenant_columns
-         FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND column_name = ANY($1::text[])
-        GROUP BY table_name
-        ORDER BY table_name`,
-      [ACCOUNT_TENANT_COLUMNS],
-    );
-    const tables = result.rows
-      .filter((row) => !ACCOUNT_EXPORT_EXCLUDED_TABLES.has(row.table_name))
-      .flatMap((row) => {
-        const store = classifyAccountStore(row.table_name, row.tenant_columns);
-        return store ? [store] : [];
-      });
-    if (!tables.some((table) => table.tableName === "audit_logs")) {
-      tables.push({ tableName: "audit_logs", ownership: "actor_id" });
-    }
-    if (!tables.some((table) => table.tableName === "users")) {
-      tables.unshift({ tableName: "users", ownership: "self" });
-    }
-    return tables;
+    return discoverAccountStores((text, values) => client.query(text, values), "export");
   }
 
   async onModuleDestroy(): Promise<void> {
