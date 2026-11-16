@@ -152,6 +152,19 @@ test("allows GitHub-generated merge commits", () => {
   );
 });
 
+test("allows GitHub-generated squash commit metadata while validating its subject", () => {
+  assert.deepEqual(
+    validateCommitMessages([
+      "feat(export): 完成作品导出与版本清单 (#201)\n\n## Summary\n- English pull request body",
+    ]),
+    [],
+  );
+  assert.match(
+    validateCommitMessages(["feat(export): add export (#202)\n\n## Summary"]).join("\n"),
+    /subject must include 简体中文/,
+  );
+});
+
 test("accepts a PR range with multiple Chinese commits", () => {
   withRepository((repository) => {
     const base = commitFile(repository, {

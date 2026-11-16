@@ -8,6 +8,7 @@ import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
 const CONVENTIONAL_SUBJECT =
   /^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?!?: (.+)$/;
 const GITHUB_MERGE_SUBJECT = /^Merge pull request #\d+ from .+$/;
+const GITHUB_SQUASH_SUBJECT = / \(#\d+\)$/;
 const HAN_TEXT = /[\u3400-\u9fff]/g;
 const LATIN_WORD = /[A-Za-z][A-Za-z0-9]*/g;
 const TECHNICAL_WORDS = new Set([
@@ -78,6 +79,7 @@ const TECHNICAL_WORDS = new Set([
   "snapshot",
   "smoke",
   "stacked",
+  "squash",
   "seam",
   "sql",
   "subject",
@@ -144,7 +146,7 @@ export function validateCommitMessages(messages) {
     }
     const body = bodyLines.join("\n").trim();
     errors.push(...validateCommitSubjects([subject]));
-    if (body && !isSimplifiedChineseProse(body, 0.15)) {
+    if (body && !GITHUB_SQUASH_SUBJECT.test(subject) && !isSimplifiedChineseProse(body, 0.15)) {
       errors.push(`Commit body must include 简体中文: ${subject}`);
     }
   }
