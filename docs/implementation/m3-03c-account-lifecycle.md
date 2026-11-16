@@ -16,6 +16,8 @@
 - 账号级 worker job 沿用 ADR 0024 的 typed contract：显式携带 `workId: null`、`branchId: null`、`idempotencyKey` 和版本化 checkpoint，不伪造作品或分支 ID。
 - 账号设置页提供导出、导出凭证门禁、二次确认注销、30 天恢复、恢复期展示和 partial failure 展示。
 - 账号导出按用户和 IP 限流，并写入 `account.exported` 审计记录。
+- `Idempotency-Key` 在 24 小时内返回同一 export receipt 或 deletion request；同一 key 的重放不重复消耗导出创建额度。
+- 账号导出先用用户级 advisory lock 串行化，再开启 `REPEATABLE READ` 快照逐表读取，避免并发同 key 冲突和跨表时点不一致。
 
 ## 2. 导出 inventory
 

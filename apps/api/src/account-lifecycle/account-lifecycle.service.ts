@@ -28,7 +28,7 @@ export class AccountLifecycleService {
         return replay;
       }
     }
-    await this.rateLimiter.consumeAccountExport(userId, audit.ip);
+    await this.rateLimiter.consumeAccountExport(userId, audit.ip, idempotencyKey);
     return this.repository.createExportReceipt(userId, audit, idempotencyKey);
   }
 

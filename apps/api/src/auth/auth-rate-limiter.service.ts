@@ -11,6 +11,21 @@ if count == 1 then
 end
 return count
 `;
+const IDEMPOTENT_RATE_LIMIT_SCRIPT = `
+local claimed = redis.call("SET", KEYS[1], "1", "NX", "EX", ARGV[1])
+if not claimed then
+  return {0, 0, 0}
+end
+local userCount = redis.call("INCR", KEYS[2])
+if userCount == 1 then
+  redis.call("EXPIRE", KEYS[2], ARGV[2])
+end
+local ipCount = redis.call("INCR", KEYS[3])
+if ipCount == 1 then
+  redis.call("EXPIRE", KEYS[3], ARGV[3])
+end
+return {1, userCount, ipCount}
+`;
 
 @Injectable()
 export class AuthRateLimiterService implements OnModuleDestroy {
@@ -60,7 +75,26 @@ export class AuthRateLimiterService implements OnModuleDestroy {
     ]);
   }
 
-  async consumeAccountExport(userId: string, ip: string): Promise<void> {
+  async consumeAccountExport(userId: string, ip: string, idempotencyKey?: string): Promise<void> {
+    if (idempotencyKey) {
+      await this.ensureConnected();
+      const [claimed, userCount, ipCount] = (await this.redis.eval(
+        IDEMPOTENT_RATE_LIMIT_SCRIPT,
+        3,
+        `account-export:idempotency:${sha256(`${userId}:account-export:${idempotencyKey}`)}`,
+        `account-export:user:hour:${sha256(userId)}`,
+        `account-export:ip:hour:${sha256(ip)}`,
+        "86400",
+        "3600",
+        "3600",
+      )) as [number, number, number];
+      if (claimed === 1 && (userCount > 3 || ipCount > 20)) {
+        throw new ApiError(429, "AUTH_RATE_LIMITED", "请求过于频繁，请稍后再试", {
+          retryAfterSeconds: 3_600,
+        });
+      }
+      return;
+    }
     await this.assertWithinLimits([
       { key: `account-export:user:hour:${sha256(userId)}`, limit: 3, ttlSeconds: 3_600 },
       { key: `account-export:ip:hour:${sha256(ip)}`, limit: 20, ttlSeconds: 3_600 },
@@ -78,9 +112,7 @@ export class AuthRateLimiterService implements OnModuleDestroy {
   private async assertWithinLimits(
     buckets: Array<{ key: string; limit: number; ttlSeconds: number }>,
   ): Promise<void> {
-    if (this.redis.status === "wait" || this.redis.status === "end") {
-      await this.redis.connect();
-    }
+    await this.ensureConnected();
 
     for (const bucket of buckets) {
       const count = Number(
@@ -91,6 +123,12 @@ export class AuthRateLimiterService implements OnModuleDestroy {
           retryAfterSeconds: bucket.ttlSeconds,
         });
       }
+    }
+  }
+
+  private async ensureConnected(): Promise<void> {
+    if (this.redis.status === "wait" || this.redis.status === "end") {
+      await this.redis.connect();
     }
   }
 }

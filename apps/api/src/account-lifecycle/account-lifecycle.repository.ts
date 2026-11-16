@@ -55,7 +55,10 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required");
     }
-    this.pool = createDatabasePool(databaseUrl);
+    this.pool = createDatabasePool(databaseUrl, {
+      query_timeout: 60_000,
+      statement_timeout: 60_000,
+    });
   }
 
   async createExportReceipt(
@@ -162,12 +165,13 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
       await client.query("ROLLBACK").catch(() => undefined);
       throw error;
     } finally {
+      let destroyConnection = false;
       if (locked) {
-        await client
-          .query("SELECT pg_advisory_unlock(hashtext($1))", [userId])
-          .catch(() => undefined);
+        await client.query("SELECT pg_advisory_unlock(hashtext($1))", [userId]).catch(() => {
+          destroyConnection = true;
+        });
       }
-      client.release();
+      client.release(destroyConnection);
     }
   }
 

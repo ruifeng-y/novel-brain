@@ -327,6 +327,14 @@ describe("account lifecycle HTTP integration", () => {
       "并发导出作者",
     );
     const csrfToken = await csrf(owner);
+    for (const key of ["quota-export-1", "quota-export-2"]) {
+      await owner
+        .post("/api/v1/users/me/export")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .set("Idempotency-Key", key)
+        .expect(200);
+    }
     const responses = await Promise.all(
       Array.from({ length: 2 }, () =>
         owner
@@ -338,10 +346,17 @@ describe("account lifecycle HTTP integration", () => {
     );
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
     expect(responses[0]?.body.data.id).toBe(responses[1]?.body.data.id);
+    const limited = await owner
+      .post("/api/v1/users/me/export")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", "quota-export-blocked")
+      .expect(429);
+    expect(limited.body.error.code).toBe("AUTH_RATE_LIMITED");
     const count = await databasePool.query<{ count: number }>(
       "SELECT count(*)::int AS count FROM export_receipts",
     );
-    expect(count.rows[0]?.count).toBe(1);
+    expect(count.rows[0]?.count).toBe(3);
   });
 
   it("allows an idempotency key to be reused after the 24-hour window", async () => {
