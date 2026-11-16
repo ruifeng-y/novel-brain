@@ -161,7 +161,7 @@ export class WorkerAccountPurgeRepository implements OnModuleDestroy {
       const errorCode =
         error instanceof AccountStoreBlockedError
           ? "STORE_FOREIGN_KEY_PENDING"
-          : databaseErrorCode(error) === "57014"
+          : isTimeoutDatabaseError(error)
             ? "STORE_DELETE_TIMEOUT"
             : "STORE_DELETE_FAILED";
       const retryable =
@@ -331,7 +331,14 @@ function databaseErrorCode(error: unknown): string | undefined {
 
 function isRetryableDatabaseError(error: unknown): boolean {
   return (
-    ["40001", "40P01", "55P03", "57014"].includes(databaseErrorCode(error) ?? "") ||
+    ["40001", "40P01", "55P03"].includes(databaseErrorCode(error) ?? "") ||
+    isTimeoutDatabaseError(error)
+  );
+}
+
+function isTimeoutDatabaseError(error: unknown): boolean {
+  return (
+    databaseErrorCode(error) === "57014" ||
     (error instanceof Error &&
       /query read timeout|statement timeout|lock timeout/iu.test(error.message))
   );
