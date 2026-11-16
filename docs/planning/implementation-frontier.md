@@ -1,7 +1,7 @@
 # Implementation frontier v2
 
 > Updated: 2026-11-16.
-> Repository baseline: `main@8fe594e`, after PR #196 integrated deployment, health, metrics and cost alerting.
+> Repository baseline: `main@f1bcee4`, after PR #199 integrated account export, deletion recovery and permanent purge.
 
 ## 1. Current truth
 
@@ -16,15 +16,16 @@
 - PR #105 established the first M1–M3 ticket layer; PR #153 subsequently added bounded leaf tasks, unique capability ownership, explicit UI evidence paths and independent scale/quality gates.
 - Review decisions #162, #165 and #166 are closed. #147 and durable Worker follow-up #190 are closed.
 - #90 product acceptance is complete after the author signed both the fixed 40-chapter sample audit and a clean-volume audit on 2026-11-13.
-- The M3 tenant authorization audit #132 is closed. Logging and trace hardening #133 is closed through PR #195; deployment, health, metrics and cost alerting #135 is closed through PR #196.
-- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-16. The current ready leaf frontier is #134 and #138.
+- The M3 tenant authorization audit #132 is closed. Logging and trace hardening #133 is closed through PR #195; deployment, health, metrics and cost alerting #135 is closed through PR #196; account lifecycle #134 is closed through PR #199.
+- #136 backup/restore/RPO/RTO is implemented by PR #200 and awaits merge.
+- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-16. After #200 merges, the ready frontier is #137, #138 and #142.
 
 ## 2. Immediate frontier
 
-1. Start #134 account export, deletion recovery and permanent purge. It is on the security/release critical path and unblocks #136, #137 and #142.
-2. Start #136 full backup, restore drill and RPO/RTO evidence only after #134 freezes the deletion and retention contract.
+1. Merge #200, then verify #136 is closed and main push CI is green.
+2. Start #137 10M capacity benchmark after #136 closes; it completes the final blocker for #129 and measures the full backup/restore path at scale.
 3. Start #138 long-horizon continuity benchmark as the independent quality frontier; it unblocks #139 and then #140.
-4. Do not start #129 until #136 closes. #137 follows #134 and #136; #142 follows #134. Package and release gates close only after their bounded leaves have integrated evidence.
+4. #142 is now ready for work-settings archive/restore/trash after #134, but should follow #137/#138 unless release priority changes.
 
 ## 3. First executable frontier (historical)
 
@@ -71,7 +72,7 @@ M1 foundations:
 - #129 export; #130 publish checks/preview; #131 legal/help/AI disclosure and appeal.
 - #132 RLS/authorization coverage and #133 logging/trace hardening are complete. Every new tenant-owned table still requires RLS coverage.
 - #135 deployment, health, metrics and cost alerting is complete. Backup expiry and restore evidence remain with #136.
-- #134 is the next ready leaf. It defines account export, deletion recovery and permanent purge semantics; #136 consumes that contract for backup/restore and retention evidence.
+- #134 is closed. PR #200 carries the #136 backup/restore and retention evidence.
 - #129 follows #136; #130 follows #129; #131 follows #130. #137 follows #134 and #136; #142 follows #134.
 - #138 is the other ready leaf. #139 consumes its long-horizon fixture; #140 gates real-provider canary/rollback after #139.
 - #104 is the V1-wide UI closeout and is last among page parity aggregators.

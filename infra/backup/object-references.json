@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "references": [
+    {
+      "table": "users",
+      "column": "avatar_url",
+      "tenantColumn": "id"
+    },
+    {
+      "table": "pen_names",
+      "column": "avatar_url",
+      "tenantColumn": "user_id"
+    }
+  ]
+}

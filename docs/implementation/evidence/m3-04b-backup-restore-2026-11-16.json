@@ -1,0 +1,117 @@
+{
+  "formatVersion": 1,
+  "ticket": 136,
+  "status": "passed",
+  "drillStartedAt": "2026-11-16T13:50:43.785Z",
+  "completedAt": "2026-11-16T13:51:30.085Z",
+  "sourceCommit": "6a1fa18df95975dfc9e5569f80c4022550cc5b37",
+  "backupId": "20261116T135055082Z-6a1fa18df959-42f64500",
+  "backupPath": "artifacts/backups/drill/20261116T135055082Z-6a1fa18df959-42f64500",
+  "snapshotStartedAt": "2026-11-16T13:50:55.293Z",
+  "snapshotCompletedAt": "2026-11-16T13:50:58.437Z",
+  "lastSourceWriteAt": "2026-11-16T13:50:55.080Z",
+  "dataset": {
+    "backupFiles": 5,
+    "backupBytes": 704387,
+    "databasePlaintextBytes": 680474,
+    "objectCount": 2,
+    "objectBytes": 46,
+    "rowCount": 67
+  },
+  "recoveryObjectives": {
+    "targets": {
+      "rpoHours": 24,
+      "rtoHours": 4
+    },
+    "measuredRpoSeconds": 0.213,
+    "measuredRtoSeconds": 13.461,
+    "rpoWithinTarget": true,
+    "rtoWithinTarget": true,
+    "note": "Single deterministic drill; this does not certify a production SLA."
+  },
+  "verification": {
+    "offline": {
+      "ok": true,
+      "backupId": "20261116T135055082Z-6a1fa18df959-42f64500",
+      "databaseBytes": 680474,
+      "objectCount": 2,
+      "objectBytes": 46
+    },
+    "restore": {
+      "ok": true,
+      "rowCount": 67,
+      "objectCount": 2,
+      "objectBytes": 46,
+      "foreignKeyConstraints": 0,
+      "objectReferences": 1
+    },
+    "foreignKeys": {
+      "constraintCount": 529,
+      "violations": {}
+    }
+  },
+  "faultInjection": [
+    {
+      "scenario": "interrupted_backup",
+      "expectedFailure": true,
+      "passed": true,
+      "message": "Injected backup interruption before encryption. No plaintext artefacts were retained.",
+      "plaintextAbsent": true
+    },
+    {
+      "scenario": "missing_object",
+      "expectedFailure": true,
+      "passed": true,
+      "message": "Encrypted object artefact is missing: users/6db9b3c7-e3df-409b-a967-c56c35726ed8/avatar.txt."
+    },
+    {
+      "scenario": "corrupt_object",
+      "expectedFailure": true,
+      "passed": true,
+      "message": "Encrypted object checksum mismatch: users/6db9b3c7-e3df-409b-a967-c56c35726ed8/avatar.txt."
+    },
+    {
+      "scenario": "interrupted_restore",
+      "expectedFailure": true,
+      "passed": true,
+      "message": "Injected restore interruption after decryption."
+    },
+    {
+      "scenario": "interrupted_restore_cleanup",
+      "expectedFailure": false,
+      "passed": true,
+      "message": "Interrupted restore project was removed."
+    }
+  ],
+  "orphanCleanup": {
+    "dryRunCandidates": [
+      {
+        "key": "users/6db9b3c7-e3df-409b-a967-c56c35726ed8/trash/stale.tmp",
+        "reason": "unreferenced_and_aged",
+        "size": 26
+      }
+    ],
+    "deleted": [
+      {
+        "key": "users/6db9b3c7-e3df-409b-a967-c56c35726ed8/trash/stale.tmp",
+        "reason": "unreferenced_and_aged",
+        "size": 26
+      }
+    ],
+    "auditIds": [
+      "e6cce80b-e976-4a8d-808c-5f836d1c5902",
+      "54169e3c-7da8-4bf3-9fa9-7ba82f14683f"
+    ],
+    "auditPaths": [
+      "artifacts/backups/audits/20261116T135125717Z-e6cce80b-e976-4a8d-808c-5f836d1c5902.json",
+      "artifacts/backups/audits/20261116T135127154Z-54169e3c-7da8-4bf3-9fa9-7ba82f14683f.json"
+    ]
+  },
+  "environment": {
+    "node": "v24.22.1",
+    "platform": "win32",
+    "arch": "x64",
+    "docker": "29.7.2",
+    "compose": "5.5.0"
+  }
+}
