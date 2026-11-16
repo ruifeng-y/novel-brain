@@ -1,7 +1,7 @@
 # Implementation frontier v2
 
-> Updated: 2026-11-13.
-> Repository baseline: `main@5192fa6`, after PR #193 integrated the Golden Three durable Worker work.
+> Updated: 2026-11-16.
+> Repository baseline: `main@8fe594e`, after PR #196 integrated deployment, health, metrics and cost alerting.
 
 ## 1. Current truth
 
@@ -16,14 +16,15 @@
 - PR #105 established the first M1–M3 ticket layer; PR #153 subsequently added bounded leaf tasks, unique capability ownership, explicit UI evidence paths and independent scale/quality gates.
 - Review decisions #162, #165 and #166 are closed. #147 and durable Worker follow-up #190 are closed.
 - #90 product acceptance is complete after the author signed both the fixed 40-chapter sample audit and a clean-volume audit on 2026-11-13.
-- The M3 tenant authorization audit #132 is closed. Logging and trace hardening #133 is the next bounded security/release ticket after M1 tracker reconciliation.
+- The M3 tenant authorization audit #132 is closed. Logging and trace hardening #133 is closed through PR #195; deployment, health, metrics and cost alerting #135 is closed through PR #196.
+- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-16. The current ready leaf frontier is #134 and #138.
 
 ## 2. Immediate frontier
 
-1. Reconcile M1 tracker state against `docs/implementation/m1-spec-closeout.md`, `docs/planning/m1-tracker-reconciliation.md` and the current main-branch evidence.
-2. Audit the already integrated #144, #106–#108 and #148 acceptance evidence. Close #144, #106–#108, #84 and #85 when their code, tests, production Golden and panel closure are present; verify and close #148 only after its dependency tickets close.
-3. Close #87 after #147 and #148 are complete, then finish #90 as the M1 integration gate.
-4. Start #133, the next bounded security/release task. Do not start M3 #129 until its storage, backup and export blockers are complete.
+1. Start #134 account export, deletion recovery and permanent purge. It is on the security/release critical path and unblocks #136, #137 and #142.
+2. Start #136 full backup, restore drill and RPO/RTO evidence only after #134 freezes the deletion and retention contract.
+3. Start #138 long-horizon continuity benchmark as the independent quality frontier; it unblocks #139 and then #140.
+4. Do not start #129 until #136 closes. #137 follows #134 and #136; #142 follows #134. Package and release gates close only after their bounded leaves have integrated evidence.
 
 ## 3. First executable frontier (historical)
 
@@ -68,11 +69,11 @@ M1 foundations:
 ## 6. M3 release and proof sequencing
 
 - #129 export; #130 publish checks/preview; #131 legal/help/AI disclosure and appeal.
-- #132 aggregates RLS/authorization coverage, but every feature ticket must add RLS when it creates a tenant-owned table.
-- #133 follows provider/runtime trace contracts; #135 consumes hardened logs/metrics; #134 implements account export/deletion and coordinates with #136 backup retention.
-- #136 backup/restore follows deletion-retention and operations contracts.
-- #137 capacity benchmark runs against the integrated schema and storage/backup stack.
-- #138 long-horizon continuity fixture depends on domain, planning, runtime and writing primitives; #139 pins it into the fixed quality suite; #140 gates real-provider canary/rollback.
+- #132 RLS/authorization coverage and #133 logging/trace hardening are complete. Every new tenant-owned table still requires RLS coverage.
+- #135 deployment, health, metrics and cost alerting is complete. Backup expiry and restore evidence remain with #136.
+- #134 is the next ready leaf. It defines account export, deletion recovery and permanent purge semantics; #136 consumes that contract for backup/restore and retention evidence.
+- #129 follows #136; #130 follows #129; #131 follows #130. #137 follows #134 and #136; #142 follows #134.
+- #138 is the other ready leaf. #139 consumes its long-horizon fixture; #140 gates real-provider canary/rollback after #139.
 - #104 is the V1-wide UI closeout and is last among page parity aggregators.
 
 ## 7. Package-parent rule
