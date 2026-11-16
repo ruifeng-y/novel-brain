@@ -23,7 +23,8 @@
 - 生产 overlay 使用独立 project、`APP_ORIGIN=http://localhost` 完成镜像构建和 `--wait` 启动；Caddy 公网入口返回 200。
 - 生产 Worker 容器使用 32-byte `MODEL_CONFIG_ENCRYPTION_KEY` 完成模型 Key 加密/解密 smoke。
 - `pnpm stack:smoke` 验证 Web、API readiness、Mailpit、Worker、MinIO、metrics，以及公开 Web origin 不暴露 metrics。
-- 生产 overlay 的 Worker 容器内 smoke 通过，验证内部服务名、Worker 消费、MinIO 和 metrics，同时确认公开入口拒绝大小写 metrics 路径。
+- 生产 overlay 的 Worker 容器内 smoke 通过，验证内部服务名、Worker 消费、MinIO、Prometheus target 与 MinIO capacity 指标。
+- 公开 Web proxy 拒绝 metrics 的大小写、编码斜杠和双重编码路径变体。
 - Prometheus 两个 target 均为 `up`：`novelbrain-api`、`novelbrain-minio`。
 - Prometheus 成功加载 9 条 `novelbrain-operations` 规则。
 - `promtool test rules` 执行 `infra/observability/alerts.test.yml`，逐条验证 9 个告警的真实 PromQL 表达式。

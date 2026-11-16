@@ -85,7 +85,12 @@ async function main() {
   });
 
   await fetchRequired(`${mailpitUrl}/api/v1/info`);
-  for (const path of ["metrics", "METRICS", "foo/..%2Fmetrics"]) {
+  for (const path of [
+    "metrics",
+    "METRICS",
+    "foo/..%2Fmetrics",
+    "foo/%252e%252e%252fmetrics",
+  ]) {
     const publicMetrics = await fetch(`${webUrl}/api/v1/${path}`);
     if (publicMetrics.status !== 404) {
       throw new Error(`Metrics must not be exposed through the public Web origin: ${path}`);

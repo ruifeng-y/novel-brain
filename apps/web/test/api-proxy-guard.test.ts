@@ -12,6 +12,7 @@ describe("API proxy path guard", () => {
   it("blocks path segments that can escape the API proxy route", () => {
     expect(isBlockedApiProxyPath(["..", "admin"], "/api/v1/admin")).toBe(true);
     expect(isBlockedApiProxyPath(["foo/bar"], "/api/v1/foo/bar")).toBe(true);
+    expect(isBlockedApiProxyPath(["%2e%2e%2fmetrics"], "/api/v1/%2e%2e%2fmetrics")).toBe(true);
     expect(isBlockedApiProxyPath(["works", "id"], "/api/v1/works/id")).toBe(false);
   });
 });

@@ -11,6 +11,10 @@ export function isBlockedApiProxyPath(
   }
   return segments.some(
     (segment) =>
-      segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\"),
+      segment === "." ||
+      segment === ".." ||
+      segment.includes("/") ||
+      segment.includes("\\") ||
+      segment.includes("%"),
   );
 }
