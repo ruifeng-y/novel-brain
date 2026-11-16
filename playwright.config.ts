@@ -43,6 +43,7 @@ export default defineConfig({
         ALLOW_INSECURE_LOCAL_MODEL_KEY: "true",
         MODEL_PROVIDER_ALLOWLIST: "https://api.openai.com/v1",
         MODEL_CONNECTION_TESTER: "fake",
+        STORAGE_LOCAL_DIRECTORY: "test-results/playwright-storage",
       },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
