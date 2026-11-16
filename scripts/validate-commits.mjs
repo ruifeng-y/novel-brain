@@ -79,6 +79,7 @@ const TECHNICAL_WORDS = new Set([
   "snapshot",
   "smoke",
   "stacked",
+  "squash",
   "seam",
   "sql",
   "subject",
