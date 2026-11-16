@@ -15,7 +15,7 @@ Copy-Item .env.production.example .env
 docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml config
 docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml up -d --build --wait
 curl.exe --fail --silent --show-error https://novelbrain.example.com/health
-docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T -e API_URL=http://api:3001 -e WEB_URL=http://web:3000 -e MAILPIT_URL=http://mailpit:8025 -e METRICS_URL=http://api:3001/api/v1/metrics -e STORAGE_HEALTH_URL=http://minio:9000/minio/health/live -e REDIS_URL=redis://redis:6379 worker node apps/worker/scripts/stack-smoke.mjs
+docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T -e API_URL=http://api:3001 -e WEB_URL=http://web:3000 -e MAILPIT_URL=http://mailpit:8025 -e METRICS_URL=http://api:3001/api/v1/metrics -e PROMETHEUS_URL=http://prometheus:9090 -e STORAGE_HEALTH_URL=http://minio:9000/minio/health/live -e REDIS_URL=redis://redis:6379 worker node apps/worker/scripts/stack-smoke.mjs
 ```
 
 局域网开发或验收环境可使用基础 Compose：
@@ -65,7 +65,7 @@ docker compose -f infra/docker/compose.yml exec api node -e "fetch('http://127.0
 ```powershell
 git switch --detach <previous-release-commit>
 docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml up -d --build --wait
-docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T -e API_URL=http://api:3001 -e WEB_URL=http://web:3000 -e MAILPIT_URL=http://mailpit:8025 -e METRICS_URL=http://api:3001/api/v1/metrics -e STORAGE_HEALTH_URL=http://minio:9000/minio/health/live -e REDIS_URL=redis://redis:6379 worker node apps/worker/scripts/stack-smoke.mjs
+docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T -e API_URL=http://api:3001 -e WEB_URL=http://web:3000 -e MAILPIT_URL=http://mailpit:8025 -e METRICS_URL=http://api:3001/api/v1/metrics -e PROMETHEUS_URL=http://prometheus:9090 -e STORAGE_HEALTH_URL=http://minio:9000/minio/health/live -e REDIS_URL=redis://redis:6379 worker node apps/worker/scripts/stack-smoke.mjs
 ```
 
 如果新迁移不向后兼容，不要直接回滚镜像；先按 #136 的恢复流程从迁移前备份恢复，再回到上一版本。仅回滚容器而保留不兼容 schema 不是有效回滚。

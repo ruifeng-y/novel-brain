@@ -7,6 +7,7 @@ const apiUrl = process.env.API_URL ?? "http://127.0.0.1:3001";
 const webUrl = process.env.WEB_URL ?? "http://127.0.0.1:3000";
 const mailpitUrl = process.env.MAILPIT_URL ?? "http://127.0.0.1:8025";
 const metricsUrl = process.env.METRICS_URL ?? "http://127.0.0.1:3001/api/v1/metrics";
+const prometheusUrl = process.env.PROMETHEUS_URL ?? "http://127.0.0.1:9090";
 const storageHealthUrl =
   process.env.STORAGE_HEALTH_URL ?? "http://127.0.0.1:9000/minio/health/live";
 const redisUrl = new URL(process.env.REDIS_URL ?? "redis://127.0.0.1:6379");
@@ -27,6 +28,48 @@ async function fetchRequired(url, validate) {
     throw new Error(`${url} returned ${response.status}`);
   }
   return validate ? validate(response) : response;
+}
+
+async function verifyPrometheusStorageMetrics() {
+  const targets = await fetchRequired(`${prometheusUrl}/api/v1/targets`, async (response) => {
+    const payload = await response.json();
+    return payload.data?.activeTargets ?? [];
+  });
+  for (const job of ["novelbrain-api", "novelbrain-minio"]) {
+    const target = targets.find((entry) => entry.labels?.job === job);
+    if (!target || target.health !== "up") {
+      throw new Error(`Prometheus target is not up: ${job}`);
+    }
+  }
+  for (const metric of [
+    "minio_cluster_capacity_usable_total_bytes",
+    "minio_cluster_capacity_usable_free_bytes",
+  ]) {
+    const queryUrl = new URL("/api/v1/query", prometheusUrl);
+    queryUrl.searchParams.set("query", metric);
+    const result = await fetchRequired(queryUrl.toString(), async (response) => {
+      const payload = await response.json();
+      return payload.data?.result ?? [];
+    });
+    if (result.length === 0) {
+      throw new Error(`Prometheus has no storage metric: ${metric}`);
+    }
+  }
+}
+
+async function waitForPrometheusStorageMetrics() {
+  const deadline = Date.now() + 20_000;
+  let lastError;
+  while (Date.now() < deadline) {
+    try {
+      await verifyPrometheusStorageMetrics();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+  }
+  throw lastError ?? new Error("Prometheus storage metrics did not become ready");
 }
 
 async function main() {
@@ -54,8 +97,8 @@ async function main() {
     for (const metric of [
       "novelbrain_api_request_duration_seconds",
       "novelbrain_worker_queue_jobs",
-      "novelbrain_jobs_24h",
-      "novelbrain_model_cost_cny_24h",
+      "novelbrain_jobs_window",
+      "novelbrain_model_cost_cny_window",
       "novelbrain_dependency_up",
     ]) {
       if (!text.includes(metric)) {
@@ -63,6 +106,7 @@ async function main() {
       }
     }
   });
+  await waitForPrometheusStorageMetrics();
 
   const connection = redisConnection();
   const queue = new Queue(WORKER_QUEUE_NAME, { connection });
@@ -84,6 +128,7 @@ async function main() {
       api: `${apiUrl}/api/v1/health/ready`,
       mailpit: `${mailpitUrl}/api/v1/info`,
       metrics: metricsUrl,
+      prometheus: prometheusUrl,
       storage: storageHealthUrl,
       worker: "ready",
     }),

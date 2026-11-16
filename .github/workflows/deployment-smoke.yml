@@ -48,7 +48,7 @@ jobs:
       - name: Verify production model-key encryption
         run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T worker node -e "const { encryptApiKey, decryptApiKey } = require('/app/packages/ai/dist/index.js'); const value = 'production-smoke-key'; if (decryptApiKey(encryptApiKey(value)) !== value) process.exit(1);"
       - name: Smoke production services
-        run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T -e API_URL=http://api:3001 -e WEB_URL=http://web:3000 -e MAILPIT_URL=http://mailpit:8025 -e METRICS_URL=http://api:3001/api/v1/metrics -e STORAGE_HEALTH_URL=http://minio:9000/minio/health/live -e REDIS_URL=redis://redis:6379 worker node apps/worker/scripts/stack-smoke.mjs
+        run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T -e API_URL=http://api:3001 -e WEB_URL=http://web:3000 -e MAILPIT_URL=http://mailpit:8025 -e METRICS_URL=http://api:3001/api/v1/metrics -e PROMETHEUS_URL=http://prometheus:9090 -e STORAGE_HEALTH_URL=http://minio:9000/minio/health/live -e REDIS_URL=redis://redis:6379 worker node apps/worker/scripts/stack-smoke.mjs
       - name: Capture deployment evidence
         if: always()
         run: docker compose --env-file .env.production.example -f infra/docker/compose.yml -f infra/docker/compose.production.yml ps

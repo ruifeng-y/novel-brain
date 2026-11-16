@@ -17,6 +17,7 @@ describe("worker operational metrics recorder", () => {
 
   it("maps only durable terminal statuses to final outcomes", () => {
     expect(durableJobStatusToOutcome("completed")).toBe("succeeded");
+    expect(durableJobStatusToOutcome("waiting_review")).toBe("succeeded");
     expect(durableJobStatusToOutcome("failed")).toBe("failed");
     expect(durableJobStatusToOutcome("cancelled")).toBe("cancelled");
     expect(durableJobStatusToOutcome("paused")).toBeUndefined();

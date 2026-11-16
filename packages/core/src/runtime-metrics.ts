@@ -23,6 +23,7 @@ export type RuntimeJobType =
   | "unknown";
 export type RuntimeJobStatus = "cancelled" | "completed" | "failed" | "succeeded" | "unknown";
 export type RuntimeModelStatus = "cancelled" | "failed" | "succeeded" | "unknown";
+export type RuntimeJobOutcome = "succeeded" | "failed" | "cancelled";
 const SAFE_JOB_STATUSES = new Set<string>([
   "cancelled",
   "completed",
@@ -72,7 +73,7 @@ export function runtimeMetricsBucketDates(
   const current = new Date(now);
   current.setUTCMinutes(0, 0, 0);
   return Array.from(
-    { length: hours + 1 },
+    { length: hours },
     (_, offset) => new Date(current.getTime() - offset * 60 * 60 * 1_000),
   );
 }

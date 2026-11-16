@@ -34,7 +34,7 @@ groups:
           summary: The oldest NovelBrain queued job has waited too long
           runbook: docs/operations/alerting.md#workerqueueoldestjobage
       - alert: JobFailureRateHigh
-        expr: sum(novelbrain_jobs_24h{status="failed"}) / clamp_min(sum(novelbrain_jobs_24h), 1) > 0.1
+        expr: sum(novelbrain_jobs_window{status="failed"}) / clamp_min(sum(novelbrain_jobs_window), 1) > 0.1
         for: 15m
         labels:
           severity: warning
@@ -49,14 +49,14 @@ groups:
         annotations:
           summary: Provider model latency is above the operational target
           runbook: docs/operations/alerting.md#modellatencyhigh
-      - alert: ModelCostDailyHigh
-        expr: sum(novelbrain_model_cost_cny_24h) > 20
+      - alert: ModelCostWindowHigh
+        expr: sum(novelbrain_model_cost_cny_window) > 20
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: Daily model spend has exceeded the default review threshold
-          runbook: docs/operations/alerting.md#modelcostdailyhigh
+          summary: Model spend in the metrics window has exceeded the default review threshold
+          runbook: docs/operations/alerting.md#modelcostwindowhigh
       - alert: StorageUsageHigh
         expr: minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_usable_total_bytes < 0.15
         for: 30m

@@ -150,22 +150,22 @@ export class PrometheusMetricsService {
     }
 
     lines.push(
-      "# HELP novelbrain_jobs_24h Durable generation jobs in the rolling 24-hour window.",
-      "# TYPE novelbrain_jobs_24h gauge",
+      "# HELP novelbrain_jobs_window Durable generation jobs in the configured 24-hour-bucket window.",
+      "# TYPE novelbrain_jobs_window gauge",
     );
     for (const job of snapshot.jobs) {
       const jobType = safeRuntimeMetricJobType(job.jobType);
       const status = safeRuntimeMetricJobStatus(job.status);
-      lines.push(metricLine("novelbrain_jobs_24h", { job_type: jobType, status }, job.count));
+      lines.push(metricLine("novelbrain_jobs_window", { job_type: jobType, status }, job.count));
     }
 
     lines.push(
-      "# HELP novelbrain_model_calls_24h Model calls in the rolling 24-hour window.",
-      "# TYPE novelbrain_model_calls_24h gauge",
-      "# HELP novelbrain_model_latency_ms Average model call latency in the rolling 24-hour window.",
+      "# HELP novelbrain_model_calls_window Model calls in the configured 24-hour-bucket window.",
+      "# TYPE novelbrain_model_calls_window gauge",
+      "# HELP novelbrain_model_latency_ms Average model call latency in the configured 24-hour-bucket window.",
       "# TYPE novelbrain_model_latency_ms gauge",
-      "# HELP novelbrain_model_cost_cny_24h Settled model cost in CNY in the rolling 24-hour window.",
-      "# TYPE novelbrain_model_cost_cny_24h gauge",
+      "# HELP novelbrain_model_cost_cny_window Settled model cost in CNY in the configured 24-hour-bucket window.",
+      "# TYPE novelbrain_model_cost_cny_window gauge",
     );
     let inputTokens = 0;
     let outputTokens = 0;
@@ -178,17 +178,17 @@ export class PrometheusMetricsService {
       modelCalls += call.count;
       latencyWeighted += call.averageLatencyMs * call.count;
       lines.push(
-        metricLine("novelbrain_model_calls_24h", { status }, call.count),
+        metricLine("novelbrain_model_calls_window", { status }, call.count),
         metricLine("novelbrain_model_latency_ms", { status }, call.averageLatencyMs),
-        metricLine("novelbrain_model_cost_cny_24h", { status }, call.costCny),
+        metricLine("novelbrain_model_cost_cny_window", { status }, call.costCny),
       );
     }
     lines.push(
-      "# HELP novelbrain_model_tokens_24h Model tokens in the rolling 24-hour window.",
-      "# TYPE novelbrain_model_tokens_24h gauge",
-      metricLine("novelbrain_model_tokens_24h", { kind: "input" }, inputTokens),
-      metricLine("novelbrain_model_tokens_24h", { kind: "output" }, outputTokens),
-      "# HELP novelbrain_model_latency_ms_overall Weighted average model latency in the rolling 24-hour window.",
+      "# HELP novelbrain_model_tokens_window Model tokens in the configured 24-hour-bucket window.",
+      "# TYPE novelbrain_model_tokens_window gauge",
+      metricLine("novelbrain_model_tokens_window", { kind: "input" }, inputTokens),
+      metricLine("novelbrain_model_tokens_window", { kind: "output" }, outputTokens),
+      "# HELP novelbrain_model_latency_ms_overall Weighted average model latency in the configured 24-hour-bucket window.",
       "# TYPE novelbrain_model_latency_ms_overall gauge",
       metricLine(
         "novelbrain_model_latency_ms_overall",

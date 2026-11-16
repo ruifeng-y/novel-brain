@@ -20,11 +20,11 @@ describe("runtime metrics helpers", () => {
     expect(safeRuntimeMetricJobStatus("private-content")).toBe("unknown");
   });
 
-  it("builds hourly buckets for the rolling 24-hour boundary", () => {
+  it("builds the 24 configured hourly metric buckets", () => {
     const buckets = runtimeMetricsBucketDates(Date.UTC(2026, 10, 14, 12, 34));
-    expect(buckets).toHaveLength(25);
+    expect(buckets).toHaveLength(24);
     expect(buckets[0]?.toISOString()).toBe("2026-11-14T12:00:00.000Z");
-    expect(buckets[24]?.toISOString()).toBe("2026-11-13T12:00:00.000Z");
+    expect(buckets[23]?.toISOString()).toBe("2026-11-13T13:00:00.000Z");
   });
 
   it("only accepts route templates or registered static routes", () => {

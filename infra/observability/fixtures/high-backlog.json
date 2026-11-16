@@ -5,7 +5,7 @@
   "queueOldestJobAgeSeconds": 900,
   "jobFailureRate": 0.02,
   "modelAverageLatencyMs": 1200,
-  "modelDailyCostCny": 3.5,
+  "modelWindowCostCny": 3.5,
   "storageFreeRatio": 0.5,
   "storageAvailable": 1
 }

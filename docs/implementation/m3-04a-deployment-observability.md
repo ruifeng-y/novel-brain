@@ -10,8 +10,8 @@
 - 生产 overlay 对数据库、认证、代理、模型密钥、Provider allowlist、SMTP 和对象存储变量使用必填环境变量。
 - API liveness 只判断进程；readiness 在配置对象存储后同时检查 Postgres、Redis 和 MinIO。
 - Worker readiness CLI 检查数据库、队列消费者和 MinIO。
-- `/api/v1/metrics` 输出 Prometheus 文本，覆盖 API 延迟、队列深度/最老任务、24 小时任务结果、模型延迟/token/费用和依赖可用性。
-- Worker 将 Postgres 权威终态与模型调用聚合写入小时桶 Redis 计数器；API 读取当前及之前 24 个桶，并按最老桶的边界比例折算为滚动 24 小时，不跨租户扫描受 RLS 保护的故事表。
+- `/api/v1/metrics` 输出 Prometheus 文本，覆盖 API 延迟、队列深度/最老任务、最近 24 个 UTC 小时桶内的任务结果、模型延迟/token/费用和依赖可用性。
+- Worker 将 Postgres 权威终态与模型调用聚合写入小时桶 Redis 计数器；API 读取当前及之前 23 个桶（约 23–24 小时），不跨租户扫描受 RLS 保护的故事表。
 - `/metrics` 不进入 OpenAPI，也不通过公开 Web 代理暴露。
 - MinIO 自带指标由 Prometheus 抓取，用于真实存储容量与使用量。
 - 告警规则、阈值说明、故障 fixture 和逐步 runbook 已纳入 guardrail。

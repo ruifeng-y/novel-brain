@@ -27,7 +27,7 @@ test("evaluates the all-alerts fixture against documented thresholds", () => {
     "WorkerQueueOldestJobAge",
     "JobFailureRateHigh",
     "ModelLatencyHigh",
-    "ModelCostDailyHigh",
+    "ModelCostWindowHigh",
     "StorageUsageHigh",
     "StorageUnavailable",
   ]);

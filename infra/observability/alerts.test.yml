@@ -31,13 +31,13 @@ tests:
         values: "25x20"
       - series: 'novelbrain_worker_queue_oldest_job_age_seconds{state="wait"}'
         values: "900x20"
-      - series: 'novelbrain_jobs_24h{job_type="generate_chapter",status="failed"}'
+      - series: 'novelbrain_jobs_window{job_type="generate_chapter",status="failed"}'
         values: "20x20"
-      - series: 'novelbrain_jobs_24h{job_type="generate_chapter",status="succeeded"}'
+      - series: 'novelbrain_jobs_window{job_type="generate_chapter",status="succeeded"}'
         values: "80x20"
       - series: "novelbrain_model_latency_ms_overall"
         values: "6000x20"
-      - series: 'novelbrain_model_cost_cny_24h{status="succeeded"}'
+      - series: 'novelbrain_model_cost_cny_window{status="succeeded"}'
         values: "30x20"
       - series: "minio_cluster_capacity_usable_free_bytes"
         values: "10x40"
@@ -98,13 +98,13 @@ tests:
               summary: Provider model latency is above the operational target
               runbook: docs/operations/alerting.md#modellatencyhigh
       - eval_time: 6m
-        alertname: ModelCostDailyHigh
+        alertname: ModelCostWindowHigh
         exp_alerts:
           - exp_labels:
               severity: warning
             exp_annotations:
-              summary: Daily model spend has exceeded the default review threshold
-              runbook: docs/operations/alerting.md#modelcostdailyhigh
+              summary: Model spend in the metrics window has exceeded the default review threshold
+              runbook: docs/operations/alerting.md#modelcostwindowhigh
       - eval_time: 31m
         alertname: StorageUsageHigh
         exp_alerts:

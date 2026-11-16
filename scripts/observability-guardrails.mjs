@@ -7,7 +7,7 @@ const ALERTS = [
   "WorkerQueueOldestJobAge",
   "JobFailureRateHigh",
   "ModelLatencyHigh",
-  "ModelCostDailyHigh",
+  "ModelCostWindowHigh",
   "StorageUsageHigh",
   "StorageUnavailable",
 ];
@@ -32,8 +32,8 @@ export function evaluateAlertFixture(fixture, thresholds) {
   if (fixture.modelAverageLatencyMs > thresholds.modelAverageLatencyMs) {
     firing.push("ModelLatencyHigh");
   }
-  if (fixture.modelDailyCostCny > thresholds.modelDailyCostCny) {
-    firing.push("ModelCostDailyHigh");
+  if (fixture.modelWindowCostCny > thresholds.modelWindowCostCny) {
+    firing.push("ModelCostWindowHigh");
   }
   if (fixture.storageFreeRatio < thresholds.storageFreeRatioMinimum) {
     firing.push("StorageUsageHigh");
@@ -57,7 +57,7 @@ export function validateAlertAssets() {
     "queueOldestJobAgeSeconds",
     "jobFailureRate",
     "modelAverageLatencyMs",
-    "modelDailyCostCny",
+    "modelWindowCostCny",
     "storageFreeRatioMinimum",
     "storageAvailableMinimum",
   ];
@@ -85,7 +85,7 @@ export function validateAlertAssets() {
     WorkerQueueOldestJobAge: `> ${thresholds.queueOldestJobAgeSeconds}`,
     JobFailureRateHigh: `> ${thresholds.jobFailureRate}`,
     ModelLatencyHigh: `> ${thresholds.modelAverageLatencyMs}`,
-    ModelCostDailyHigh: `> ${thresholds.modelDailyCostCny}`,
+    ModelCostWindowHigh: `> ${thresholds.modelWindowCostCny}`,
     StorageUsageHigh: `< ${thresholds.storageFreeRatioMinimum}`,
     StorageUnavailable: "< 1",
   };

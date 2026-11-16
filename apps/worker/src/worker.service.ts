@@ -152,7 +152,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     let outcome: WorkerJobOutcome | undefined;
     try {
       if (payload.jobType === SUMMARY_REBUILD_JOB) {
-        await this.summaryProcessor.process(payload);
+        outcome = await this.summaryProcessor.process(payload);
       } else if (payload.jobType === BATCH_TICK_JOB) {
         await this.batchPlanProcessor.process(payload);
       } else if (payload.jobType === WRITE_ACTION_JOB) {
@@ -163,7 +163,9 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         await this.processor.process(payload);
         await this.batchPlanProcessor.onChildFinished(payload);
       }
-      outcome = await this.completedJobOutcome(payload);
+      if (!outcome) {
+        outcome = await this.completedJobOutcome(payload);
+      }
     } catch (error) {
       if (isFinalJobAttempt(job.attemptsMade, job.opts.attempts)) {
         outcome = "failed";

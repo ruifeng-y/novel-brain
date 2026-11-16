@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { SummaryRebuildJob, SummaryRecord } from "@novel-brain/contracts";
+import type { RuntimeJobOutcome } from "@novel-brain/core";
 
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -26,10 +27,19 @@ export class SummaryRebuildProcessor {
     this.checkpointBoundaryHook = hook;
   }
 
-  async process(job: SummaryRebuildJob): Promise<void> {
+  async process(job: SummaryRebuildJob): Promise<RuntimeJobOutcome> {
+    let outcome: RuntimeJobOutcome = "succeeded";
     await this.repository.withRunLock(job.runId, async () => {
       const run = await this.repository.loadRun(job);
-      if (!run || run.status === "completed" || run.status === "cancelled") {
+      if (!run) {
+        outcome = "failed";
+        return;
+      }
+      if (run.status === "completed") {
+        return;
+      }
+      if (run.status === "cancelled") {
+        outcome = "cancelled";
         return;
       }
       await this.repository.ensurePlan(run);
@@ -53,6 +63,7 @@ export class SummaryRebuildProcessor {
             code: "SUMMARY_REBUILD_FAILED",
             message: error instanceof Error ? error.message : "Summary rebuild failed",
           });
+          outcome = "failed";
           return;
         }
         await this.checkpointBoundaryHook?.({
@@ -63,5 +74,6 @@ export class SummaryRebuildProcessor {
         });
       }
     });
+    return outcome;
   }
 }

@@ -4,16 +4,17 @@ import {
   MODEL_METRICS_KEY,
   RUNTIME_METRICS_TTL_SECONDS,
   runtimeMetricsBucketKey,
+  type RuntimeJobOutcome,
 } from "@novel-brain/core";
 import type { WorkerJob } from "@novel-brain/contracts";
 import type { OnModuleDestroy } from "@nestjs/common";
 import type Redis from "ioredis";
 
 type WorkerJobType = WorkerJob["jobType"];
-export type WorkerJobOutcome = "succeeded" | "failed" | "cancelled";
+export type WorkerJobOutcome = RuntimeJobOutcome;
 
 export function durableJobStatusToOutcome(status: string | null): WorkerJobOutcome | undefined {
-  if (status === "completed") {
+  if (status === "completed" || status === "waiting_review") {
     return "succeeded";
   }
   if (status === "failed") {

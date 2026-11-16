@@ -84,8 +84,8 @@ export function validateDeploymentAssets() {
   for (const metric of [
     "novelbrain_api_request_duration_seconds",
     "novelbrain_worker_queue_jobs",
-    "novelbrain_jobs_24h",
-    "novelbrain_model_cost_cny_24h",
+    "novelbrain_jobs_window",
+    "novelbrain_model_cost_cny_window",
   ]) {
     if (!smoke.includes(metric)) {
       errors.push(`stack smoke missing ${metric}`);
@@ -101,6 +101,9 @@ export function validateDeploymentAssets() {
   if (!workflow.includes("node apps/worker/scripts/stack-smoke.mjs")) {
     errors.push("deployment smoke workflow must execute production stack smoke");
   }
+  if (!workflow.includes("PROMETHEUS_URL=http://prometheus:9090")) {
+    errors.push("deployment smoke workflow must verify Prometheus from the Compose network");
+  }
   if (!workflow.includes("infra/docker/compose.production.yml config --quiet")) {
     errors.push("deployment smoke workflow must validate the production overlay");
   }
@@ -112,6 +115,14 @@ export function validateDeploymentAssets() {
   }
   if (!smoke.includes("Metrics must not be exposed through the public Web origin")) {
     errors.push("stack smoke must reject public metrics exposure");
+  }
+  for (const metric of [
+    "minio_cluster_capacity_usable_total_bytes",
+    "minio_cluster_capacity_usable_free_bytes",
+  ]) {
+    if (!smoke.includes(metric)) {
+      errors.push(`stack smoke missing storage capacity check ${metric}`);
+    }
   }
   return errors;
 }

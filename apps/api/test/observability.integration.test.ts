@@ -79,11 +79,11 @@ describe("observability HTTP integration", () => {
     expect(metrics.headers["content-type"]).toContain("text/plain");
     expect(metrics.text).toContain("novelbrain_api_request_duration_seconds");
     expect(metrics.text).toContain("novelbrain_worker_queue_jobs");
-    expect(metrics.text).toContain("novelbrain_jobs_24h");
-    expect(metrics.text).toContain("novelbrain_model_cost_cny_24h");
+    expect(metrics.text).toContain("novelbrain_jobs_window");
+    expect(metrics.text).toContain("novelbrain_model_cost_cny_window");
     expect(metrics.text).toContain("novelbrain_dependency_up");
     expect(metrics.text).toContain(
-      'novelbrain_jobs_24h{job_type="generate_chapter",status="failed"} 2',
+      'novelbrain_jobs_window{job_type="generate_chapter",status="failed"} 2',
     );
     expect(metrics.text).toContain("novelbrain_model_latency_ms_overall 800");
   });

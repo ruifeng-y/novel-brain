@@ -42,9 +42,8 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
         ),
       ),
     ]);
-    const oldestBucketWeight = rollingWindowOldestBucketWeight(this.now());
-    const jobs = mergeMetricBuckets(jobBuckets, oldestBucketWeight);
-    const models = mergeMetricBuckets(modelBuckets, oldestBucketWeight);
+    const jobs = mergeMetricBuckets(jobBuckets);
+    const models = mergeMetricBuckets(modelBuckets);
     const statuses = new Set<string>();
     for (const field of Object.keys(models)) {
       const [kind, status] = field.split(":", 2);
@@ -92,28 +91,17 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
   }
 }
 
-function mergeMetricBuckets(
-  buckets: Array<Record<string, string>>,
-  oldestBucketWeight = 1,
-): Record<string, string> {
+function mergeMetricBuckets(buckets: Array<Record<string, string>>): Record<string, string> {
   const merged = new Map<string, number>();
-  for (const [index, bucket] of buckets.entries()) {
-    const weight = index === buckets.length - 1 ? oldestBucketWeight : 1;
+  for (const bucket of buckets) {
     for (const [field, value] of Object.entries(bucket)) {
       const parsed = Number(value);
       if (Number.isFinite(parsed)) {
-        merged.set(field, (merged.get(field) ?? 0) + parsed * weight);
+        merged.set(field, (merged.get(field) ?? 0) + parsed);
       }
     }
   }
   return Object.fromEntries([...merged].map(([field, value]) => [field, String(value)]));
-}
-
-function rollingWindowOldestBucketWeight(now: number): number {
-  const date = new Date(now);
-  const elapsedMinutes =
-    date.getUTCMinutes() + date.getUTCSeconds() / 60 + date.getUTCMilliseconds() / 60_000;
-  return Math.max(0, Math.min(1, 1 - elapsedMinutes / 60));
 }
 
 function nonNegativeNumber(value: unknown): number {
