@@ -13,6 +13,7 @@ COPY packages/ai/package.json packages/ai/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/db/package.json packages/db/package.json
+COPY packages/storage/package.json packages/storage/package.json
 
 RUN pnpm install --frozen-lockfile --ignore-scripts
 

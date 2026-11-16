@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "vitest";
 
 import {
@@ -12,6 +13,24 @@ import {
   verifyRestoredState,
   validateBackupManifest,
 } from "../backup/backup-policy.mjs";
+
+test("registers raw work export object keys for backup reference resolution", async () => {
+  const config = JSON.parse(
+    await readFile(new URL("../../infra/backup/object-references.json", import.meta.url), "utf8"),
+  );
+  assert.deepEqual(
+    config.references.find(
+      (reference) =>
+        reference.table === "work_export_receipts" && reference.column === "artifact_object_key",
+    ),
+    {
+      table: "work_export_receipts",
+      column: "artifact_object_key",
+      format: "objectKey",
+      tenantColumn: "user_id",
+    },
+  );
+});
 
 test("parses tenant-safe object references and rejects traversal", () => {
   assert.deepEqual(parseObjectReference("storage://novelbrain/users/u1/avatar.png", "novelbrain"), {

@@ -287,18 +287,26 @@ async function readObjectReferences(project, env = {}) {
   if (references.length === 0) {
     return [];
   }
+  const bucket = objectReferenceBucket(env);
   const queries = references.map((reference) => {
     const table = quoteIdentifier(reference.table);
     const column = quoteIdentifier(reference.column);
     const tenantColumn = quoteIdentifier(reference.tenantColumn);
+    const objectKeyMode = reference.format === "objectKey";
+    const valueExpression = objectKeyMode
+      ? `${quoteSqlLiteral(`storage://${bucket}/`)} || ${column}`
+      : column;
+    const whereExpression = objectKeyMode
+      ? `${column} IS NOT NULL AND btrim(${column}) <> '' AND ${column} NOT LIKE '%://%'`
+      : `(${column} LIKE 'storage://%' OR ${column} LIKE 's3://%')`;
     return `SELECT jsonb_build_object(
       'table', '${reference.table}',
       'column', '${reference.column}',
       'tenantId', ${tenantColumn}::text,
-      'value', ${column}
+      'value', ${valueExpression}
     ) AS reference
       FROM ${table}
-     WHERE ${column} LIKE 'storage://%' OR ${column} LIKE 's3://%'`;
+     WHERE ${whereExpression}`;
   });
   const rows = await psqlJson(
     project,
@@ -307,6 +315,18 @@ async function readObjectReferences(project, env = {}) {
     env,
   );
   return [...new Set(rows.map((row) => row.value))].sort();
+}
+
+function objectReferenceBucket(env) {
+  const bucket = env.STORAGE_BUCKET ?? process.env.STORAGE_BUCKET ?? "novelbrain";
+  if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u.test(bucket)) {
+    throw new Error("STORAGE_BUCKET is invalid for object reference resolution.");
+  }
+  return bucket;
+}
+
+function quoteSqlLiteral(value) {
+  return `'${value.replaceAll("'", "''")}'`;
 }
 
 async function readForeignKeyDefinitions(project, env = {}) {

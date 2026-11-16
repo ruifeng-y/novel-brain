@@ -11,6 +11,10 @@ import { AppModule } from "./app.module";
 async function main(): Promise<void> {
   process.env.DATABASE_URL ??= "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain";
   process.env.REDIS_URL ??= "redis://localhost:6379";
+  process.env.STORAGE_ENDPOINT ??= "http://127.0.0.1:9000";
+  process.env.STORAGE_ACCESS_KEY_ID ??= "openapi";
+  process.env.STORAGE_SECRET_ACCESS_KEY ??= "openapi";
+  process.env.STORAGE_BUCKET ??= "openapi";
 
   const app = await NestFactory.create(AppModule, { logger: false });
   app.setGlobalPrefix("api/v1");

@@ -11,9 +11,11 @@ import {
   GENERATE_CHAPTER_JOB,
   GENERATE_GOLDEN_THREE_JOB,
   SUMMARY_REBUILD_JOB,
+  EXPORT_WORK_JOB,
   WORKER_QUEUE_NAME,
   WRITE_ACTION_JOB,
   workerJobSchema,
+  type ExportWorkJob,
   type WorkerJob,
 } from "@novel-brain/contracts";
 import {
@@ -47,6 +49,9 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { AccountPurgeProcessor } from "./account-lifecycle/account-purge.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { WorkExportProcessor } from "./exports/work-export.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
 import {
   durableJobStatusToOutcome,
@@ -73,6 +78,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     private readonly summaryProcessor: SummaryRebuildProcessor,
     private readonly writingActionProcessor: WritingActionProcessor,
     private readonly accountPurgeProcessor: AccountPurgeProcessor,
+    private readonly workExportProcessor: WorkExportProcessor,
     private readonly generationRepository: WorkerGenerationRepository,
     @Inject(WORKER_REDIS) private readonly connection: Redis,
     @Inject(WorkerOperationalMetricsRecorder)
@@ -140,6 +146,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
           BATCH_TICK_JOB,
           ACCOUNT_PURGE_JOB,
           ACCOUNT_PURGE_TICK_JOB,
+          EXPORT_WORK_JOB,
         ],
       },
       "Worker is consuming its queue",
@@ -173,8 +180,30 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     let outcome: WorkerJobOutcome | undefined;
     try {
       if (payload.jobType === ACCOUNT_PURGE_TICK_JOB) {
-        await this.accountPurgeProcessor.cleanupExpiredExportReceipts();
-        const dueRequestIds = await this.accountPurgeProcessor.listDueRequestIds();
+        await this.runMaintenance(
+          "account_export_cleanup",
+          () => this.accountPurgeProcessor.cleanupExpiredExportReceipts(),
+          undefined,
+        );
+        await this.runMaintenance(
+          "work_export_cleanup",
+          () => this.workExportProcessor.cleanupExpiredReceipts(),
+          undefined,
+        );
+        await this.runMaintenance(
+          "work_export_recovery",
+          async () => {
+            for (const pending of await this.workExportProcessor.listPendingJobs()) {
+              await this.enqueueRecoveredWorkExport(pending);
+            }
+          },
+          undefined,
+        );
+        const dueRequestIds = await this.runMaintenance(
+          "account_purge_scan",
+          () => this.accountPurgeProcessor.listDueRequestIds(),
+          [],
+        );
         for (const deletionRequestId of dueRequestIds) {
           await this.queue.add(ACCOUNT_PURGE_JOB, accountPurgeJobPayload(deletionRequestId), {
             jobId: accountPurgeJobId(deletionRequestId),
@@ -194,6 +223,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         await this.batchPlanProcessor.process(payload);
       } else if (payload.jobType === WRITE_ACTION_JOB) {
         await this.writingActionProcessor.process(payload);
+      } else if (payload.jobType === EXPORT_WORK_JOB) {
+        outcome = await this.workExportProcessor.process(payload, {
+          number: job.attemptsMade + 1,
+          maxAttempts: Math.max(1, job.opts.attempts ?? 1),
+        });
       } else if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
         await this.goldenThreeProcessor.process(payload);
       } else {
@@ -212,6 +246,49 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       if (outcome) {
         void this.metrics.recordJob(payload.jobType, outcome);
       }
+    }
+  }
+
+  private async enqueueRecoveredWorkExport(payload: ExportWorkJob): Promise<void> {
+    const existing = await this.queue.getJob(payload.jobId);
+    if (!existing) {
+      await this.addWorkExportJob(payload);
+      return;
+    }
+    const state = await existing.getState();
+    if (state === "failed" || state === "completed") {
+      await existing.retry(state, { resetAttemptsMade: true });
+      return;
+    }
+    if (!["active", "delayed", "prioritized", "waiting", "waiting-children"].includes(state)) {
+      await existing.remove();
+      await this.addWorkExportJob(payload);
+    }
+  }
+
+  private async addWorkExportJob(payload: ExportWorkJob): Promise<void> {
+    await this.queue.add(EXPORT_WORK_JOB, payload, {
+      jobId: payload.jobId,
+      removeOnComplete: false,
+      removeOnFail: false,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 1_000 },
+    });
+  }
+
+  private async runMaintenance<T>(
+    operation: string,
+    action: () => Promise<T>,
+    fallback: T,
+  ): Promise<T> {
+    try {
+      return await action();
+    } catch {
+      this.logger.warn(
+        { event: "worker.maintenance.failed", operation },
+        "Independent maintenance task failed",
+      );
+      return fallback;
     }
   }
 
@@ -242,6 +319,8 @@ function jobLogContext(payload: WorkerJob): Record<string, unknown> {
       return { runId: payload.runId };
     case BATCH_TICK_JOB:
       return { planId: payload.planId };
+    case EXPORT_WORK_JOB:
+      return { jobId: payload.jobId, exportId: payload.exportId };
     case GENERATE_GOLDEN_THREE_JOB:
       return {
         jobId: payload.jobId,

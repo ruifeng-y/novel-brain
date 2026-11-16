@@ -295,6 +295,19 @@ M0 关键错误：
 
 `DependencyCheck.name` 固定为 `database`、`queue`、`storage`，状态固定为 `up`、`down`。Metrics 标签只允许已登记的路由模板、任务类型、状态、依赖和队列状态；正文、Prompt、ContextPack、密钥和租户原始标识不得进入标签。
 
+### 5.12 导出格式与版本清单
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/v1/works/:workId/branches/:branchId/exports` | 幂等创建 TXT/Markdown/DOCX/EPUB 导出 job |
+| GET | `/api/v1/works/:workId/branches/:branchId/exports` | 调出导出历史 |
+| GET | `/api/v1/works/:workId/branches/:branchId/exports/:exportId` | 导出 receipt、manifest 和状态 |
+| GET | `/api/v1/works/:workId/branches/:branchId/exports/:exportId/download` | 下载已完成导出 |
+
+导出范围固定为 `current_chapter`、`selected_chapters`、`chapter_range`、`volume`、`book`。`sourceVersionNodeId` 可选，非空时必须属于当前 branch；导出 receipt 固定精确 chapter version/version node、章节标题版本和附录版本，worker 在源 hash 变化时 fail closed。导出文件默认保留 7 天，artifact 存在 MinIO/S3 兼容对象存储；过期先删除对象，再清空 receipt 对象键和包含正文片段的 source descriptor，manifest 与审计记录保留。
+
+本节契约变更由 Issue #129 的已批准验收范围授权，实施与验证证据记录在 `docs/implementation/m3-01a-work-export.md`。
+
 ## 6. M0 Resource Shapes
 
 以下是字段语义冻结；具体 Zod schema 在实现时落到 `packages/contracts`。

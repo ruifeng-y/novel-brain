@@ -421,6 +421,20 @@
       "when": 1794815717554,
       "tag": "0059_swift_nehzno",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1794840464642,
+      "tag": "0060_colorful_black_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794845085857,
+      "tag": "0061_funny_ghost_rider",
+      "breakpoints": true
     }
   ]
 }

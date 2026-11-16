@@ -15,7 +15,7 @@
 - restore 创建随机隔离 Compose project，使用新 volume 和随机端口；完成后逐表比较行数、检查 FK、回读 MinIO checksum，并清理 project。
 - orphan 检测从实时 bucket 清单和当前数据库引用计算，只选择“未被引用且超过最小年龄”的对象；删除前再次读取引用。默认 dry-run，apply 必须确认 bucket，并返回及持久化 audit ID、候选、跳过和删除结果。
 - 默认 retention 30 days。prune 同时处理到期备份和超过 24 小时的中断备份目录。
-- `infra/backup/object-references.json` 登记对象存储引用列；新增对象列必须同步登记。
+- `infra/backup/object-references.json` 登记对象存储引用列；完整 URI 列直接读取，裸对象键列标记 `format: "objectKey"` 后按 `STORAGE_BUCKET` 构造 `storage://` URI。新增对象列必须同步登记。
 
 ## 2. 验收证据
 

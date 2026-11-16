@@ -142,6 +142,13 @@ export const ERROR_CODES = [
   "ACCOUNT_DELETION_NOT_FOUND",
   "ACCOUNT_DELETION_RECOVERY_EXPIRED",
   "ACCOUNT_DELETION_INVALID_STATE",
+  "WORK_EXPORT_IDEMPOTENCY_CONFLICT",
+  "WORK_EXPORT_SOURCE_INVALID",
+  "WORK_EXPORT_NOT_READY",
+  "WORK_EXPORT_EXPIRED",
+  "WORK_EXPORT_SOURCE_CHANGED",
+  "WORK_EXPORT_RENDER_FAILED",
+  "WORK_EXPORT_INTEGRITY_FAILED",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -4831,6 +4838,303 @@ export const workerReadinessDataSchema = z.object({
 });
 export type WorkerReadinessData = z.infer<typeof workerReadinessDataSchema>;
 
+export const EXPORT_FORMATS = ["txt", "markdown", "docx", "epub"] as const;
+export const exportFormatSchema = z.enum(EXPORT_FORMATS);
+export type ExportFormat = z.infer<typeof exportFormatSchema>;
+
+export const EXPORT_PRESETS = ["generic", "qidian", "fanqie"] as const;
+export const exportPresetSchema = z.enum(EXPORT_PRESETS);
+export type ExportPreset = z.infer<typeof exportPresetSchema>;
+
+const EXPORT_OPTION_DEFAULTS = {
+  includeStoryBible: false,
+  includeSettingsAppendix: false,
+  includeOutline: false,
+  includeForeshadowLedger: false,
+  includeChangeHistory: false,
+  preset: "generic" as const,
+  chapterTitleFormat: "第{number}章 {title}",
+  volumeTitleFormat: "第{number}卷 {title}",
+  paragraphBlankLine: true,
+  firstLineIndent: false,
+  encoding: "utf-8" as const,
+};
+
+const exportChapterIdsSchema = z
+  .array(uuidV7Schema)
+  .min(1)
+  .max(4_000)
+  .superRefine((chapterIds, context) => {
+    if (new Set(chapterIds).size !== chapterIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Selected chapter ids must be unique",
+      });
+    }
+  });
+
+export const workExportScopeSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("current_chapter"),
+      chapterId: uuidV7Schema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("selected_chapters"),
+      chapterIds: exportChapterIdsSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("chapter_range"),
+      fromChapter: z.number().int().positive(),
+      toChapter: z.number().int().positive(),
+    })
+    .strict()
+    .refine((scope) => scope.toChapter >= scope.fromChapter, {
+      message: "toChapter must be greater than or equal to fromChapter",
+      path: ["fromChapter"],
+    }),
+  z
+    .object({
+      kind: z.literal("volume"),
+      volumeNodeId: uuidV7Schema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("book"),
+    })
+    .strict(),
+]);
+export type WorkExportScope = z.infer<typeof workExportScopeSchema>;
+
+export const workExportOptionsSchema = z
+  .object({
+    includeStoryBible: z.boolean().default(false),
+    includeSettingsAppendix: z.boolean().default(false),
+    includeOutline: z.boolean().default(false),
+    includeForeshadowLedger: z.boolean().default(false),
+    includeChangeHistory: z.boolean().default(false),
+    preset: exportPresetSchema.default("generic"),
+    chapterTitleFormat: z.string().trim().min(1).max(200).default("第{number}章 {title}"),
+    volumeTitleFormat: z.string().trim().min(1).max(200).default("第{number}卷 {title}"),
+    paragraphBlankLine: z.boolean().default(true),
+    firstLineIndent: z.boolean().default(false),
+    encoding: z.literal("utf-8").default("utf-8"),
+  })
+  .strict();
+export type WorkExportOptions = z.infer<typeof workExportOptionsSchema>;
+
+export const workExportRequestSchema = z
+  .object({
+    format: exportFormatSchema,
+    scope: workExportScopeSchema,
+    sourceVersionNodeId: uuidV7Schema.nullable().default(null),
+    options: workExportOptionsSchema.default(EXPORT_OPTION_DEFAULTS),
+  })
+  .strict();
+export type WorkExportRequest = z.infer<typeof workExportRequestSchema>;
+
+export const exportChapterManifestEntrySchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    title: z.string().min(1).max(500),
+    chapterVersionId: uuidV7Schema,
+    versionNodeId: uuidV7Schema,
+    contentSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    characterCount: z.number().int().nonnegative(),
+    volumeNodeId: uuidV7Schema.nullable(),
+    volumeNumber: z.number().int().positive().nullable(),
+    volumeTitle: z.string().max(500).nullable(),
+  })
+  .strict();
+
+export const exportSupplementManifestEntrySchema = z
+  .object({
+    kind: z.enum(["story_bible", "settings", "outline", "foreshadows", "change_history"]),
+    id: z.string().min(1).max(200),
+    versionNodeId: uuidV7Schema.nullable(),
+    contentSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+
+const exportManifestBaseSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    work: z
+      .object({
+        id: uuidV7Schema,
+        title: z.string().min(1).max(500),
+        penName: z.string().min(1).max(200),
+        genre: z.enum(["xianxia", "history", "urban"]),
+      })
+      .strict(),
+    branch: z
+      .object({
+        id: uuidV7Schema,
+        name: z.string().min(1).max(200),
+        requestedVersionNodeId: uuidV7Schema.nullable(),
+        resolvedVersionNodeId: uuidV7Schema,
+      })
+      .strict(),
+    scope: workExportScopeSchema,
+    format: exportFormatSchema,
+    options: workExportOptionsSchema,
+    chapters: z.array(exportChapterManifestEntrySchema).min(1).max(4_000),
+    supplements: z.array(exportSupplementManifestEntrySchema).max(5).default([]),
+    characterCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export const workExportManifestSchema = exportManifestBaseSchema
+  .extend({
+    manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type WorkExportManifest = z.infer<typeof workExportManifestSchema>;
+export type WorkExportManifestBase = z.infer<typeof exportManifestBaseSchema>;
+
+export const exportChapterSourceDescriptorSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    title: z.string().min(1).max(500),
+    chapterVersionId: uuidV7Schema,
+    versionNodeId: uuidV7Schema,
+    expectedContentHash: z.string().regex(/^[a-f0-9]{64}$/),
+    volumeNodeId: uuidV7Schema.nullable(),
+    volumeNumber: z.number().int().positive().nullable(),
+    volumeTitle: z.string().max(500).nullable(),
+  })
+  .strict();
+export type ExportChapterSourceDescriptor = z.infer<typeof exportChapterSourceDescriptorSchema>;
+
+export const exportSupplementSourceDescriptorSchema = z
+  .object({
+    kind: z.enum(["story_bible", "settings", "outline", "foreshadows", "change_history"]),
+    id: z.string().min(1).max(200),
+    versionNodeId: uuidV7Schema.nullable(),
+    title: z.string().min(1).max(500),
+    content: z.string(),
+    contentSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type ExportSupplementSourceDescriptor = z.infer<
+  typeof exportSupplementSourceDescriptorSchema
+>;
+
+export const workExportSourceDescriptorSchema = z
+  .object({
+    resolvedVersionNodeId: uuidV7Schema,
+    chapters: z.array(exportChapterSourceDescriptorSchema).min(1).max(4_000),
+    supplements: z.array(exportSupplementSourceDescriptorSchema).max(5),
+  })
+  .strict();
+export type WorkExportSourceDescriptor = z.infer<typeof workExportSourceDescriptorSchema>;
+
+export const workExportReceiptStatusSchema = z.enum([
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "expired",
+]);
+export type WorkExportReceiptStatus = z.infer<typeof workExportReceiptStatusSchema>;
+
+export const workExportReceiptSchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    format: exportFormatSchema,
+    status: workExportReceiptStatusSchema,
+    manifest: workExportManifestSchema.nullable(),
+    checksum: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
+    byteSize: z.number().int().nonnegative().nullable(),
+    fileName: z.string().min(1).max(500).nullable(),
+    contentType: z.string().min(1).max(200).nullable(),
+    error: z
+      .object({
+        code: errorCodeSchema,
+        message: z.string().min(1),
+      })
+      .strict()
+      .nullable(),
+    createdAt: z.string().datetime(),
+    completedAt: z.string().datetime().nullable(),
+    expiresAt: z.string().datetime(),
+  })
+  .strict();
+export type WorkExportReceipt = z.infer<typeof workExportReceiptSchema>;
+
+export const workExportListQuerySchema = z
+  .object({
+    cursor: uuidV7Schema.optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+
+export const workExportReceiptResponseSchema = apiEnvelopeSchema(workExportReceiptSchema);
+export const workExportReceiptListResponseSchema = apiEnvelopeSchema(
+  z.array(workExportReceiptSchema),
+);
+
+export const EXPORT_WORK_JOB = "export_work";
+export const EXPORT_JOB_STEPS = ["prepare", "render", "complete"] as const;
+export const exportJobStepSchema = z.enum(EXPORT_JOB_STEPS);
+
+export const exportCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    revision: z.number().int().nonnegative(),
+    step: exportJobStepSchema,
+    inputHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
+    outputRefs: z
+      .array(
+        z
+          .object({
+            type: z.enum([
+              "chapter_version",
+              "context_pack",
+              "fact_proposal",
+              "canon_commit",
+              "artifact",
+            ]),
+            id: z.string().min(1).max(200),
+          })
+          .strict(),
+      )
+      .max(100)
+      .default([]),
+    payload: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+
+export const exportWorkJobSchema = z
+  .object({
+    jobId: uuidV7Schema,
+    jobType: z.literal(EXPORT_WORK_JOB),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    idempotencyKey: z.string().min(1).max(200),
+    exportId: uuidV7Schema,
+    checkpoint: exportCheckpointSchema,
+  })
+  .strict();
+export type ExportWorkJob = z.infer<typeof exportWorkJobSchema>;
+
 export const WORKER_QUEUE_NAME = "novel-brain-jobs";
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
 export const GENERATE_GOLDEN_THREE_JOB = "generate_golden_three";
@@ -5761,6 +6065,7 @@ export const workerJobSchema = z.discriminatedUnion("jobType", [
   generateGoldenThreeJobSchema,
   summaryRebuildJobSchema,
   writeActionJobSchema,
+  exportWorkJobSchema,
   batchTickJobSchema,
   accountPurgeJobSchema,
   accountPurgeTickJobSchema,

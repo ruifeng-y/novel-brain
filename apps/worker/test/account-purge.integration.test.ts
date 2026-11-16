@@ -2,6 +2,10 @@ import { randomBytes } from "node:crypto";
 
 import { ACCOUNT_PURGE_JOB } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
+import { FileObjectStorage } from "@novel-brain/storage";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { uuidv7 } from "uuidv7";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -17,6 +21,8 @@ describe("account purge worker integration", () => {
   let pool: ReturnType<typeof createDatabasePool>;
   let processor: AccountPurgeProcessor;
   let purgeRepository: WorkerAccountPurgeRepository;
+  let storage: FileObjectStorage;
+  let storageDirectory: string;
 
   beforeAll(async () => {
     await ensureDatabaseExists(databaseUrl);
@@ -25,8 +31,10 @@ describe("account purge worker integration", () => {
     await runMigrations(databaseUrl);
     pool = createDatabasePool(databaseUrl);
     process.env.DATABASE_QUERY_TIMEOUT_MS = "250";
+    storageDirectory = await mkdtemp(path.join(tmpdir(), "novelbrain-account-purge-"));
+    storage = new FileObjectStorage(storageDirectory);
     purgeRepository = new WorkerAccountPurgeRepository();
-    processor = new AccountPurgeProcessor(purgeRepository);
+    processor = new AccountPurgeProcessor(purgeRepository, storage);
   });
 
   beforeEach(async () => {
@@ -36,6 +44,7 @@ describe("account purge worker integration", () => {
   afterAll(async () => {
     await purgeRepository?.onModuleDestroy();
     await pool?.end();
+    await rm(storageDirectory, { recursive: true, force: true });
     await dropDatabase(databaseUrl);
   });
 
@@ -171,6 +180,36 @@ describe("account purge worker integration", () => {
     expect(completed.failure).toBeNull();
   });
 
+  it("deletes work export objects before purging account rows", async () => {
+    const fixture = await seedDeletionFixture(pool);
+    const objectKey = `work-exports/${fixture.userId}/${fixture.workId}/${fixture.branchId}/artifact.txt`;
+    await storage.putObject({
+      key: objectKey,
+      bytes: new TextEncoder().encode("private export"),
+      contentType: "text/plain",
+    });
+    await seedWorkExportReceipt(pool, fixture, objectKey);
+
+    await processor.process({
+      jobType: ACCOUNT_PURGE_JOB,
+      deletionRequestId: fixture.deletionRequestId,
+      idempotencyKey: `account-purge-${fixture.deletionRequestId}`,
+      workId: null,
+      branchId: null,
+      checkpoint: {
+        schemaVersion: 1,
+        revision: 0,
+        step: "prepare",
+      },
+    });
+
+    await expect(storage.getObject(objectKey)).rejects.toMatchObject({ code: "ENOENT" });
+    const receipt = await pool.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM work_export_receipts",
+    );
+    expect(receipt.rows[0]?.count).toBe(0);
+  });
+
   it("deletes expired account export payloads while retaining unexpired receipts", async () => {
     const fixture = await seedDeletionFixture(pool);
     const client = await pool.connect();
@@ -259,7 +298,57 @@ async function seedDeletionFixture(pool: ReturnType<typeof createDatabasePool>) 
   } finally {
     client.release();
   }
-  return { userId, workId, deletionRequestId };
+  return { userId, workId, branchId, deletionRequestId };
+}
+
+async function seedWorkExportReceipt(
+  pool: ReturnType<typeof createDatabasePool>,
+  fixture: Awaited<ReturnType<typeof seedDeletionFixture>>,
+  objectKey: string,
+): Promise<void> {
+  const client = await pool.connect();
+  const jobId = uuidv7();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT set_config('app.user_id', $1, true)", [fixture.userId]);
+    await client.query(
+      `INSERT INTO jobs
+         (id, work_id, branch_id, user_id, type, status, progress, current_step,
+          idempotency_key, budget, checkpoint, cost, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'export_work', 'completed', 100, 'complete',
+               $5, '{"maxTokens":0,"maxCostCny":0,"maxRevisionRounds":0}'::jsonb,
+               '{"schemaVersion":1,"revision":3,"step":"complete","inputHash":null,"outputRefs":[],"payload":{}}'::jsonb,
+               '{"inputTokens":0,"outputTokens":0,"totalTokens":0,"costCny":0}'::jsonb,
+               now(), now())`,
+      [jobId, fixture.workId, fixture.branchId, fixture.userId, `purge-export-${jobId}`],
+    );
+    await client.query(
+      `INSERT INTO work_export_receipts
+         (id, job_id, user_id, work_id, branch_id, idempotency_key, format, status,
+          request, source_descriptor, artifact_object_key, checksum, byte_size,
+          file_name, content_type, created_at, updated_at, completed_at, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'txt', 'completed',
+               '{"format":"txt","scope":{"kind":"book"},"sourceVersionNodeId":null,"options":{}}'::jsonb,
+               NULL, $7, $8, 14, 'artifact.txt', 'text/plain', now(), now(), now(),
+               now() + interval '1 day')`,
+      [
+        uuidv7(),
+        jobId,
+        fixture.userId,
+        fixture.workId,
+        fixture.branchId,
+        `purge-export-${jobId}`,
+        objectKey,
+        "a".repeat(64),
+      ],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function inspectDeletion(

@@ -3,6 +3,9 @@ import type {
   AccountDeletionFailure,
   AccountDeletionStoreResult,
   AccountExportInventoryEntry,
+  WorkExportManifest,
+  WorkExportRequest,
+  WorkExportSourceDescriptor,
 } from "@novel-brain/contracts";
 import {
   boolean,
@@ -2432,16 +2435,19 @@ export const jobs = pgTable(
     uniqueIndex("jobs_batch_plan_idempotency_unique")
       .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
       .where(sql`${table.type} = 'batch_plan'`),
+    uniqueIndex("jobs_export_work_idempotency_unique")
+      .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
+      .where(sql`${table.type} = 'export_work'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
     index("jobs_parent_created_idx").on(table.parentJobId, table.createdAt),
     check(
       "jobs_type_check",
-      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan')`,
+      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan', 'export_work')`,
     ),
     check(
       "jobs_required_scope_check",
-      sql`(${table.type} in ('agent_workflow', 'batch_plan')) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+      sql`(${table.type} in ('agent_workflow', 'batch_plan', 'export_work')) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
     ),
     check(
       "jobs_job_type_check",
@@ -2460,6 +2466,73 @@ export const jobs = pgTable(
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
     ),
     check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
+  ],
+);
+
+export const workExportReceipts = pgTable(
+  "work_export_receipts",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    format: text("format").notNull(),
+    status: text("status").notNull().default("queued"),
+    request: jsonb("request").$type<WorkExportRequest>().notNull(),
+    sourceDescriptor: jsonb("source_descriptor").$type<WorkExportSourceDescriptor>(),
+    manifest: jsonb("manifest").$type<WorkExportManifest | null>(),
+    artifactObjectKey: text("artifact_object_key"),
+    checksum: text("checksum"),
+    byteSize: integer("byte_size"),
+    fileName: text("file_name"),
+    contentType: text("content_type"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("work_export_receipts_idempotency_unique").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.idempotencyKey,
+    ),
+    index("work_export_receipts_user_created_idx").on(table.userId, table.createdAt),
+    index("work_export_receipts_work_branch_created_idx").on(
+      table.workId,
+      table.branchId,
+      table.createdAt,
+    ),
+    index("work_export_receipts_expires_idx").on(table.expiresAt),
+    check(
+      "work_export_receipts_format_check",
+      sql`${table.format} in ('txt', 'markdown', 'docx', 'epub')`,
+    ),
+    check(
+      "work_export_receipts_status_check",
+      sql`${table.status} in ('queued', 'running', 'completed', 'failed', 'expired')`,
+    ),
+    check(
+      "work_export_receipts_checksum_check",
+      sql`${table.checksum} is null or ${table.checksum} ~ '^[a-f0-9]{64}$'`,
+    ),
+    check(
+      "work_export_receipts_byte_size_check",
+      sql`${table.byteSize} is null or ${table.byteSize} >= 0`,
+    ),
   ],
 );
 

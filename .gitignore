@@ -6,6 +6,7 @@ playwright-report/
 test-results/
 artifacts/playwright/
 artifacts/backups/
+artifacts/ui/candidates/
 .env
 *.log
 *.tsbuildinfo

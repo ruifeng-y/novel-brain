@@ -442,6 +442,24 @@
       "covered": true
     },
     {
+      "table": "deletion_requests",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "deletion_requests_tenant_policy",
+          "command": "ALL",
+          "using": "((user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid) OR (current_setting('app.system_role'::text, true) = 'account_deletion'::text))",
+          "withCheck": "((user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid) OR (current_setting('app.system_role'::text, true) = 'account_deletion'::text))"
+        }
+      ],
+      "covered": true
+    },
+    {
       "table": "entities",
       "tenantColumns": [
         "branch_id",
@@ -477,6 +495,24 @@
           "command": "ALL",
           "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
           "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "export_receipts",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "export_receipts_tenant_policy",
+          "command": "ALL",
+          "using": "((user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid) OR (current_setting('app.system_role'::text, true) = 'account_deletion'::text))",
+          "withCheck": "((user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid) OR (current_setting('app.system_role'::text, true) = 'account_deletion'::text))"
         }
       ],
       "covered": true
@@ -1934,6 +1970,26 @@
           "command": "ALL",
           "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
           "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "work_export_receipts",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "work_export_receipts_tenant_policy",
+          "command": "ALL",
+          "using": "((user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid) OR (current_setting('app.system_role'::text, true) = ANY (ARRAY['account_deletion'::text, 'work_export_cleanup'::text])))",
+          "withCheck": "((user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid) OR (current_setting('app.system_role'::text, true) = ANY (ARRAY['account_deletion'::text, 'work_export_cleanup'::text])))"
         }
       ],
       "covered": true
