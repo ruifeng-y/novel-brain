@@ -653,6 +653,17 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     });
   }
 
+  async jobStatus(input: { jobId: string; userId: string }): Promise<string | null> {
+    return this.withTenant(input.userId, async (transaction) => {
+      const [job] = await transaction
+        .select({ status: jobs.status })
+        .from(jobs)
+        .where(and(eq(jobs.id, input.jobId), eq(jobs.userId, input.userId)))
+        .limit(1);
+      return job?.status ?? null;
+    });
+  }
+
   async isCancelled(payload: WorkerJobBase): Promise<boolean> {
     return (await this.stopReason(payload)) === "cancelled";
   }

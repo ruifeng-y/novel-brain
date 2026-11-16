@@ -14,6 +14,7 @@ import { GoldenThreeModule } from "./golden-three/golden-three.module";
 import { HealthModule } from "./health/health.module";
 import { ManuscriptImportModule } from "./imports/manuscript-import.module";
 import { SettingsImportModule } from "./imports/settings-import.module";
+import { MetricsModule } from "./metrics/metrics.module";
 import { ModelConfigModule } from "./model-config/model-config.module";
 import { NotificationModule } from "./notifications/notification.module";
 import { OutlineModule } from "./outline/outline.module";
@@ -48,6 +49,7 @@ import { WritingActionModule } from "./writing-actions/writing-action.module";
     HealthModule,
     ManuscriptImportModule,
     SettingsImportModule,
+    MetricsModule,
     ModelConfigModule,
     NotificationModule,
     OutlineModule,

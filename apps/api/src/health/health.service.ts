@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   type DependencyCheck,
   type LivenessData,
@@ -6,7 +6,7 @@ import {
 } from "@novel-brain/contracts";
 import { elapsedMilliseconds } from "@novel-brain/core";
 
-import { DATABASE_PROBE, QUEUE_PROBE, type DependencyProbe } from "./health.probes";
+import { DATABASE_PROBE, QUEUE_PROBE, STORAGE_PROBE, type DependencyProbe } from "./health.probes";
 
 const PROBE_TIMEOUT_MS = 2_500;
 
@@ -15,6 +15,9 @@ export class HealthService {
   constructor(
     @Inject(DATABASE_PROBE) private readonly databaseProbe: DependencyProbe,
     @Inject(QUEUE_PROBE) private readonly queueProbe: DependencyProbe,
+    @Optional()
+    @Inject(STORAGE_PROBE)
+    private readonly storageProbe?: DependencyProbe,
   ) {}
 
   getLiveness(): LivenessData {
@@ -26,9 +29,11 @@ export class HealthService {
   }
 
   async getReadiness(): Promise<ReadinessData> {
+    const hasStorage = this.storageProbe ? (this.storageProbe.isConfigured?.() ?? true) : false;
     const checks = await Promise.all([
       this.runProbe("database", this.databaseProbe),
       this.runProbe("queue", this.queueProbe),
+      ...(hasStorage && this.storageProbe ? [this.runProbe("storage", this.storageProbe)] : []),
     ]);
     const ready = checks.every((check) => check.status === "up");
 

@@ -2,6 +2,8 @@ import { apiErrorSchema } from "@novel-brain/contracts";
 import { createRequestId, resolveProxyIpSecret, signClientIp } from "@novel-brain/core";
 import type { NextRequest } from "next/server";
 
+import { isBlockedApiProxyPath } from "../../../../lib/api-proxy-guard";
+
 export const dynamic = "force-dynamic";
 
 interface RouteContext {
@@ -12,6 +14,9 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   const apiInternalUrl = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:3001";
   const { path } = await context.params;
   const target = new URL(`/api/v1/${path.join("/")}`, apiInternalUrl);
+  if (isBlockedApiProxyPath(path, target.pathname)) {
+    return new Response("Not found", { status: 404 });
+  }
   target.search = request.nextUrl.search;
   const requestHeaders = new Headers();
   const forwardedFor =

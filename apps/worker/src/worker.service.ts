@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
@@ -15,7 +16,7 @@ import {
 } from "@novel-brain/contracts";
 import { emitTraceEnvelope, resolveTracePolicy, type TracePolicy } from "@novel-brain/core";
 import { Queue, Worker as BullWorker, type Job } from "bullmq";
-import Redis from "ioredis";
+import type Redis from "ioredis";
 
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -33,12 +34,21 @@ import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
+import {
+  durableJobStatusToOutcome,
+  isFinalJobAttempt,
+  WorkerOperationalMetricsRecorder,
+  type WorkerJobOutcome,
+} from "./metrics/operational-metrics-recorder";
+import { WORKER_REDIS } from "./metrics/operational-metrics.tokens";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { WorkerGenerationRepository } from "./generation/generation.repository";
 
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger: SafePinoLogger;
   private readonly tracePolicy: TracePolicy;
-  private readonly connection: Redis;
   private readonly queue: Queue<WorkerJob>;
   private readonly worker: BullWorker<WorkerJob, void>;
 
@@ -48,12 +58,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     private readonly batchPlanProcessor: BatchPlanTickProcessor,
     private readonly summaryProcessor: SummaryRebuildProcessor,
     private readonly writingActionProcessor: WritingActionProcessor,
+    private readonly generationRepository: WorkerGenerationRepository,
+    @Inject(WORKER_REDIS) private readonly connection: Redis,
+    @Inject(WorkerOperationalMetricsRecorder)
+    private readonly metrics: WorkerOperationalMetricsRecorder,
   ) {
-    const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      throw new Error("REDIS_URL is required");
-    }
-
     const tracePolicy = resolveTracePolicy(process.env);
     this.tracePolicy = tracePolicy;
     this.logger = new SafePinoLogger();
@@ -66,9 +75,8 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     this.processor.setTraceLogger(this.logger);
     this.processor.configureRecovery({ maxAutomaticAttempts: 3 });
     this.writingActionProcessor.setTraceLogger(this.logger);
-    this.connection = new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: true,
+    this.logger.setTelemetrySink((payload) => {
+      void this.metrics.recordModelCall(payload);
     });
     this.queue = new Queue<WorkerJob>(WORKER_QUEUE_NAME, {
       connection: this.connection,
@@ -141,23 +149,48 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       },
       "Processing typed worker job",
     );
-    if (payload.jobType === SUMMARY_REBUILD_JOB) {
-      await this.summaryProcessor.process(payload);
-      return;
+    let outcome: WorkerJobOutcome | undefined;
+    try {
+      if (payload.jobType === SUMMARY_REBUILD_JOB) {
+        outcome = await this.summaryProcessor.process(payload);
+      } else if (payload.jobType === BATCH_TICK_JOB) {
+        await this.batchPlanProcessor.process(payload);
+      } else if (payload.jobType === WRITE_ACTION_JOB) {
+        await this.writingActionProcessor.process(payload);
+      } else if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
+        await this.goldenThreeProcessor.process(payload);
+      } else {
+        await this.processor.process(payload);
+        await this.batchPlanProcessor.onChildFinished(payload);
+      }
+      if (!outcome) {
+        outcome = await this.completedJobOutcome(payload);
+      }
+    } catch (error) {
+      if (isFinalJobAttempt(job.attemptsMade, job.opts.attempts)) {
+        outcome = "failed";
+      }
+      throw error;
+    } finally {
+      if (outcome) {
+        void this.metrics.recordJob(payload.jobType, outcome);
+      }
     }
-    if (payload.jobType === BATCH_TICK_JOB) {
-      await this.batchPlanProcessor.process(payload);
-      return;
+  }
+
+  private async completedJobOutcome(payload: WorkerJob): Promise<WorkerJobOutcome | undefined> {
+    if (!("jobId" in payload) || !("actorId" in payload)) {
+      return "succeeded";
     }
-    if (payload.jobType === WRITE_ACTION_JOB) {
-      await this.writingActionProcessor.process(payload);
-      return;
+    try {
+      return durableJobStatusToOutcome(
+        await this.generationRepository.jobStatus({
+          jobId: payload.jobId,
+          userId: payload.actorId,
+        }),
+      );
+    } catch {
+      return undefined;
     }
-    if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
-      await this.goldenThreeProcessor.process(payload);
-      return;
-    }
-    await this.processor.process(payload);
-    await this.batchPlanProcessor.onChildFinished(payload);
   }
 }

@@ -588,6 +588,8 @@ export * from "./power-items";
 export * from "./outline-planning";
 export * from "./readiness";
 export * from "./recovery";
+export * from "./runtime-metrics";
+export * from "./storage-health";
 export * from "./story-ledger";
 export * from "./summary";
 export * from "./volume-audit";

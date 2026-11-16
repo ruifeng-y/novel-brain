@@ -26,6 +26,7 @@ type HealthState =
 const checkLabels: Record<DependencyCheck["name"], string> = {
   database: "数据库",
   queue: "任务队列",
+  storage: "对象存储",
 };
 
 function dependencyCheck(readiness: ReadinessResponse | undefined, name: DependencyCheck["name"]) {

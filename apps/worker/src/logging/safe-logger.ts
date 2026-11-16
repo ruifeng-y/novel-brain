@@ -15,6 +15,7 @@ interface SafePinoLoggerOptions {
 export class SafePinoLogger {
   private readonly logger: Logger;
   private readonly canaryValues: readonly string[];
+  private telemetrySink: ((payload: Record<string, unknown>) => void) | undefined;
 
   constructor(options: SafePinoLoggerOptions = {}) {
     this.canaryValues = options.canaryValues ?? parseLogCanaryValues(process.env.LOG_CANARY_VALUES);
@@ -25,10 +26,12 @@ export class SafePinoLogger {
   }
 
   info(payload: Record<string, unknown>, message = "Worker event"): void {
+    this.telemetrySink?.(payload);
     this.write("info", payload, message);
   }
 
   warn(payload: Record<string, unknown>, message = "Worker warning"): void {
+    this.telemetrySink?.(payload);
     this.write("warn", payload, message);
   }
 
@@ -46,6 +49,10 @@ export class SafePinoLogger {
 
   fatal(payload: Record<string, unknown>, message = "Worker fatal"): void {
     this.write("fatal", payload, message);
+  }
+
+  setTelemetrySink(sink: ((payload: Record<string, unknown>) => void) | undefined): void {
+    this.telemetrySink = sink;
   }
 
   metric(name: string, labels: Record<string, unknown>, value = 1): void {
