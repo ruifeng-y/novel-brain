@@ -3,7 +3,7 @@
 > Issue: #134
 > Capabilities: ACCT-005, ACCT-006, IO-006, SEC-004
 > UI parity: `account-settings`
-> Status: implementation complete; visual baseline and #136 restore evidence pending
+> Status: implementation and visual signoff complete; #136 downstream restore evidence pending
 
 ## 1. 交付范围
 
