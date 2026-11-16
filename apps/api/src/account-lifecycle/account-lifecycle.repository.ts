@@ -64,8 +64,11 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
     idempotencyKey?: string,
   ): Promise<AccountExportReceipt> {
     const client = await this.pool.connect();
+    let locked = false;
     try {
-      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_lock(hashtext($1))", [userId]);
+      locked = true;
+      await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
       await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
       if (idempotencyKey) {
         const replay = await this.idempotentExportReplay(client, userId, idempotencyKey);
@@ -144,15 +147,41 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
         [uuidv7(), userId, receiptId, audit.requestId, audit.ip, audit.userAgent],
       );
       if (idempotencyKey) {
-        await client.query(
-          `INSERT INTO idempotency_records
-             (id, user_id, scope, idempotency_key, request_hash, resource_type, resource_id)
-           VALUES ($1, $2, 'account-export', $3, NULL, 'export_receipt', $4)`,
-          [uuidv7(), userId, idempotencyKey, receiptId],
+        await this.storeIdempotencyRecord(
+          client,
+          userId,
+          "account-export",
+          idempotencyKey,
+          "export_receipt",
+          receiptId,
         );
       }
       await client.query("COMMIT");
       return toReceipt(receipt);
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      if (locked) {
+        await client
+          .query("SELECT pg_advisory_unlock(hashtext($1))", [userId])
+          .catch(() => undefined);
+      }
+      client.release();
+    }
+  }
+
+  async findExportReplay(
+    userId: string,
+    idempotencyKey: string,
+  ): Promise<AccountExportReceipt | null> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
+      const replay = await this.idempotentExportReplay(client, userId, idempotencyKey);
+      await client.query("COMMIT");
+      return replay;
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
       throw error;
@@ -333,11 +362,13 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
         ],
       );
       if (input.idempotencyKey) {
-        await client.query(
-          `INSERT INTO idempotency_records
-             (id, user_id, scope, idempotency_key, request_hash, resource_type, resource_id)
-           VALUES ($1, $2, 'account-delete', $3, NULL, 'deletion_request', $4)`,
-          [uuidv7(), input.userId, input.idempotencyKey, deletionRequestId],
+        await this.storeIdempotencyRecord(
+          client,
+          input.userId,
+          "account-delete",
+          input.idempotencyKey,
+          "deletion_request",
+          deletionRequestId,
         );
       }
       await client.query("COMMIT");
@@ -540,6 +571,30 @@ export class AccountLifecycleRepository implements OnModuleDestroy {
       )
     ).rows;
     return record?.resource_id ?? null;
+  }
+
+  private async storeIdempotencyRecord(
+    client: PoolClient,
+    userId: string,
+    scope: string,
+    idempotencyKey: string,
+    resourceType: string,
+    resourceId: string,
+  ): Promise<void> {
+    await client.query(
+      `DELETE FROM idempotency_records
+        WHERE user_id = $1
+          AND scope = $2
+          AND idempotency_key = $3
+          AND created_at <= now() - interval '24 hours'`,
+      [userId, scope, idempotencyKey],
+    );
+    await client.query(
+      `INSERT INTO idempotency_records
+         (id, user_id, scope, idempotency_key, request_hash, resource_type, resource_id)
+       VALUES ($1, $2, $3, $4, NULL, $5, $6)`,
+      [uuidv7(), userId, scope, idempotencyKey, resourceType, resourceId],
+    );
   }
 
   private async tenantTables(client: PoolClient): Promise<AccountStore[]> {

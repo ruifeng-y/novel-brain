@@ -22,6 +22,12 @@ export class AccountLifecycleService {
   ) {}
 
   async createExport(userId: string, audit: LifecycleAuditContext, idempotencyKey?: string) {
+    if (idempotencyKey) {
+      const replay = await this.repository.findExportReplay(userId, idempotencyKey);
+      if (replay) {
+        return replay;
+      }
+    }
     await this.rateLimiter.consumeAccountExport(userId, audit.ip);
     return this.repository.createExportReceipt(userId, audit, idempotencyKey);
   }

@@ -205,7 +205,7 @@ export function AccountDataPrivacyPanel() {
           </div>
           <button
             className="btn btn-ghost btn-small"
-            disabled={busy !== "" || deletion !== null}
+            disabled={busy !== "" || loadingLifecycle || deletion !== null}
             onClick={exportAccount}
             type="button"
           >

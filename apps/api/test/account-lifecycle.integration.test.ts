@@ -130,13 +130,15 @@ describe("account lifecycle HTTP integration", () => {
       checksum: string;
       inventory: Array<{ store: string; rowCount: number }>;
     };
-    const exportReplay = await owner
-      .post("/api/v1/users/me/export")
-      .set("Origin", origin)
-      .set("X-CSRF-Token", csrfToken)
-      .set("Idempotency-Key", "account-export-replay")
-      .expect(200);
-    expect(exportReplay.body.data.id).toBe(receipt.id);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const exportReplay = await owner
+        .post("/api/v1/users/me/export")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .set("Idempotency-Key", "account-export-replay")
+        .expect(200);
+      expect(exportReplay.body.data.id).toBe(receipt.id);
+    }
     expect(receipt.inventoryVersion).toBe("account-export-v1");
     expect(receipt.inventory).toEqual(
       expect.arrayContaining([
@@ -182,17 +184,19 @@ describe("account lifecycle HTTP integration", () => {
     );
     expect(exportAudit.rows.map((row) => row.action)).toContain("account.exported");
 
-    for (let attempt = 0; attempt < 1; attempt += 1) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
       await owner
         .post("/api/v1/users/me/export")
         .set("Origin", origin)
         .set("X-CSRF-Token", csrfToken)
+        .set("Idempotency-Key", `account-export-limit-${attempt}`)
         .expect(200);
     }
     const limited = await owner
       .post("/api/v1/users/me/export")
       .set("Origin", origin)
       .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", "account-export-limit-blocked")
       .expect(429);
     expect(limited.body.error.code).toBe("AUTH_RATE_LIMITED");
   });
@@ -314,6 +318,57 @@ describe("account lifecycle HTTP integration", () => {
       .set("Idempotency-Key", "delete-owner-fresh-request")
       .send({ exportReceiptId: freshReceipt, confirm: true })
       .expect(202);
+  });
+
+  it("deduplicates concurrent export creation with the same idempotency key", async () => {
+    const owner = await createAuthenticatedAgent(
+      "concurrent-export@example.com",
+      "StrongPassword123",
+      "并发导出作者",
+    );
+    const csrfToken = await csrf(owner);
+    const responses = await Promise.all(
+      Array.from({ length: 2 }, () =>
+        owner
+          .post("/api/v1/users/me/export")
+          .set("Origin", origin)
+          .set("X-CSRF-Token", csrfToken)
+          .set("Idempotency-Key", "concurrent-export-key"),
+      ),
+    );
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    expect(responses[0]?.body.data.id).toBe(responses[1]?.body.data.id);
+    const count = await databasePool.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM export_receipts",
+    );
+    expect(count.rows[0]?.count).toBe(1);
+  });
+
+  it("allows an idempotency key to be reused after the 24-hour window", async () => {
+    const owner = await createAuthenticatedAgent(
+      "expired-idempotency@example.com",
+      "StrongPassword123",
+      "过期幂等作者",
+    );
+    const csrfToken = await csrf(owner);
+    const first = await owner
+      .post("/api/v1/users/me/export")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", "reusable-export-key")
+      .expect(200);
+    await databasePool.query(
+      `UPDATE idempotency_records
+          SET created_at = now() - interval '25 hours'
+        WHERE scope = 'account-export' AND idempotency_key = 'reusable-export-key'`,
+    );
+    const recreated = await owner
+      .post("/api/v1/users/me/export")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", "reusable-export-key")
+      .expect(200);
+    expect(recreated.body.data.id).not.toBe(first.body.data.id);
   });
 
   it("rejects recovery after the approved window without deleting the request", async () => {
