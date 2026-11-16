@@ -332,7 +332,8 @@ function databaseErrorCode(error: unknown): string | undefined {
 function isRetryableDatabaseError(error: unknown): boolean {
   return (
     ["40001", "40P01", "55P03", "57014"].includes(databaseErrorCode(error) ?? "") ||
-    (error instanceof Error && /query read timeout|statement timeout|lock timeout/iu.test(error.message))
+    (error instanceof Error &&
+      /query read timeout|statement timeout|lock timeout/iu.test(error.message))
   );
 }
 
