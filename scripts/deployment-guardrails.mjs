@@ -9,6 +9,7 @@ export function validateDeploymentAssets() {
   const deployment = readFileSync("docs/operations/deployment.md", "utf8");
   const smoke = readFileSync("apps/worker/scripts/stack-smoke.mjs", "utf8");
   const workflow = readFileSync(".github/workflows/deployment-smoke.yml", "utf8");
+  const backupRunbook = readFileSync("docs/operations/backup-restore.md", "utf8");
 
   for (const service of ["api:", "worker:", "migrate:", "caddy:", "minio:", "prometheus:"]) {
     if (!compose.includes(service)) {
@@ -52,6 +53,13 @@ export function validateDeploymentAssets() {
   }
   if (!productionEnv.includes("LOG_RETENTION_DAYS=30")) {
     errors.push("production env must require 30-day operational log retention");
+  }
+  const backupEncryptionKey = productionEnv
+    .split(/\r?\n/u)
+    .find((line) => line.startsWith("BACKUP_ENCRYPTION_KEY_BASE64="))
+    ?.slice("BACKUP_ENCRYPTION_KEY_BASE64=".length);
+  if (!backupEncryptionKey || Buffer.from(backupEncryptionKey, "base64").length !== 32) {
+    errors.push("production env backup encryption key placeholder must decode to 32 bytes");
   }
   const encryptionKey = productionEnv
     .split(/\r?\n/u)
@@ -122,6 +130,22 @@ export function validateDeploymentAssets() {
   ]) {
     if (!smoke.includes(metric)) {
       errors.push(`stack smoke missing storage capacity check ${metric}`);
+    }
+  }
+  for (const command of [
+    "pnpm backup:create",
+    "pnpm backup:verify",
+    "pnpm backup:restore",
+    "pnpm backup:orphans",
+    "pnpm backup:prune",
+  ]) {
+    if (!backupRunbook.includes(command)) {
+      errors.push(`backup runbook missing ${command}`);
+    }
+  }
+  for (const invariant of ["RPO 24h", "RTO 4h", "30 days", "dry-run", "advisory lock"]) {
+    if (!backupRunbook.includes(invariant)) {
+      errors.push(`backup runbook missing ${invariant}`);
     }
   }
   return errors;

@@ -53,7 +53,7 @@ docker compose -f infra/docker/compose.yml exec api node -e "fetch('http://127.0
 
 ## 更新
 
-1. 先运行 `pnpm check` 和备份检查。
+1. 先运行 `pnpm check`，并按 [backup-restore.md](backup-restore.md) 创建、验证和保留一份可恢复备份。
 2. 拉取已合并版本并重建镜像。
 3. 观察 `migrate` 成功、生产 readiness 为 `ready`、生产 smoke 通过。
 4. 查看 API/队列/成本/存储告警 15 分钟。
@@ -68,4 +68,4 @@ docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compo
 docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.production.yml exec -T -e API_URL=http://api:3001 -e WEB_URL=http://web:3000 -e MAILPIT_URL=http://mailpit:8025 -e METRICS_URL=http://api:3001/api/v1/metrics -e PROMETHEUS_URL=http://prometheus:9090 -e STORAGE_HEALTH_URL=http://minio:9000/minio/health/live -e REDIS_URL=redis://redis:6379 worker node apps/worker/scripts/stack-smoke.mjs
 ```
 
-如果新迁移不向后兼容，不要直接回滚镜像；先按 #136 的恢复流程从迁移前备份恢复，再回到上一版本。仅回滚容器而保留不兼容 schema 不是有效回滚。
+如果新迁移不向后兼容，不要直接回滚镜像；先按 [backup-restore.md](backup-restore.md) 从迁移前备份恢复到隔离环境，验证行数、外键和对象 checksum，再切换上一版本。仅回滚容器而保留不兼容 schema 不是有效回滚。
