@@ -30,6 +30,8 @@ import { WorkerService } from "./worker.service";
 import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 import { WorkerSummaryRepository } from "./summaries/summary.repository";
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
+import { WorkExportProcessor } from "./exports/work-export.processor";
+import { WorkerWorkExportRepository } from "./exports/work-export.repository";
 
 @Module({
   providers: [
@@ -107,6 +109,8 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
     WorkerSummaryRepository,
     SummaryRebuildProcessor,
     WritingActionProcessor,
+    WorkerWorkExportRepository,
+    WorkExportProcessor,
     {
       provide: AI_GATEWAY,
       useFactory: () =>

@@ -599,3 +599,4 @@ export * from "./critic";
 export * from "./style-drift";
 export * from "./revision";
 export * from "./provider-call-budget";
+export * from "./work-export";

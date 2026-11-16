@@ -3188,6 +3188,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/exports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkExportController_list"];
+    put?: never;
+    post: operations["WorkExportController_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/exports/{exportId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkExportController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/exports/{exportId}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkExportController_download"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/revisions": {
     parameters: {
       query?: never;
@@ -4650,6 +4698,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -4994,6 +5047,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -10920,6 +10978,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11488,6 +11551,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11882,6 +11950,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12277,6 +12350,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12672,6 +12750,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -13080,6 +13163,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13597,6 +13685,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14033,6 +14126,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14324,6 +14422,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14525,6 +14628,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14874,6 +14982,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15286,6 +15399,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15703,6 +15821,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16120,6 +16243,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32539,6 +32667,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32763,6 +32896,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -32963,6 +33101,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -43253,6 +43396,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44034,6 +44182,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44592,6 +44745,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45150,6 +45308,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45708,6 +45871,11 @@ export interface operations {
                   | "ACCOUNT_DELETION_NOT_FOUND"
                   | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                   | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46279,6 +46447,11 @@ export interface operations {
                     | "ACCOUNT_DELETION_NOT_FOUND"
                     | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
                     | "ACCOUNT_DELETION_INVALID_STATE"
+                    | "WORK_EXPORT_SOURCE_INVALID"
+                    | "WORK_EXPORT_NOT_READY"
+                    | "WORK_EXPORT_EXPIRED"
+                    | "WORK_EXPORT_SOURCE_CHANGED"
+                    | "WORK_EXPORT_RENDER_FAILED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -46346,6 +46519,1014 @@ export interface operations {
         workId: string;
         branchId: string;
         actionJobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  WorkExportController_list: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work export history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              format: "txt" | "markdown" | "docx" | "epub";
+              /** @enum {string} */
+              status: "queued" | "running" | "completed" | "failed" | "expired";
+              manifest: {
+                /** @enum {number} */
+                schemaVersion: 1;
+                work: {
+                  id: string;
+                  title: string;
+                  penName: string;
+                  /** @enum {string} */
+                  genre: "xianxia" | "history" | "urban";
+                };
+                branch: {
+                  id: string;
+                  name: string;
+                  requestedVersionNodeId: string | null;
+                  resolvedVersionNodeId: string;
+                };
+                scope:
+                  | {
+                      /** @enum {string} */
+                      kind: "current_chapter";
+                      chapterId: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "selected_chapters";
+                      chapterIds: string[];
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "chapter_range";
+                      fromChapter: number;
+                      toChapter: number;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "volume";
+                      volumeNodeId: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "book";
+                    };
+                /** @enum {string} */
+                format: "txt" | "markdown" | "docx" | "epub";
+                options: {
+                  /** @default false */
+                  includeStoryBible: boolean;
+                  /** @default false */
+                  includeSettingsAppendix: boolean;
+                  /** @default false */
+                  includeOutline: boolean;
+                  /** @default false */
+                  includeForeshadowLedger: boolean;
+                  /** @default false */
+                  includeChangeHistory: boolean;
+                  /**
+                   * @default generic
+                   * @enum {string}
+                   */
+                  preset: "generic" | "qidian" | "fanqie";
+                  /** @default 第{number}章 {title} */
+                  chapterTitleFormat: string;
+                  /** @default 第{number}卷 {title} */
+                  volumeTitleFormat: string;
+                  /** @default true */
+                  paragraphBlankLine: boolean;
+                  /** @default false */
+                  firstLineIndent: boolean;
+                  /**
+                   * @default utf-8
+                   * @enum {string}
+                   */
+                  encoding: "utf-8";
+                };
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  chapterVersionId: string;
+                  versionNodeId: string;
+                  contentSha256: string;
+                  characterCount: number;
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  volumeTitle: string | null;
+                }[];
+                /** @default [] */
+                supplements: {
+                  /** @enum {string} */
+                  kind: "story_bible" | "settings" | "outline" | "foreshadows" | "change_history";
+                  id: string;
+                  versionNodeId: string | null;
+                  contentSha256: string;
+                }[];
+                characterCount: number;
+                manifestHash: string;
+              } | null;
+              checksum: string | null;
+              byteSize: number | null;
+              fileName: string | null;
+              contentType: string | null;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_RECOVERY_BUDGET_INVALID"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
+                  | "GOLDEN_THREE_GENERATION_IN_PROGRESS"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              completedAt: string | null;
+              /** Format: date-time */
+              expiresAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorkExportController_start: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same export request */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          format: "txt" | "markdown" | "docx" | "epub";
+          scope:
+            | {
+                /** @enum {string} */
+                kind: "current_chapter";
+                chapterId: string;
+              }
+            | {
+                /** @enum {string} */
+                kind: "selected_chapters";
+                chapterIds: string[];
+              }
+            | {
+                /** @enum {string} */
+                kind: "chapter_range";
+                fromChapter: number;
+                toChapter: number;
+              }
+            | {
+                /** @enum {string} */
+                kind: "volume";
+                volumeNodeId: string;
+              }
+            | {
+                /** @enum {string} */
+                kind: "book";
+              };
+          /** @default null */
+          sourceVersionNodeId?: string | null;
+          /**
+           * @default {
+           *       "includeStoryBible": false,
+           *       "includeSettingsAppendix": false,
+           *       "includeOutline": false,
+           *       "includeForeshadowLedger": false,
+           *       "includeChangeHistory": false,
+           *       "preset": "generic",
+           *       "chapterTitleFormat": "第{number}章 {title}",
+           *       "volumeTitleFormat": "第{number}卷 {title}",
+           *       "paragraphBlankLine": true,
+           *       "firstLineIndent": false,
+           *       "encoding": "utf-8"
+           *     }
+           */
+          options?: {
+            /** @default false */
+            includeStoryBible?: boolean;
+            /** @default false */
+            includeSettingsAppendix?: boolean;
+            /** @default false */
+            includeOutline?: boolean;
+            /** @default false */
+            includeForeshadowLedger?: boolean;
+            /** @default false */
+            includeChangeHistory?: boolean;
+            /**
+             * @default generic
+             * @enum {string}
+             */
+            preset?: "generic" | "qidian" | "fanqie";
+            /** @default 第{number}章 {title} */
+            chapterTitleFormat?: string;
+            /** @default 第{number}卷 {title} */
+            volumeTitleFormat?: string;
+            /** @default true */
+            paragraphBlankLine?: boolean;
+            /** @default false */
+            firstLineIndent?: boolean;
+            /**
+             * @default utf-8
+             * @enum {string}
+             */
+            encoding?: "utf-8";
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Queued work export */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              format: "txt" | "markdown" | "docx" | "epub";
+              /** @enum {string} */
+              status: "queued" | "running" | "completed" | "failed" | "expired";
+              manifest: {
+                /** @enum {number} */
+                schemaVersion: 1;
+                work: {
+                  id: string;
+                  title: string;
+                  penName: string;
+                  /** @enum {string} */
+                  genre: "xianxia" | "history" | "urban";
+                };
+                branch: {
+                  id: string;
+                  name: string;
+                  requestedVersionNodeId: string | null;
+                  resolvedVersionNodeId: string;
+                };
+                scope:
+                  | {
+                      /** @enum {string} */
+                      kind: "current_chapter";
+                      chapterId: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "selected_chapters";
+                      chapterIds: string[];
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "chapter_range";
+                      fromChapter: number;
+                      toChapter: number;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "volume";
+                      volumeNodeId: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "book";
+                    };
+                /** @enum {string} */
+                format: "txt" | "markdown" | "docx" | "epub";
+                options: {
+                  /** @default false */
+                  includeStoryBible: boolean;
+                  /** @default false */
+                  includeSettingsAppendix: boolean;
+                  /** @default false */
+                  includeOutline: boolean;
+                  /** @default false */
+                  includeForeshadowLedger: boolean;
+                  /** @default false */
+                  includeChangeHistory: boolean;
+                  /**
+                   * @default generic
+                   * @enum {string}
+                   */
+                  preset: "generic" | "qidian" | "fanqie";
+                  /** @default 第{number}章 {title} */
+                  chapterTitleFormat: string;
+                  /** @default 第{number}卷 {title} */
+                  volumeTitleFormat: string;
+                  /** @default true */
+                  paragraphBlankLine: boolean;
+                  /** @default false */
+                  firstLineIndent: boolean;
+                  /**
+                   * @default utf-8
+                   * @enum {string}
+                   */
+                  encoding: "utf-8";
+                };
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  chapterVersionId: string;
+                  versionNodeId: string;
+                  contentSha256: string;
+                  characterCount: number;
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  volumeTitle: string | null;
+                }[];
+                /** @default [] */
+                supplements: {
+                  /** @enum {string} */
+                  kind: "story_bible" | "settings" | "outline" | "foreshadows" | "change_history";
+                  id: string;
+                  versionNodeId: string | null;
+                  contentSha256: string;
+                }[];
+                characterCount: number;
+                manifestHash: string;
+              } | null;
+              checksum: string | null;
+              byteSize: number | null;
+              fileName: string | null;
+              contentType: string | null;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_RECOVERY_BUDGET_INVALID"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
+                  | "GOLDEN_THREE_GENERATION_IN_PROGRESS"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              completedAt: string | null;
+              /** Format: date-time */
+              expiresAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorkExportController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        exportId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work export receipt */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              format: "txt" | "markdown" | "docx" | "epub";
+              /** @enum {string} */
+              status: "queued" | "running" | "completed" | "failed" | "expired";
+              manifest: {
+                /** @enum {number} */
+                schemaVersion: 1;
+                work: {
+                  id: string;
+                  title: string;
+                  penName: string;
+                  /** @enum {string} */
+                  genre: "xianxia" | "history" | "urban";
+                };
+                branch: {
+                  id: string;
+                  name: string;
+                  requestedVersionNodeId: string | null;
+                  resolvedVersionNodeId: string;
+                };
+                scope:
+                  | {
+                      /** @enum {string} */
+                      kind: "current_chapter";
+                      chapterId: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "selected_chapters";
+                      chapterIds: string[];
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "chapter_range";
+                      fromChapter: number;
+                      toChapter: number;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "volume";
+                      volumeNodeId: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "book";
+                    };
+                /** @enum {string} */
+                format: "txt" | "markdown" | "docx" | "epub";
+                options: {
+                  /** @default false */
+                  includeStoryBible: boolean;
+                  /** @default false */
+                  includeSettingsAppendix: boolean;
+                  /** @default false */
+                  includeOutline: boolean;
+                  /** @default false */
+                  includeForeshadowLedger: boolean;
+                  /** @default false */
+                  includeChangeHistory: boolean;
+                  /**
+                   * @default generic
+                   * @enum {string}
+                   */
+                  preset: "generic" | "qidian" | "fanqie";
+                  /** @default 第{number}章 {title} */
+                  chapterTitleFormat: string;
+                  /** @default 第{number}卷 {title} */
+                  volumeTitleFormat: string;
+                  /** @default true */
+                  paragraphBlankLine: boolean;
+                  /** @default false */
+                  firstLineIndent: boolean;
+                  /**
+                   * @default utf-8
+                   * @enum {string}
+                   */
+                  encoding: "utf-8";
+                };
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  chapterVersionId: string;
+                  versionNodeId: string;
+                  contentSha256: string;
+                  characterCount: number;
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  volumeTitle: string | null;
+                }[];
+                /** @default [] */
+                supplements: {
+                  /** @enum {string} */
+                  kind: "story_bible" | "settings" | "outline" | "foreshadows" | "change_history";
+                  id: string;
+                  versionNodeId: string | null;
+                  contentSha256: string;
+                }[];
+                characterCount: number;
+                manifestHash: string;
+              } | null;
+              checksum: string | null;
+              byteSize: number | null;
+              fileName: string | null;
+              contentType: string | null;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_RECOVERY_BUDGET_INVALID"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
+                  | "GOLDEN_THREE_GENERATION_IN_PROGRESS"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
+                  | "ACCOUNT_EXPORT_EXPIRED"
+                  | "ACCOUNT_EXPORT_STALE"
+                  | "ACCOUNT_DELETION_NOT_FOUND"
+                  | "ACCOUNT_DELETION_RECOVERY_EXPIRED"
+                  | "ACCOUNT_DELETION_INVALID_STATE"
+                  | "WORK_EXPORT_SOURCE_INVALID"
+                  | "WORK_EXPORT_NOT_READY"
+                  | "WORK_EXPORT_EXPIRED"
+                  | "WORK_EXPORT_SOURCE_CHANGED"
+                  | "WORK_EXPORT_RENDER_FAILED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              completedAt: string | null;
+              /** Format: date-time */
+              expiresAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorkExportController_download: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        exportId: string;
       };
       cookie?: never;
     };

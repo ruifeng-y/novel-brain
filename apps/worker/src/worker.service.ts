@@ -11,6 +11,7 @@ import {
   GENERATE_CHAPTER_JOB,
   GENERATE_GOLDEN_THREE_JOB,
   SUMMARY_REBUILD_JOB,
+  EXPORT_WORK_JOB,
   WORKER_QUEUE_NAME,
   WRITE_ACTION_JOB,
   workerJobSchema,
@@ -47,6 +48,9 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { AccountPurgeProcessor } from "./account-lifecycle/account-purge.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { WorkExportProcessor } from "./exports/work-export.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
 import {
   durableJobStatusToOutcome,
@@ -73,6 +77,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     private readonly summaryProcessor: SummaryRebuildProcessor,
     private readonly writingActionProcessor: WritingActionProcessor,
     private readonly accountPurgeProcessor: AccountPurgeProcessor,
+    private readonly workExportProcessor: WorkExportProcessor,
     private readonly generationRepository: WorkerGenerationRepository,
     @Inject(WORKER_REDIS) private readonly connection: Redis,
     @Inject(WorkerOperationalMetricsRecorder)
@@ -140,6 +145,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
           BATCH_TICK_JOB,
           ACCOUNT_PURGE_JOB,
           ACCOUNT_PURGE_TICK_JOB,
+          EXPORT_WORK_JOB,
         ],
       },
       "Worker is consuming its queue",
@@ -174,6 +180,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     try {
       if (payload.jobType === ACCOUNT_PURGE_TICK_JOB) {
         await this.accountPurgeProcessor.cleanupExpiredExportReceipts();
+        await this.workExportProcessor.cleanupExpiredReceipts();
         const dueRequestIds = await this.accountPurgeProcessor.listDueRequestIds();
         for (const deletionRequestId of dueRequestIds) {
           await this.queue.add(ACCOUNT_PURGE_JOB, accountPurgeJobPayload(deletionRequestId), {
@@ -194,6 +201,8 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         await this.batchPlanProcessor.process(payload);
       } else if (payload.jobType === WRITE_ACTION_JOB) {
         await this.writingActionProcessor.process(payload);
+      } else if (payload.jobType === EXPORT_WORK_JOB) {
+        outcome = await this.workExportProcessor.process(payload);
       } else if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
         await this.goldenThreeProcessor.process(payload);
       } else {
@@ -242,6 +251,8 @@ function jobLogContext(payload: WorkerJob): Record<string, unknown> {
       return { runId: payload.runId };
     case BATCH_TICK_JOB:
       return { planId: payload.planId };
+    case EXPORT_WORK_JOB:
+      return { jobId: payload.jobId, exportId: payload.exportId };
     case GENERATE_GOLDEN_THREE_JOB:
       return {
         jobId: payload.jobId,

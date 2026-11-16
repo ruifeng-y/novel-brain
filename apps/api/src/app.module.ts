@@ -33,6 +33,7 @@ import { UsersModule } from "./users/users.module";
 import { WorksModule } from "./works/works.module";
 import { WorldModule } from "./world/world.module";
 import { WritingActionModule } from "./writing-actions/writing-action.module";
+import { WorkExportModule } from "./exports/work-export.module";
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { WritingActionModule } from "./writing-actions/writing-action.module";
     WorksModule,
     WorldModule,
     WritingActionModule,
+    WorkExportModule,
     RevisionModule,
   ],
 })

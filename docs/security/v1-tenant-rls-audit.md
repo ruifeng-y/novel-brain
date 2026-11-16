@@ -39,7 +39,8 @@ The first audit found five uncovered tables. Migration `0056_tenant_rls_audit.sq
 | Transaction-local context does not leak | `apps/api/test/tenant-rls.integration.test.ts` | covered |
 | Auth/session/pen-name/model key access | `apps/api/test/auth.integration.test.ts` | covered |
 | Rate-limit and privilege escalation | `apps/api/test/auth.integration.test.ts`, `agent-runtime.integration.test.ts` | covered |
-| Exports/object storage | No production export or object-storage tables exist in M2; must be added by #129/#134/#136 | pending dependent scope |
+| Account/work exports | `export_receipts` from #134 and `work_export_receipts` from #129 are RLS-forced; `apps/api/test/account-lifecycle.integration.test.ts` and `apps/api/test/work-export.integration.test.ts` cover cross-user access | covered |
+| Object-storage references | Backup tooling from #136 validates the configured `users.avatar_url` / `pen_names.avatar_url` references; production object metadata tables remain empty until object-producing features land | covered-current-scope |
 
 ## Audit Rules
 
