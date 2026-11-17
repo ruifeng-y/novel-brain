@@ -2,7 +2,7 @@
 
 > Issue: #130
 > Capability: IO-005
-> Status: implemented; production visual candidate pending author sign-off
+> Status: implemented; production visual signed off
 
 ## 1. 实现范围
 
@@ -39,7 +39,7 @@
 - 页面覆盖 loading、empty、error、partial、expired、long。
 - 所有主操作连接真实 API：导出任务、recent receipt、download、re-run publish check、metadata update、reader preview 和 copy。
 - 四档 Playwright 视口为 390 / 900 / 1180 / 1440，检查真实导出、发布检查、读者预览、键盘焦点返回、复制、元数据编辑、源变化 stale、重新导出/检查、跨租户拒绝、过期恢复和无横向溢出。
-- 候选截图：`artifacts/ui/candidates/m3-130-export-publish/export-publish-{390,900,1180,1440}.png`。在作者明确签收前，parity-matrix 状态保持 `production-built`，不写入正式 Golden 目录。
+- 正式 Golden：`artifacts/ui/golden/export-publish/export-publish-{390,900,1180,1440}.png`。作者已确认 `artifacts/ui/candidates/m3-130-export-publish/` 的四张候选；Linux/Chromium 文件由 [Production CI #44019894890](https://github.com/ruifeng-y/novel-brain/actions/runs/44019894890) 生成并纳入 `toHaveScreenshot` 回归，parity-matrix 状态为 `parity-verified`。
 
 ## 5. 验证
 
