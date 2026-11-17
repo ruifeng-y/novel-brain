@@ -149,6 +149,9 @@ export const ERROR_CODES = [
   "WORK_EXPORT_SOURCE_CHANGED",
   "WORK_EXPORT_RENDER_FAILED",
   "WORK_EXPORT_INTEGRITY_FAILED",
+  "PUBLISH_EXPORT_NOT_READY",
+  "PUBLISH_EXPORT_EXPIRED",
+  "PUBLISH_PREVIEW_NOT_FOUND",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -5085,6 +5088,185 @@ export const workExportListQuerySchema = z
 export const workExportReceiptResponseSchema = apiEnvelopeSchema(workExportReceiptSchema);
 export const workExportReceiptListResponseSchema = apiEnvelopeSchema(
   z.array(workExportReceiptSchema),
+);
+
+export const PUBLISH_PLATFORM_PRESETS = ["generic", "qidian", "fanqie"] as const;
+export const publishPlatformPresetSchema = z.enum(PUBLISH_PLATFORM_PRESETS);
+export type PublishPlatformPreset = z.infer<typeof publishPlatformPresetSchema>;
+
+export const publishCheckStatusSchema = z.enum(["pass", "warning", "blocked"]);
+export type PublishCheckStatus = z.infer<typeof publishCheckStatusSchema>;
+
+export const publishReadinessStatusSchema = z.enum(["ready", "warning", "blocked"]);
+export type PublishReadinessStatus = z.infer<typeof publishReadinessStatusSchema>;
+
+export const publishMetadataInputSchema = z
+  .object({
+    title: z.string().trim().max(120).optional(),
+    author: z.string().trim().max(50).optional(),
+    summary: z.string().trim().max(2_000).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    coverHeadline: z.string().trim().max(60).optional(),
+    coverSubline: z.string().trim().max(100).optional(),
+    coverTone: z.enum(["cinnabar", "jade", "gold", "blue"]).optional(),
+    aiDisclosure: z.boolean().optional(),
+    copyrightAcknowledged: z.boolean().optional(),
+  })
+  .strict();
+export type PublishMetadataInput = z.infer<typeof publishMetadataInputSchema>;
+
+export const publishCheckRequestSchema = z
+  .object({
+    exportId: uuidV7Schema,
+    platformPreset: publishPlatformPresetSchema,
+    metadata: publishMetadataInputSchema.default({}),
+  })
+  .strict();
+export type PublishCheckRequest = z.infer<typeof publishCheckRequestSchema>;
+
+export const publishMetadataSchema = z
+  .object({
+    title: z.string(),
+    author: z.string(),
+    summary: z.string(),
+    tags: z.array(z.string()).max(30),
+    genre: workGenreSchema,
+    coverHeadline: z.string(),
+    coverSubline: z.string(),
+    coverTone: z.enum(["cinnabar", "jade", "gold", "blue"]),
+    aiDisclosure: z.boolean(),
+    copyrightAcknowledged: z.boolean(),
+  })
+  .strict();
+export type PublishMetadata = z.infer<typeof publishMetadataSchema>;
+
+export const publishCheckEvidenceSchema = z
+  .object({
+    label: z.string().min(1).max(100),
+    value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+  })
+  .strict();
+
+export const publishCheckSchema = z
+  .object({
+    code: z.string().min(1).max(100),
+    label: z.string().min(1).max(100),
+    status: publishCheckStatusSchema,
+    message: z.string().min(1).max(500),
+    ruleVersion: z.string().min(1).max(100),
+    evidence: z.array(publishCheckEvidenceSchema).max(20),
+  })
+  .strict();
+export type PublishCheck = z.infer<typeof publishCheckSchema>;
+
+export const publishVolumePreviewSchema = z
+  .object({
+    volumeNodeId: uuidV7Schema.nullable(),
+    volumeNumber: z.number().int().positive().nullable(),
+    title: z.string(),
+    chapterNumbers: z.array(z.number().int().positive()).max(10_000),
+  })
+  .strict();
+
+export const publishChapterPreviewSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    title: z.string(),
+    chapterVersionId: uuidV7Schema,
+    versionNodeId: uuidV7Schema,
+    characterCount: z.number().int().nonnegative(),
+    excerpt: z.string(),
+    volumeNodeId: uuidV7Schema.nullable(),
+    volumeNumber: z.number().int().positive().nullable(),
+    volumeTitle: z.string().nullable(),
+  })
+  .strict();
+
+export const publishCatalogSchema = z
+  .object({
+    chapterCount: z.number().int().nonnegative(),
+    characterCount: z.number().int().nonnegative(),
+    volumes: z.array(publishVolumePreviewSchema).max(100),
+    chapters: z.array(publishChapterPreviewSchema).max(200),
+    truncated: z.boolean(),
+  })
+  .strict();
+export type PublishCatalog = z.infer<typeof publishCatalogSchema>;
+
+export const publishReaderPreviewSchema = z
+  .object({
+    title: z.string(),
+    author: z.string(),
+    summary: z.string(),
+    tags: z.array(z.string()).max(30),
+    chapters: z
+      .array(
+        z
+          .object({
+            chapterId: uuidV7Schema,
+            chapterNumber: z.number().int().positive(),
+            title: z.string(),
+            excerpt: z.string(),
+          })
+          .strict(),
+      )
+      .max(3),
+  })
+  .strict();
+export type PublishReaderPreview = z.infer<typeof publishReaderPreviewSchema>;
+
+export const publishCopySchema = z
+  .object({
+    titleOptions: z.array(z.string()).min(1).max(3),
+    summary: z.string(),
+    tags: z.array(z.string()).max(30),
+    chapterTitleSuggestions: z.array(z.string()).max(3),
+    platformNote: z.string().min(1),
+  })
+  .strict();
+export type PublishCopy = z.infer<typeof publishCopySchema>;
+
+export const publishPlatformPresentationSchema = z
+  .object({
+    key: publishPlatformPresetSchema,
+    label: z.string().min(1),
+    tagLimit: z.number().int().positive(),
+    minChapterCharacters: z.number().int().positive(),
+    maxChapterCharacters: z.number().int().positive(),
+  })
+  .strict();
+export type PublishPlatformPresentation = z.infer<typeof publishPlatformPresentationSchema>;
+
+export const publishPreviewSchema = z
+  .object({
+    id: uuidV7Schema,
+    exportId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    platformPreset: publishPlatformPresetSchema,
+    status: publishReadinessStatusSchema,
+    publishReady: z.boolean(),
+    stale: z.boolean(),
+    staleReason: z.string().nullable(),
+    sourceVersionNodeId: uuidV7Schema,
+    requestedVersionNodeId: uuidV7Schema.nullable(),
+    manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
+    platform: publishPlatformPresentationSchema,
+    metadata: publishMetadataSchema,
+    checks: z.array(publishCheckSchema).max(32),
+    catalog: publishCatalogSchema,
+    readerPreview: publishReaderPreviewSchema,
+    publishCopy: publishCopySchema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type PublishPreview = z.infer<typeof publishPreviewSchema>;
+
+export const publishPreviewResponseSchema = apiEnvelopeSchema(publishPreviewSchema);
+export const publishPreviewListResponseSchema = apiEnvelopeSchema(
+  z.array(publishPreviewSchema).max(20),
 );
 
 export const EXPORT_WORK_JOB = "export_work";
