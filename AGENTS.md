@@ -31,6 +31,7 @@ If two sources conflict, stop the affected work and report the conflict. Do not 
 ## Local execution
 - Run every local command with native PowerShell, including passing `shell: "powershell"` to the command runner.
 - Start mutating work with `git rev-parse --show-toplevel`.
+- Shell contamination, branch synchronization, and CI artifact recovery follow `docs/agents/local-environment-recovery.md`.
 - Before code review, record the full base and head SHAs; restart the review if either ref moves.
 - Run the executable guardrails from the repository root:
 

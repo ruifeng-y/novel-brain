@@ -85,7 +85,7 @@ When a shared shell or multi-page component changes, use this sequence:
 
 1. Finish the source change and get `pnpm format:check` plus `pnpm check:pr` green locally.
 2. Push the exact source commit and dispatch `Production CI` with `update_golden=true`.
-3. Download the `playwright-evidence` artifact from that run. Do not use local Windows screenshots as the committed Linux baseline.
+3. Download the `playwright-evidence` artifact from that run with `pwsh ./scripts/download-gh-artifact.ps1 -RunId <run-id> -Name playwright-evidence -Destination <candidate-directory>`. Do not use local Windows screenshots as the committed Linux baseline.
 4. Compare file hashes with `artifacts/ui/golden/` and copy only changed Golden files.
 5. Commit the Golden files separately with a Simplified Chinese Conventional Commit message.
 6. Push and wait for a normal pull-request `Production CI` run to pass before merging.
