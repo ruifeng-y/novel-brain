@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { createObjectStorageFromEnvironment, OBJECT_STORAGE } from "@novel-brain/storage";
 
 import { AuthModule } from "../auth/auth.module";
 import { ReadinessModule } from "../readiness/readiness.module";
@@ -10,7 +11,14 @@ import { WorksService } from "./works.service";
 @Module({
   imports: [AuthModule, ReadinessModule],
   controllers: [WorksController, GenrePackController],
-  providers: [WorksRepository, WorksService],
+  providers: [
+    WorksRepository,
+    WorksService,
+    {
+      provide: OBJECT_STORAGE,
+      useFactory: () => createObjectStorageFromEnvironment(),
+    },
+  ],
   exports: [WorksService],
 })
 export class WorksModule {}

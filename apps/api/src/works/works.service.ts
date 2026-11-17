@@ -1,4 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { createHash } from "node:crypto";
+
+import { Inject, Injectable } from "@nestjs/common";
 import {
   genrePackDefinitionSchema,
   type GenrePackDefinition,
@@ -9,10 +11,17 @@ import {
   type WorkBranch,
   type WorkBranchListQuery,
   type WorkCreateRequest,
+  type WorkDuplicateRequest,
+  type WorkLifecycleRequest,
   type WorkListQuery,
   type WorkOverview,
+  type WorkPurgeResponse,
+  type WorkTrashResponse,
+  type WorkUpdateRequest,
   type SettingsImportConfirmRequest,
 } from "@novel-brain/contracts";
+import { OBJECT_STORAGE, type ObjectStorage } from "@novel-brain/storage";
+import sharp from "sharp";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
@@ -23,15 +32,27 @@ import { ReadinessService } from "../readiness/readiness.service";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorksRepository } from "./works.repository";
-import type { WorkBranchRecord, WorkRecord, WorksAuditContext } from "./works.repository";
+import type {
+  WorkBranchRecord,
+  WorkRecord,
+  WorksAuditContext,
+  WorkUpdateValues,
+} from "./works.repository";
 import type { InitialSettingEntity } from "./works.repository";
 import type { GenrePackRecord } from "./works.repository";
+
+export interface WorkCoverUpload {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+}
 
 @Injectable()
 export class WorksService {
   constructor(
     private readonly repository: WorksRepository,
     private readonly readiness: ReadinessService,
+    @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
   async create(
@@ -87,10 +108,18 @@ export class WorksService {
     const packs = await this.repository.findGenrePacksByIds(
       result.works.flatMap((work) => (work.templatePackId ? [work.templatePackId] : [])),
     );
+    const exportReadyIds = await this.repository.exportReadyWorkIds(
+      userId,
+      result.works.flatMap((work) => (work.deletedAt ? [work.id] : [])),
+    );
     const packById = new Map(packs.map((pack) => [pack.id, pack]));
     return {
       works: result.works.map((work) =>
-        this.toContract(work, work.templatePackId ? packById.get(work.templatePackId) : undefined),
+        this.toContract(
+          work,
+          work.templatePackId ? packById.get(work.templatePackId) : undefined,
+          exportReadyIds.has(work.id),
+        ),
       ),
       nextCursor: result.nextCursor,
     };
@@ -201,6 +230,259 @@ export class WorksService {
     };
   }
 
+  async update(
+    userId: string,
+    workId: string,
+    input: WorkUpdateRequest,
+    audit: WorksAuditContext,
+  ): Promise<WorkOverview> {
+    const current = await this.repository.find(userId, workId);
+    if (!current) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
+    }
+    if (
+      current.status === "completed" &&
+      (input.status === undefined || input.status === "completed")
+    ) {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品已完本，请先恢复连载再修改");
+    }
+    if (current.status === "archived") {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品已归档，请先恢复后再修改");
+    }
+    const values: WorkUpdateValues = {};
+    if (input.title !== undefined) values.title = input.title;
+    if (input.penName !== undefined) values.penName = input.penName;
+    if (input.genre !== undefined) values.genre = input.genre;
+    if (input.status !== undefined) values.status = input.status;
+    if (input.scaleTarget !== undefined) values.scaleTarget = input.scaleTarget;
+    if (input.chapterLengthTarget !== undefined) {
+      values.chapterLengthTarget = input.chapterLengthTarget;
+    }
+    if (input.coverImageUrl !== undefined) values.coverImageUrl = input.coverImageUrl;
+    if (input.tags !== undefined) values.tags = input.tags;
+    if (input.settings) {
+      values.settings = { ...current.settings, ...input.settings };
+    }
+    const updated = await this.repository.update(userId, workId, input.version, values, audit);
+    if (!updated) {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品设置已被其他操作更新，请刷新后重试");
+    }
+    if (input.coverImageUrl !== undefined && current.coverObjectKey) {
+      await this.storage.deleteObject(current.coverObjectKey).catch(() => undefined);
+    }
+    return this.toOverview(userId, updated);
+  }
+
+  async archive(
+    userId: string,
+    workId: string,
+    input: WorkLifecycleRequest,
+    audit: WorksAuditContext,
+  ): Promise<WorkOverview> {
+    const current = await this.repository.find(userId, workId);
+    if (!current) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
+    }
+    const work = await this.repository.archive(userId, workId, input.version, audit);
+    if (!work) {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品状态已变化，请刷新后重试");
+    }
+    return this.toOverview(userId, work);
+  }
+
+  async restore(
+    userId: string,
+    workId: string,
+    input: WorkLifecycleRequest,
+    audit: WorksAuditContext,
+  ): Promise<WorkOverview> {
+    const current = await this.repository.find(userId, workId);
+    if (!current) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
+    }
+    const work = await this.repository.restore(userId, workId, input.version, audit);
+    if (!work) {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品状态已变化，请刷新后重试");
+    }
+    return this.toOverview(userId, work);
+  }
+
+  async duplicate(
+    userId: string,
+    workId: string,
+    input: WorkDuplicateRequest,
+    audit: WorksAuditContext,
+    idempotencyKey: string | undefined,
+  ): Promise<WorkOverview> {
+    const key = idempotencyKey?.trim() ?? "";
+    if (!key) {
+      throw new ApiError(400, "VALIDATION_INVALID", "复制作品需要 Idempotency-Key");
+    }
+    if (key.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "Idempotency-Key 不能超过 200 个字符");
+    }
+    const source = await this.repository.find(userId, workId);
+    if (!source) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
+    }
+    const suffix = "（副本）";
+    const requestedTitle = input.title ?? `${source.title.slice(0, 120 - suffix.length)}${suffix}`;
+    const duplicated = await this.repository.duplicate({
+      userId,
+      source,
+      title: requestedTitle,
+      copyManuscript: input.copyManuscript,
+      copyHistory: input.copyHistory,
+      workId: uuidv7(),
+      branchId: uuidv7(),
+      nodeId: uuidv7(),
+      audit,
+      idempotencyKey: key,
+      requestHash: createHash("sha256")
+        .update(
+          JSON.stringify({
+            title: input.title ?? null,
+            copyManuscript: input.copyManuscript,
+            copyHistory: input.copyHistory,
+          }),
+        )
+        .digest("hex"),
+    });
+    if (duplicated.status === "conflict") {
+      throw new ApiError(
+        409,
+        "WORK_IDEMPOTENCY_CONFLICT",
+        "同一 Idempotency-Key 不能提交不同的复制请求",
+      );
+    }
+    return this.toOverview(userId, duplicated.work, duplicated.branch);
+  }
+
+  async trash(
+    userId: string,
+    workId: string,
+    input: WorkLifecycleRequest,
+    audit: WorksAuditContext,
+  ): Promise<WorkTrashResponse["data"]> {
+    const current = await this.repository.find(userId, workId);
+    if (!current) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
+    }
+    const work = await this.repository.trash(userId, workId, input.version, audit);
+    if (!work?.deletedAt || !work.purgeAfter) {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品状态已变化，请刷新后重试");
+    }
+    return {
+      id: work.id,
+      deletedAt: work.deletedAt.toISOString(),
+      purgeAfter: work.purgeAfter.toISOString(),
+      version: work.version,
+    };
+  }
+
+  async restoreTrash(
+    userId: string,
+    workId: string,
+    input: WorkLifecycleRequest,
+    audit: WorksAuditContext,
+  ): Promise<WorkOverview> {
+    const result = await this.repository.restoreTrashed(userId, workId, input.version, audit);
+    if (result === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
+    }
+    if (result === "expired") {
+      throw new ApiError(409, "VERSION_CONFLICT", "回收站保留期已过，作品不能恢复");
+    }
+    return this.toOverview(userId, result);
+  }
+
+  async purge(
+    userId: string,
+    workId: string,
+    input: WorkLifecycleRequest,
+    audit: WorksAuditContext,
+  ): Promise<WorkPurgeResponse["data"]> {
+    const preview = await this.repository.preparePurge(userId, workId, input.version);
+    if (preview.status === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
+    }
+    if (preview.status === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品状态已变化，请刷新后重试");
+    }
+    if (preview.status === "not_due") {
+      throw new ApiError(409, "WORK_PURGE_NOT_DUE", "作品仍在 30 天回收站保留期内");
+    }
+    if (preview.status === "export_required") {
+      throw new ApiError(409, "WORK_EXPORT_REQUIRED", "永久删除前必须完成作品导出");
+    }
+    await this.storage.deleteObjects(preview.objectKeys);
+    const purged = await this.repository.purge(userId, workId, input.version, audit);
+    if (!purged) {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品状态已变化，请刷新后重试");
+    }
+    return { id: workId, deleted: true };
+  }
+
+  async uploadCover(
+    userId: string,
+    workId: string,
+    input: WorkLifecycleRequest,
+    file: WorkCoverUpload | undefined,
+    audit: WorksAuditContext,
+  ): Promise<WorkOverview> {
+    if (!file || file.size === 0) {
+      throw new ApiError(400, "WORK_COVER_INVALID", "请选择有效的封面图片");
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      throw new ApiError(400, "WORK_COVER_INVALID", "封面仅支持 JPEG、PNG 或 WebP");
+    }
+    let bytes: Buffer;
+    try {
+      const metadata = await sharp(file.buffer, { failOn: "error" }).metadata();
+      if (!metadata.format || !["jpeg", "png", "webp"].includes(metadata.format)) {
+        throw new Error("unsupported image format");
+      }
+      bytes = await sharp(file.buffer, { failOn: "error" })
+        .rotate()
+        .resize({ width: 1200, height: 1600, fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer();
+    } catch {
+      throw new ApiError(400, "WORK_COVER_INVALID", "封面图片损坏或格式不受支持");
+    }
+    const objectKey = `covers/${userId}/${workId}/${uuidv7()}.webp`;
+    await this.storage.putObject({ key: objectKey, bytes, contentType: "image/webp" });
+    const updated = await this.repository.setCoverObject(
+      userId,
+      workId,
+      input.version,
+      objectKey,
+      audit,
+    );
+    if (!updated) {
+      await this.storage.deleteObject(objectKey).catch(() => undefined);
+      throw new ApiError(409, "VERSION_CONFLICT", "作品状态已变化，请刷新后重试");
+    }
+    if (updated.previousObjectKey && updated.previousObjectKey !== objectKey) {
+      await this.storage.deleteObject(updated.previousObjectKey).catch(() => undefined);
+    }
+    return this.toOverview(userId, updated.work);
+  }
+
+  async cover(
+    userId: string,
+    workId: string,
+  ): Promise<{ bytes: Uint8Array; contentType: "image/webp" }> {
+    const objectKey = await this.repository.getCoverObjectKey(userId, workId);
+    if (!objectKey) {
+      throw new ApiError(404, "WORK_COVER_NOT_FOUND", "作品封面不存在");
+    }
+    return {
+      bytes: await this.storage.getObject(objectKey),
+      contentType: "image/webp",
+    };
+  }
+
   private async toOverview(
     userId: string,
     work: WorkRecord,
@@ -231,7 +513,15 @@ export class WorksService {
     };
   }
 
-  private toContract(work: WorkRecord, templatePack?: GenrePackRecord): Work {
+  private toContract(
+    work: WorkRecord,
+    templatePack?: GenrePackRecord,
+    hasCompletedExport = false,
+  ): Work {
+    const exportReady = hasCompletedExport;
+    const purgeDue = Boolean(
+      work.deletedAt && work.purgeAfter && work.purgeAfter.getTime() <= Date.now(),
+    );
     return {
       id: work.id,
       title: work.title,
@@ -244,6 +534,14 @@ export class WorksService {
       idea: work.idea,
       templatePack: templatePack ? toGenrePackContract(templatePack) : null,
       settings: work.settings,
+      coverImageUrl: work.coverObjectKey ? `/api/v1/works/${work.id}/cover` : work.coverImageUrl,
+      tags: work.tags,
+      version: work.version,
+      archivedAt: work.archivedAt?.toISOString() ?? null,
+      deletedAt: work.deletedAt?.toISOString() ?? null,
+      purgeAfter: work.purgeAfter?.toISOString() ?? null,
+      exportReady,
+      canPurge: purgeDue && exportReady,
       createdAt: work.createdAt.toISOString(),
       updatedAt: work.updatedAt.toISOString(),
     };

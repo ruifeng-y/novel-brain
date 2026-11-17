@@ -160,6 +160,11 @@ export const ERROR_CODES = [
   "MODERATION_APPEAL_NOT_FOUND",
   "MODERATION_APPEAL_LIMIT_REACHED",
   "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
+  "WORK_IDEMPOTENCY_CONFLICT",
+  "WORK_PURGE_NOT_DUE",
+  "WORK_EXPORT_REQUIRED",
+  "WORK_COVER_INVALID",
+  "WORK_COVER_NOT_FOUND",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -580,6 +585,9 @@ export const workStatusSchema = z.enum([
 ]);
 export type WorkStatus = z.infer<typeof workStatusSchema>;
 
+export const workEditableStatusSchema = z.enum(["preparing", "serializing", "paused", "completed"]);
+export type WorkEditableStatus = z.infer<typeof workEditableStatusSchema>;
+
 export const workGenreSchema = z.enum(["xianxia", "history", "urban"]);
 export type WorkGenre = z.infer<typeof workGenreSchema>;
 
@@ -594,6 +602,43 @@ export const workSourceModeSchema = z.enum([
   "manuscript_import",
 ]);
 export type WorkSourceMode = z.infer<typeof workSourceModeSchema>;
+
+export const workUpdateCadenceSchema = z.enum(["daily", "every_other_day", "weekly", "irregular"]);
+export type WorkUpdateCadence = z.infer<typeof workUpdateCadenceSchema>;
+
+export const workSettingsPatchSchema = z
+  .object({
+    targetPlatform: z.string().trim().max(80),
+    targetAudience: z.string().trim().max(500),
+    readerPromise: z.string().trim().max(500),
+    updateCadence: workUpdateCadenceSchema,
+    synopsis: z.string().trim().max(4000),
+    styleSample: z.string().trim().max(4000),
+    taboos: z.string().trim().max(2000),
+  })
+  .strict();
+export type WorkSettingsPatch = z.infer<typeof workSettingsPatchSchema>;
+
+export const workTagSchema = z.string().trim().min(1).max(30);
+export const workTagsSchema = z
+  .array(workTagSchema)
+  .max(20)
+  .refine((tags) => new Set(tags).size === tags.length, "Work tags must be unique");
+
+export const workCoverImageUrlSchema = z
+  .url()
+  .max(2048)
+  .refine((value) => {
+    try {
+      return new URL(value).protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "Cover images must use HTTPS");
+export const workCoverDisplayUrlSchema = z.union([
+  workCoverImageUrlSchema,
+  z.string().regex(/^\/api\/v1\/works\/[0-9a-f-]+\/cover$/u, "Invalid stored cover URL"),
+]);
 
 const workBaseInputShape = {
   title: z.string().trim().min(1).max(120),
@@ -718,10 +763,72 @@ export const workSchema = z.object({
   idea: z.string().nullable(),
   templatePack: workTemplatePackSchema.nullable(),
   settings: z.record(z.string(), z.unknown()),
+  coverImageUrl: workCoverDisplayUrlSchema.nullable().default(null),
+  tags: workTagsSchema.default([]),
+  version: z.number().int().positive().default(1),
+  archivedAt: z.string().datetime().nullable().default(null),
+  deletedAt: z.string().datetime().nullable().default(null),
+  purgeAfter: z.string().datetime().nullable().default(null),
+  exportReady: z.boolean().default(false),
+  canPurge: z.boolean().default(false),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
 export type Work = z.infer<typeof workSchema>;
+
+export const workUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(120),
+    penName: z.string().trim().min(1).max(50),
+    genre: workGenreSchema,
+    status: workEditableStatusSchema,
+    scaleTarget: workScaleTargetSchema,
+    chapterLengthTarget: z.number().int().min(1000).max(10000),
+    coverImageUrl: workCoverImageUrlSchema.nullable(),
+    tags: workTagsSchema,
+    settings: workSettingsPatchSchema,
+  })
+  .partial()
+  .required({ version: true })
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one work field is required",
+  });
+export type WorkUpdateRequest = z.infer<typeof workUpdateRequestSchema>;
+
+export const workLifecycleRequestSchema = z.object({
+  version: z.number().int().positive(),
+});
+export type WorkLifecycleRequest = z.infer<typeof workLifecycleRequestSchema>;
+
+export const workTrashResponseSchema = apiEnvelopeSchema(
+  z.object({
+    id: uuidV7Schema,
+    deletedAt: z.string().datetime(),
+    purgeAfter: z.string().datetime(),
+    version: z.number().int().positive(),
+  }),
+);
+export type WorkTrashResponse = z.infer<typeof workTrashResponseSchema>;
+
+export const workPurgeResponseSchema = apiEnvelopeSchema(
+  z.object({
+    id: uuidV7Schema,
+    deleted: z.literal(true),
+  }),
+);
+export type WorkPurgeResponse = z.infer<typeof workPurgeResponseSchema>;
+
+export const workDuplicateRequestSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120).optional(),
+    copyManuscript: z.boolean().default(false),
+    copyHistory: z.boolean().default(false),
+  })
+  .refine((input) => !input.copyHistory || input.copyManuscript, {
+    message: "Chapter history requires manuscript copying",
+  });
+export type WorkDuplicateRequest = z.infer<typeof workDuplicateRequestSchema>;
 
 export const workBranchSchema = z.object({
   id: uuidV7Schema,
@@ -765,6 +872,10 @@ export const workListQuerySchema = cursorPageQuerySchema
     q: z.string().trim().max(120).optional(),
     status: workStatusSchema.optional(),
     genre: workGenreSchema.optional(),
+    trash: z
+      .enum(["true", "false"])
+      .transform((value) => value === "true")
+      .optional(),
   })
   .strict();
 export type WorkListQuery = z.infer<typeof workListQuerySchema>;

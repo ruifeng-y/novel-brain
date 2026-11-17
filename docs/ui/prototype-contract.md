@@ -9,7 +9,7 @@
 | 页面 | 生产路由 | 关键动作 | 必备状态 | Agent UX | 当前状态 |
 | --- | --- | --- | --- | --- | --- |
 | auth | `/login`、`/register`、`/forgot-password`、`/reset-password` | 登录、注册、验证码、找回 | loading/error/disabled/rate-limit/session-expired | 无 | 部分，缺会话过期和网络错误 |
-| dashboard | `/workspace` | 搜索、筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | 部分，缺长列表和页级错误 |
+| dashboard | `/workspace` | 搜索、筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | 活跃、已归档和回收站视图、长列表与错误态已生产实现；作者视觉签收通过 |
 | new-project | `/workspace/new-project` | 想法/空白/三题材模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long | 导入报告 | 已含三题材模板、设定导入、旧稿双模式、冲突裁决和断点续跑 |
 | work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改、跨卷风格检查、卷末审计与签收 | loading/empty/error/readonly/archived/long | 生成摘要/风格证据/卷审计证据 | 分支上下文、最近修改与长内容证据已由 #176 补齐；作者视觉签收通过 |
 | bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | 三题材生成已生产实现；新布局待作者视觉签收 |
@@ -20,7 +20,7 @@
 | batch | `/workspace/[workId]/batch` | 开始/暂停/恢复/取消/重试/审核/报告 | loading/empty/error/partial/disabled/long | 失败断点/成本/审批 | 审核队列、自动通过、成本硬停和报告已生产实现；最终页面 parity 待 #97 |
 | changes | `/workspace/[workId]/changes` | 新建/分析/应用/撤销/分支/比较/合并 | loading/error/conflict/partial/disabled | 逐对象比较/摘取 | 部分，对象比较已加，合并门禁待补 |
 | export-publish | `/workspace/[workId]/export` | 导出/下载/发布检查/预览/文案 | loading/empty/error/partial/expired/long | 任务报告 | 已实现 loading/empty/error/partial/expired/long；作者已确认四档正式 Golden |
-| work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/readonly | 无 | 已含删除强制导出和权限/只读状态 |
+| work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/readonly | 无 | 已含删除强制导出和权限/只读状态；作者视觉签收通过 |
 | entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | M1 生产实现；力量层级文案随题材包变化，新布局待作者视觉签收 |
 | account-settings | `/workspace/settings`、`/workspace/settings/account` | 资料/笔名/会话/模型/导出/注销 | loading/error/invalid-key/disabled/partial/rate-limit | 无 | 生产导出、注销和 30 天恢复已由 #134 实现；恢复期映射 `disabled`，删除失败映射 `partial`；作者已完成 Linux Golden 视觉签收 |
 | help | `/help` | 快捷键/术语/FAQ | static/empty/error | 无 | 静态 |

@@ -286,6 +286,10 @@ export const idempotencyRecords = pgTable(
     ),
     index("idempotency_records_resource_idx").on(table.resourceType, table.resourceId),
     check("idempotency_records_key_check", sql`length(trim(${table.idempotencyKey})) > 0`),
+    check(
+      "idempotency_records_request_hash_check",
+      sql`${table.requestHash} is null or ${table.requestHash} ~ '^[a-f0-9]{64}$'`,
+    ),
   ],
 );
 
@@ -334,12 +338,20 @@ export const works = pgTable(
     }),
     settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
     idempotencyKey: text("idempotency_key"),
+    coverImageUrl: text("cover_image_url"),
+    coverObjectKey: text("cover_object_key"),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    version: integer("version").notNull().default(1),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    archivedFromStatus: text("archived_from_status"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    purgeAfter: timestamp("purge_after", { withTimezone: true }),
   },
   (table) => [
     index("works_user_status_updated_idx").on(table.userId, table.status, table.updatedAt),
+    index("works_user_archived_updated_idx").on(table.userId, table.archivedAt, table.updatedAt),
     uniqueIndex("works_user_idempotency_unique").on(table.userId, table.idempotencyKey),
     check(
       "works_status_check",
@@ -354,6 +366,17 @@ export const works = pgTable(
       "works_source_mode_check",
       sql`${table.sourceMode} in ('idea', 'blank', 'template', 'settings_import', 'manuscript_import')`,
     ),
+    check("works_version_check", sql`${table.version} > 0`),
+    check("works_cover_image_url_check", sql`works_cover_image_url_valid(${table.coverImageUrl})`),
+    check(
+      "works_cover_object_key_check",
+      sql`${table.coverObjectKey} is null or ${table.coverObjectKey} ~ '^covers/[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}\.webp$'`,
+    ),
+    check(
+      "works_trash_window_check",
+      sql`${table.purgeAfter} is null or (${table.deletedAt} is not null and ${table.purgeAfter} > ${table.deletedAt})`,
+    ),
+    check("works_tags_check", sql`works_tags_valid(${table.tags})`),
   ],
 );
 

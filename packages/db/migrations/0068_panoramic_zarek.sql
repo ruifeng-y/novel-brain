@@ -1,0 +1,2 @@
+ALTER TABLE "works" DROP CONSTRAINT "works_cover_image_url_check";--> statement-breakpoint
+ALTER TABLE "works" ADD CONSTRAINT "works_cover_image_url_check" CHECK (works_cover_image_url_valid("works"."cover_image_url"));

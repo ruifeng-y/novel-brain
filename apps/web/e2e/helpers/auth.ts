@@ -162,7 +162,9 @@ export async function createWork(
     },
     data: payload,
   });
-  expect(response.status()).toBe(200);
+  if (response.status() !== 200) {
+    throw new Error(`Work creation failed: ${response.status()} ${await response.text()}`);
+  }
   return (await response.json()).data as {
     id: string;
     title: string;

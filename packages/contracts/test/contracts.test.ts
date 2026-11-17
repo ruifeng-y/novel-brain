@@ -103,12 +103,76 @@ import {
   versionRefSchema,
   workBranchSchema,
   workCreateRequestSchema,
+  workDuplicateRequestSchema,
+  workLifecycleRequestSchema,
   workSchema,
   workSourceModeSchema,
+  workUpdateRequestSchema,
   worldSnapshotQuerySchema,
 } from "../src";
 
 describe("shared contracts", () => {
+  it("validates reversible work settings, lifecycle and conservative duplication", () => {
+    const update = workUpdateRequestSchema.parse({
+      version: 3,
+      title: "忘川书",
+      penName: "青舟",
+      genre: "xianxia",
+      status: "serializing",
+      scaleTarget: "epic",
+      chapterLengthTarget: 3200,
+      coverImageUrl: "https://assets.example.com/covers/work-142.webp",
+      tags: ["记忆代价", "长线伏笔"],
+      settings: {
+        targetPlatform: "起点中文网",
+        targetAudience: "偏好长线伏笔的仙侠读者",
+        readerPromise: "每次变强都要付出记忆代价",
+        updateCadence: "every_other_day",
+        synopsis: "少年以残剑问仙。",
+        styleSample: "雨落在断碑上，像细小的剑锋相击。",
+        taboos: "不写无代价复活。",
+      },
+    });
+
+    expect(update).toMatchObject({
+      version: 3,
+      status: "serializing",
+      tags: ["记忆代价", "长线伏笔"],
+      settings: { updateCadence: "every_other_day" },
+    });
+    expect(workLifecycleRequestSchema.parse({ version: 3 })).toEqual({ version: 3 });
+    expect(workDuplicateRequestSchema.parse({})).toEqual({
+      copyManuscript: false,
+      copyHistory: false,
+    });
+    expect(
+      workDuplicateRequestSchema.parse({
+        copyManuscript: true,
+        copyHistory: true,
+        title: "忘川书 · 平行稿",
+      }),
+    ).toMatchObject({ copyManuscript: true, copyHistory: true });
+
+    expect(() =>
+      workUpdateRequestSchema.parse({
+        version: 3,
+        coverImageUrl: "http://insecure.example.com/cover.png",
+      }),
+    ).toThrow("Cover images must use HTTPS");
+    expect(() =>
+      workUpdateRequestSchema.parse({
+        version: 3,
+        status: "archived",
+      }),
+    ).toThrow();
+    expect(() =>
+      workDuplicateRequestSchema.parse({
+        copyManuscript: false,
+        copyHistory: true,
+      }),
+    ).toThrow("Chapter history requires manuscript copying");
+  });
+
   it("accepts typed fact proposals with source evidence and decisions", () => {
     const proposal = factProposalSchema.parse({
       id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c21",

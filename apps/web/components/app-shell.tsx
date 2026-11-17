@@ -15,6 +15,7 @@ import {
   PenLine,
   Send,
   Settings,
+  SlidersHorizontal,
 } from "lucide-react";
 import { type AuthUser, type Work, type WorkOverview } from "@novel-brain/contracts";
 import Link from "next/link";
@@ -43,6 +44,7 @@ const workNavigation = [
   { suffix: "batch", label: "批量生产", icon: Layers3 },
   { suffix: "changes", label: "修改与版本", icon: GitBranch },
   { suffix: "export", label: "导出与发布", icon: Send },
+  { suffix: "work-settings", label: "作品设置", icon: SlidersHorizontal },
 ];
 
 interface ActiveWorkContext {
@@ -72,31 +74,33 @@ export function AppShell({
     ? "作品总览"
     : pathname.endsWith("/bible")
       ? "故事圣经"
-      : pathname.endsWith("/settings") && pathname.startsWith("/workspace/")
-        ? "设定中心"
-        : pathname.endsWith("/outline")
-          ? "大纲工作台"
-          : pathname.endsWith("/foreshadows")
-            ? "伏笔账本"
-            : pathname.endsWith("/write")
-              ? "写作台"
-              : pathname.endsWith("/batch")
-                ? "批量生产"
-                : pathname.endsWith("/changes")
-                  ? "修改与版本"
-                  : pathname.endsWith("/export")
-                    ? "导出与发布"
-                    : pathname === "/workspace/new-project"
-                      ? "新建作品"
-                      : pathname.startsWith("/workspace/settings")
-                        ? "账号与模型"
-                        : pathname === "/help"
-                          ? "帮助"
-                          : pathname.startsWith("/legal")
-                            ? "法律与合规"
-                            : pathname.startsWith("/workspace")
-                              ? "工作台"
-                              : "服务状态";
+      : pathname.endsWith("/work-settings")
+        ? "作品设置"
+        : pathname.endsWith("/settings") && pathname.startsWith("/workspace/")
+          ? "设定中心"
+          : pathname.endsWith("/outline")
+            ? "大纲工作台"
+            : pathname.endsWith("/foreshadows")
+              ? "伏笔账本"
+              : pathname.endsWith("/write")
+                ? "写作台"
+                : pathname.endsWith("/batch")
+                  ? "批量生产"
+                  : pathname.endsWith("/changes")
+                    ? "修改与版本"
+                    : pathname.endsWith("/export")
+                      ? "导出与发布"
+                      : pathname === "/workspace/new-project"
+                        ? "新建作品"
+                        : pathname.startsWith("/workspace/settings")
+                          ? "账号与模型"
+                          : pathname === "/help"
+                            ? "帮助"
+                            : pathname.startsWith("/legal")
+                              ? "法律与合规"
+                              : pathname.startsWith("/workspace")
+                                ? "工作台"
+                                : "服务状态";
   const selectedBranch = activeWork?.branches.find((branch) => branch.id === selectedBranchId);
   const selectedBranchName = selectedBranch
     ? branchLabel(selectedBranch.name)
