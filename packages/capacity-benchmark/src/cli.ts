@@ -101,6 +101,7 @@ async function main(): Promise<void> {
         ...(options["storage-metrics-url"]
           ? { storageMetricsUrl: options["storage-metrics-url"] }
           : {}),
+        ...(options["compose-project"] ? { composeProject: options["compose-project"] } : {}),
       });
       writeOutput({
         summaryPath: summary.artifacts.summaryPath,
@@ -180,6 +181,7 @@ async function main(): Promise<void> {
           apiConcurrency: workload.profile.apiConcurrency,
           durationSeconds: workload.profile.durationSeconds,
         },
+        workloadRunId: workload.runId,
         targetComparison: comparison,
         recovery,
         decisions,

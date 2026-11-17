@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -47,12 +47,18 @@ async function main() {
   const project = required(options, "project");
   const databaseName = required(options, "database-name");
   const databaseUrl = required(options, "database-url");
+  const workloadSummaryPath = resolved(required(options, "workload-summary"));
   const outputDirectory = resolved(options.output ?? "artifacts/capacity/backups");
   const evidencePath = resolved(required(options, "evidence"));
   if (!databaseName.endsWith("_benchmark")) {
     throw new Error("Benchmark recovery requires a *_benchmark database name.");
   }
 
+  const workload = JSON.parse(await readFile(workloadSummaryPath, "utf8"));
+  const runId = workload.runId;
+  if (typeof runId !== "string" || !runId.startsWith("capacity-")) {
+    throw new Error("Workload summary does not contain a capacity run id.");
+  }
   const key = await readBackupKey({
     ...(options["key-file"] ? { keyFile: resolved(options["key-file"]) } : {}),
   });
@@ -75,6 +81,9 @@ async function main() {
     backupDirectory: backup.directory,
     key,
   });
+  if (backup.manifest.sourceCommit !== workload.sourceCommit) {
+    throw new Error("Recovery backup source commit does not match the workload summary.");
+  }
 
   const measuredRpoHours = Math.max(
     0,
@@ -88,6 +97,7 @@ async function main() {
     restore.verification.objectBytes === backup.manifest.objects.totalBytes;
   const evidence = {
     status: offlineVerification.ok && databaseIntegrity && objectIntegrity ? "passed" : "failed",
+    runId,
     measuredRpoHours,
     measuredRtoHours,
     databaseIntegrity,

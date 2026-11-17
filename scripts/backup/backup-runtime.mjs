@@ -856,6 +856,10 @@ export async function restoreBackup({
     const backup = await loadBackup(backupDirectory);
     phase = "preparing";
     managedEnv = managedEnv ?? (await isolatedComposeEnvironment());
+    managedEnv = {
+      ...managedEnv,
+      STORAGE_BUCKET: backup.manifest.objects.bucket,
+    };
     if (!(await projectIsEmpty(project, managedEnv))) {
       throw new Error(`Restore project ${project} is not empty; refusing to overwrite it.`);
     }
@@ -1157,7 +1161,10 @@ async function captureFault(scenario, operation, expectedPattern) {
 export async function runBackupDrill({ outputDirectory, key, bucket = "novelbrain" }) {
   const drillStartedAt = new Date().toISOString();
   const sourceProject = `novelbrain-source-${randomUUID().slice(0, 8)}`;
-  const sourceEnv = await isolatedComposeEnvironment();
+  const sourceEnv = {
+    ...(await isolatedComposeEnvironment()),
+    STORAGE_BUCKET: bucket,
+  };
   let backup;
   let seed;
   try {

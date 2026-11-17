@@ -2551,8 +2551,10 @@ async function seedCapacityObjects(plan: BenchmarkPlan): Promise<{
       bytes += content.byteLength;
     }
     return { count: checksums.length, bytes, checksums };
-  } catch {
-    return { count: 0, bytes: 0, checksums: [] };
+  } catch (error) {
+    throw new Error(
+      `CAPACITY_OBJECT_STORAGE_REQUIRED: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 

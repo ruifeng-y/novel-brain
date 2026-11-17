@@ -26,6 +26,7 @@ export interface WorkloadRunInput {
   outputDirectory: string;
   origin?: string;
   storageMetricsUrl?: string;
+  composeProject?: string;
 }
 
 export interface WorkloadSample {
@@ -157,6 +158,7 @@ export async function runWorkload(input: WorkloadRunInput): Promise<WorkloadSumm
   let resourceSampling = true;
   const resourcePromise = sampleResources(
     input.storageMetricsUrl ?? "http://127.0.0.1:9000/minio/v2/metrics/cluster",
+    input.composeProject,
   ).then((sample) => resources.push(sample));
   const resourceTimer = setInterval(() => {
     if (!resourceSampling) {
@@ -164,6 +166,7 @@ export async function runWorkload(input: WorkloadRunInput): Promise<WorkloadSumm
     }
     void sampleResources(
       input.storageMetricsUrl ?? "http://127.0.0.1:9000/minio/v2/metrics/cluster",
+      input.composeProject,
     ).then((sample) => resources.push(sample));
   }, 10_000);
 
@@ -1011,13 +1014,39 @@ async function modelCostCny(
   return Number(result.rows[0]?.cost ?? 0);
 }
 
-async function sampleResources(metricsUrl: string): Promise<RuntimeSample> {
+export async function sampleResources(
+  metricsUrl: string,
+  composeProject?: string,
+): Promise<RuntimeSample> {
   let containers: RuntimeSample["containers"] = [];
   try {
-    const output = execFileSync("docker", ["stats", "--no-stream", "--format", "{{json .}}"], {
-      encoding: "utf8",
-      timeout: 30_000,
-    });
+    const containerIds = composeProject
+      ? execFileSync(
+          "docker",
+          ["ps", "-q", "--filter", `label=com.docker.compose.project=${composeProject}`],
+          {
+            encoding: "utf8",
+            timeout: 10_000,
+          },
+        )
+          .split(/\s+/u)
+          .filter(Boolean)
+      : [];
+    if (composeProject && containerIds.length === 0) {
+      return {
+        capturedAt: new Date().toISOString(),
+        containers: [],
+        storageMetrics: await fetchMetrics(metricsUrl),
+      };
+    }
+    const output = execFileSync(
+      "docker",
+      ["stats", "--no-stream", "--format", "{{json .}}", ...containerIds],
+      {
+        encoding: "utf8",
+        timeout: 30_000,
+      },
+    );
     containers = output
       .split(/\r?\n/)
       .filter(Boolean)
@@ -1036,7 +1065,9 @@ async function sampleResources(metricsUrl: string): Promise<RuntimeSample> {
           networkOutputBytes: parseBytes(network?.[1]),
         };
       })
-      .filter((container) => container.name.includes("novel-brain"));
+      .filter(
+        (container) => composeProject !== undefined || container.name.includes("novel-brain"),
+      );
   } catch {
     containers = [];
   }

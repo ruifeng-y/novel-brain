@@ -27,6 +27,8 @@ export interface ReportWorkloadManifest {
 
 export interface RecoveryEvidence {
   status: "passed" | "failed";
+  runId: string;
+  sourceCommit: string;
   measuredRpoHours: number;
   measuredRtoHours: number;
   databaseIntegrity: boolean;
@@ -54,6 +56,7 @@ export interface BenchmarkReportInput {
   sourceCommit: string;
   fixtureManifest: ReportFixtureManifest;
   workloadManifest: ReportWorkloadManifest;
+  workloadRunId: string;
   targetComparison: TargetComparison;
   recovery: RecoveryEvidence | null;
   decisions: readonly BenchmarkDecision[];
@@ -138,6 +141,13 @@ export function buildBenchmarkReport(
     !input.recovery.objectIntegrity
   ) {
     blockers.add("recovery-evidence-failed");
+  }
+  if (
+    input.recovery &&
+    (input.recovery.runId !== input.workloadRunId ||
+      input.recovery.sourceCommit !== input.sourceCommit)
+  ) {
+    blockers.add("recovery-evidence-run-mismatch");
   }
   if (!input.environment) {
     blockers.add("environment-manifest-missing");

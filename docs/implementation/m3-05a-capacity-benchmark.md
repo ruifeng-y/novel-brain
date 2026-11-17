@@ -57,17 +57,12 @@ pnpm --filter @novel-brain/worker build
 生成并装载 full fixture：
 
 ```powershell
-node packages/capacity-benchmark/dist/cli.js seed `
-  --database-url "postgresql://novelbrain:novelbrain@localhost:35432/novelbrain_benchmark" `
-  --confirm-database novelbrain_benchmark `
-  --seed 20261117 `
-  --tier full `
-  --topology mid `
-  --branches 3 `
-  --output artifacts/capacity/full/fixture-manifest.json
+.\scripts\capacity\seed-compose.ps1
 ```
 
-记录环境并执行负载。`--compose-project` 会把运行中容器的实际 CPU/内存限额写入 manifest：
+该脚本向 seed 进程显式注入隔离 MinIO 配置，缺少对象存储时会直接失败，不再静默生成 0 个对象。输出固定为 `artifacts/capacity/full-compose/fixture-manifest.json`。
+
+记录环境并执行负载。`--compose-project` 会把运行中容器的实际 CPU/内存限额写入 manifest，并把资源采样限制在同名 Compose project：
 
 ```powershell
 node packages/capacity-benchmark/dist/cli.js environment `
@@ -83,6 +78,8 @@ node packages/capacity-benchmark/dist/cli.js workload `
   --concurrency 4 `
   --duration-seconds 60 `
   --ramp-seconds 10 `
+  --storage-metrics-url http://127.0.0.1:39000/minio/v2/metrics/cluster `
+  --compose-project novel-brain-capacity `
   --output artifacts/capacity/full-compose
 ```
 
@@ -102,8 +99,9 @@ node scripts/capacity/recovery.mjs `
   --bucket novelbrain-capacity `
   --database-name novelbrain_benchmark `
   --database-url "postgresql://novelbrain:novelbrain@localhost:35432/novelbrain_benchmark" `
+  --workload-summary artifacts/capacity/full-compose/workload-summary.json `
   --output artifacts/capacity/backups `
-  --evidence docs/implementation/evidence/m3-137-capacity-recovery-2026-11-17.json
+  --evidence docs/implementation/evidence/m3-137-capacity-recovery-compose-2026-11-17.json
 ```
 
 生成受门禁报告：
@@ -113,15 +111,15 @@ node packages/capacity-benchmark/dist/cli.js report `
   --fixture artifacts/capacity/full-compose/fixture-manifest.json `
   --workload artifacts/capacity/full-compose/workload-summary.json `
   --environment artifacts/capacity/full-compose/environment.json `
-  --recovery docs/implementation/evidence/m3-137-capacity-recovery-2026-11-17.json `
-  --query-plans docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt `
+  --recovery docs/implementation/evidence/m3-137-capacity-recovery-compose-2026-11-17.json `
+  --query-plans docs/implementation/evidence/m3-137-query-plans-compose-2026-11-17.txt `
   --output artifacts/capacity/full-compose/capacity-report.json
 ```
 
 若已有绑定同一 `runId` 和 source commit 的故障注入结果，再追加：
 
 ```powershell
-  --failure-injection artifacts/capacity/full/failure-injection.json
+  --failure-injection artifacts/capacity/full-compose/failure-injection.json
 ```
 
 备份 payload、运行日志和临时 artifacts 不进入 Git。提交的 evidence 只包含 manifest、summary、raw request samples 和恢复校验摘要。

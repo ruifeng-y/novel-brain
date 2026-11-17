@@ -143,7 +143,12 @@ export async function collectEnvironmentManifest(input: {
       memoryMatches,
       diskTotalAtLeastApproved,
       containerBudgetMatches: containerBudget?.matchesApprovedBudget ?? false,
-      certificationEligible: cpuMatches && memoryMatches && diskTotalAtLeastApproved,
+      certificationEligible: isCertificationEligible({
+        cpuMatches,
+        memoryMatches,
+        diskTotalAtLeastApproved,
+        containerBudgetMatches: containerBudget?.matchesApprovedBudget ?? false,
+      }),
     },
   };
 }
@@ -266,8 +271,8 @@ export function summarizeContainerBudget(
   );
   const cpuCores = selected.reduce((total, limit) => total + (limit.nanoCpus ?? 0) / 1e9, 0);
   const memoryBytes = selected.reduce((total, limit) => total + (limit.memoryBytes ?? 0), 0);
-  const withinApprovedCpu = cpuCores > 0 && cpuCores <= 8;
-  const withinApprovedMemory = memoryBytes > 0 && memoryBytes <= 17_179_869_184;
+  const withinApprovedCpu = cpuCores === 8;
+  const withinApprovedMemory = memoryBytes === 17_179_869_184;
   return {
     project,
     expectedServices,
@@ -280,6 +285,20 @@ export function summarizeContainerBudget(
     withinApprovedMemory,
     matchesApprovedBudget: complete && constrained && withinApprovedCpu && withinApprovedMemory,
   };
+}
+
+export function isCertificationEligible(input: {
+  cpuMatches: boolean;
+  memoryMatches: boolean;
+  diskTotalAtLeastApproved: boolean;
+  containerBudgetMatches: boolean;
+}): boolean {
+  return (
+    input.cpuMatches &&
+    input.memoryMatches &&
+    input.diskTotalAtLeastApproved &&
+    input.containerBudgetMatches
+  );
 }
 
 async function readReadiness(apiBaseUrl: string): Promise<string | null> {

@@ -45,6 +45,7 @@ describe("capacity benchmark release report", () => {
         sha256: "a".repeat(64),
       },
       workloadManifest: { apiConcurrency: 4, durationSeconds: 60 },
+      workloadRunId: "capacity-test-run",
       targetComparison: compareTargets({
         interactiveReadP95Ms: 100,
         searchP95Ms: 200,
@@ -78,6 +79,7 @@ describe("capacity benchmark release report", () => {
         sha256: "b".repeat(64),
       },
       workloadManifest: { apiConcurrency: 4, durationSeconds: 60 },
+      workloadRunId: "capacity-test-run",
       targetComparison: compareTargets({
         interactiveReadP95Ms: 100,
         searchP95Ms: 200,
@@ -90,6 +92,8 @@ describe("capacity benchmark release report", () => {
       }),
       recovery: {
         status: "passed",
+        runId: "capacity-test-run",
+        sourceCommit: "64b9909fb1a2af410a97f239c68d0400eebf87bb",
         measuredRpoHours: 1,
         measuredRtoHours: 1,
         databaseIntegrity: true,
@@ -122,6 +126,7 @@ describe("capacity benchmark release report", () => {
         sha256: "c".repeat(64),
       },
       workloadManifest: { apiConcurrency: 4, durationSeconds: 60 },
+      workloadRunId: "capacity-test-run",
       targetComparison: compareTargets({
         interactiveReadP95Ms: 100,
         searchP95Ms: 200,
@@ -134,6 +139,8 @@ describe("capacity benchmark release report", () => {
       }),
       recovery: {
         status: "passed",
+        runId: "capacity-test-run",
+        sourceCommit: "64b9909fb1a2af410a97f239c68d0400eebf87bb",
         measuredRpoHours: 1,
         measuredRtoHours: 1,
         databaseIntegrity: true,
@@ -171,6 +178,7 @@ describe("capacity benchmark release report", () => {
         sha256: "d".repeat(64),
       },
       workloadManifest: { apiConcurrency: 4, durationSeconds: 60 },
+      workloadRunId: "capacity-test-run",
       targetComparison: compareTargets({
         interactiveReadP95Ms: 100,
         searchP95Ms: 200,
@@ -183,6 +191,8 @@ describe("capacity benchmark release report", () => {
       }),
       recovery: {
         status: "passed",
+        runId: "capacity-test-run",
+        sourceCommit: "64b9909fb1a2af410a97f239c68d0400eebf87bb",
         measuredRpoHours: 1,
         measuredRtoHours: 1,
         databaseIntegrity: true,
@@ -204,5 +214,44 @@ describe("capacity benchmark release report", () => {
 
     expect(report.tenMReady).toBe(false);
     expect(report.blockers).toContain("decision-required:p99-latency");
+  });
+
+  it("blocks recovery evidence from another workload run or source commit", () => {
+    const report = buildBenchmarkReport({
+      sourceCommit: "64b9909fb1a2af410a97f239c68d0400eebf87bb",
+      fixtureManifest: {
+        logicalCharacters: 10_000_000,
+        chapterCount: 3_500,
+        volumeCount: 35,
+        branchCount: 4,
+        sha256: "e".repeat(64),
+      },
+      workloadManifest: { apiConcurrency: 4, durationSeconds: 60 },
+      workloadRunId: "capacity-current",
+      targetComparison: compareTargets({
+        interactiveReadP95Ms: 100,
+        searchP95Ms: 200,
+        firstTokenMs: 1_000,
+        sseDeliveryP95Ms: 100,
+        measuredRpoHours: 1,
+        measuredRtoHours: 1,
+        interactiveReadP99Ms: 200,
+        apiErrorRate: 0,
+      }),
+      recovery: {
+        status: "passed",
+        runId: "capacity-stale",
+        sourceCommit: "775a2b7109225390fb28cf360412fc3b030e993c",
+        measuredRpoHours: 1,
+        measuredRtoHours: 1,
+        databaseIntegrity: true,
+        objectIntegrity: true,
+        evidencePath: "recovery/evidence.json",
+      },
+      decisions: [],
+      rawArtifacts: ["raw/samples.ndjson", "summary.json"],
+    });
+
+    expect(report.blockers).toContain("recovery-evidence-run-mismatch");
   });
 });

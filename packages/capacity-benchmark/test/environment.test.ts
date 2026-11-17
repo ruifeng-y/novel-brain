@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CAPACITY_COMPOSE_SERVICES,
+  isCertificationEligible,
   summarizeContainerBudget,
   type DockerContainerLimit,
 } from "../src/environment";
@@ -51,6 +52,39 @@ describe("summarizeContainerBudget", () => {
 
     expect(budget.withinApprovedCpu).toBe(false);
     expect(budget.matchesApprovedBudget).toBe(false);
+  });
+
+  it("rejects a container budget below the approved host", () => {
+    const budget = summarizeContainerBudget("novel-brain-capacity", [
+      container("api", 2, 3 * 1024 ** 3),
+      container("postgres", 1, 1 * 1024 ** 3),
+      container("redis", 1, 1024 ** 3),
+      container("minio", 1, 1 * 1024 ** 3),
+      container("worker", 2, 5 * 1024 ** 3),
+    ]);
+
+    expect(budget.matchesApprovedBudget).toBe(false);
+  });
+});
+
+describe("isCertificationEligible", () => {
+  it("requires the exact host and the enforced container budget", () => {
+    expect(
+      isCertificationEligible({
+        cpuMatches: true,
+        memoryMatches: true,
+        diskTotalAtLeastApproved: true,
+        containerBudgetMatches: false,
+      }),
+    ).toBe(false);
+    expect(
+      isCertificationEligible({
+        cpuMatches: true,
+        memoryMatches: true,
+        diskTotalAtLeastApproved: true,
+        containerBudgetMatches: true,
+      }),
+    ).toBe(true);
   });
 });
 
