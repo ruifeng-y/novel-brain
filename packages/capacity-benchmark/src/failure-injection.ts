@@ -26,6 +26,7 @@ export interface FailureInjectionScenarioResult {
   id: RequiredFailureScenario;
   status: "passed" | "failed";
   evidencePath: string;
+  evidenceSha256: string;
   observedAt: string;
   message?: string;
 }
@@ -37,7 +38,7 @@ export interface FailureInjectionEvidence {
   scenarios: FailureInjectionScenarioResult[];
 }
 
-export function validateFailureInjectionEvidence(
+export function validateFailureInjectionEvidenceShape(
   evidence: FailureInjectionEvidence,
   expected: { runId: string; sourceCommit: string },
 ): boolean {
@@ -60,7 +61,56 @@ export function validateFailureInjectionEvidence(
     return (
       scenario?.status === "passed" &&
       scenario.evidencePath.trim().length > 0 &&
+      /^[a-f0-9]{64}$/u.test(scenario.evidenceSha256) &&
       scenario.observedAt.trim().length > 0
     );
   });
+}
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+export async function verifyFailureInjectionEvidence(
+  evidence: FailureInjectionEvidence,
+  expected: { runId: string; sourceCommit: string },
+  evidenceRoot: string,
+): Promise<boolean> {
+  if (!validateFailureInjectionEvidenceShape(evidence, expected)) {
+    return false;
+  }
+  const resolvedRoot = path.resolve(evidenceRoot);
+  for (const scenario of evidence.scenarios) {
+    const evidencePath = path.resolve(resolvedRoot, scenario.evidencePath);
+    if (evidencePath !== resolvedRoot && !evidencePath.startsWith(`${resolvedRoot}${path.sep}`)) {
+      return false;
+    }
+    const bytes = await readFile(evidencePath).catch(() => null);
+    if (!bytes) {
+      return false;
+    }
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    if (digest !== scenario.evidenceSha256) {
+      return false;
+    }
+    let detail: {
+      runId?: unknown;
+      sourceCommit?: unknown;
+      scenario?: unknown;
+      status?: unknown;
+    };
+    try {
+      detail = JSON.parse(bytes.toString("utf8")) as typeof detail;
+    } catch {
+      return false;
+    }
+    if (
+      detail.runId !== expected.runId ||
+      detail.sourceCommit !== expected.sourceCommit ||
+      detail.scenario !== scenario.id ||
+      detail.status !== "passed"
+    ) {
+      return false;
+    }
+  }
+  return true;
 }

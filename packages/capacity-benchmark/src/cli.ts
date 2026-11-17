@@ -10,10 +10,7 @@ import {
   type BenchmarkTopology,
 } from "./dataset";
 import { collectEnvironmentManifest } from "./environment";
-import {
-  validateFailureInjectionEvidence,
-  type FailureInjectionEvidence,
-} from "./failure-injection";
+import { verifyFailureInjectionEvidence, type FailureInjectionEvidence } from "./failure-injection";
 import { runWorkload, type WorkloadSummary } from "./harness";
 import { buildBenchmarkReport, type BenchmarkDecision, type RecoveryEvidence } from "./report";
 import { readJsonArtifact, writeJsonArtifact } from "./report-io";
@@ -290,7 +287,7 @@ async function failureInjectionMatchesRun(
   sourceCommit: string,
 ): Promise<boolean> {
   const evidence = await readJsonArtifact<FailureInjectionEvidence>(filePath);
-  return validateFailureInjectionEvidence(evidence, { runId, sourceCommit });
+  return verifyFailureInjectionEvidence(evidence, { runId, sourceCommit }, path.dirname(filePath));
 }
 
 function writeOutput(value: unknown): void {
