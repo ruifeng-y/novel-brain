@@ -125,6 +125,17 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 12 张正式文件已写入 `artifacts/ui/golden/help/`、`artifacts/ui/golden/legal/` 与 `artifacts/ui/golden/export-publish/`。截图来自真实生产路由和固定验收数据；`help` 覆盖 FAQ 与空搜索状态，`legal` 覆盖三份法律文件入口和条款详情，`export-publish` 覆盖内容安全记录、证据、申诉/撤回入口及 AI 标识。Linux/Chromium 生成证据为 [Production CI #44045578715](https://github.com/ruifeng-y/novel-brain/actions/runs/44045578715) 的 `update_golden` Playwright artifact。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、`prototype_only` 扫描、无横向溢出和真实行为断言后才合并。
 
+## 2026-11-18 work-settings 与 dashboard Linux Golden 签收
+
+签收人：ruifeng-y。作者确认 `#142` 的 `work-settings` 四档生产布局，以及受影响后的 `dashboard` 生产布局；并确认使用 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122) 产生的两张 Linux/Chromium 390px actual 替换现有 Windows Golden。
+
+本次替换文件为：
+
+- `dashboard-390.png`：`390x900`，SHA-256 `46DA9319D2667BC7D0B485B50FB02E6F5F374E684C32E8FE8CA37D1A0636BDDB`
+- `work-settings-390.png`：`390x2351`，SHA-256 `E12F17DB646D6483F1BD1B9366A2EF1E121FB503552D97F49273FEFEC8B28B11`
+
+两张 Linux actual 在两次 Playwright 执行中的 SHA-256 完全一致；`dashboard` 与 `work-settings` 的 900 / 1180 / 1440 正式 Golden 保持不变。`work-settings` 页面状态提升为 `parity-verified`。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、无横向溢出和真实行为断言后才合并。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
