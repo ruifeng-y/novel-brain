@@ -141,7 +141,7 @@ node packages/capacity-benchmark/dist/cli.js report `
 
 ## 5. 受控 Compose full-run 证据
 
-本轮证据绑定 source commit `c059fd50c783c727f034542f9ee34dd178688024` 与 workload runId `capacity-2026-11-17T12-45-37-300Z-72acf7d2`。运行中五个容量服务均为受限容器，CPU 合计 `8` cores、内存合计 `17,179,869,184` bytes，`containerBudgetMatches=true`。
+本轮证据绑定 source commit `8ea39fd6064d6d7ad72df886512238d15adf412f` 与 workload runId `capacity-2026-11-17T12-57-53-302Z-30cc828f`。运行中五个容量服务均为受限容器，CPU 合计 `8` cores、内存合计 `17,179,869,184` bytes，`containerBudgetMatches=true`。`workload` 还记录 environment 文件 SHA-256 `4865086dae340450a22e0da581c7519c8cc38c5ae7b44da941a00b418faaf429`。
 
 Fixture：
 
@@ -154,20 +154,20 @@ Fixture：
 
 60 秒混合负载（4 API clients，10 秒 ramp；并发不是已批准目标）：
 
-- 2,500 / 2,502 请求成功，2 次 `409 VERSION_CONFLICT`，错误率 `0.00079936`。
-- throughput `40.11 req/s`，p50 `31ms`，p95 `226ms`，p99 `1,042ms`。
-- interactive read p95 `168ms`，p99 `310ms`。
-- search p95 `344ms`。
-- SSE 事件投递 p95 `126.61ms`。
-- index rebuild `4,304ms`，export `1,042ms`，批量计划观测 `7,723ms`；结束时任务状态包含 `completed: 1`、`queued: 2`、`running: 2`，queue wait p95/max 为 `248ms`。
-- 数据库 `88,366,103` bytes；表 `45,498,368` bytes；索引 `29,941,760` bytes；temp `43,155,456` bytes；deadlock `0`。
-- 负载窗口对象存储观测为 7 objects / `31,820,017` bytes，其中 6 个为 fixture 对象。
+- 2,967 / 2,967 请求成功，错误率 `0`。
+- throughput `47.56 req/s`，p50 `23ms`，p95 `188ms`，p99 `322ms`。
+- interactive read p95 `138ms`，p99 `218ms`。
+- search p95 `265ms`。
+- SSE 事件投递 p95 `74.77ms`。
+- index rebuild `4,394ms`，export `1,041ms`，批量计划观测 `7,862ms`；结束时任务状态包含 `completed: 1`、`queued: 2`、`running: 2`，queue wait p95/max 为 `227ms`。
+- 数据库 `95,886,359` bytes；表 `52,690,944` bytes；索引 `30,261,248` bytes；temp `43,155,456` bytes；deadlock `0`。
+- 负载窗口对象存储观测为 10 objects / `126,690,244` bytes，其中 6 个为 fixture 对象。
 - fake provider 模式 model cost 为 `0 CNY`；基础设施成本仍为 `decision-required`。
 
 恢复：
 
-- 备份/隔离恢复 `status=passed`，24,332 rows、10 objects、`126,690,244` object bytes。
-- 恢复耗时 `19.545s`，实测 RTO `0.00542917h`；实测 RPO `0.01324583h`。
+- 备份/隔离恢复 `status=passed`，24,536 rows、11 objects、`158,313,653` object bytes。
+- 恢复耗时 `18.675s`，实测 RTO `0.0051875h`；实测 RPO `0.00991556h`。
 - FK violations `0`，数据库行数与对象 checksum 全部一致。
 - 恢复 evidence 绑定同一 workload runId 和 source commit。
 

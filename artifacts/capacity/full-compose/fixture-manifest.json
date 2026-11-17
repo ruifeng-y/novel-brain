@@ -34,7 +34,7 @@
       }
     ]
   },
-  "sourceCommit": "c059fd50c783c727f034542f9ee34dd178688024",
+  "sourceCommit": "8ea39fd6064d6d7ad72df886512238d15adf412f",
   "schemaMigrationVersion": "66:04d7ec66eb4c",
   "logicalCharacters": 10000000,
   "utf8ManuscriptBytes": 30000000,
