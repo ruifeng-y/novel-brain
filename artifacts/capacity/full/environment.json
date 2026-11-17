@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-11-17T11:34:15.933Z",
-  "sourceCommit": "234743061e9242dcad013bf6999c2bf6917105d7",
+  "capturedAt": "2026-11-17T11:44:23.150Z",
+  "sourceCommit": "da9acf460c5ac25a8cf0344ecfe10ec2487b758f",
   "node": "v24.22.1",
   "platform": "win32",
   "arch": "x64",
@@ -15,7 +15,7 @@
   "disk": {
     "path": "D:\\AI\\Codex\\Worktrees\\m3-137-capacity-benchmark\\novel-brain",
     "totalBytes": 730326970368,
-    "freeBytes": 266054672384,
+    "freeBytes": 265401643008,
     "filesystem": "NTFS",
     "driveType": "3"
   },

@@ -136,7 +136,7 @@ node packages/capacity-benchmark/dist/cli.js report `
 
 ## 5. 初步 full-run 证据
 
-最终预检使用源码提交 `234743061e9242dcad013bf6999c2bf6917105d7`。
+最终预检使用实现提交 `da9acf460c5ac25a8cf0344ecfe10ec2487b758f`；证据提交为 `775a2b7109225390fb28cf360412fc3b030e993c`，两者之间只有 evidence 和本文档变化。
 
 Fixture：
 
@@ -149,22 +149,22 @@ Fixture：
 
 60 秒混合负载（4 API clients，10 秒 ramp；并发不是已批准目标）：
 
-- 3,099 / 3,099 请求成功，错误率 `0`。
-- throughput `50.23 req/s`，p50 `29ms`，p95 `175ms`，p99 `323ms`。
-- interactive read p95 `167ms`，p99 `265ms`。
-- search p95 `193ms`。
-- SSE 10 次事件首包 p95 `48.37ms`。
-- index rebuild `4,720ms`，export `1,878ms`，批量计划观测 `5,591ms`；结束时任务状态包含 `completed: 1`、`queued: 2`、`running: 2`，queue wait p95/max 为 `448ms`。
-- 数据库 `85,793,815` bytes；表 `45,203,456` bytes；索引 `27,623,424` bytes；temp `43,155,456` bytes；deadlock `0`。
+- 2,584 / 2,584 请求成功，错误率 `0`。
+- throughput `41.55 req/s`，p50 `30ms`，p95 `203ms`，p99 `1,880ms`。
+- interactive read p95 `201ms`，p99 `298ms`。
+- search p95 `216ms`。
+- SSE 10 次事件首包 p95 `56.47ms`。
+- index rebuild `4,343ms`，export `1,880ms`，批量计划观测 `7,772ms`；结束时任务状态包含 `completed: 1`、`queued: 2`、`running: 2`，queue wait p95/max 为 `455ms`。
+- 数据库 `86,735,895` bytes；表 `46,080,000` bytes；索引 `27,672,576` bytes；temp `43,155,456` bytes；deadlock `0`。
 - fake provider 模式 model cost 为 `0 CNY`；基础设施成本仍为 `decision-required`。
 
 恢复：
 
-- 备份/隔离恢复 `status=passed`，24,593 rows、8 objects、`63,443,426` object bytes。
-- 恢复耗时 `17.907s`，实测 RTO `0.004974h`；实测 RPO `0.019684h`。
+- 备份/隔离恢复 `status=passed`，24,368 rows、9 objects、`95,066,835` object bytes。
+- 恢复耗时 `18.188s`，实测 RTO `0.005052h`；实测 RPO `0.011227h`。
 - FK violations `0`，数据库行数与对象 checksum 全部一致。
 
-Query plans 位于 `docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt`，并绑定 workload runId `capacity-2026-11-17T11-34-26-338Z-b6cbf9e4`。
+Query plans 位于 `docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt`，并绑定 workload runId `capacity-2026-11-17T11-44-33-857Z-eb386813`。
 
 ## 6. 认证边界
 
