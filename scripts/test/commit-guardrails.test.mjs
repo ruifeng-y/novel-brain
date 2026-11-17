@@ -90,6 +90,10 @@ test("allows smoke in Chinese technical prose", () => {
   assert.deepEqual(validateCommitSubjects(["style(ops): 修正生产 smoke 格式"]), []);
 });
 
+test("allows Linux in Chinese visual sign-off prose", () => {
+  assert.deepEqual(validateCommitSubjects(["docs(ui): 签收导出发布 Linux 四档视觉基线"]), []);
+});
+
 test("rejects Traditional Chinese commit subjects", () => {
   const errors = validateCommitSubjects(["fix: 修正錯誤"]);
 

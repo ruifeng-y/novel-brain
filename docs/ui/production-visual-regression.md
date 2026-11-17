@@ -53,7 +53,7 @@ The repository's installed Playwright version must be used consistently; do not 
 
 1. Implement the production page and its real API/Worker actions.
 2. Run the page's Playwright route/action/state tests at all four viewports.
-3. Capture candidate screenshots to the page's declared golden path.
+3. Capture local candidate screenshots only to inspect visual direction; do not commit them as Golden evidence. Generate the authoritative Linux candidate from the controlled CI artifact.
 4. Compare candidate screenshots with the signed-off prototype baseline; resolve structural, hierarchy, wording, responsive and interaction differences.
 5. Obtain explicit author sign-off for the initial production baseline.
 6. Commit the four production Golden Screenshots and link the artifacts and sign-off in the owning issue.
