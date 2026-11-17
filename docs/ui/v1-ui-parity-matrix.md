@@ -70,7 +70,7 @@ In the columns below, the prototype screenshot path and production test/golden p
 >
 > 2026-11-16：#134 在 account-settings 补齐已签原型中的账号导出、导出凭证门禁、注销和 30 天恢复；“恢复期内”和“部分清理失败”沿用该页既有 `disabled/partial` 状态分类。作者已确认 8 张 Linux candidate 为正式 Golden；最终正常 PR CI 通过后保持 `parity-verified`。
 >
-> 2026-11-17：#130 已补齐 `export-publish` 的真实导出与下载、确定性发布检查、目录/元数据/读者预览、发布文案、stale 与重新生成流程；`apps/web/e2e/parity/export-publish.spec.ts` 覆盖四档视口、过期恢复、源变化后重新生成和租户隔离。作者已确认 `artifacts/ui/candidates/m3-130-export-publish/` 的四张候选为正式 Golden；文件已写入 `artifacts/ui/golden/export-publish/`，页面状态提升为 `parity-verified`，最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`。
+> 2026-11-17：#130 已补齐 `export-publish` 的真实导出与下载、确定性发布检查、目录/元数据/读者预览、发布文案、stale 与重新生成流程；`apps/web/e2e/parity/export-publish.spec.ts` 覆盖四档视口、过期恢复、源变化后重新生成和租户隔离。作者已确认 `artifacts/ui/candidates/m3-130-export-publish/` 的四张候选为正式 Golden；Linux/Chromium 正式文件由 [Production CI #44019894890](https://github.com/ruifeng-y/novel-brain/actions/runs/44019894890) 生成并写入 `artifacts/ui/golden/export-publish/`，页面状态提升为 `parity-verified`，最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`。
 >
 > #162 将黄金三章拆为两阶段：候选只固定第 1 章，作者选定后登记第 2、3 章续写，续写节点存在后才允许锁定；`apps/web/e2e/parity/golden-three.spec.ts` 已覆盖该门禁。
 >

@@ -117,7 +117,7 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-130-export-publish/` 中导出与发布页的 390 / 900 / 1180 / 1440 四档候选截图，并同意将其作为正式 Golden。
 
-正式文件写入 `artifacts/ui/golden/export-publish/`。截图来自真实生产路由、真实导出/worker receipt 和固定发布预览数据，覆盖目录、导出历史、发布检查、元数据入口、当前作品/创作线上下文与无横向溢出。真实行为、读者预览焦点管理、stale/regenerate、租户隔离和过期恢复由 `apps/web/e2e/parity/export-publish.spec.ts` 覆盖。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、`prototype_only` 扫描和语义断言后才合并。
+正式文件写入 `artifacts/ui/golden/export-publish/`。截图来自真实生产路由、真实导出/worker receipt 和固定发布预览数据，覆盖目录、导出历史、发布检查、元数据入口、当前作品/创作线上下文与无横向溢出。真实行为、读者预览焦点管理、stale/regenerate、租户隔离和过期恢复由 `apps/web/e2e/parity/export-publish.spec.ts` 覆盖。Linux/Chromium Golden 生成证据为 [Production CI #44019894890](https://github.com/ruifeng-y/novel-brain/actions/runs/44019894890) 的 `update_golden` Playwright artifact；最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、`prototype_only` 扫描和语义断言后才合并。
 
 ## 变更规则
 
