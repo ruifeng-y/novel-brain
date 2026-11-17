@@ -17,6 +17,7 @@ import { ManuscriptImportModule } from "./imports/manuscript-import.module";
 import { SettingsImportModule } from "./imports/settings-import.module";
 import { MetricsModule } from "./metrics/metrics.module";
 import { ModelConfigModule } from "./model-config/model-config.module";
+import { ModerationModule } from "./moderation/moderation.module";
 import { NotificationModule } from "./notifications/notification.module";
 import { OutlineModule } from "./outline/outline.module";
 import { ReadinessModule } from "./readiness/readiness.module";
@@ -54,6 +55,7 @@ import { WorkExportModule } from "./exports/work-export.module";
     SettingsImportModule,
     MetricsModule,
     ModelConfigModule,
+    ModerationModule,
     NotificationModule,
     OutlineModule,
     ReadinessModule,

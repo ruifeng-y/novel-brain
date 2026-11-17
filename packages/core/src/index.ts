@@ -601,3 +601,4 @@ export * from "./revision";
 export * from "./provider-call-budget";
 export * from "./publish-preview";
 export * from "./work-export";
+export * from "./moderation";

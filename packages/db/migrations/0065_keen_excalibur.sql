@@ -1,0 +1,2 @@
+ALTER TABLE "moderation_events" ADD COLUMN "appeal_id" uuid;--> statement-breakpoint
+ALTER TABLE "moderation_events" ADD CONSTRAINT "moderation_events_appeal_id_moderation_appeals_id_fk" FOREIGN KEY ("appeal_id") REFERENCES "public"."moderation_appeals"("id") ON DELETE cascade ON UPDATE no action;

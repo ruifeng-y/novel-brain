@@ -31,6 +31,11 @@ describe("publish preview", () => {
         manifestHash: "a".repeat(64),
         sourceVersionNodeId: "01910000-0000-7000-8000-000000000003",
         requestedVersionNodeId: null,
+        aiDisclosureMetadata: {
+          required: true,
+          label: "含 AI 辅助生成内容",
+          policyVersion: "ai-disclosure-v1",
+        },
       },
       chapters: [
         publishChapter(1, "山门", "山门在夜里关闭，沈砚却听见门外有人叫出了他的旧名。"),
@@ -71,6 +76,11 @@ describe("publish preview", () => {
     expect(generic.publishCopy.chapterTitleSuggestions[0]).toBe("1. 山门");
     expect(fanqie.publishCopy.chapterTitleSuggestions[0]).toBe("第1章 山门");
     expect(fanqie.publishCopy.platformNote).toContain("不会上传");
+    expect(fanqie.publishCopy.aiDisclosureMetadata).toEqual({
+      required: true,
+      label: "含 AI 辅助生成内容",
+      policyVersion: "ai-disclosure-v1",
+    });
     expect(fanqie.checks.map((check) => [check.code, check.status])).toEqual(
       generic.checks.map((check) => [check.code, check.status]),
     );
@@ -178,6 +188,11 @@ function publishInput() {
       manifestHash: "a".repeat(64),
       sourceVersionNodeId: "01910000-0000-7000-8000-000000000003",
       requestedVersionNodeId: null,
+      aiDisclosureMetadata: {
+        required: true,
+        label: "含 AI 辅助生成内容",
+        policyVersion: "ai-disclosure-v1",
+      },
     },
     chapters: [
       publishChapter(1, "山门", "山门在夜里关闭，沈砚却听见门外有人叫出了他的旧名。"),

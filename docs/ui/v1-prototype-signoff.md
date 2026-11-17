@@ -119,6 +119,12 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正式文件写入 `artifacts/ui/golden/export-publish/`。截图来自真实生产路由、真实导出/worker receipt 和固定发布预览数据，覆盖目录、导出历史、发布检查、元数据入口、当前作品/创作线上下文与无横向溢出。真实行为、读者预览焦点管理、stale/regenerate、租户隔离和过期恢复由 `apps/web/e2e/parity/export-publish.spec.ts` 覆盖。Linux/Chromium Golden 生成证据为 [Production CI #44019894890](https://github.com/ruifeng-y/novel-brain/actions/runs/44019894890) 的 `update_golden` Playwright artifact；最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、`prototype_only` 扫描和语义断言后才合并。
 
+## 2026-11-17 help/legal/export-publish AI 标识与申诉视觉签收
+
+签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-131/` 中 `help`、`legal` 与改版 `export-publish` 的 390 / 900 / 1180 / 1440 四档共 12 张 Linux candidate 作为正式 Golden，并确认当前法务草案。
+
+12 张正式文件已写入 `artifacts/ui/golden/help/`、`artifacts/ui/golden/legal/` 与 `artifacts/ui/golden/export-publish/`。截图来自真实生产路由和固定验收数据；`help` 覆盖 FAQ 与空搜索状态，`legal` 覆盖三份法律文件入口和条款详情，`export-publish` 覆盖内容安全记录、证据、申诉/撤回入口及 AI 标识。Linux/Chromium 生成证据为 [Production CI #44045578715](https://github.com/ruifeng-y/novel-brain/actions/runs/44045578715) 的 `update_golden` Playwright artifact。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、`prototype_only` 扫描、无横向溢出和真实行为断言后才合并。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

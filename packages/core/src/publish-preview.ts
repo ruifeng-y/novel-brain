@@ -2,11 +2,14 @@ import { createHash } from "node:crypto";
 
 import {
   PUBLISH_PLATFORM_PRESETS,
+  type AiDisclosureMetadata,
   type PublishCheckStatus,
   type PublishPlatformPreset,
   type PublishReadinessStatus,
   type WorkGenre,
 } from "@novel-brain/contracts";
+
+import { assessModeration } from "./moderation";
 
 type PublishGenre = WorkGenre;
 
@@ -64,6 +67,7 @@ export interface PublishPreviewInput {
     manifestHash: string;
     sourceVersionNodeId: string;
     requestedVersionNodeId: string | null;
+    aiDisclosureMetadata: AiDisclosureMetadata;
   };
   chapters: PublishChapterSource[];
   goldenThree: {
@@ -172,7 +176,6 @@ const GENRE_LABELS: Record<PublishGenre, string> = {
   urban: "都市",
 };
 
-const CONTENT_REVIEW_TERMS = ["毒品制作", "儿童色情", "自杀方法"] as const;
 const PUBLISH_RULE_VERSION = "publish-check-v1";
 
 function reviewScore(reviews: GoldenThreeEvidenceSnapshot["reviewSnapshot"], dimension: string) {
@@ -190,6 +193,8 @@ export function buildPublishPreview(input: PublishPreviewInput) {
   const chapters = [...input.chapters].sort(
     (left, right) => left.chapterNumber - right.chapterNumber,
   );
+  const moderation = assessModeration(chapters);
+  const aiDisclosureMetadata = input.export.aiDisclosureMetadata;
   const checks = buildChecks({ preview: input, metadata, platform, chapters });
   const blocked = checks.some((check) => check.status === "blocked");
   const warning = checks.some((check) => check.status === "warning");
@@ -197,6 +202,7 @@ export function buildPublishPreview(input: PublishPreviewInput) {
   return {
     status,
     publishReady: !blocked,
+    moderation,
     platform: {
       key: input.platformPreset,
       label: platform.label,
@@ -223,6 +229,7 @@ export function buildPublishPreview(input: PublishPreviewInput) {
       metadata,
       platform,
       chapters,
+      aiDisclosureMetadata,
     }),
   };
 }
@@ -234,6 +241,12 @@ function buildChecks(input: {
   chapters: PublishChapterSource[];
 }): PublishCheckResult[] {
   const { metadata, platform, chapters, preview } = input;
+  const moderation = assessModeration(chapters);
+  const aiDisclosureMetadata = preview.export.aiDisclosureMetadata ?? {
+    required: true,
+    label: "含 AI 辅助生成内容",
+    policyVersion: "ai-disclosure-v1" as const,
+  };
   const openingScores = [
     preview.goldenThree.openingHookScore,
     preview.goldenThree.chapterEndHookScore,
@@ -241,9 +254,9 @@ function buildChecks(input: {
   const hookPassed =
     preview.goldenThree.locked &&
     openingScores.every((score) => typeof score === "number" && score >= 4);
-  const reviewTerm = CONTENT_REVIEW_TERMS.find((term) =>
-    chapters.some((chapter) => chapter.content.includes(term)),
-  );
+  const reviewTerm = moderation.evidence.find(
+    (evidence) => evidence.label === "本地复核提示",
+  )?.value;
   const firstThreeChapterNumbers = chapters.slice(0, 3).map((chapter) => chapter.chapterNumber);
   const firstThreeComplete =
     firstThreeChapterNumbers.length === 3 &&
@@ -343,20 +356,25 @@ function buildChecks(input: {
       "content_safety_review",
       "内容安全提示",
       "warning",
-      reviewTerm
+      typeof reviewTerm === "string"
         ? "预览中发现需要作者复核的安全提示，不会自动封禁；发布前仍需按目标平台规则复核。"
         : "本地规则未发现提示；发布前仍需按目标平台规则复核内容安全。",
-      [
-        { label: "本地复核提示", value: reviewTerm ?? null },
-        { label: "平台规则复核", value: true },
-      ],
+      [...moderation.evidence, { label: "内容安全规则版本", value: moderation.ruleVersion }],
     ),
     check(
       "ai_disclosure",
       "AI 生成内容标识",
       metadata.aiDisclosure ? "pass" : "warning",
       metadata.aiDisclosure ? "已确认需要保留 AI 生成内容说明。" : "尚未确认 AI 生成内容标识。",
-      [{ label: "已确认", value: metadata.aiDisclosure }],
+      [
+        { label: "已确认", value: metadata.aiDisclosure },
+        { label: "导出说明", value: aiDisclosureMetadata.label },
+        {
+          label: "说明规则版本",
+          value: aiDisclosureMetadata.policyVersion,
+        },
+        { label: "导出要求保留", value: aiDisclosureMetadata.required },
+      ],
     ),
     check(
       "copyright_notice",
@@ -459,6 +477,7 @@ function buildPublishCopy(input: {
   metadata: ResolvedPublishMetadata;
   platform: (typeof PLATFORM_PRESETS)[PublishPlatformKey];
   chapters: PublishChapterSource[];
+  aiDisclosureMetadata: AiDisclosureMetadata;
 }) {
   const genreLabel = GENRE_LABELS[input.metadata.genre];
   const titleOptions = uniqueStrings([
@@ -478,6 +497,7 @@ function buildPublishCopy(input: {
         formatTitle(input.platform.chapterTitleFormat, chapter.chapterNumber, chapter.title),
       ),
     platformNote: "仅生成发布预览和导出元数据，不会上传到第三方平台。",
+    aiDisclosureMetadata: input.aiDisclosureMetadata,
   };
 }
 

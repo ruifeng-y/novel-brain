@@ -311,6 +311,8 @@ M0 关键错误：
 
 导出范围固定为 `current_chapter`、`selected_chapters`、`chapter_range`、`volume`、`book`。`sourceVersionNodeId` 可选，非空时必须属于当前 branch；导出 receipt 固定精确 chapter version/version node、章节标题版本和附录版本，worker 在源 hash 变化时 fail closed。导出文件默认保留 7 天，artifact 存在 MinIO/S3 兼容对象存储；过期先删除对象，再清空 receipt 对象键和包含正文片段的 source descriptor，manifest 与审计记录保留。
 
+manifest `schemaVersion` 为 2 时固定 `aiDisclosureMetadata`：`required` 来自作品级 AI 标识要求，`label` 为作者可读说明，`policyVersion` 固定为 `ai-disclosure-v1`。TXT/Markdown/DOCX/EPUB 的正文、版本清单和发布文案必须保留同一标识；重新导出继续从作品级要求生成，不能因格式或导出次数丢失。旧 `schemaVersion` 1 manifest 仍可读取和下载，但缺少当前 AI 标识元数据时发布检查 fail closed，要求重新导出。
+
 本节契约变更由 Issue #129 的已批准验收范围授权，实施与验证证据记录在 `docs/implementation/m3-01a-work-export.md`。
 
 ### 5.13 发布检查与固定预览
@@ -324,6 +326,20 @@ M0 关键错误：
 创建请求必须携带 `Idempotency-Key`。同一用户、同一 path、同一 key、同一请求体在 24 小时内返回同一预览；相同 key 携带不同请求返回 `409 PUBLISH_IDEMPOTENCY_CONFLICT`。预览固定 export receipt、manifest hash、请求/解析版本、目录、前 3 章读者预览、检查证据与发布文案；blocking 检查阻止 `publishReady`，warning 保持可见但不阻止作者继续处理。
 
 本节契约变更由 Issue #130 的已批准验收范围授权，实施与验证证据记录在 `docs/implementation/m3-02a-publish-preview.md`。
+
+### 5.14 内容安全与申诉
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/works/:workId/branches/:branchId/moderation-cases` | 按 `cursor`/`limit` 返回内容安全记录、证据与申诉事件 |
+| POST | `/api/v1/works/:workId/branches/:branchId/moderation-cases/:caseId/appeals` | 作者提交申诉或纠正说明 |
+| POST | `/api/v1/works/:workId/branches/:branchId/moderation-cases/:caseId/appeals/:appealId/withdraw` | 作者撤回当前申诉 |
+
+发布预览创建时，服务从 `content_safety_review` 检查结果生成不可重复的 `moderation_cases` 记录。记录固定 `ruleVersion`、全部命中的本地提示、涉及章节编号和当前状态 `clear`、`needs_review`、`appeal_submitted`。申诉提交必须带 `Idempotency-Key`；同一 key 与请求体返回首次提交时的固定案件快照，不同请求返回 `409 MODERATION_APPEAL_IDEMPOTENCY_CONFLICT`。提交和撤回都写入 append-only `moderation_events`，事件带对应 `appealId`；单案最多 20 次申诉。作者、作品、创作线不匹配返回 `FORBIDDEN_TENANT_ACCESS`。
+
+内容安全使用本地规则提示，不按关键词自动封禁。申诉是作者可见的复核/纠正入口，不等同于平台或监管最终审核结论。
+
+本节契约变更由 Issue #131 的已批准验收范围授权，实施与验证证据记录在 `docs/implementation/m3-02b-help-legal-moderation.md`。
 
 ## 6. M0 Resource Shapes
 

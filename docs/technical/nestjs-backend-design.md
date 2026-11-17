@@ -406,6 +406,9 @@ GET      /api/v1/works/:workId/branches/:branchId/exports/:exportId/download
 GET/POST /api/v1/export-templates
 GET/POST /api/v1/works/:workId/branches/:branchId/publish-check
 GET      /api/v1/works/:workId/branches/:branchId/publish-check/:previewId
+GET      /api/v1/works/:workId/branches/:branchId/moderation-cases
+POST     /api/v1/works/:workId/branches/:branchId/moderation-cases/:caseId/appeals
+POST     /api/v1/works/:workId/branches/:branchId/moderation-cases/:caseId/appeals/:appealId/withdraw
 ```
 
 ## 4. Drizzle 数据模型
@@ -550,7 +553,9 @@ GET      /api/v1/works/:workId/branches/:branchId/publish-check/:previewId
 | `eval_cases` / `eval_runs` / `eval_scores` / `eval_gates` | 见 14.7 | 评测和发布门禁 |
 | `feedback_events` | `id`, `user_id`, `work_id`, `target_type`, `target_id`, `action`, `reason`, `before`, `after`, `created_at` | 作者反馈 |
 | `notifications` | `id`, `user_id`, `type`, `target_type`, `target_id`, `payload`, `read_at`, `created_at` | 站内通知 |
-| `moderation_cases` | `id`, `work_id`, `chapter_id`, `status`, `rule_basis`, `decision`, `appeal`, `created_at` | 内容审核与申诉 |
+| `moderation_cases` | `id`, `user_id`, `work_id`, `branch_id`, `publish_preview_id`, `export_id`, `status`, `rule_version`, `evidence`, `created_at` | 内容安全状态、规则依据和固定预览关联 |
+| `moderation_appeals` | `id`, `case_id`, `user_id`, `work_id`, `branch_id`, `status`, `reason`, `correction`, `created_at`, `withdrawn_at` | 作者申诉或纠正说明 |
+| `moderation_events` | `id`, `case_id`, `appeal_id`, `user_id`, `work_id`, `branch_id`, `type`, `from_status`, `to_status`, `reason`, `created_at` | append-only 申诉生命周期审计 |
 | `export_receipts` / `deletion_requests` | `id`, `user_id`, `work_id`, `status`, `completed_at`, `expires_at` | 导出凭证和删除状态 |
 
 ## 5. API 设计
@@ -1101,10 +1106,12 @@ API：`POST /branches/:branchId/merge-items`、`GET /branches/:branchId/merge-it
 
 ### 14.8 安全、删除与内容治理（ADR 0023）
 
-新增 `provider_allowlist`、`deletion_requests`、`export_receipts`、`moderation_cases`。
+新增 `provider_allowlist`、`deletion_requests`、`export_receipts`、`moderation_cases`、`moderation_appeals`、`moderation_events`。
 
 - BYOK：只允许 DeepSeek 官方和白名单 Provider；HTTPS；禁止私网、回环、链路本地和重定向。
 - RLS：所有租户故事表启用 RLS，`SET LOCAL app.user_id`；跨用户访问必须自动化测试。
 - 日志：Key、正文、上下文包和 prompt 不进普通日志；追踪默认关闭或自托管。
 - 删除：账号注销前必须完成导出；作品永久删除前必须完成导出。30 天恢复期后硬删除正文、版本、正史、上下文包、轨迹和孤儿数据；备份 30 天内过期。
 - 内容：供应商审核 + 作者责任；公开内容提供 AI 标识、规则依据和申诉入口。
+- AI 标识：`works.ai_disclosure_required` 进入导出 manifest 的 `aiDisclosureMetadata`，正文、版本清单、重新导出和发布检查都必须保留同一 `ai-disclosure-v1` 规则。
+- 申诉：本地内容安全提示生成作者可见记录；提交、重放和撤回使用租户范围幂等与 append-only 事件审计，不自动改变审核结论。

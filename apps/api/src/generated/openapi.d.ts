@@ -1652,6 +1652,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/moderation-cases": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ModerationController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/moderation-cases/{caseId}/appeals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModerationController_submitAppeal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/moderation-cases/{caseId}/appeals/{appealId}/withdraw": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModerationController_withdrawAppeal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/notifications": {
     parameters: {
       query?: never;
@@ -4741,6 +4789,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -5096,6 +5151,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -11033,6 +11095,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11612,6 +11681,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12017,6 +12093,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12423,6 +12506,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12829,6 +12919,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -13248,6 +13345,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13776,6 +13880,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14223,6 +14334,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14525,6 +14643,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14737,6 +14862,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -15097,6 +15229,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15520,6 +15659,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15948,6 +16094,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16376,6 +16529,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -18662,6 +18822,243 @@ export interface operations {
               status: "success";
               latencyMs: number;
               message: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModerationController_list: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Content safety and appeal audit history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              publishPreviewId: string;
+              exportId: string;
+              /** @enum {string} */
+              status: "clear" | "needs_review" | "appeal_submitted";
+              ruleVersion: string;
+              evidence: {
+                label: string;
+                value: string | number | boolean | null;
+              }[];
+              events: {
+                id: string;
+                /** @enum {string} */
+                type: "case_created" | "appeal_submitted" | "appeal_withdrawn";
+                appealId: string | null;
+                /** @enum {string|null} */
+                fromStatus: "clear" | "needs_review" | "appeal_submitted" | null;
+                /** @enum {string} */
+                toStatus: "clear" | "needs_review" | "appeal_submitted";
+                reason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              appeals: {
+                id: string;
+                /** @enum {string} */
+                status: "submitted" | "withdrawn";
+                reason: string;
+                correction: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                withdrawnAt: string | null;
+              }[];
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModerationController_submitAppeal: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same appeal submission */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        caseId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          reason: string;
+          correction?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated moderation case */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              publishPreviewId: string;
+              exportId: string;
+              /** @enum {string} */
+              status: "clear" | "needs_review" | "appeal_submitted";
+              ruleVersion: string;
+              evidence: {
+                label: string;
+                value: string | number | boolean | null;
+              }[];
+              events: {
+                id: string;
+                /** @enum {string} */
+                type: "case_created" | "appeal_submitted" | "appeal_withdrawn";
+                appealId: string | null;
+                /** @enum {string|null} */
+                fromStatus: "clear" | "needs_review" | "appeal_submitted" | null;
+                /** @enum {string} */
+                toStatus: "clear" | "needs_review" | "appeal_submitted";
+                reason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              appeals: {
+                id: string;
+                /** @enum {string} */
+                status: "submitted" | "withdrawn";
+                reason: string;
+                correction: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                withdrawnAt: string | null;
+              }[];
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModerationController_withdrawAppeal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        caseId: string;
+        appealId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Withdrawn appeal and updated moderation case */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              publishPreviewId: string;
+              exportId: string;
+              /** @enum {string} */
+              status: "clear" | "needs_review" | "appeal_submitted";
+              ruleVersion: string;
+              evidence: {
+                label: string;
+                value: string | number | boolean | null;
+              }[];
+              events: {
+                id: string;
+                /** @enum {string} */
+                type: "case_created" | "appeal_submitted" | "appeal_withdrawn";
+                appealId: string | null;
+                /** @enum {string|null} */
+                fromStatus: "clear" | "needs_review" | "appeal_submitted" | null;
+                /** @enum {string} */
+                toStatus: "clear" | "needs_review" | "appeal_submitted";
+                reason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              appeals: {
+                id: string;
+                /** @enum {string} */
+                status: "submitted" | "withdrawn";
+                reason: string;
+                correction: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                withdrawnAt: string | null;
+              }[];
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
             };
             /** Format: starts_with */
             requestId: string;
@@ -32806,6 +33203,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -33041,6 +33445,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -33252,6 +33663,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -43553,6 +43971,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44345,6 +44770,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44914,6 +45346,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45483,6 +45922,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46052,6 +46498,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46634,6 +47087,13 @@ export interface operations {
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
                     | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                    | "PUBLISH_DISCLOSURE_REQUIRED"
+                    | "MODERATION_CASE_NOT_FOUND"
+                    | "MODERATION_APPEAL_NOT_REQUIRED"
+                    | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                    | "MODERATION_APPEAL_NOT_FOUND"
+                    | "MODERATION_APPEAL_LIMIT_REACHED"
+                    | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -46746,8 +47206,7 @@ export interface operations {
               /** @enum {string} */
               status: "queued" | "running" | "completed" | "failed" | "expired";
               manifest: {
-                /** @enum {number} */
-                schemaVersion: 1;
+                schemaVersion: 1 | 2;
                 work: {
                   id: string;
                   title: string;
@@ -46840,6 +47299,12 @@ export interface operations {
                   contentSha256: string;
                 }[];
                 characterCount: number;
+                aiDisclosureMetadata?: {
+                  required: boolean;
+                  label: string;
+                  /** @enum {string} */
+                  policyVersion: "ai-disclosure-v1";
+                };
                 manifestHash: string;
               } | null;
               checksum: string | null;
@@ -47001,6 +47466,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47135,8 +47607,7 @@ export interface operations {
               /** @enum {string} */
               status: "queued" | "running" | "completed" | "failed" | "expired";
               manifest: {
-                /** @enum {number} */
-                schemaVersion: 1;
+                schemaVersion: 1 | 2;
                 work: {
                   id: string;
                   title: string;
@@ -47229,6 +47700,12 @@ export interface operations {
                   contentSha256: string;
                 }[];
                 characterCount: number;
+                aiDisclosureMetadata?: {
+                  required: boolean;
+                  label: string;
+                  /** @enum {string} */
+                  policyVersion: "ai-disclosure-v1";
+                };
                 manifestHash: string;
               } | null;
               checksum: string | null;
@@ -47390,6 +47867,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47442,8 +47926,7 @@ export interface operations {
               /** @enum {string} */
               status: "queued" | "running" | "completed" | "failed" | "expired";
               manifest: {
-                /** @enum {number} */
-                schemaVersion: 1;
+                schemaVersion: 1 | 2;
                 work: {
                   id: string;
                   title: string;
@@ -47536,6 +48019,12 @@ export interface operations {
                   contentSha256: string;
                 }[];
                 characterCount: number;
+                aiDisclosureMetadata?: {
+                  required: boolean;
+                  label: string;
+                  /** @enum {string} */
+                  policyVersion: "ai-disclosure-v1";
+                };
                 manifestHash: string;
               } | null;
               checksum: string | null;
@@ -47697,6 +48186,13 @@ export interface operations {
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
                   | "PUBLISH_IDEMPOTENCY_CONFLICT"
+                  | "PUBLISH_DISCLOSURE_REQUIRED"
+                  | "MODERATION_CASE_NOT_FOUND"
+                  | "MODERATION_APPEAL_NOT_REQUIRED"
+                  | "MODERATION_APPEAL_ALREADY_SUBMITTED"
+                  | "MODERATION_APPEAL_NOT_FOUND"
+                  | "MODERATION_APPEAL_LIMIT_REACHED"
+                  | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47862,6 +48358,12 @@ export interface operations {
                 tags: string[];
                 chapterTitleSuggestions: string[];
                 platformNote: string;
+                aiDisclosureMetadata?: {
+                  required: boolean;
+                  label: string;
+                  /** @enum {string} */
+                  policyVersion: "ai-disclosure-v1";
+                };
               };
               /** Format: date-time */
               createdAt: string;
@@ -48011,6 +48513,12 @@ export interface operations {
                 tags: string[];
                 chapterTitleSuggestions: string[];
                 platformNote: string;
+                aiDisclosureMetadata?: {
+                  required: boolean;
+                  label: string;
+                  /** @enum {string} */
+                  policyVersion: "ai-disclosure-v1";
+                };
               };
               /** Format: date-time */
               createdAt: string;
@@ -48138,6 +48646,12 @@ export interface operations {
                 tags: string[];
                 chapterTitleSuggestions: string[];
                 platformNote: string;
+                aiDisclosureMetadata?: {
+                  required: boolean;
+                  label: string;
+                  /** @enum {string} */
+                  policyVersion: "ai-disclosure-v1";
+                };
               };
               /** Format: date-time */
               createdAt: string;

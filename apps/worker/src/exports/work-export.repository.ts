@@ -35,6 +35,7 @@ export interface LoadedWorkExport extends WorkExportJobIdentity {
     title: string;
     penName: string;
     genre: "xianxia" | "history" | "urban";
+    aiDisclosureRequired: boolean;
   };
   branch: {
     id: string;
@@ -92,12 +93,13 @@ export class WorkerWorkExportRepository implements OnModuleDestroy {
         work_title: string;
         work_pen_name: string;
         work_genre: "xianxia" | "history" | "urban";
+        ai_disclosure_required: boolean;
         branch_name: string;
       }>(
         `SELECT j.status AS job_status, r.status AS receipt_status, j.checkpoint,
                 r.id AS export_id, r.work_id, r.branch_id, r.request, r.source_descriptor,
                 w.title AS work_title, w.pen_name AS work_pen_name, w.genre AS work_genre,
-                b.name AS branch_name
+                w.ai_disclosure_required, b.name AS branch_name
            FROM jobs j
            JOIN work_export_receipts r ON r.job_id = j.id
            JOIN works w ON w.id = r.work_id
@@ -225,6 +227,7 @@ export class WorkerWorkExportRepository implements OnModuleDestroy {
           title: loaded.work_title,
           penName: loaded.work_pen_name,
           genre: loaded.work_genre,
+          aiDisclosureRequired: loaded.ai_disclosure_required,
         },
         branch: {
           id: payload.branchId,

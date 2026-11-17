@@ -4,13 +4,15 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   workExportManifestSchema,
   workExportSourceDescriptorSchema,
+  type AiDisclosureMetadata,
+  type ModerationEvidence,
   type PublishCheckRequest,
   type PublishPlatformPreset,
   type PublishPreview,
   type PublishPreviewListQuery,
 } from "@novel-brain/contracts";
 import { createDatabasePool } from "@novel-brain/db";
-import { resolveGoldenThreeEvidence } from "@novel-brain/core";
+import { hasCurrentAiDisclosureMetadata, resolveGoldenThreeEvidence } from "@novel-brain/core";
 import type { Pool, PoolClient } from "pg";
 import { uuidv7 } from "uuidv7";
 
@@ -38,6 +40,7 @@ export interface PublishPreviewSource {
     manifestHash: string;
     sourceVersionNodeId: string;
     requestedVersionNodeId: string | null;
+    aiDisclosureMetadata: AiDisclosureMetadata;
   };
   chapters: Array<{
     chapterId: string;
@@ -107,7 +110,14 @@ export class PublishPreviewRepository implements OnModuleDestroy {
     userId: string,
     context: PublishContext,
     exportId: string,
-  ): Promise<PublishPreviewSource | "not_found" | "not_ready" | "expired" | "source_changed"> {
+  ): Promise<
+    | PublishPreviewSource
+    | "not_found"
+    | "not_ready"
+    | "expired"
+    | "source_changed"
+    | "disclosure_required"
+  > {
     return this.withTenant(userId, async (client) => {
       const result = await client.query<{
         status: string;
@@ -142,6 +152,9 @@ export class PublishPreviewRepository implements OnModuleDestroy {
         return "not_ready";
       }
       const manifest = workExportManifestSchema.parse(row.manifest);
+      if (!hasCurrentAiDisclosureMetadata(manifest)) {
+        throw new PublishDisclosureRequiredError();
+      }
       const source = workExportSourceDescriptorSchema.parse(row.source_descriptor);
       const versionResult = await client.query<{
         id: string;
@@ -233,6 +246,7 @@ export class PublishPreviewRepository implements OnModuleDestroy {
           manifestHash: manifest.manifestHash,
           sourceVersionNodeId: manifest.branch.resolvedVersionNodeId,
           requestedVersionNodeId: manifest.branch.requestedVersionNodeId,
+          aiDisclosureMetadata: manifest.aiDisclosureMetadata,
         },
         chapters,
         goldenThree,
@@ -240,6 +254,9 @@ export class PublishPreviewRepository implements OnModuleDestroy {
     }).catch((error: unknown) => {
       if (error instanceof PublishSourceChangedError) {
         return "source_changed";
+      }
+      if (error instanceof PublishDisclosureRequiredError) {
+        return "disclosure_required";
       }
       throw error;
     });
@@ -252,6 +269,12 @@ export class PublishPreviewRepository implements OnModuleDestroy {
     idempotencyKey: string,
     requestHash: string,
     preview: Omit<PublishPreview, "id" | "createdAt" | "updatedAt" | "stale" | "staleReason">,
+    moderation: {
+      status: "clear" | "needs_review";
+      ruleVersion: string;
+      evidence: ModerationEvidence[];
+      matchedChapterIds: string[];
+    },
   ): Promise<PublishPreview> {
     return this.withTenant(userId, async (client) => {
       await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
@@ -300,6 +323,44 @@ export class PublishPreviewRepository implements OnModuleDestroy {
           now,
         ],
       );
+      const moderationCaseId = uuidv7();
+      const moderationCase = await client.query<{ id: string }>(
+        `INSERT INTO moderation_cases
+          (id, user_id, work_id, branch_id, publish_preview_id, export_id, status,
+           rule_version, evidence, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $10)
+         ON CONFLICT (publish_preview_id) DO NOTHING
+         RETURNING id`,
+        [
+          moderationCaseId,
+          userId,
+          context.workId,
+          context.branchId,
+          id,
+          request.exportId,
+          moderation.status,
+          moderation.ruleVersion,
+          JSON.stringify(moderation.evidence),
+          now,
+        ],
+      );
+      if (moderationCase.rows[0]) {
+        await client.query(
+          `INSERT INTO moderation_events
+            (id, case_id, user_id, work_id, branch_id, type, from_status, to_status,
+             reason, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'case_created', NULL, $6, NULL, $7)`,
+          [
+            uuidv7(),
+            moderationCaseId,
+            userId,
+            context.workId,
+            context.branchId,
+            moderation.status,
+            now,
+          ],
+        );
+      }
       await client.query(
         `INSERT INTO idempotency_records
           (id, user_id, scope, idempotency_key, request_hash, resource_type, resource_id, created_at)
@@ -480,6 +541,13 @@ export class PublishSourceChangedError extends Error {
   constructor() {
     super("Publish preview source changed");
     this.name = "PublishSourceChangedError";
+  }
+}
+
+export class PublishDisclosureRequiredError extends Error {
+  constructor() {
+    super("Publish preview requires current AI disclosure metadata");
+    this.name = "PublishDisclosureRequiredError";
   }
 }
 

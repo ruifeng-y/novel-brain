@@ -6,8 +6,6 @@ import {
   type Page,
   type Route,
 } from "@playwright/test";
-import { existsSync } from "node:fs";
-import path from "node:path";
 import { Pool } from "pg";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
@@ -31,7 +29,7 @@ test("runs export, publish check and reader preview, then covers four viewports"
   page,
   context,
   playwright,
-}, testInfo) => {
+}) => {
   await authenticatedPage(page, context, "导出发布作者");
   const work = await createWork(page.request, {
     mode: "idea",
@@ -77,6 +75,16 @@ test("runs export, publish check and reader preview, then covers four viewports"
     await expect(page.locator(".publish-check")).toHaveCount(13);
     await expect(page.locator(".publish-check.blocked")).toHaveCount(0);
     await expect(page.locator(".publish-check.warning").first()).toBeVisible();
+    await expect(page.getByText("内容安全与申诉")).toBeVisible();
+    await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
+    await page.getByRole("button", { name: "提交申诉或纠正说明" }).click();
+    await page.getByLabel("申诉或纠正说明").fill("已重新核对相关章节，请复核这条内容安全提示。");
+    await page.getByLabel("修正内容（可选）").fill("第 2 章的示例性步骤描述已准备删除。");
+    await page.getByRole("button", { name: "提交申诉", exact: true }).click();
+    await expect(page.getByText("申诉已提交，状态和证据已写入审计记录。")).toBeVisible();
+    await page.getByRole("button", { name: "撤回申诉" }).click();
+    await expect(page.getByText("申诉已撤回，内容仍保持待复核状态。")).toBeVisible();
+    await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
 
     const readerTrigger = page.getByRole("button", { name: "读者预览" });
     await readerTrigger.click();
@@ -97,11 +105,14 @@ test("runs export, publish check and reader preview, then covers four viewports"
     await expect
       .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
       .toContain("书名备选");
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
+      .toContain("AI 内容说明：含 AI 辅助生成内容");
 
     await page.getByText("编辑书名、简介、标签与封面元数据").click();
     await expect(page.getByLabel("作品简介")).toBeVisible();
     await expect(page.getByRole("textbox", { name: "标签" })).toBeVisible();
-    await page.getByLabel("发布页需要保留 AI 生成内容说明").check();
+    await page.getByLabel("发布页保留 AI 辅助生成说明").check();
     await page.getByLabel("已阅读原创与版权提醒，作品版权归作者所有").check();
     await page.getByRole("button", { name: "应用并重新检查" }).click();
     await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
@@ -186,28 +197,10 @@ test("runs export, publish check and reader preview, then covers four viewports"
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
-      const goldenPath = path.resolve(
-        "artifacts/ui/golden/export-publish",
-        `export-publish-${width}.png`,
+      await expect(page).toHaveScreenshot(
+        ["export-publish", `export-publish-${width}.png`],
+        productionScreenshotOptions,
       );
-      if (existsSync(goldenPath)) {
-        await expect(page).toHaveScreenshot(
-          ["export-publish", `export-publish-${width}.png`],
-          productionScreenshotOptions,
-        );
-      } else {
-        const candidatePath = testInfo.outputPath(`export-publish-${width}.png`);
-        await page.screenshot({
-          animations: "disabled",
-          caret: "hide",
-          fullPage: true,
-          path: candidatePath,
-        });
-        await testInfo.attach(`export-publish-${width}-candidate`, {
-          contentType: "image/png",
-          path: candidatePath,
-        });
-      }
     }
     await unfreezeTimestamps();
 
@@ -392,7 +385,8 @@ async function createChapters(
         version: chapter.version,
         content:
           `第 ${number} 章，山灯在夜风里摇了一次。` +
-          "沈砚把旧名写在灯纸上，火苗映出许多已经忘记的面孔。".repeat(85),
+          "沈砚把旧名写在灯纸上，火苗映出许多已经忘记的面孔。".repeat(85) +
+          (number === 2 ? "旧书里出现了毒品制作步骤，沈砚立刻合上了书。" : ""),
       },
     });
     expect(version.status()).toBe(201);

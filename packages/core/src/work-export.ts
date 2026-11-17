@@ -35,6 +35,7 @@ export interface WorkExportInput {
     title: string;
     penName: string;
     genre: "xianxia" | "history" | "urban";
+    aiDisclosureRequired?: boolean;
   };
   branch: {
     id: string;
@@ -92,13 +93,27 @@ export function buildWorkExportArtifact(input: WorkExportInput): WorkExportArtif
   };
 }
 
+export function hasCurrentAiDisclosureMetadata(
+  manifest: WorkExportManifest,
+): manifest is WorkExportManifest & {
+  schemaVersion: 2;
+  aiDisclosureMetadata: NonNullable<WorkExportManifest["aiDisclosureMetadata"]>;
+} {
+  return manifest.schemaVersion === 2 && Boolean(manifest.aiDisclosureMetadata);
+}
+
 function buildManifestBase(
   input: WorkExportInput,
   chapters: WorkExportChapterSource[],
 ): WorkExportManifestBase {
   return {
-    schemaVersion: 1,
-    work: input.work,
+    schemaVersion: 2,
+    work: {
+      id: input.work.id,
+      title: input.work.title,
+      penName: input.work.penName,
+      genre: input.work.genre,
+    },
     branch: {
       id: input.branch.id,
       name: input.branch.name,
@@ -129,6 +144,11 @@ function buildManifestBase(
       }))
       .sort((left, right) => `${left.kind}:${left.id}`.localeCompare(`${right.kind}:${right.id}`)),
     characterCount: chapters.reduce((total, chapter) => total + [...chapter.content].length, 0),
+    aiDisclosureMetadata: {
+      required: input.work.aiDisclosureRequired ?? true,
+      label: "含 AI 辅助生成内容",
+      policyVersion: "ai-disclosure-v1",
+    },
   };
 }
 
@@ -199,6 +219,9 @@ function renderText(
     `《${manifest.work.title}》`,
     `作者：${manifest.work.penName}`,
     `分支：${manifest.branch.name}`,
+    ...(manifest.aiDisclosureMetadata?.required
+      ? [`内容说明：${manifest.aiDisclosureMetadata.label}`]
+      : []),
     `格式：TXT · UTF-8`,
     `版本清单哈希：${manifest.manifestHash}`,
     "",
@@ -242,6 +265,9 @@ function renderMarkdown(
     "",
     `- 作者：${manifest.work.penName}`,
     `- 分支：${manifest.branch.name}`,
+    ...(manifest.aiDisclosureMetadata?.required
+      ? [`- 内容说明：${manifest.aiDisclosureMetadata.label}`]
+      : []),
     `- 格式：Markdown · UTF-8`,
     `- 版本清单哈希：\`${manifest.manifestHash}\``,
     "",
@@ -284,6 +310,9 @@ function renderDocx(
     { text: manifest.work.title },
     { text: `作者：${manifest.work.penName}` },
     { text: `分支：${manifest.branch.name}` },
+    ...(manifest.aiDisclosureMetadata?.required
+      ? [{ text: `内容说明：${manifest.aiDisclosureMetadata.label}` }]
+      : []),
   ];
   let currentVolume: string | null = null;
   for (const chapter of chapters) {
@@ -431,7 +460,11 @@ function renderEpub(
     `<head><title>${xmlEscape(manifest.work.title)}</title><style>.volume{margin-top:1.5em}.paragraph{margin:0}.spaced{margin-bottom:1em}.compact{margin-bottom:0}.indent{text-indent:2em}</style></head>`,
     `<body><h1>${xmlEscape(manifest.work.title)}</h1><p>作者：${xmlEscape(
       manifest.work.penName,
-    )}</p>${chapterSections}${supplementSections}<section><h2>版本清单</h2><pre>${xmlEscape(
+    )}</p>${
+      manifest.aiDisclosureMetadata?.required
+        ? `<p>${xmlEscape(manifest.aiDisclosureMetadata.label)}</p>`
+        : ""
+    }${chapterSections}${supplementSections}<section><h2>版本清单</h2><pre>${xmlEscape(
       manifest.manifestHash,
     )}</pre></section></body>`,
     "</html>",
@@ -449,6 +482,11 @@ function renderEpub(
     `<dc:identifier id="book-id">${manifest.work.id}</dc:identifier>`,
     `<dc:title>${xmlEscape(manifest.work.title)}</dc:title>`,
     `<dc:creator>${xmlEscape(manifest.work.penName)}</dc:creator>`,
+    ...(manifest.aiDisclosureMetadata?.required
+      ? [
+          `<meta property="nb:ai-disclosure">${xmlEscape(manifest.aiDisclosureMetadata.label)}</meta>`,
+        ]
+      : []),
     "<dc:language>zh-CN</dc:language>",
     '<meta property="dcterms:modified">1970-01-01T00:00:00Z</meta>',
     "</metadata>",

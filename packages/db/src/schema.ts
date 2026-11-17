@@ -3,6 +3,11 @@ import type {
   AccountDeletionFailure,
   AccountDeletionStoreResult,
   AccountExportInventoryEntry,
+  ModerationAppealStatus,
+  ModerationCase,
+  ModerationCaseStatus,
+  ModerationEventType,
+  ModerationEvidence,
   PublishCatalog,
   PublishCheck,
   PublishCopy,
@@ -320,6 +325,7 @@ export const works = pgTable(
     status: text("status").notNull().default("draft"),
     scaleTarget: text("scale_target").notNull().default("long"),
     chapterLengthTarget: integer("chapter_length_target").notNull().default(3000),
+    aiDisclosureRequired: boolean("ai_disclosure_required").notNull().default(true),
     sourceMode: text("source_mode").notNull(),
     idea: text("idea"),
     templateKey: text("template_key"),
@@ -2596,6 +2602,134 @@ export const publishPreviews = pgTable(
     check(
       "publish_previews_checks_check",
       sql`jsonb_typeof(${table.checks}) = 'array' and jsonb_array_length(${table.checks}) between 1 and 32`,
+    ),
+  ],
+);
+
+export const moderationCases = pgTable(
+  "moderation_cases",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    publishPreviewId: uuid("publish_preview_id")
+      .notNull()
+      .references(() => publishPreviews.id, { onDelete: "cascade" }),
+    exportId: uuid("export_id")
+      .notNull()
+      .references(() => workExportReceipts.id, { onDelete: "cascade" }),
+    status: text("status").$type<ModerationCaseStatus>().notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    evidence: jsonb("evidence").$type<ModerationEvidence[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("moderation_cases_preview_unique").on(table.publishPreviewId),
+    index("moderation_cases_user_created_idx").on(table.userId, table.createdAt),
+    index("moderation_cases_work_branch_created_idx").on(
+      table.workId,
+      table.branchId,
+      table.createdAt,
+    ),
+    check(
+      "moderation_cases_status_check",
+      sql`${table.status} in ('clear', 'needs_review', 'appeal_submitted')`,
+    ),
+    check("moderation_cases_rule_version_check", sql`length(${table.ruleVersion}) > 0`),
+    check(
+      "moderation_cases_evidence_check",
+      sql`jsonb_typeof(${table.evidence}) = 'array' and jsonb_array_length(${table.evidence}) between 1 and 20`,
+    ),
+  ],
+);
+
+export const moderationAppeals = pgTable(
+  "moderation_appeals",
+  {
+    id: uuid("id").primaryKey(),
+    caseId: uuid("case_id")
+      .notNull()
+      .references(() => moderationCases.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    status: text("status").$type<ModerationAppealStatus>().notNull(),
+    reason: text("reason").notNull(),
+    correction: text("correction"),
+    resultSnapshot: jsonb("result_snapshot").$type<ModerationCase>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("moderation_appeals_case_created_idx").on(table.caseId, table.createdAt),
+    index("moderation_appeals_user_created_idx").on(table.userId, table.createdAt),
+    check("moderation_appeals_status_check", sql`${table.status} in ('submitted', 'withdrawn')`),
+    check("moderation_appeals_reason_check", sql`length(${table.reason}) between 10 and 2000`),
+    check(
+      "moderation_appeals_correction_check",
+      sql`${table.correction} is null or length(${table.correction}) <= 4000`,
+    ),
+  ],
+);
+
+export const moderationEvents = pgTable(
+  "moderation_events",
+  {
+    id: uuid("id").primaryKey(),
+    caseId: uuid("case_id")
+      .notNull()
+      .references(() => moderationCases.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    type: text("type").$type<ModerationEventType>().notNull(),
+    appealId: uuid("appeal_id").references(() => moderationAppeals.id, {
+      onDelete: "cascade",
+    }),
+    fromStatus: text("from_status").$type<ModerationCaseStatus | null>(),
+    toStatus: text("to_status").$type<ModerationCaseStatus>().notNull(),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("moderation_events_case_created_idx").on(table.caseId, table.createdAt),
+    index("moderation_events_user_created_idx").on(table.userId, table.createdAt),
+    check(
+      "moderation_events_type_check",
+      sql`${table.type} in ('case_created', 'appeal_submitted', 'appeal_withdrawn')`,
+    ),
+    check(
+      "moderation_events_status_check",
+      sql`${table.fromStatus} is null or ${table.fromStatus} in ('clear', 'needs_review', 'appeal_submitted')`,
+    ),
+    check(
+      "moderation_events_to_status_check",
+      sql`${table.toStatus} in ('clear', 'needs_review', 'appeal_submitted')`,
+    ),
+    check(
+      "moderation_events_reason_check",
+      sql`${table.reason} is null or length(${table.reason}) <= 2000`,
     ),
   ],
 );

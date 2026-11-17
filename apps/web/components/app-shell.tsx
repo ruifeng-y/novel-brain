@@ -90,9 +90,13 @@ export function AppShell({
                       ? "新建作品"
                       : pathname.startsWith("/workspace/settings")
                         ? "账号与模型"
-                        : pathname.startsWith("/workspace")
-                          ? "工作台"
-                          : "服务状态";
+                        : pathname === "/help"
+                          ? "帮助"
+                          : pathname.startsWith("/legal")
+                            ? "法律与合规"
+                            : pathname.startsWith("/workspace")
+                              ? "工作台"
+                              : "服务状态";
   const selectedBranch = activeWork?.branches.find((branch) => branch.id === selectedBranchId);
   const selectedBranchName = selectedBranch
     ? branchLabel(selectedBranch.name)
@@ -257,10 +261,14 @@ export function AppShell({
         </nav>
 
         <div className="sidebar-bottom">
-          <div className="nav-item quiet" aria-disabled="true">
+          <Link
+            aria-current={pathname === "/help" ? "page" : undefined}
+            className={`nav-item quiet${pathname === "/help" ? " active" : ""}`}
+            href="/help"
+          >
             <CircleHelp size={18} aria-hidden="true" />
             <span>帮助</span>
-          </div>
+          </Link>
           <Link className="nav-item quiet" href="/workspace/settings/account">
             <Settings size={18} aria-hidden="true" />
             <span>设置</span>
