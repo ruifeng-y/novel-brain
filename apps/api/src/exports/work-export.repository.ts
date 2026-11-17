@@ -37,6 +37,7 @@ interface WorkRow {
   title: string;
   pen_name: string;
   genre: "xianxia" | "history" | "urban";
+  ai_disclosure_required: boolean;
 }
 
 interface BranchRow {
@@ -366,7 +367,7 @@ async function resolveExportSource(
   },
 ): Promise<WorkExportSourceDescriptor> {
   const work = await client.query<WorkRow>(
-    `SELECT id, title, pen_name, genre FROM works
+    `SELECT id, title, pen_name, genre, ai_disclosure_required FROM works
       WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
     [input.context.workId, input.userId],
   );

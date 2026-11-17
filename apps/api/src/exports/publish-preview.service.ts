@@ -52,6 +52,13 @@ export class PublishPreviewService {
     if (source === "source_changed") {
       throw new ApiError(409, "WORK_EXPORT_SOURCE_CHANGED", "导出源版本已变化，请重新导出");
     }
+    if (source === "disclosure_required") {
+      throw new ApiError(
+        409,
+        "PUBLISH_DISCLOSURE_REQUIRED",
+        "导出缺少当前 AI 标识元数据，请重新导出后再检查",
+      );
+    }
     const preview = buildPublishPreview({
       platformPreset: request.platformPreset,
       metadata: definedMetadata(request.metadata),
@@ -61,23 +68,31 @@ export class PublishPreviewService {
       goldenThree: source.goldenThree,
     });
     try {
-      return await this.repository.save(userId, context, request, key, requestHash, {
-        exportId: source.exportId,
-        workId: source.work.id,
-        branchId: source.branch.id,
-        platformPreset: request.platformPreset,
-        status: preview.status,
-        publishReady: preview.publishReady,
-        sourceVersionNodeId: source.export.sourceVersionNodeId,
-        requestedVersionNodeId: source.export.requestedVersionNodeId,
-        manifestHash: source.export.manifestHash,
-        platform: preview.platform,
-        metadata: preview.metadata,
-        checks: preview.checks,
-        catalog: preview.catalog,
-        readerPreview: preview.readerPreview,
-        publishCopy: preview.publishCopy,
-      });
+      return await this.repository.save(
+        userId,
+        context,
+        request,
+        key,
+        requestHash,
+        {
+          exportId: source.exportId,
+          workId: source.work.id,
+          branchId: source.branch.id,
+          platformPreset: request.platformPreset,
+          status: preview.status,
+          publishReady: preview.publishReady,
+          sourceVersionNodeId: source.export.sourceVersionNodeId,
+          requestedVersionNodeId: source.export.requestedVersionNodeId,
+          manifestHash: source.export.manifestHash,
+          platform: preview.platform,
+          metadata: preview.metadata,
+          checks: preview.checks,
+          catalog: preview.catalog,
+          readerPreview: preview.readerPreview,
+          publishCopy: preview.publishCopy,
+        },
+        preview.moderation,
+      );
     } catch (error) {
       if (error instanceof PublishIdempotencyConflictError) {
         throw new ApiError(

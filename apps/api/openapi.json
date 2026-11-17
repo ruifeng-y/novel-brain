@@ -3436,6 +3436,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -4260,6 +4267,13 @@
                                   "PUBLISH_EXPORT_EXPIRED",
                                   "PUBLISH_PREVIEW_NOT_FOUND",
                                   "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                  "PUBLISH_DISCLOSURE_REQUIRED",
+                                  "MODERATION_CASE_NOT_FOUND",
+                                  "MODERATION_APPEAL_NOT_REQUIRED",
+                                  "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                  "MODERATION_APPEAL_NOT_FOUND",
+                                  "MODERATION_APPEAL_LIMIT_REACHED",
+                                  "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -22120,6 +22134,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -23671,6 +23692,13 @@
                                   "PUBLISH_EXPORT_EXPIRED",
                                   "PUBLISH_PREVIEW_NOT_FOUND",
                                   "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                  "PUBLISH_DISCLOSURE_REQUIRED",
+                                  "MODERATION_CASE_NOT_FOUND",
+                                  "MODERATION_APPEAL_NOT_REQUIRED",
+                                  "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                  "MODERATION_APPEAL_NOT_FOUND",
+                                  "MODERATION_APPEAL_LIMIT_REACHED",
+                                  "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -24642,6 +24670,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -25605,6 +25640,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -26568,6 +26610,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -27580,6 +27629,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -29070,6 +29126,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30307,6 +30370,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30941,6 +31011,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -31243,6 +31320,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -32141,6 +32225,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -33288,6 +33379,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -34451,6 +34549,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -35622,6 +35727,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -42558,6 +42670,825 @@
           }
         },
         "tags": ["model-configs"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/moderation-cases": {
+      "get": {
+        "operationId": "ModerationController_list",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Content safety and appeal audit history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "maxItems": 100,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "workId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "branchId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "publishPreviewId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "exportId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["clear", "needs_review", "appeal_submitted"]
+                          },
+                          "ruleVersion": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "evidence": {
+                            "maxItems": 20,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "nullable": true,
+                                      "enum": [null]
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": ["label", "value"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "events": {
+                            "maxItems": 100,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["case_created", "appeal_submitted", "appeal_withdrawn"]
+                                },
+                                "appealId": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "fromStatus": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": ["clear", "needs_review", "appeal_submitted"]
+                                },
+                                "toStatus": {
+                                  "type": "string",
+                                  "enum": ["clear", "needs_review", "appeal_submitted"]
+                                },
+                                "reason": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "maxLength": 2000
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "type",
+                                "appealId",
+                                "fromStatus",
+                                "toStatus",
+                                "reason",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "appeals": {
+                            "maxItems": 20,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": ["submitted", "withdrawn"]
+                                },
+                                "reason": {
+                                  "type": "string"
+                                },
+                                "correction": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "withdrawnAt": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "status",
+                                "reason",
+                                "correction",
+                                "createdAt",
+                                "updatedAt",
+                                "withdrawnAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workId",
+                          "branchId",
+                          "publishPreviewId",
+                          "exportId",
+                          "status",
+                          "ruleVersion",
+                          "evidence",
+                          "events",
+                          "appeals",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["moderation"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/moderation-cases/{caseId}/appeals": {
+      "post": {
+        "operationId": "ModerationController_submitAppeal",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Stable key for replaying the same appeal submission",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 2000
+                  },
+                  "correction": {
+                    "type": "string",
+                    "maxLength": 4000
+                  }
+                },
+                "required": ["reason"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Updated moderation case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "publishPreviewId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "exportId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["clear", "needs_review", "appeal_submitted"]
+                        },
+                        "ruleVersion": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "evidence": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "value": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [null]
+                                  }
+                                ]
+                              }
+                            },
+                            "required": ["label", "value"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "events": {
+                          "maxItems": 100,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["case_created", "appeal_submitted", "appeal_withdrawn"]
+                              },
+                              "appealId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "fromStatus": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": ["clear", "needs_review", "appeal_submitted"]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": ["clear", "needs_review", "appeal_submitted"]
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string",
+                                "maxLength": 2000
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "appealId",
+                              "fromStatus",
+                              "toStatus",
+                              "reason",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "appeals": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["submitted", "withdrawn"]
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "correction": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "withdrawnAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "status",
+                              "reason",
+                              "correction",
+                              "createdAt",
+                              "updatedAt",
+                              "withdrawnAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "publishPreviewId",
+                        "exportId",
+                        "status",
+                        "ruleVersion",
+                        "evidence",
+                        "events",
+                        "appeals",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["moderation"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/moderation-cases/{caseId}/appeals/{appealId}/withdraw": {
+      "post": {
+        "operationId": "ModerationController_withdrawAppeal",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "caseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appealId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Withdrawn appeal and updated moderation case",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "publishPreviewId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "exportId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["clear", "needs_review", "appeal_submitted"]
+                        },
+                        "ruleVersion": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "evidence": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "value": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [null]
+                                  }
+                                ]
+                              }
+                            },
+                            "required": ["label", "value"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "events": {
+                          "maxItems": 100,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["case_created", "appeal_submitted", "appeal_withdrawn"]
+                              },
+                              "appealId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "fromStatus": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": ["clear", "needs_review", "appeal_submitted"]
+                              },
+                              "toStatus": {
+                                "type": "string",
+                                "enum": ["clear", "needs_review", "appeal_submitted"]
+                              },
+                              "reason": {
+                                "nullable": true,
+                                "type": "string",
+                                "maxLength": 2000
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "appealId",
+                              "fromStatus",
+                              "toStatus",
+                              "reason",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "appeals": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["submitted", "withdrawn"]
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "correction": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "withdrawnAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "status",
+                              "reason",
+                              "correction",
+                              "createdAt",
+                              "updatedAt",
+                              "withdrawnAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "publishPreviewId",
+                        "exportId",
+                        "status",
+                        "ruleVersion",
+                        "evidence",
+                        "events",
+                        "appeals",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["moderation"]
       }
     },
     "/api/v1/notifications": {
@@ -90403,6 +91334,13 @@
                                       "PUBLISH_EXPORT_EXPIRED",
                                       "PUBLISH_PREVIEW_NOT_FOUND",
                                       "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                      "PUBLISH_DISCLOSURE_REQUIRED",
+                                      "MODERATION_CASE_NOT_FOUND",
+                                      "MODERATION_APPEAL_NOT_REQUIRED",
+                                      "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                      "MODERATION_APPEAL_NOT_FOUND",
+                                      "MODERATION_APPEAL_LIMIT_REACHED",
+                                      "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -90796,6 +91734,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -91124,6 +92069,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -122069,6 +123021,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -123649,6 +124608,13 @@
                                   "PUBLISH_EXPORT_EXPIRED",
                                   "PUBLISH_PREVIEW_NOT_FOUND",
                                   "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                  "PUBLISH_DISCLOSURE_REQUIRED",
+                                  "MODERATION_CASE_NOT_FOUND",
+                                  "MODERATION_APPEAL_NOT_REQUIRED",
+                                  "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                  "MODERATION_APPEAL_NOT_FOUND",
+                                  "MODERATION_APPEAL_LIMIT_REACHED",
+                                  "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -125217,6 +126183,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -126777,6 +127750,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -128337,6 +129317,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -129956,6 +130943,13 @@
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
                                     "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                    "PUBLISH_DISCLOSURE_REQUIRED",
+                                    "MODERATION_CASE_NOT_FOUND",
+                                    "MODERATION_APPEAL_NOT_REQUIRED",
+                                    "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                    "MODERATION_APPEAL_NOT_FOUND",
+                                    "MODERATION_APPEAL_LIMIT_REACHED",
+                                    "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -130421,8 +131415,16 @@
                           "type": "object",
                           "properties": {
                             "schemaVersion": {
-                              "type": "number",
-                              "enum": [1]
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [1]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [2]
+                                }
+                              ]
                             },
                             "work": {
                               "type": "object",
@@ -130753,6 +131755,25 @@
                               "minimum": 0,
                               "maximum": 9007199254740991
                             },
+                            "aiDisclosureMetadata": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "policyVersion": {
+                                  "type": "string",
+                                  "enum": ["ai-disclosure-v1"]
+                                }
+                              },
+                              "required": ["required", "label", "policyVersion"],
+                              "additionalProperties": false
+                            },
                             "manifestHash": {
                               "type": "string",
                               "pattern": "^[a-f0-9]{64}$"
@@ -130954,6 +131975,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -131104,8 +132132,16 @@
                             "type": "object",
                             "properties": {
                               "schemaVersion": {
-                                "type": "number",
-                                "enum": [1]
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "enum": [1]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [2]
+                                  }
+                                ]
                               },
                               "work": {
                                 "type": "object",
@@ -131436,6 +132472,25 @@
                                 "minimum": 0,
                                 "maximum": 9007199254740991
                               },
+                              "aiDisclosureMetadata": {
+                                "type": "object",
+                                "properties": {
+                                  "required": {
+                                    "type": "boolean"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "policyVersion": {
+                                    "type": "string",
+                                    "enum": ["ai-disclosure-v1"]
+                                  }
+                                },
+                                "required": ["required", "label", "policyVersion"],
+                                "additionalProperties": false
+                              },
                               "manifestHash": {
                                 "type": "string",
                                 "pattern": "^[a-f0-9]{64}$"
@@ -131637,6 +132692,13 @@
                                   "PUBLISH_EXPORT_EXPIRED",
                                   "PUBLISH_PREVIEW_NOT_FOUND",
                                   "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                  "PUBLISH_DISCLOSURE_REQUIRED",
+                                  "MODERATION_CASE_NOT_FOUND",
+                                  "MODERATION_APPEAL_NOT_REQUIRED",
+                                  "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                  "MODERATION_APPEAL_NOT_FOUND",
+                                  "MODERATION_APPEAL_LIMIT_REACHED",
+                                  "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -131776,8 +132838,16 @@
                           "type": "object",
                           "properties": {
                             "schemaVersion": {
-                              "type": "number",
-                              "enum": [1]
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [1]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [2]
+                                }
+                              ]
                             },
                             "work": {
                               "type": "object",
@@ -132108,6 +133178,25 @@
                               "minimum": 0,
                               "maximum": 9007199254740991
                             },
+                            "aiDisclosureMetadata": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "policyVersion": {
+                                  "type": "string",
+                                  "enum": ["ai-disclosure-v1"]
+                                }
+                              },
+                              "required": ["required", "label", "policyVersion"],
+                              "additionalProperties": false
+                            },
                             "manifestHash": {
                               "type": "string",
                               "pattern": "^[a-f0-9]{64}$"
@@ -132309,6 +133398,13 @@
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
                                 "PUBLISH_IDEMPOTENCY_CONFLICT",
+                                "PUBLISH_DISCLOSURE_REQUIRED",
+                                "MODERATION_CASE_NOT_FOUND",
+                                "MODERATION_APPEAL_NOT_REQUIRED",
+                                "MODERATION_APPEAL_ALREADY_SUBMITTED",
+                                "MODERATION_APPEAL_NOT_FOUND",
+                                "MODERATION_APPEAL_LIMIT_REACHED",
+                                "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -132996,6 +134092,25 @@
                             "platformNote": {
                               "type": "string",
                               "minLength": 1
+                            },
+                            "aiDisclosureMetadata": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "policyVersion": {
+                                  "type": "string",
+                                  "enum": ["ai-disclosure-v1"]
+                                }
+                              },
+                              "required": ["required", "label", "policyVersion"],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -133547,6 +134662,25 @@
                               "platformNote": {
                                 "type": "string",
                                 "minLength": 1
+                              },
+                              "aiDisclosureMetadata": {
+                                "type": "object",
+                                "properties": {
+                                  "required": {
+                                    "type": "boolean"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "policyVersion": {
+                                    "type": "string",
+                                    "enum": ["ai-disclosure-v1"]
+                                  }
+                                },
+                                "required": ["required", "label", "policyVersion"],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -134093,6 +135227,25 @@
                             "platformNote": {
                               "type": "string",
                               "minLength": 1
+                            },
+                            "aiDisclosureMetadata": {
+                              "type": "object",
+                              "properties": {
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "policyVersion": {
+                                  "type": "string",
+                                  "enum": ["ai-disclosure-v1"]
+                                }
+                              },
+                              "required": ["required", "label", "policyVersion"],
+                              "additionalProperties": false
                             }
                           },
                           "required": [

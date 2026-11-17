@@ -1,8 +1,9 @@
 import { inflateRawSync } from "node:zlib";
 
+import { workExportManifestSchema } from "@novel-brain/contracts";
 import { describe, expect, it } from "vitest";
 
-import { buildWorkExportArtifact } from "../src";
+import { buildWorkExportArtifact, hasCurrentAiDisclosureMetadata } from "../src";
 
 const work = {
   id: "01910000-0000-7000-8000-000000000001",
@@ -77,14 +78,31 @@ describe("work export artifact", () => {
     expect(first.manifest.characterCount).toBe(
       chapters.reduce((total, chapter) => total + [...chapter.content].length, 0),
     );
+    expect(first.manifest.aiDisclosureMetadata).toEqual({
+      required: true,
+      label: "含 AI 辅助生成内容",
+      policyVersion: "ai-disclosure-v1",
+    });
+    expect(first.manifest.schemaVersion).toBe(2);
+    expect(hasCurrentAiDisclosureMetadata(first.manifest)).toBe(true);
     expect(first.contentType).toBe("text/plain; charset=utf-8");
 
     const text = new TextDecoder().decode(first.bytes);
     expect(text).toContain("《山海照夜》");
+    expect(text).toContain("含 AI 辅助生成内容");
     expect(text.indexOf("第1章 第一更")).toBeLessThan(text.indexOf("第2章 第二更"));
     expect(text).toContain("Dragon、龙与 𠮷");
     expect(text).toContain(first.manifest.manifestHash);
     expect(text).toContain("版本清单");
+
+    const legacyManifest = workExportManifestSchema.parse({
+      ...Object.fromEntries(
+        Object.entries(first.manifest).filter(([key]) => key !== "aiDisclosureMetadata"),
+      ),
+      schemaVersion: 1,
+    });
+    expect(legacyManifest.aiDisclosureMetadata).toBeUndefined();
+    expect(hasCurrentAiDisclosureMetadata(legacyManifest)).toBe(false);
   });
 
   it("renders Markdown with stable chapter headings and a version manifest appendix", () => {

@@ -24,12 +24,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   chapterWorkspaceListResponseSchema,
   chapterWorkspaceResponseSchema,
+  moderationCaseListResponseSchema,
+  moderationCaseResponseSchema,
   publishCheckRequestSchema,
   publishPreviewListResponseSchema,
   publishPreviewResponseSchema,
   workExportReceiptListResponseSchema,
   workExportReceiptResponseSchema,
   type ChapterWorkspace,
+  type ModerationCase,
   type PublishCheck,
   type PublishMetadataInput,
   type PublishPlatformPreset,
@@ -119,6 +122,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
   const [selectedExportId, setSelectedExportId] = useState("");
   const [preview, setPreview] = useState<PublishPreview | null>(null);
   const [previewHistory, setPreviewHistory] = useState<PublishPreview[]>([]);
+  const [moderationCases, setModerationCases] = useState<ModerationCase[]>([]);
   const [format, setFormat] = useState<ExportFormat>("txt");
   const [scopeKind, setScopeKind] = useState<ExportScopeKind>("book");
   const [currentChapterId, setCurrentChapterId] = useState("");
@@ -147,15 +151,18 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
     coverHeadline: "",
     coverSubline: "",
     coverTone: "cinnabar",
-    aiDisclosure: false,
+    aiDisclosure: true,
     copyrightAcknowledged: false,
   });
   const [expandedCheck, setExpandedCheck] = useState("");
   const [expandedCatalog, setExpandedCatalog] = useState(false);
   const [readerOpen, setReaderOpen] = useState(false);
   const [publishCopyExpanded, setPublishCopyExpanded] = useState(false);
+  const [appealOpen, setAppealOpen] = useState(false);
+  const [appealReason, setAppealReason] = useState("");
+  const [appealCorrection, setAppealCorrection] = useState("");
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<"export" | "check" | "refresh" | "download" | "">("");
+  const [busy, setBusy] = useState<"export" | "check" | "refresh" | "download" | "appeal" | "">("");
   const [error, setError] = useState("");
   const [partialError, setPartialError] = useState("");
   const [notice, setNotice] = useState("");
@@ -182,20 +189,31 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
 
       const branchPath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
       const partialMessages: string[] = [];
-      const [chapterResult, exportResult, previewResult] = await Promise.allSettled([
-        fetchAllCursorPages(
-          `${branchPath}/chapters`,
-          chapterWorkspaceListResponseSchema.parse,
-          "章节目录加载失败。",
-        ),
-        fetchAllCursorPages(`${branchPath}/exports`, parseExportReceiptPage, "导出历史加载失败。"),
-        fetch(`${branchPath}/publish-check`, { cache: "no-store" }).then(async (response) => {
-          if (!response.ok) {
-            throw new Error(await readError(response, "发布预览加载失败。"));
-          }
-          return publishPreviewListResponseSchema.parse(await response.json()).data;
-        }),
-      ]);
+      const [chapterResult, exportResult, previewResult, moderationResult] =
+        await Promise.allSettled([
+          fetchAllCursorPages(
+            `${branchPath}/chapters`,
+            chapterWorkspaceListResponseSchema.parse,
+            "章节目录加载失败。",
+          ),
+          fetchAllCursorPages(
+            `${branchPath}/exports`,
+            parseExportReceiptPage,
+            "导出历史加载失败。",
+          ),
+          fetch(`${branchPath}/publish-check`, { cache: "no-store" }).then(async (response) => {
+            if (!response.ok) {
+              throw new Error(await readError(response, "发布预览加载失败。"));
+            }
+            return publishPreviewListResponseSchema.parse(await response.json()).data;
+          }),
+          fetch(`${branchPath}/moderation-cases`, { cache: "no-store" }).then(async (response) => {
+            if (!response.ok) {
+              throw new Error(await readError(response, "内容安全记录加载失败。"));
+            }
+            return moderationCaseListResponseSchema.parse(await response.json()).data;
+          }),
+        ]);
 
       const chapterData = chapterResult.status === "fulfilled" ? chapterResult.value : [];
       if (chapterResult.status === "rejected") {
@@ -247,6 +265,11 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
       setPreview(
         previews.find((item) => item.exportId === preferredExport?.id) ?? previews[0] ?? null,
       );
+      const cases = moderationResult.status === "fulfilled" ? moderationResult.value : [];
+      if (moderationResult.status === "rejected") {
+        partialMessages.push("内容安全与申诉记录暂不可用，请稍后刷新。");
+      }
+      setModerationCases(cases);
       setPartialError(partialMessages.join(" "));
 
       setMetadata((current) =>
@@ -260,7 +283,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
               coverHeadline: workData.title,
               coverSubline: chapterData[0]?.title ?? "等待补充封面副标题",
               coverTone: "cinnabar",
-              aiDisclosure: false,
+              aiDisclosure: true,
               copyrightAcknowledged: false,
             },
       );
@@ -328,6 +351,12 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
     preview?.exportId === activeExport?.id
       ? preview
       : (previewHistory.find((item) => item.exportId === activeExport?.id) ?? preview);
+  const activeModerationCase = selectedPreview
+    ? moderationCases.find((item) => item.publishPreviewId === selectedPreview.id)
+    : undefined;
+  const activeSubmittedAppeal = activeModerationCase?.appeals.find(
+    (appeal) => appeal.status === "submitted",
+  );
   const catalog = selectedPreview?.catalog ?? buildCatalogFallback(chapters);
   const visibleCatalogChapters = expandedCatalog ? catalog.chapters : catalog.chapters.slice(0, 5);
   const readerPreview = selectedPreview?.readerPreview ?? {
@@ -500,6 +529,9 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
         ...current.filter((item) => item.id !== created.id),
       ]);
       setSelectedExportId(created.exportId);
+      await refreshModerationCases(branchPath).catch(() => {
+        setPartialError("内容安全记录刷新失败，请稍后刷新页面。");
+      });
       setNotice(
         created.publishReady
           ? "发布检查完成，可以继续核对发布文案。"
@@ -509,6 +541,87 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "发布检查失败。");
       return null;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function refreshModerationCases(path: string) {
+    const response = await fetch(`${path}/moderation-cases`, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(await readError(response, "内容安全记录加载失败。"));
+    }
+    setModerationCases(moderationCaseListResponseSchema.parse(await response.json()).data);
+  }
+
+  async function submitAppeal() {
+    if (!branchPath || !activeModerationCase || busy) {
+      return;
+    }
+    setBusy("appeal");
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(
+        `${branchPath}/moderation-cases/${activeModerationCase.id}/appeals`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            reason: appealReason.trim(),
+            ...(appealCorrection.trim() ? { correction: appealCorrection.trim() } : {}),
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "提交申诉失败。"));
+      }
+      const updated = moderationCaseResponseSchema.parse(await response.json()).data;
+      setModerationCases((current) => [
+        updated,
+        ...current.filter((item) => item.id !== updated.id),
+      ]);
+      setAppealOpen(false);
+      setAppealReason("");
+      setAppealCorrection("");
+      setNotice("申诉已提交，状态和证据已写入审计记录。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "提交申诉失败。");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function withdrawAppeal() {
+    if (!branchPath || !activeModerationCase || !activeSubmittedAppeal || busy) {
+      return;
+    }
+    setBusy("appeal");
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(
+        `${branchPath}/moderation-cases/${activeModerationCase.id}/appeals/${activeSubmittedAppeal.id}/withdraw`,
+        {
+          method: "POST",
+          headers: { "x-csrf-token": await getCsrfToken() },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "撤回申诉失败。"));
+      }
+      const updated = moderationCaseResponseSchema.parse(await response.json()).data;
+      setModerationCases((current) => [
+        updated,
+        ...current.filter((item) => item.id !== updated.id),
+      ]);
+      setNotice("申诉已撤回，内容仍保持待复核状态。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "撤回申诉失败。");
     } finally {
       setBusy("");
     }
@@ -544,6 +657,9 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
         `简介：${copy.summary}`,
         `标签：${copy.tags.join("、")}`,
         `章节名建议：${copy.chapterTitleSuggestions.join(" / ")}`,
+        ...(copy.aiDisclosureMetadata?.required
+          ? [`AI 内容说明：${copy.aiDisclosureMetadata.label}`]
+          : []),
         copy.platformNote,
       ].join("\n"),
     );
@@ -1264,6 +1380,12 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
                 <strong>{selectedPreview.publishCopy.titleOptions[0]}</strong>
               </div>
               <p>{selectedPreview.publishCopy.summary}</p>
+              {selectedPreview.publishCopy.aiDisclosureMetadata?.required ? (
+                <div className="publish-copy-disclosure">
+                  <Sparkles size={14} aria-hidden="true" />
+                  <span>{selectedPreview.publishCopy.aiDisclosureMetadata.label}</span>
+                </div>
+              ) : null}
               <div className="publish-copy-tags">
                 {selectedPreview.publishCopy.tags.map((tag) => (
                   <span className="tag" key={tag}>
@@ -1283,6 +1405,150 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
           ) : null}
         </section>
       </div>
+
+      {selectedPreview && activeModerationCase ? (
+        <section className="panel moderation-panel" aria-labelledby="moderation-title">
+          <div className="panel-head">
+            <div>
+              <span className="panel-kicker">内容安全与申诉</span>
+              <h2 id="moderation-title">规则依据与处理记录</h2>
+            </div>
+            <span className={`badge ${moderationBadgeClass(activeModerationCase.status)}`}>
+              {moderationStatusLabel(activeModerationCase.status)}
+            </span>
+          </div>
+
+          <div className="moderation-summary">
+            <ShieldAlert size={20} aria-hidden="true" />
+            <div>
+              <strong>
+                {activeModerationCase.status === "clear"
+                  ? "本地规则未发现需要处理的提示"
+                  : activeModerationCase.status === "appeal_submitted"
+                    ? "申诉或纠正说明已提交"
+                    : "发现需要作者复核的提示"}
+              </strong>
+              <span>
+                规则版本 {activeModerationCase.ruleVersion} · 记录时间{" "}
+                {formatDateTime(activeModerationCase.createdAt)}
+              </span>
+            </div>
+          </div>
+
+          <div className="moderation-evidence" aria-label="内容安全证据">
+            {activeModerationCase.evidence.map((evidence) => (
+              <div key={evidence.label}>
+                <span>{evidence.label}</span>
+                <strong>{evidenceValue(evidence.value)}</strong>
+              </div>
+            ))}
+          </div>
+
+          {activeModerationCase.status === "clear" ? (
+            <p className="moderation-guidance">
+              本地提示不等同于平台审核结论。正式发布前仍需按目标平台规则复核。
+            </p>
+          ) : null}
+
+          {activeModerationCase.status === "needs_review" ? (
+            <div className="moderation-actions">
+              {appealOpen ? (
+                <form
+                  className="moderation-appeal-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void submitAppeal();
+                  }}
+                >
+                  <label className="export-field">
+                    <span className="field-label">申诉或纠正说明</span>
+                    <textarea
+                      className="input"
+                      maxLength={2000}
+                      minLength={10}
+                      onChange={(event) => setAppealReason(event.target.value)}
+                      placeholder="说明已经修正的内容，或为什么这条提示需要人工复核。"
+                      required
+                      rows={4}
+                      value={appealReason}
+                    />
+                  </label>
+                  <label className="export-field">
+                    <span className="field-label">修正内容（可选）</span>
+                    <textarea
+                      className="input"
+                      maxLength={4000}
+                      onChange={(event) => setAppealCorrection(event.target.value)}
+                      placeholder="记录删除、改写或重新核对的具体位置。"
+                      rows={3}
+                      value={appealCorrection}
+                    />
+                  </label>
+                  <div className="export-button-row">
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => setAppealOpen(false)}
+                      type="button"
+                    >
+                      取消
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      disabled={busy !== "" || appealReason.trim().length < 10}
+                      type="submit"
+                    >
+                      {busy === "appeal" ? (
+                        <LoaderCircle className="spin" size={15} aria-hidden="true" />
+                      ) : (
+                        <ShieldCheck size={15} aria-hidden="true" />
+                      )}
+                      提交申诉
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button className="btn btn-ghost" onClick={() => setAppealOpen(true)} type="button">
+                  <ShieldAlert size={15} aria-hidden="true" />
+                  提交申诉或纠正说明
+                </button>
+              )}
+            </div>
+          ) : null}
+
+          {activeModerationCase.status === "appeal_submitted" && activeSubmittedAppeal ? (
+            <div className="moderation-submitted">
+              <div>
+                <strong>已提交说明</strong>
+                <p>{activeSubmittedAppeal.reason}</p>
+                {activeSubmittedAppeal.correction ? (
+                  <p>{activeSubmittedAppeal.correction}</p>
+                ) : null}
+              </div>
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={busy !== ""}
+                onClick={() => void withdrawAppeal()}
+                type="button"
+              >
+                撤回申诉
+              </button>
+            </div>
+          ) : null}
+
+          <details className="moderation-history">
+            <summary>查看状态记录（{activeModerationCase.events.length}）</summary>
+            <ol>
+              {activeModerationCase.events.map((event) => (
+                <li key={event.id}>
+                  <strong>{moderationEventLabel(event.type)}</strong>
+                  <span>{moderationStatusLabel(event.toStatus)}</span>
+                  <small>{formatDateTime(event.createdAt)}</small>
+                </li>
+              ))}
+            </ol>
+          </details>
+        </section>
+      ) : null}
 
       <section className="panel export-metadata-panel" aria-labelledby="publish-metadata-title">
         <details>
@@ -1370,7 +1636,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
                 onChange={(event) => updateMetadata("aiDisclosure", event.target.checked)}
                 type="checkbox"
               />
-              <span>发布页需要保留 AI 生成内容说明</span>
+              <span>发布页保留 AI 辅助生成说明</span>
             </label>
             <label className="export-confirm-row">
               <input
@@ -1629,6 +1895,36 @@ function readinessBadgeClass(preview: PublishPreview | null): string {
     return "gold-badge";
   }
   return "jade-badge";
+}
+
+function moderationBadgeClass(status: ModerationCase["status"]): string {
+  if (status === "needs_review") {
+    return "alert-badge";
+  }
+  if (status === "appeal_submitted") {
+    return "gold-badge";
+  }
+  return "jade-badge";
+}
+
+function moderationStatusLabel(status: ModerationCase["status"]): string {
+  if (status === "needs_review") {
+    return "待作者复核";
+  }
+  if (status === "appeal_submitted") {
+    return "申诉已提交";
+  }
+  return "本地未发现提示";
+}
+
+function moderationEventLabel(type: ModerationCase["events"][number]["type"]): string {
+  if (type === "appeal_submitted") {
+    return "提交申诉";
+  }
+  if (type === "appeal_withdrawn") {
+    return "撤回申诉";
+  }
+  return "创建内容安全记录";
 }
 
 function evidenceValue(value: string | number | boolean | null): string {

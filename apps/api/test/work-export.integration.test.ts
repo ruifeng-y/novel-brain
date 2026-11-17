@@ -7,6 +7,8 @@ import {
   branchCreateResponseSchema,
   chapterVersionSchema,
   EXPORT_WORK_JOB,
+  moderationCaseListResponseSchema,
+  moderationCaseResponseSchema,
   publishPreviewListResponseSchema,
   publishPreviewResponseSchema,
   WORKER_QUEUE_NAME,
@@ -16,6 +18,7 @@ import {
   type WorkerJob,
 } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
+import { stableStringify } from "@novel-brain/core";
 import { FileObjectStorage, type ObjectStorage } from "@novel-brain/storage";
 import { Worker as BullWorker } from "bullmq";
 import Redis from "ioredis";
@@ -217,11 +220,31 @@ describe("work export HTTP and worker integration", () => {
     expect(historicalReady.manifest?.chapters[0]?.versionNodeId).toBe(firstV1.versionNodeId);
     expect(historicalReady.manifest?.chapters[0]?.versionNodeId).not.toBe(firstV2.versionNodeId);
     expect(historicalReady.manifest?.chapters[0]?.title).toBe("山门");
+    expect(historicalReady.manifest?.aiDisclosureMetadata).toEqual({
+      required: true,
+      label: "含 AI 辅助生成内容",
+      policyVersion: "ai-disclosure-v1",
+    });
     const historicalDownload = await download(owner, branchPath, historical.id);
     const historicalText = historicalDownload.body.toString("utf8");
     expect(historicalText).toContain("旧版正文");
+    expect(historicalText).toContain("含 AI 辅助生成内容");
     expect(historicalText).not.toContain("主线新版");
     expect(historicalText).not.toContain(keyCanary);
+
+    const repeatedHistorical = await startExport(owner, branchPath, "historical-export-again", {
+      format: "txt",
+      scope: { kind: "current_chapter", chapterId: outline.chapterOne.chapter.id },
+      sourceVersionNodeId: firstV1.versionNodeId,
+      options: exportOptions(),
+    });
+    await runExport(repeatedHistorical.jobId, repeatedHistorical.id);
+    const repeatedReady = await getReceipt(owner, branchPath, repeatedHistorical.id);
+    expect(repeatedReady.status).toBe("completed");
+    expect(repeatedReady.manifest?.manifestHash).toBe(historicalReady.manifest?.manifestHash);
+    expect(repeatedReady.manifest?.aiDisclosureMetadata).toEqual(
+      historicalReady.manifest?.aiDisclosureMetadata,
+    );
 
     const historicalBook = await startExport(owner, branchPath, "historical-book", {
       format: "txt",
@@ -595,6 +618,14 @@ describe("work export HTTP and worker integration", () => {
       expect.arrayContaining([
         expect.objectContaining({ code: "golden_three_hook", status: "warning" }),
         expect.objectContaining({ code: "export_format", status: "pass" }),
+        expect.objectContaining({
+          code: "ai_disclosure",
+          evidence: expect.arrayContaining([
+            { label: "导出说明", value: "含 AI 辅助生成内容" },
+            { label: "说明规则版本", value: "ai-disclosure-v1" },
+            { label: "导出要求保留", value: true },
+          ]),
+        }),
       ]),
     );
     expect(generic.platform).toMatchObject({
@@ -615,6 +646,22 @@ describe("work export HTTP and worker integration", () => {
     expect(fanqie.manifestHash).toBe(generic.manifestHash);
     expect(fanqie.sourceVersionNodeId).toBe(generic.sourceVersionNodeId);
     expect(fanqie.catalog).toEqual(generic.catalog);
+    const clearModerationCase = moderationCaseListResponseSchema
+      .parse((await owner.get(`${branchPath}/moderation-cases`).expect(200)).body)
+      .data.find((item) => item.publishPreviewId === generic.id);
+    expect(clearModerationCase).toMatchObject({
+      status: "clear",
+      ruleVersion: "content-safety-v1",
+    });
+    const clearAppealToken = await csrf(owner);
+    const clearAppeal = await owner
+      .post(`${branchPath}/moderation-cases/${clearModerationCase!.id}/appeals`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", clearAppealToken)
+      .set("Idempotency-Key", "clear-case-appeal")
+      .send({ reason: "没有需要申诉的提示，这个请求应被拒绝。" })
+      .expect(409);
+    expect(clearAppeal.body.error.code).toBe("MODERATION_APPEAL_NOT_REQUIRED");
 
     const fetched = await getPublishPreview(owner, branchPath, generic.id);
     expect(fetched.id).toBe(generic.id);
@@ -705,6 +752,37 @@ describe("work export HTTP and worker integration", () => {
       .expect(403);
     expect(forbidden.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
 
+    const receiptReady = await getReceipt(owner, branchPath, receipt.id);
+    const legacyBase = Object.fromEntries(
+      Object.entries(receiptReady.manifest!).filter(([key]) => key !== "aiDisclosureMetadata"),
+    );
+    const legacyManifest = {
+      ...legacyBase,
+      schemaVersion: 1,
+    };
+    const legacyManifestHash = createHash("sha256")
+      .update(stableStringify(legacyManifest))
+      .digest("hex");
+    await databasePool.query(
+      `UPDATE work_export_receipts
+          SET manifest = $2::jsonb
+        WHERE id = $1`,
+      [receipt.id, JSON.stringify({ ...legacyManifest, manifestHash: legacyManifestHash })],
+    );
+    const disclosureToken = await csrf(owner);
+    const disclosureRequired = await owner
+      .post(`${branchPath}/publish-check`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", disclosureToken)
+      .set("Idempotency-Key", "publish-legacy-disclosure")
+      .send({
+        exportId: receipt.id,
+        platformPreset: "generic",
+        metadata: publishMetadata(),
+      })
+      .expect(409);
+    expect(disclosureRequired.body.error.code).toBe("PUBLISH_DISCLOSURE_REQUIRED");
+
     await databasePool.query(
       "UPDATE work_export_receipts SET expires_at = now() - interval '1 second' WHERE id = $1",
       [receipt.id],
@@ -722,6 +800,148 @@ describe("work export HTTP and worker integration", () => {
       })
       .expect(410);
     expect(expired.body.error.code).toBe("PUBLISH_EXPORT_EXPIRED");
+  });
+
+  it("records moderation evidence and audit-ready appeal lifecycle", async () => {
+    const owner = await createAuthenticatedAgent("moderation-owner@example.com");
+    const token = await csrf(owner);
+    const work = await createWork(owner, token);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    for (const [number, title, content] of [
+      [1, "山门", "山门在夜里关闭，沈砚听见有人叫出了他的旧名。"],
+      [2, "禁术", "旧书里出现了毒品制作步骤，沈砚立刻合上了书。"],
+      [3, "旧名", "纸上的名字变成了另一个人的姓。"],
+    ] as const) {
+      const chapter = await createChapter(owner, token, branchPath, number, title);
+      await saveChapterVersion(owner, token, branchPath, chapter.id, content);
+    }
+    const receipt = await startExport(owner, branchPath, "moderation-export", {
+      format: "txt",
+      scope: { kind: "book" },
+      options: exportOptions(),
+    });
+    await runExport(receipt.jobId, receipt.id);
+    expect(await getReceipt(owner, branchPath, receipt.id)).toMatchObject({
+      status: "completed",
+      error: null,
+    });
+    const preview = await startPublishCheck(owner, branchPath, {
+      exportId: receipt.id,
+      platformPreset: "generic",
+      metadata: {
+        ...publishMetadata(),
+        aiDisclosure: true,
+        copyrightAcknowledged: true,
+      },
+    });
+
+    const cases = moderationCaseListResponseSchema.parse(
+      (await owner.get(`${branchPath}/moderation-cases`).expect(200)).body,
+    ).data;
+    const moderationCase = cases.find((item) => item.publishPreviewId === preview.id);
+    expect(moderationCase).toMatchObject({
+      status: "needs_review",
+      ruleVersion: "content-safety-v1",
+      evidence: expect.arrayContaining([
+        { label: "本地复核提示", value: "毒品制作" },
+        { label: "涉及章节编号", value: "2" },
+      ]),
+    });
+    expect(moderationCase?.events).toEqual([
+      expect.objectContaining({ type: "case_created", toStatus: "needs_review" }),
+    ]);
+
+    const appealKey = "moderation-appeal-idempotency";
+    const appeal = await submitModerationAppeal(owner, branchPath, moderationCase!.id, appealKey, {
+      reason: "正文中的示例已删除，请复核这次内容安全提示。",
+      correction: "重新导出前已移除可能引起误解的步骤描述。",
+    });
+    expect(appeal.status).toBe("appeal_submitted");
+    expect(appeal.appeals[0]).toMatchObject({
+      status: "submitted",
+      reason: "正文中的示例已删除，请复核这次内容安全提示。",
+    });
+    expect(appeal.events.map((event) => event.type)).toEqual(["case_created", "appeal_submitted"]);
+    expect(appeal.events[1]?.appealId).toBe(appeal.appeals[0]?.id);
+    const replayed = await submitModerationAppeal(
+      owner,
+      branchPath,
+      moderationCase!.id,
+      appealKey,
+      {
+        reason: "正文中的示例已删除，请复核这次内容安全提示。",
+        correction: "重新导出前已移除可能引起误解的步骤描述。",
+      },
+    );
+    expect(replayed.events.map((event) => event.type)).toEqual([
+      "case_created",
+      "appeal_submitted",
+    ]);
+    const replayConflictToken = await csrf(owner);
+    const replayConflict = await owner
+      .post(`${branchPath}/moderation-cases/${moderationCase!.id}/appeals`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", replayConflictToken)
+      .set("Idempotency-Key", appealKey)
+      .send({ reason: "同一个幂等键提交不同说明时应该返回稳定冲突。" })
+      .expect(409);
+    expect(replayConflict.body.error.code).toBe("MODERATION_APPEAL_IDEMPOTENCY_CONFLICT");
+
+    const appealToken = await csrf(owner);
+    const withdrawn = moderationCaseResponseSchema.parse(
+      (
+        await owner
+          .post(
+            `${branchPath}/moderation-cases/${moderationCase!.id}/appeals/${appeal.appeals[0]!.id}/withdraw`,
+          )
+          .set("Origin", origin)
+          .set("X-CSRF-Token", appealToken)
+          .send({})
+          .expect(200)
+      ).body,
+    ).data;
+    expect(withdrawn.status).toBe("needs_review");
+    expect(withdrawn.appeals[0]).toMatchObject({ status: "withdrawn" });
+    expect(withdrawn.events.map((event) => event.type)).toEqual([
+      "case_created",
+      "appeal_submitted",
+      "appeal_withdrawn",
+    ]);
+    expect(withdrawn.events[2]?.appealId).toBe(withdrawn.appeals[0]?.id);
+    const replayAfterWithdraw = await submitModerationAppeal(
+      owner,
+      branchPath,
+      moderationCase!.id,
+      appealKey,
+      {
+        reason: "正文中的示例已删除，请复核这次内容安全提示。",
+        correction: "重新导出前已移除可能引起误解的步骤描述。",
+      },
+    );
+    expect(replayAfterWithdraw.status).toBe("appeal_submitted");
+    expect(replayAfterWithdraw.events.map((event) => event.type)).toEqual([
+      "case_created",
+      "appeal_submitted",
+    ]);
+
+    const other = await createAuthenticatedAgent("moderation-other@example.com");
+    await other.get(`${branchPath}/moderation-cases`).expect(403);
+    const otherToken = await csrf(other);
+    await other
+      .post(`${branchPath}/moderation-cases/${moderationCase!.id}/appeals`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .set("Idempotency-Key", "moderation-other-write")
+      .send({ reason: "其他租户不能提交这条内容安全记录。" })
+      .expect(403);
+    await other
+      .post(
+        `${branchPath}/moderation-cases/${moderationCase!.id}/appeals/${appeal.appeals[0]!.id}/withdraw`,
+      )
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({})
+      .expect(403);
   });
 
   async function startExport(
@@ -774,6 +994,24 @@ describe("work export HTTP and worker integration", () => {
     return publishPreviewListResponseSchema.parse(
       (await agent.get(`${branchPath}/publish-check`).expect(200)).body,
     ).data;
+  }
+
+  async function submitModerationAppeal(
+    agent: SuperAgentTest,
+    branchPath: string,
+    caseId: string,
+    idempotencyKey: string,
+    body: Record<string, unknown>,
+  ) {
+    const csrfToken = await csrf(agent);
+    const response = await agent
+      .post(`${branchPath}/moderation-cases/${caseId}/appeals`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", idempotencyKey)
+      .send(body);
+    expect(response.status, JSON.stringify(response.body)).toBe(201);
+    return moderationCaseResponseSchema.parse(response.body).data;
   }
 
   async function runExport(jobId: string, exportId: string) {

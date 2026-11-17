@@ -1183,6 +1183,66 @@
       "covered": true
     },
     {
+      "table": "moderation_appeals",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "moderation_appeals_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "moderation_cases",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "moderation_cases_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "moderation_events",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "moderation_events_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
       "table": "notifications",
       "tenantColumns": [
         "branch_id",

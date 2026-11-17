@@ -153,6 +153,13 @@ export const ERROR_CODES = [
   "PUBLISH_EXPORT_EXPIRED",
   "PUBLISH_PREVIEW_NOT_FOUND",
   "PUBLISH_IDEMPOTENCY_CONFLICT",
+  "PUBLISH_DISCLOSURE_REQUIRED",
+  "MODERATION_CASE_NOT_FOUND",
+  "MODERATION_APPEAL_NOT_REQUIRED",
+  "MODERATION_APPEAL_ALREADY_SUBMITTED",
+  "MODERATION_APPEAL_NOT_FOUND",
+  "MODERATION_APPEAL_LIMIT_REACHED",
+  "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -4966,9 +4973,18 @@ export const exportSupplementManifestEntrySchema = z
   })
   .strict();
 
+export const aiDisclosureMetadataSchema = z
+  .object({
+    required: z.boolean(),
+    label: z.string().min(1).max(100),
+    policyVersion: z.literal("ai-disclosure-v1"),
+  })
+  .strict();
+export type AiDisclosureMetadata = z.infer<typeof aiDisclosureMetadataSchema>;
+
 const exportManifestBaseSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
     work: z
       .object({
         id: uuidV7Schema,
@@ -4991,8 +5007,25 @@ const exportManifestBaseSchema = z
     chapters: z.array(exportChapterManifestEntrySchema).min(1).max(4_000),
     supplements: z.array(exportSupplementManifestEntrySchema).max(5).default([]),
     characterCount: z.number().int().nonnegative(),
+    aiDisclosureMetadata: aiDisclosureMetadataSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((manifest, context) => {
+    if (manifest.schemaVersion === 2 && !manifest.aiDisclosureMetadata) {
+      context.addIssue({
+        code: "custom",
+        message: "schemaVersion 2 requires aiDisclosureMetadata",
+        path: ["aiDisclosureMetadata"],
+      });
+    }
+    if (manifest.schemaVersion === 1 && manifest.aiDisclosureMetadata) {
+      context.addIssue({
+        code: "custom",
+        message: "schemaVersion 1 cannot declare aiDisclosureMetadata",
+        path: ["aiDisclosureMetadata"],
+      });
+    }
+  });
 
 export const workExportManifestSchema = exportManifestBaseSchema
   .extend({
@@ -5224,6 +5257,7 @@ export const publishCopySchema = z
     tags: z.array(z.string()).max(30),
     chapterTitleSuggestions: z.array(z.string()).max(3),
     platformNote: z.string().min(1),
+    aiDisclosureMetadata: aiDisclosureMetadataSchema.optional(),
   })
   .strict();
 export type PublishCopy = z.infer<typeof publishCopySchema>;
@@ -5270,6 +5304,86 @@ export const publishPreviewListQuerySchema = cursorPageQuerySchema;
 export type PublishPreviewListQuery = z.infer<typeof publishPreviewListQuerySchema>;
 export const publishPreviewListResponseSchema = cursorListResponseSchema(
   z.array(publishPreviewSchema).max(100),
+);
+
+export const moderationCaseStatusSchema = z.enum(["clear", "needs_review", "appeal_submitted"]);
+export type ModerationCaseStatus = z.infer<typeof moderationCaseStatusSchema>;
+
+export const moderationAppealStatusSchema = z.enum(["submitted", "withdrawn"]);
+export type ModerationAppealStatus = z.infer<typeof moderationAppealStatusSchema>;
+
+export const moderationEventTypeSchema = z.enum([
+  "case_created",
+  "appeal_submitted",
+  "appeal_withdrawn",
+]);
+export type ModerationEventType = z.infer<typeof moderationEventTypeSchema>;
+
+export const moderationEvidenceSchema = z
+  .object({
+    label: z.string().min(1).max(100),
+    value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+  })
+  .strict();
+export type ModerationEvidence = z.infer<typeof moderationEvidenceSchema>;
+
+export const moderationEventSchema = z
+  .object({
+    id: uuidV7Schema,
+    type: moderationEventTypeSchema,
+    appealId: uuidV7Schema.nullable(),
+    fromStatus: moderationCaseStatusSchema.nullable(),
+    toStatus: moderationCaseStatusSchema,
+    reason: z.string().max(2_000).nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type ModerationEvent = z.infer<typeof moderationEventSchema>;
+
+export const moderationAppealSchema = z
+  .object({
+    id: uuidV7Schema,
+    status: moderationAppealStatusSchema,
+    reason: z.string(),
+    correction: z.string().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    withdrawnAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type ModerationAppeal = z.infer<typeof moderationAppealSchema>;
+
+export const moderationCaseSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    publishPreviewId: uuidV7Schema,
+    exportId: uuidV7Schema,
+    status: moderationCaseStatusSchema,
+    ruleVersion: z.string().min(1).max(100),
+    evidence: z.array(moderationEvidenceSchema).max(20),
+    events: z.array(moderationEventSchema).max(100),
+    appeals: z.array(moderationAppealSchema).max(20),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type ModerationCase = z.infer<typeof moderationCaseSchema>;
+
+export const moderationAppealRequestSchema = z
+  .object({
+    reason: z.string().trim().min(10).max(2_000),
+    correction: z.string().trim().max(4_000).optional(),
+  })
+  .strict();
+export type ModerationAppealRequest = z.infer<typeof moderationAppealRequestSchema>;
+
+export const moderationCaseListQuerySchema = cursorPageQuerySchema;
+export type ModerationCaseListQuery = z.infer<typeof moderationCaseListQuerySchema>;
+export const moderationCaseResponseSchema = apiEnvelopeSchema(moderationCaseSchema);
+export const moderationCaseListResponseSchema = cursorListResponseSchema(
+  z.array(moderationCaseSchema).max(100),
 );
 
 export const EXPORT_WORK_JOB = "export_work";
