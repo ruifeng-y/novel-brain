@@ -62,7 +62,10 @@ async function main() {
     outputDirectory,
     bucket: options.bucket ?? "novelbrain",
     key,
-    env: { BACKUP_DATABASE_NAME: databaseName },
+    env: {
+      BACKUP_DATABASE_NAME: databaseName,
+      STORAGE_BUCKET: options.bucket ?? "novelbrain",
+    },
   });
   const offlineVerification = await verifyBackupArtefacts({
     directory: backup.directory,
