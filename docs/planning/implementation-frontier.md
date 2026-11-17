@@ -1,7 +1,7 @@
 # Implementation frontier v2
 
 > Updated: 2026-11-17.
-> Repository baseline: `main@f373f78`, after PR #203 integrated publish checks and PR #205 signed the export-publish Linux Golden baseline.
+> Repository baseline: `main@df7a3e9`, after PR #207 integrated help, legal, AI disclosure, moderation appeal, and their signed Linux Golden baselines.
 
 ## 1. Current truth
 
@@ -20,15 +20,14 @@
 - #136 backup/restore/RPO/RTO is closed through PR #200.
 - #129 export formats, scope selection, durable job recovery and version manifests is closed through PR #201.
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
-- `export-publish` is `parity-verified` with Linux Golden evidence committed through PR #205.
-- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-17. The ready frontier is #131, #137, #138 and #142.
+- #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207; `help`, `legal` and `export-publish` are `parity-verified` with Linux Golden evidence.
+- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-17. The ready frontier is #137, #138 and #142.
 
 ## 2. Immediate frontier
 
-1. Start #131 help/legal content, AI disclosure and appeal; legal copy requires owner review before release.
-2. Start #137 10M capacity benchmark now that publish metadata is integrated so the benchmark measures the final V1 data model and backup/restore path at scale.
-3. Start #138 long-horizon continuity benchmark as the independent quality frontier; it unblocks #139 and then #140.
-4. #142 is ready for work-settings archive/restore/trash after #134.
+1. Start #137 10M capacity benchmark now that publish metadata is integrated so the benchmark measures the final V1 data model and backup/restore path at scale.
+2. Start #138 long-horizon continuity benchmark as the independent quality frontier; it unblocks #139 and then #140.
+3. #142 is ready for work-settings archive/restore/trash after #134.
 
 ## 3. First executable frontier (historical)
 
@@ -72,7 +71,7 @@ M1 foundations:
 
 ## 6. M3 release and proof sequencing
 
-- #129 export and #130 publish checks/preview are complete; #131 legal/help/AI disclosure and appeal is ready.
+- #129 export, #130 publish checks/preview and #131 help/legal/AI disclosure and appeal are complete.
 - #132 RLS/authorization coverage and #133 logging/trace hardening are complete. Every new tenant-owned table still requires RLS coverage.
 - #135 deployment, health, metrics and cost alerting is complete. Backup expiry and restore evidence remain with #136.
 - #134 and #136 are closed. PR #200 carries the backup/restore and retention evidence.
