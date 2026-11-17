@@ -113,6 +113,12 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 这 8 张 Golden 覆盖数据与隐私 panel、账号导出入口和导出前删除禁用；30 天恢复页、partial failure、恢复后再次注销和 fresh-login 恢复由同一 Playwright spec 的语义断言覆盖。8 张正式 Golden 已复制到 `artifacts/ui/golden/account-settings/`。Linux 生成证据为 [Production CI #43836291876](https://github.com/ruifeng-y/novel-brain/actions/runs/43836291876) 的 `update_golden` Playwright artifact；最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、无横向溢出和真实行为测试后才合并。
 
+## 2026-11-17 export-publish 视觉签收
+
+签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-130-export-publish/` 中导出与发布页的 390 / 900 / 1180 / 1440 四档候选截图，并同意将其作为正式 Golden。
+
+正式文件写入 `artifacts/ui/golden/export-publish/`。截图来自真实生产路由、真实导出/worker receipt 和固定发布预览数据，覆盖目录、导出历史、发布检查、元数据入口、当前作品/创作线上下文与无横向溢出。真实行为、读者预览焦点管理、stale/regenerate、租户隔离和过期恢复由 `apps/web/e2e/parity/export-publish.spec.ts` 覆盖。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、`prototype_only` 扫描和语义断言后才合并。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
