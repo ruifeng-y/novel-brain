@@ -99,7 +99,7 @@ In the columns below, the prototype screenshot path and production test/golden p
 >
 > 2026-11-12：作者确认 Batch 四档视觉方向；`apps/web/e2e/parity/batch.spec.ts` 已生成 `artifacts/ui/golden/batch/batch-{390,900,1180,1440}.png` 正式 Golden，并覆盖审核队列、暂停、失败、成本硬停、部分失败与四档无横向溢出。
 >
-> 2026-11-18：#142 完成 `work-settings` 的作品设置、复制、归档恢复、回收站、封面上传与定时清理；作者确认四档生产布局，并确认由 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122) 产生的 Linux/Chromium 390px actual 替换 `work-settings` 与 `dashboard` 的 Windows Golden。`work-settings` 状态提升为 `parity-verified`；最终正常 PR CI 必须再次通过全部四档 `toHaveScreenshot`、作者语言、无横向溢出和真实行为断言后才合并。
+> 2026-11-18：#142 完成 `work-settings` 的作品设置、复制、归档恢复、回收站、封面上传与定时清理；作者确认四档生产布局。390px actual 来自 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122)，其余 `work-settings` Linux/Chromium Golden 由 [Production CI #44138638764](https://github.com/ruifeng-y/novel-brain/actions/runs/44138638764) 的受控 `update_golden` 运行生成。`work-settings` 状态提升为 `parity-verified`；最终正常 PR CI 必须再次通过全部四档 `toHaveScreenshot`、作者语言、无横向溢出和真实行为断言后才合并。
 
 ## 4. UI issue ownership rules
 

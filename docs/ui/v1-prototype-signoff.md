@@ -127,14 +127,17 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 ## 2026-11-18 work-settings 与 dashboard Linux Golden 签收
 
-签收人：ruifeng-y。作者确认 `#142` 的 `work-settings` 四档生产布局，以及受影响后的 `dashboard` 生产布局；并确认使用 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122) 产生的两张 Linux/Chromium 390px actual 替换现有 Windows Golden。
+签收人：ruifeng-y。作者确认 `#142` 的 `work-settings` 四档生产布局，以及受影响后的 `dashboard` 生产布局；并确认使用 Linux/Chromium actual 替换现有 Windows Golden。
 
 本次替换文件为：
 
 - `dashboard-390.png`：`390x900`，SHA-256 `46DA9319D2667BC7D0B485B50FB02E6F5F374E684C32E8FE8CA37D1A0636BDDB`
 - `work-settings-390.png`：`390x2351`，SHA-256 `E12F17DB646D6483F1BD1B9366A2EF1E121FB503552D97F49273FEFEC8B28B11`
+- `work-settings-900.png`：`900x1773`，SHA-256 `F8CAB6E6D14A5B9B942123FB4E4E1585B3BE4B7D4EA984058B227CCEF1FC2647`
+- `work-settings-1180.png`：`1180x2634`，SHA-256 `709D751B4CE9218A35E5D0E38F8B1E5A84152D732A8CD146E73959CBFE60D77D`
+- `work-settings-1440.png`：`1440x2936`，SHA-256 `11FB3866A545D1498D86369EF56DFE876734C974D299BC69B19245AF529958C5`
 
-两张 Linux actual 在两次 Playwright 执行中的 SHA-256 完全一致；`dashboard` 与 `work-settings` 的 900 / 1180 / 1440 正式 Golden 保持不变。`work-settings` 页面状态提升为 `parity-verified`。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、无横向溢出和真实行为断言后才合并。
+两张 390px Linux actual 在两次 Playwright 执行中的 SHA-256 完全一致，生成证据为 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122)。此前失败在 390px 首次截图差异后停止后续比较，隐藏了其余 Windows 基线；`work-settings` 的 900 / 1180 / 1440 最终由 [Production CI #44138638764](https://github.com/ruifeng-y/novel-brain/actions/runs/44138638764) 的受控 `update_golden` 运行生成，并通过完整测试。`work-settings` 页面状态提升为 `parity-verified`。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、无横向溢出和真实行为断言后才合并。
 
 ## 变更规则
 

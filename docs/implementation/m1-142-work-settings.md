@@ -22,4 +22,4 @@
 
 ## 视觉状态
 
-四视口生产 Golden 已生成到 `artifacts/ui/golden/work-settings/`。作者已确认四档生产布局，并确认使用 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122) 的 Linux/Chromium actual 替换 `work-settings` 与 `dashboard` 的 390px Golden。`work-settings` 的 parity 状态已提升为 `parity-verified`；最终正常 PR CI 必须再次通过全部视觉和行为门禁后才合并。
+四视口生产 Golden 已生成到 `artifacts/ui/golden/work-settings/`。作者已确认四档生产布局；390px Linux/Chromium actual 来自 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122)，其余 `work-settings` Golden 由 [Production CI #44138638764](https://github.com/ruifeng-y/novel-brain/actions/runs/44138638764) 的受控 `update_golden` 运行生成。`work-settings` 的 parity 状态已提升为 `parity-verified`；最终正常 PR CI 必须再次通过全部视觉和行为门禁后才合并。
