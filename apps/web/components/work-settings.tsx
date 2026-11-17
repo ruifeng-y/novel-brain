@@ -14,7 +14,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   apiErrorSchema,
   workDuplicateRequestSchema,
@@ -87,13 +87,21 @@ export function WorkSettings({ workId }: { workId: string }) {
   const [copyHistory, setCopyHistory] = useState(false);
   const [duplicateKey, setDuplicateKey] = useState("");
   const [uploadingCover, setUploadingCover] = useState(false);
+  const loadRequest = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    loadRequest.current?.abort();
+    const controller = new AbortController();
+    loadRequest.current = controller;
     setLoading(true);
     setError("");
     setPermissionDenied(false);
     try {
-      const response = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
+      const response = await fetch(`/api/v1/works/${workId}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
       if (response.status === 401) {
         router.replace("/login?reason=session-expired");
         return;
@@ -106,17 +114,25 @@ export function WorkSettings({ workId }: { workId: string }) {
         throw new Error(await readError(response, "作品设置加载失败。"));
       }
       const data = workResponseSchema.parse(await response.json()).data;
+      if (controller.signal.aborted) return;
       setWork(data);
       setForm(toForm(data));
     } catch (caught) {
+      if (controller.signal.aborted) return;
       setError(caught instanceof Error ? caught.message : "作品设置加载失败。");
     } finally {
-      setLoading(false);
+      if (loadRequest.current === controller) {
+        loadRequest.current = null;
+        setLoading(false);
+      }
     }
   }, [router, workId]);
 
   useEffect(() => {
     void load();
+    return () => {
+      loadRequest.current?.abort();
+    };
   }, [load]);
 
   const readonly = work?.status === "completed" || work?.status === "archived" || permissionDenied;

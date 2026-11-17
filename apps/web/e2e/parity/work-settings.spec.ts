@@ -3,7 +3,11 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import { expectAuthorFacingLanguage, productionScreenshotOptions } from "../helpers/ui";
 
-async function authenticatedWorkPage(page: Page, context: BrowserContext) {
+async function authenticatedWorkPage(
+  page: Page,
+  context: BrowserContext,
+  beforePageLoad?: (workId: string) => Promise<void>,
+) {
   const email = uniqueEmail("work-settings");
   const session = await registerUser(page.request, email, "StrongPassword123", "作品设置作者");
   await context.addCookies([
@@ -22,6 +26,7 @@ async function authenticatedWorkPage(page: Page, context: BrowserContext) {
     genre: "xianxia",
     scaleTarget: "long",
   });
+  await beforePageLoad?.(work.id);
   await page.goto(`/workspace/${work.id}/work-settings`);
   await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
   return work;
@@ -74,6 +79,24 @@ test("saves work metadata and archives/restores it from the dashboard", async ({
   await expect(page.getByRole("heading", { name: "仙途：忘川书 · 修订" })).toBeVisible();
   await page.getByRole("button", { name: "恢复" }).click();
   await expect(page.getByRole("heading", { name: "仙途：忘川书 · 修订" })).toHaveCount(0);
+});
+
+test("keeps author edits when an earlier page load finishes late", async ({ page, context }) => {
+  let requestCount = 0;
+  await authenticatedWorkPage(page, context, async (workId) => {
+    await page.route(`**/api/v1/works/${workId}`, async (route) => {
+      requestCount += 1;
+      if (requestCount > 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      await route.continue();
+    });
+  });
+
+  await page.getByLabel("书名").fill("仙途：忘川书 · 并发修订");
+  await page.waitForTimeout(700);
+
+  await expect(page.getByLabel("书名")).toHaveValue("仙途：忘川书 · 并发修订");
 });
 
 test("duplicates with conservative defaults", async ({ page, context }) => {
