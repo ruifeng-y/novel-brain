@@ -404,7 +404,8 @@ GET/POST /api/v1/works/:workId/branches/:branchId/exports
 GET      /api/v1/works/:workId/branches/:branchId/exports/:exportId
 GET      /api/v1/works/:workId/branches/:branchId/exports/:exportId/download
 GET/POST /api/v1/export-templates
-POST     /api/v1/works/:workId/branches/:branchId/publish-check
+GET/POST /api/v1/works/:workId/branches/:branchId/publish-check
+GET      /api/v1/works/:workId/branches/:branchId/publish-check/:previewId
 ```
 
 ## 4. Drizzle 数据模型
@@ -709,7 +710,8 @@ GET/POST   /api/v1/works/:workId/branches/:branchId/exports
 GET        /api/v1/works/:workId/branches/:branchId/exports/:exportId
 GET        /api/v1/works/:workId/branches/:branchId/exports/:exportId/download
 GET/POST   /api/v1/export-templates
-POST       /api/v1/works/:workId/branches/:branchId/publish-check
+GET/POST   /api/v1/works/:workId/branches/:branchId/publish-check
+GET        /api/v1/works/:workId/branches/:branchId/publish-check/:previewId
 
 GET        /api/v1/works/:workId/branches/:branchId/search
 GET        /api/v1/search

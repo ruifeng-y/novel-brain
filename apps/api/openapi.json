@@ -3432,6 +3432,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -4252,6 +4256,10 @@
                                   "WORK_EXPORT_SOURCE_CHANGED",
                                   "WORK_EXPORT_RENDER_FAILED",
                                   "WORK_EXPORT_INTEGRITY_FAILED",
+                                  "PUBLISH_EXPORT_NOT_READY",
+                                  "PUBLISH_EXPORT_EXPIRED",
+                                  "PUBLISH_PREVIEW_NOT_FOUND",
+                                  "PUBLISH_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -22108,6 +22116,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -23655,6 +23667,10 @@
                                   "WORK_EXPORT_SOURCE_CHANGED",
                                   "WORK_EXPORT_RENDER_FAILED",
                                   "WORK_EXPORT_INTEGRITY_FAILED",
+                                  "PUBLISH_EXPORT_NOT_READY",
+                                  "PUBLISH_EXPORT_EXPIRED",
+                                  "PUBLISH_PREVIEW_NOT_FOUND",
+                                  "PUBLISH_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -24622,6 +24638,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -25581,6 +25601,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -26540,6 +26564,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -27548,6 +27576,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -29034,6 +29066,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30267,6 +30303,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30897,6 +30937,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -31195,6 +31239,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -32089,6 +32137,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -33232,6 +33284,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -34391,6 +34447,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -35558,6 +35618,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -90335,6 +90399,10 @@
                                       "WORK_EXPORT_SOURCE_CHANGED",
                                       "WORK_EXPORT_RENDER_FAILED",
                                       "WORK_EXPORT_INTEGRITY_FAILED",
+                                      "PUBLISH_EXPORT_NOT_READY",
+                                      "PUBLISH_EXPORT_EXPIRED",
+                                      "PUBLISH_PREVIEW_NOT_FOUND",
+                                      "PUBLISH_IDEMPOTENCY_CONFLICT",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -90724,6 +90792,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -91048,6 +91120,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -121989,6 +122065,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -123565,6 +123645,10 @@
                                   "WORK_EXPORT_SOURCE_CHANGED",
                                   "WORK_EXPORT_RENDER_FAILED",
                                   "WORK_EXPORT_INTEGRITY_FAILED",
+                                  "PUBLISH_EXPORT_NOT_READY",
+                                  "PUBLISH_EXPORT_EXPIRED",
+                                  "PUBLISH_PREVIEW_NOT_FOUND",
+                                  "PUBLISH_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -125129,6 +125213,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -126685,6 +126773,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -128241,6 +128333,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -129856,6 +129952,10 @@
                                     "WORK_EXPORT_SOURCE_CHANGED",
                                     "WORK_EXPORT_RENDER_FAILED",
                                     "WORK_EXPORT_INTEGRITY_FAILED",
+                                    "PUBLISH_EXPORT_NOT_READY",
+                                    "PUBLISH_EXPORT_EXPIRED",
+                                    "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -130850,6 +130950,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -131529,6 +131633,10 @@
                                   "WORK_EXPORT_SOURCE_CHANGED",
                                   "WORK_EXPORT_RENDER_FAILED",
                                   "WORK_EXPORT_INTEGRITY_FAILED",
+                                  "PUBLISH_EXPORT_NOT_READY",
+                                  "PUBLISH_EXPORT_EXPIRED",
+                                  "PUBLISH_PREVIEW_NOT_FOUND",
+                                  "PUBLISH_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -132197,6 +132305,10 @@
                                 "WORK_EXPORT_SOURCE_CHANGED",
                                 "WORK_EXPORT_RENDER_FAILED",
                                 "WORK_EXPORT_INTEGRITY_FAILED",
+                                "PUBLISH_EXPORT_NOT_READY",
+                                "PUBLISH_EXPORT_EXPIRED",
+                                "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -132342,6 +132454,1710 @@
           }
         },
         "tags": ["work-exports"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/publish-check": {
+      "post": {
+        "operationId": "PublishPreviewController_create",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Stable key for replaying the same publish check",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "exportId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "platformPreset": {
+                    "type": "string",
+                    "enum": ["generic", "qidian", "fanqie"]
+                  },
+                  "metadata": {
+                    "default": {},
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "maxLength": 120
+                      },
+                      "author": {
+                        "type": "string",
+                        "maxLength": 50
+                      },
+                      "summary": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "tags": {
+                        "maxItems": 30,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        }
+                      },
+                      "coverHeadline": {
+                        "type": "string",
+                        "maxLength": 60
+                      },
+                      "coverSubline": {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      "coverTone": {
+                        "type": "string",
+                        "enum": ["cinnabar", "jade", "gold", "blue"]
+                      },
+                      "aiDisclosure": {
+                        "type": "boolean"
+                      },
+                      "copyrightAcknowledged": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["exportId", "platformPreset"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pinned publish check and reader preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "exportId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "platformPreset": {
+                          "type": "string",
+                          "enum": ["generic", "qidian", "fanqie"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["ready", "warning", "blocked"]
+                        },
+                        "publishReady": {
+                          "type": "boolean"
+                        },
+                        "stale": {
+                          "type": "boolean"
+                        },
+                        "staleReason": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "sourceVersionNodeId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "requestedVersionNodeId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "manifestHash": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "platform": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "enum": ["generic", "qidian", "fanqie"]
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "tagLimit": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "minChapterCharacters": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "maxChapterCharacters": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "label",
+                            "tagLimit",
+                            "minChapterCharacters",
+                            "maxChapterCharacters"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            },
+                            "author": {
+                              "type": "string"
+                            },
+                            "summary": {
+                              "type": "string"
+                            },
+                            "tags": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "genre": {
+                              "type": "string",
+                              "enum": ["xianxia", "history", "urban"]
+                            },
+                            "coverHeadline": {
+                              "type": "string"
+                            },
+                            "coverSubline": {
+                              "type": "string"
+                            },
+                            "coverTone": {
+                              "type": "string",
+                              "enum": ["cinnabar", "jade", "gold", "blue"]
+                            },
+                            "aiDisclosure": {
+                              "type": "boolean"
+                            },
+                            "copyrightAcknowledged": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "title",
+                            "author",
+                            "summary",
+                            "tags",
+                            "genre",
+                            "coverHeadline",
+                            "coverSubline",
+                            "coverTone",
+                            "aiDisclosure",
+                            "copyrightAcknowledged"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "checks": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["pass", "warning", "blocked"]
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "ruleVersion": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "evidence": {
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "value": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "number"
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "string",
+                                          "nullable": true,
+                                          "enum": [null]
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": ["label", "value"],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "label",
+                              "status",
+                              "message",
+                              "ruleVersion",
+                              "evidence"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "catalog": {
+                          "type": "object",
+                          "properties": {
+                            "chapterCount": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "characterCount": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "volumes": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "volumeNodeId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "volumeNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "chapterNumbers": {
+                                    "maxItems": 10000,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "volumeNodeId",
+                                  "volumeNumber",
+                                  "title",
+                                  "chapterNumbers"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "chapters": {
+                              "maxItems": 200,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "versionNodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "characterCount": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "excerpt": {
+                                    "type": "string"
+                                  },
+                                  "volumeNodeId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "volumeNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "volumeTitle": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "chapterId",
+                                  "chapterNumber",
+                                  "title",
+                                  "chapterVersionId",
+                                  "versionNodeId",
+                                  "characterCount",
+                                  "excerpt",
+                                  "volumeNodeId",
+                                  "volumeNumber",
+                                  "volumeTitle"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "truncated": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "chapterCount",
+                            "characterCount",
+                            "volumes",
+                            "chapters",
+                            "truncated"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "readerPreview": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            },
+                            "author": {
+                              "type": "string"
+                            },
+                            "summary": {
+                              "type": "string"
+                            },
+                            "tags": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "chapters": {
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "excerpt": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["chapterId", "chapterNumber", "title", "excerpt"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["title", "author", "summary", "tags", "chapters"],
+                          "additionalProperties": false
+                        },
+                        "publishCopy": {
+                          "type": "object",
+                          "properties": {
+                            "titleOptions": {
+                              "minItems": 1,
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "summary": {
+                              "type": "string"
+                            },
+                            "tags": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "chapterTitleSuggestions": {
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "platformNote": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "titleOptions",
+                            "summary",
+                            "tags",
+                            "chapterTitleSuggestions",
+                            "platformNote"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "exportId",
+                        "workId",
+                        "branchId",
+                        "platformPreset",
+                        "status",
+                        "publishReady",
+                        "stale",
+                        "staleReason",
+                        "sourceVersionNodeId",
+                        "requestedVersionNodeId",
+                        "manifestHash",
+                        "platform",
+                        "metadata",
+                        "checks",
+                        "catalog",
+                        "readerPreview",
+                        "publishCopy",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["publish-previews"]
+      },
+      "get": {
+        "operationId": "PublishPreviewController_list",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pinned publish preview history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "maxItems": 100,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "exportId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "workId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "branchId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "platformPreset": {
+                            "type": "string",
+                            "enum": ["generic", "qidian", "fanqie"]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["ready", "warning", "blocked"]
+                          },
+                          "publishReady": {
+                            "type": "boolean"
+                          },
+                          "stale": {
+                            "type": "boolean"
+                          },
+                          "staleReason": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "sourceVersionNodeId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "requestedVersionNodeId": {
+                            "nullable": true,
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "manifestHash": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          "platform": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "enum": ["generic", "qidian", "fanqie"]
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "tagLimit": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "minChapterCharacters": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "maxChapterCharacters": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "tagLimit",
+                              "minChapterCharacters",
+                              "maxChapterCharacters"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "author": {
+                                "type": "string"
+                              },
+                              "summary": {
+                                "type": "string"
+                              },
+                              "tags": {
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "genre": {
+                                "type": "string",
+                                "enum": ["xianxia", "history", "urban"]
+                              },
+                              "coverHeadline": {
+                                "type": "string"
+                              },
+                              "coverSubline": {
+                                "type": "string"
+                              },
+                              "coverTone": {
+                                "type": "string",
+                                "enum": ["cinnabar", "jade", "gold", "blue"]
+                              },
+                              "aiDisclosure": {
+                                "type": "boolean"
+                              },
+                              "copyrightAcknowledged": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "author",
+                              "summary",
+                              "tags",
+                              "genre",
+                              "coverHeadline",
+                              "coverSubline",
+                              "coverTone",
+                              "aiDisclosure",
+                              "copyrightAcknowledged"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "checks": {
+                            "maxItems": 32,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": ["pass", "warning", "blocked"]
+                                },
+                                "message": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 500
+                                },
+                                "ruleVersion": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "evidence": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                      },
+                                      "value": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "number"
+                                          },
+                                          {
+                                            "type": "boolean"
+                                          },
+                                          {
+                                            "type": "string",
+                                            "nullable": true,
+                                            "enum": [null]
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": ["label", "value"],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "code",
+                                "label",
+                                "status",
+                                "message",
+                                "ruleVersion",
+                                "evidence"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "catalog": {
+                            "type": "object",
+                            "properties": {
+                              "chapterCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "characterCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "volumes": {
+                                "maxItems": 100,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "volumeNodeId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "volumeNumber": {
+                                      "nullable": true,
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "chapterNumbers": {
+                                      "maxItems": 10000,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "exclusiveMinimum": true,
+                                        "maximum": 9007199254740991
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "volumeNodeId",
+                                    "volumeNumber",
+                                    "title",
+                                    "chapterNumbers"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "chapters": {
+                                "maxItems": 200,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "chapterId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "chapterNumber": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "chapterVersionId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "versionNodeId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "characterCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "excerpt": {
+                                      "type": "string"
+                                    },
+                                    "volumeNodeId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "volumeNumber": {
+                                      "nullable": true,
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "volumeTitle": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "chapterId",
+                                    "chapterNumber",
+                                    "title",
+                                    "chapterVersionId",
+                                    "versionNodeId",
+                                    "characterCount",
+                                    "excerpt",
+                                    "volumeNodeId",
+                                    "volumeNumber",
+                                    "volumeTitle"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "truncated": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "chapterCount",
+                              "characterCount",
+                              "volumes",
+                              "chapters",
+                              "truncated"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "readerPreview": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "author": {
+                                "type": "string"
+                              },
+                              "summary": {
+                                "type": "string"
+                              },
+                              "tags": {
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "chapters": {
+                                "maxItems": 3,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "chapterId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "chapterNumber": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "excerpt": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["chapterId", "chapterNumber", "title", "excerpt"],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": ["title", "author", "summary", "tags", "chapters"],
+                            "additionalProperties": false
+                          },
+                          "publishCopy": {
+                            "type": "object",
+                            "properties": {
+                              "titleOptions": {
+                                "minItems": 1,
+                                "maxItems": 3,
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "summary": {
+                                "type": "string"
+                              },
+                              "tags": {
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "chapterTitleSuggestions": {
+                                "maxItems": 3,
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "platformNote": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "titleOptions",
+                              "summary",
+                              "tags",
+                              "chapterTitleSuggestions",
+                              "platformNote"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "exportId",
+                          "workId",
+                          "branchId",
+                          "platformPreset",
+                          "status",
+                          "publishReady",
+                          "stale",
+                          "staleReason",
+                          "sourceVersionNodeId",
+                          "requestedVersionNodeId",
+                          "manifestHash",
+                          "platform",
+                          "metadata",
+                          "checks",
+                          "catalog",
+                          "readerPreview",
+                          "publishCopy",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["publish-previews"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/publish-check/{previewId}": {
+      "get": {
+        "operationId": "PublishPreviewController_get",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "previewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pinned publish preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "exportId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "platformPreset": {
+                          "type": "string",
+                          "enum": ["generic", "qidian", "fanqie"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["ready", "warning", "blocked"]
+                        },
+                        "publishReady": {
+                          "type": "boolean"
+                        },
+                        "stale": {
+                          "type": "boolean"
+                        },
+                        "staleReason": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "sourceVersionNodeId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "requestedVersionNodeId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "manifestHash": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "platform": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "enum": ["generic", "qidian", "fanqie"]
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "tagLimit": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "minChapterCharacters": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "maxChapterCharacters": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "label",
+                            "tagLimit",
+                            "minChapterCharacters",
+                            "maxChapterCharacters"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            },
+                            "author": {
+                              "type": "string"
+                            },
+                            "summary": {
+                              "type": "string"
+                            },
+                            "tags": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "genre": {
+                              "type": "string",
+                              "enum": ["xianxia", "history", "urban"]
+                            },
+                            "coverHeadline": {
+                              "type": "string"
+                            },
+                            "coverSubline": {
+                              "type": "string"
+                            },
+                            "coverTone": {
+                              "type": "string",
+                              "enum": ["cinnabar", "jade", "gold", "blue"]
+                            },
+                            "aiDisclosure": {
+                              "type": "boolean"
+                            },
+                            "copyrightAcknowledged": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "title",
+                            "author",
+                            "summary",
+                            "tags",
+                            "genre",
+                            "coverHeadline",
+                            "coverSubline",
+                            "coverTone",
+                            "aiDisclosure",
+                            "copyrightAcknowledged"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "checks": {
+                          "maxItems": 32,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["pass", "warning", "blocked"]
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "ruleVersion": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "evidence": {
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "value": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "number"
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        },
+                                        {
+                                          "type": "string",
+                                          "nullable": true,
+                                          "enum": [null]
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": ["label", "value"],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "label",
+                              "status",
+                              "message",
+                              "ruleVersion",
+                              "evidence"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "catalog": {
+                          "type": "object",
+                          "properties": {
+                            "chapterCount": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "characterCount": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "volumes": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "volumeNodeId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "volumeNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "chapterNumbers": {
+                                    "maxItems": 10000,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "volumeNodeId",
+                                  "volumeNumber",
+                                  "title",
+                                  "chapterNumbers"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "chapters": {
+                              "maxItems": 200,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "versionNodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "characterCount": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "excerpt": {
+                                    "type": "string"
+                                  },
+                                  "volumeNodeId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "volumeNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "volumeTitle": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "chapterId",
+                                  "chapterNumber",
+                                  "title",
+                                  "chapterVersionId",
+                                  "versionNodeId",
+                                  "characterCount",
+                                  "excerpt",
+                                  "volumeNodeId",
+                                  "volumeNumber",
+                                  "volumeTitle"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "truncated": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "chapterCount",
+                            "characterCount",
+                            "volumes",
+                            "chapters",
+                            "truncated"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "readerPreview": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string"
+                            },
+                            "author": {
+                              "type": "string"
+                            },
+                            "summary": {
+                              "type": "string"
+                            },
+                            "tags": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "chapters": {
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "excerpt": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["chapterId", "chapterNumber", "title", "excerpt"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["title", "author", "summary", "tags", "chapters"],
+                          "additionalProperties": false
+                        },
+                        "publishCopy": {
+                          "type": "object",
+                          "properties": {
+                            "titleOptions": {
+                              "minItems": 1,
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "summary": {
+                              "type": "string"
+                            },
+                            "tags": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "chapterTitleSuggestions": {
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "platformNote": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "titleOptions",
+                            "summary",
+                            "tags",
+                            "chapterTitleSuggestions",
+                            "platformNote"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "exportId",
+                        "workId",
+                        "branchId",
+                        "platformPreset",
+                        "status",
+                        "publishReady",
+                        "stale",
+                        "staleReason",
+                        "sourceVersionNodeId",
+                        "requestedVersionNodeId",
+                        "manifestHash",
+                        "platform",
+                        "metadata",
+                        "checks",
+                        "catalog",
+                        "readerPreview",
+                        "publishCopy",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["publish-previews"]
       }
     },
     "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/revisions": {

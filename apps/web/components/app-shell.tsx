@@ -13,6 +13,7 @@ import {
   LogOut,
   Milestone,
   PenLine,
+  Send,
   Settings,
 } from "lucide-react";
 import { type AuthUser, type Work, type WorkOverview } from "@novel-brain/contracts";
@@ -41,6 +42,7 @@ const workNavigation = [
   { suffix: "write", label: "写作台", icon: PenLine },
   { suffix: "batch", label: "批量生产", icon: Layers3 },
   { suffix: "changes", label: "修改与版本", icon: GitBranch },
+  { suffix: "export", label: "导出与发布", icon: Send },
 ];
 
 interface ActiveWorkContext {
@@ -65,7 +67,7 @@ export function AppShell({
   const workPathMatch = pathname.match(/^\/workspace\/([^/]+)\/([^/]+)/u);
   const workId = workPathMatch?.[1];
   const workSection = workPathMatch?.[2];
-  const showWorkContext = workSection === "overview";
+  const showWorkContext = workSection === "overview" || workSection === "export";
   const current = pathname.endsWith("/overview")
     ? "作品总览"
     : pathname.endsWith("/bible")
@@ -82,13 +84,15 @@ export function AppShell({
                 ? "批量生产"
                 : pathname.endsWith("/changes")
                   ? "修改与版本"
-                  : pathname === "/workspace/new-project"
-                    ? "新建作品"
-                    : pathname.startsWith("/workspace/settings")
-                      ? "账号与模型"
-                      : pathname.startsWith("/workspace")
-                        ? "工作台"
-                        : "服务状态";
+                  : pathname.endsWith("/export")
+                    ? "导出与发布"
+                    : pathname === "/workspace/new-project"
+                      ? "新建作品"
+                      : pathname.startsWith("/workspace/settings")
+                        ? "账号与模型"
+                        : pathname.startsWith("/workspace")
+                          ? "工作台"
+                          : "服务状态";
   const selectedBranch = activeWork?.branches.find((branch) => branch.id === selectedBranchId);
   const selectedBranchName = selectedBranch
     ? branchLabel(selectedBranch.name)
@@ -218,7 +222,12 @@ export function AppShell({
               {workNavigation.map((item) => {
                 const Icon = item.icon;
                 const active = workSection === item.suffix;
-                if (item.suffix !== "overview" && activeWork && activeWorkIsReadonly(activeWork)) {
+                if (
+                  item.suffix !== "overview" &&
+                  item.suffix !== "export" &&
+                  activeWork &&
+                  activeWorkIsReadonly(activeWork)
+                ) {
                   return (
                     <div
                       aria-disabled="true"

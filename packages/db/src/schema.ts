@@ -3,6 +3,14 @@ import type {
   AccountDeletionFailure,
   AccountDeletionStoreResult,
   AccountExportInventoryEntry,
+  PublishCatalog,
+  PublishCheck,
+  PublishCopy,
+  PublishMetadata,
+  PublishPlatformPresentation,
+  PublishPlatformPreset,
+  PublishReaderPreview,
+  PublishReadinessStatus,
   WorkExportManifest,
   WorkExportRequest,
   WorkExportSourceDescriptor,
@@ -2532,6 +2540,62 @@ export const workExportReceipts = pgTable(
     check(
       "work_export_receipts_byte_size_check",
       sql`${table.byteSize} is null or ${table.byteSize} >= 0`,
+    ),
+  ],
+);
+
+export const publishPreviews = pgTable(
+  "publish_previews",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    exportId: uuid("export_id")
+      .notNull()
+      .references(() => workExportReceipts.id, { onDelete: "cascade" }),
+    platformPreset: text("platform_preset").$type<PublishPlatformPreset>().notNull(),
+    status: text("status").$type<PublishReadinessStatus>().notNull(),
+    publishReady: boolean("publish_ready").notNull(),
+    sourceVersionNodeId: uuid("source_version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    requestedVersionNodeId: uuid("requested_version_node_id").references(() => versionNodes.id, {
+      onDelete: "restrict",
+    }),
+    manifestHash: text("manifest_hash").notNull(),
+    platform: jsonb("platform").$type<PublishPlatformPresentation>().notNull(),
+    metadata: jsonb("metadata").$type<PublishMetadata>().notNull(),
+    checks: jsonb("checks").$type<PublishCheck[]>().notNull(),
+    catalog: jsonb("catalog").$type<PublishCatalog>().notNull(),
+    readerPreview: jsonb("reader_preview").$type<PublishReaderPreview>().notNull(),
+    publishCopy: jsonb("publish_copy").$type<PublishCopy>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("publish_previews_user_created_idx").on(table.userId, table.createdAt),
+    index("publish_previews_work_branch_created_idx").on(
+      table.workId,
+      table.branchId,
+      table.createdAt,
+    ),
+    index("publish_previews_export_idx").on(table.exportId),
+    check(
+      "publish_previews_platform_check",
+      sql`${table.platformPreset} in ('generic', 'qidian', 'fanqie')`,
+    ),
+    check("publish_previews_status_check", sql`${table.status} in ('ready', 'warning', 'blocked')`),
+    check("publish_previews_manifest_hash_check", sql`${table.manifestHash} ~ '^[a-f0-9]{64}$'`),
+    check(
+      "publish_previews_checks_check",
+      sql`jsonb_typeof(${table.checks}) = 'array' and jsonb_array_length(${table.checks}) between 1 and 32`,
     ),
   ],
 );

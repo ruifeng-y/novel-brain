@@ -3236,6 +3236,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/publish-check": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PublishPreviewController_list"];
+    put?: never;
+    post: operations["PublishPreviewController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/publish-check/{previewId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PublishPreviewController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/revisions": {
     parameters: {
       query?: never;
@@ -4705,6 +4737,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -5056,6 +5092,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -10989,6 +11029,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11564,6 +11608,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11965,6 +12013,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12367,6 +12419,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12769,6 +12825,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -13184,6 +13244,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13708,6 +13772,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14151,6 +14219,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14449,6 +14521,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14657,6 +14733,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -15013,6 +15093,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15432,6 +15516,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15856,6 +15944,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16280,6 +16372,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32706,6 +32802,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32937,6 +33037,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -33144,6 +33248,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -43441,6 +43549,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44229,6 +44341,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44794,6 +44910,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45359,6 +45479,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45924,6 +46048,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46502,6 +46630,10 @@ export interface operations {
                     | "WORK_EXPORT_SOURCE_CHANGED"
                     | "WORK_EXPORT_RENDER_FAILED"
                     | "WORK_EXPORT_INTEGRITY_FAILED"
+                    | "PUBLISH_EXPORT_NOT_READY"
+                    | "PUBLISH_EXPORT_EXPIRED"
+                    | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -46865,6 +46997,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47250,6 +47386,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47553,6 +47693,10 @@ export interface operations {
                   | "WORK_EXPORT_SOURCE_CHANGED"
                   | "WORK_EXPORT_RENDER_FAILED"
                   | "WORK_EXPORT_INTEGRITY_FAILED"
+                  | "PUBLISH_EXPORT_NOT_READY"
+                  | "PUBLISH_EXPORT_EXPIRED"
+                  | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47602,6 +47746,411 @@ export interface operations {
           "text/markdown": string;
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
           "application/epub+zip": string;
+        };
+      };
+    };
+  };
+  PublishPreviewController_list: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Pinned publish preview history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              exportId: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              platformPreset: "generic" | "qidian" | "fanqie";
+              /** @enum {string} */
+              status: "ready" | "warning" | "blocked";
+              publishReady: boolean;
+              stale: boolean;
+              staleReason: string | null;
+              sourceVersionNodeId: string;
+              requestedVersionNodeId: string | null;
+              manifestHash: string;
+              platform: {
+                /** @enum {string} */
+                key: "generic" | "qidian" | "fanqie";
+                label: string;
+                tagLimit: number;
+                minChapterCharacters: number;
+                maxChapterCharacters: number;
+              };
+              metadata: {
+                title: string;
+                author: string;
+                summary: string;
+                tags: string[];
+                /** @enum {string} */
+                genre: "xianxia" | "history" | "urban";
+                coverHeadline: string;
+                coverSubline: string;
+                /** @enum {string} */
+                coverTone: "cinnabar" | "jade" | "gold" | "blue";
+                aiDisclosure: boolean;
+                copyrightAcknowledged: boolean;
+              };
+              checks: {
+                code: string;
+                label: string;
+                /** @enum {string} */
+                status: "pass" | "warning" | "blocked";
+                message: string;
+                ruleVersion: string;
+                evidence: {
+                  label: string;
+                  value: string | number | boolean | null;
+                }[];
+              }[];
+              catalog: {
+                chapterCount: number;
+                characterCount: number;
+                volumes: {
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  title: string;
+                  chapterNumbers: number[];
+                }[];
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  chapterVersionId: string;
+                  versionNodeId: string;
+                  characterCount: number;
+                  excerpt: string;
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  volumeTitle: string | null;
+                }[];
+                truncated: boolean;
+              };
+              readerPreview: {
+                title: string;
+                author: string;
+                summary: string;
+                tags: string[];
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  excerpt: string;
+                }[];
+              };
+              publishCopy: {
+                titleOptions: string[];
+                summary: string;
+                tags: string[];
+                chapterTitleSuggestions: string[];
+                platformNote: string;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  PublishPreviewController_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same publish check */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          exportId: string;
+          /** @enum {string} */
+          platformPreset: "generic" | "qidian" | "fanqie";
+          /** @default {} */
+          metadata?: {
+            title?: string;
+            author?: string;
+            summary?: string;
+            tags?: string[];
+            coverHeadline?: string;
+            coverSubline?: string;
+            /** @enum {string} */
+            coverTone?: "cinnabar" | "jade" | "gold" | "blue";
+            aiDisclosure?: boolean;
+            copyrightAcknowledged?: boolean;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Pinned publish check and reader preview */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              exportId: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              platformPreset: "generic" | "qidian" | "fanqie";
+              /** @enum {string} */
+              status: "ready" | "warning" | "blocked";
+              publishReady: boolean;
+              stale: boolean;
+              staleReason: string | null;
+              sourceVersionNodeId: string;
+              requestedVersionNodeId: string | null;
+              manifestHash: string;
+              platform: {
+                /** @enum {string} */
+                key: "generic" | "qidian" | "fanqie";
+                label: string;
+                tagLimit: number;
+                minChapterCharacters: number;
+                maxChapterCharacters: number;
+              };
+              metadata: {
+                title: string;
+                author: string;
+                summary: string;
+                tags: string[];
+                /** @enum {string} */
+                genre: "xianxia" | "history" | "urban";
+                coverHeadline: string;
+                coverSubline: string;
+                /** @enum {string} */
+                coverTone: "cinnabar" | "jade" | "gold" | "blue";
+                aiDisclosure: boolean;
+                copyrightAcknowledged: boolean;
+              };
+              checks: {
+                code: string;
+                label: string;
+                /** @enum {string} */
+                status: "pass" | "warning" | "blocked";
+                message: string;
+                ruleVersion: string;
+                evidence: {
+                  label: string;
+                  value: string | number | boolean | null;
+                }[];
+              }[];
+              catalog: {
+                chapterCount: number;
+                characterCount: number;
+                volumes: {
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  title: string;
+                  chapterNumbers: number[];
+                }[];
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  chapterVersionId: string;
+                  versionNodeId: string;
+                  characterCount: number;
+                  excerpt: string;
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  volumeTitle: string | null;
+                }[];
+                truncated: boolean;
+              };
+              readerPreview: {
+                title: string;
+                author: string;
+                summary: string;
+                tags: string[];
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  excerpt: string;
+                }[];
+              };
+              publishCopy: {
+                titleOptions: string[];
+                summary: string;
+                tags: string[];
+                chapterTitleSuggestions: string[];
+                platformNote: string;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  PublishPreviewController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        previewId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Pinned publish preview */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              exportId: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              platformPreset: "generic" | "qidian" | "fanqie";
+              /** @enum {string} */
+              status: "ready" | "warning" | "blocked";
+              publishReady: boolean;
+              stale: boolean;
+              staleReason: string | null;
+              sourceVersionNodeId: string;
+              requestedVersionNodeId: string | null;
+              manifestHash: string;
+              platform: {
+                /** @enum {string} */
+                key: "generic" | "qidian" | "fanqie";
+                label: string;
+                tagLimit: number;
+                minChapterCharacters: number;
+                maxChapterCharacters: number;
+              };
+              metadata: {
+                title: string;
+                author: string;
+                summary: string;
+                tags: string[];
+                /** @enum {string} */
+                genre: "xianxia" | "history" | "urban";
+                coverHeadline: string;
+                coverSubline: string;
+                /** @enum {string} */
+                coverTone: "cinnabar" | "jade" | "gold" | "blue";
+                aiDisclosure: boolean;
+                copyrightAcknowledged: boolean;
+              };
+              checks: {
+                code: string;
+                label: string;
+                /** @enum {string} */
+                status: "pass" | "warning" | "blocked";
+                message: string;
+                ruleVersion: string;
+                evidence: {
+                  label: string;
+                  value: string | number | boolean | null;
+                }[];
+              }[];
+              catalog: {
+                chapterCount: number;
+                characterCount: number;
+                volumes: {
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  title: string;
+                  chapterNumbers: number[];
+                }[];
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  chapterVersionId: string;
+                  versionNodeId: string;
+                  characterCount: number;
+                  excerpt: string;
+                  volumeNodeId: string | null;
+                  volumeNumber: number | null;
+                  volumeTitle: string | null;
+                }[];
+                truncated: boolean;
+              };
+              readerPreview: {
+                title: string;
+                author: string;
+                summary: string;
+                tags: string[];
+                chapters: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  excerpt: string;
+                }[];
+              };
+              publishCopy: {
+                titleOptions: string[];
+                summary: string;
+                tags: string[];
+                chapterTitleSuggestions: string[];
+                platformNote: string;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
         };
       };
     };

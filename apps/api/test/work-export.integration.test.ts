@@ -7,6 +7,8 @@ import {
   branchCreateResponseSchema,
   chapterVersionSchema,
   EXPORT_WORK_JOB,
+  publishPreviewListResponseSchema,
+  publishPreviewResponseSchema,
   WORKER_QUEUE_NAME,
   workExportReceiptListResponseSchema,
   workExportReceiptResponseSchema,
@@ -17,7 +19,7 @@ import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import { FileObjectStorage, type ObjectStorage } from "@novel-brain/storage";
 import { Worker as BullWorker } from "bullmq";
 import Redis from "ioredis";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -494,6 +496,234 @@ describe("work export HTTP and worker integration", () => {
     expect(downloaded.body.byteLength).toBe(object.byte_size);
   });
 
+  it("creates pinned publish previews, distinguishes blockers, and regenerates after source changes", async () => {
+    const owner = await createAuthenticatedAgent("publish-preview-owner@example.com");
+    const token = await csrf(owner);
+    const work = await createWork(owner, token);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const outline = await createOutlineFixture(owner, token, `${branchPath}/outline`);
+    const thirdChapter = await createChapter(owner, token, branchPath, 3, "旧名");
+    await saveChapterVersion(
+      owner,
+      token,
+      branchPath,
+      outline.chapterOne.chapter.id,
+      "山门在夜里关闭，沈砚却听见门外有人叫出了他的旧名。",
+    );
+    await saveChapterVersion(
+      owner,
+      token,
+      branchPath,
+      outline.chapterTwo.chapter.id,
+      "钟声响了三次，每一声都让沈砚忘记一件往事。",
+    );
+    await saveChapterVersion(
+      owner,
+      token,
+      branchPath,
+      thirdChapter.id,
+      "他在纸上写下自己的名字，墨迹却自行变成了另一个人的姓。",
+    );
+    const firstExport = await startExport(owner, branchPath, "publish-first-export", {
+      format: "txt",
+      scope: { kind: "book" },
+      options: exportOptions(),
+    });
+    await runExport(firstExport.jobId, firstExport.id);
+
+    const blocked = await startPublishCheck(owner, branchPath, {
+      exportId: firstExport.id,
+      platformPreset: "generic",
+      metadata: {
+        title: "山海照夜",
+        author: "导出作者",
+      },
+    });
+    expect(blocked.status).toBe("blocked");
+    expect(blocked.publishReady).toBe(false);
+    expect(blocked.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "summary_present", status: "blocked" }),
+        expect.objectContaining({ code: "chapter_length", status: "warning" }),
+      ]),
+    );
+
+    const genericKey = "publish-generic-preview";
+    const generic = await startPublishCheck(
+      owner,
+      branchPath,
+      {
+        exportId: firstExport.id,
+        platformPreset: "generic",
+        metadata: publishMetadata(),
+      },
+      genericKey,
+    );
+    const replayed = await startPublishCheck(
+      owner,
+      branchPath,
+      {
+        exportId: firstExport.id,
+        platformPreset: "generic",
+        metadata: publishMetadata(),
+      },
+      genericKey,
+    );
+    expect(replayed.id).toBe(generic.id);
+    const conflictToken = await csrf(owner);
+    const idempotencyConflict = await owner
+      .post(`${branchPath}/publish-check`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", conflictToken)
+      .set("Idempotency-Key", genericKey)
+      .send({
+        exportId: firstExport.id,
+        platformPreset: "fanqie",
+        metadata: publishMetadata(),
+      })
+      .expect(409);
+    expect(idempotencyConflict.body.error.code).toBe("PUBLISH_IDEMPOTENCY_CONFLICT");
+    const fanqie = await startPublishCheck(owner, branchPath, {
+      exportId: firstExport.id,
+      platformPreset: "fanqie",
+      metadata: publishMetadata(),
+    });
+    expect(generic.status).toBe("warning");
+    expect(generic.publishReady).toBe(true);
+    expect(generic.stale).toBe(false);
+    expect(generic.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "golden_three_hook", status: "warning" }),
+        expect.objectContaining({ code: "export_format", status: "pass" }),
+      ]),
+    );
+    expect(generic.platform).toMatchObject({
+      key: "generic",
+      label: "通用网文",
+      minChapterCharacters: 2_000,
+      maxChapterCharacters: 6_000,
+    });
+    expect(fanqie.platform).toMatchObject({
+      key: "fanqie",
+      label: "番茄小说",
+      minChapterCharacters: 1_500,
+      maxChapterCharacters: 4_000,
+    });
+    expect(generic.publishCopy.chapterTitleSuggestions[0]).toBe("1. 山门");
+    expect(fanqie.publishCopy.chapterTitleSuggestions[0]).toBe("第1章 山门");
+    expect(fanqie.publishCopy.platformNote).toContain("不会上传");
+    expect(fanqie.manifestHash).toBe(generic.manifestHash);
+    expect(fanqie.sourceVersionNodeId).toBe(generic.sourceVersionNodeId);
+    expect(fanqie.catalog).toEqual(generic.catalog);
+
+    const fetched = await getPublishPreview(owner, branchPath, generic.id);
+    expect(fetched.id).toBe(generic.id);
+    const listed = await listPublishPreviews(owner, branchPath);
+    expect(listed.map((preview) => preview.id)).toEqual(
+      expect.arrayContaining([generic.id, fanqie.id]),
+    );
+    const firstPage = publishPreviewListResponseSchema.parse(
+      (await owner.get(`${branchPath}/publish-check?limit=1`).expect(200)).body,
+    );
+    expect(firstPage.data).toHaveLength(1);
+    expect(firstPage.meta.nextCursor).toBeTruthy();
+    const secondPage = publishPreviewListResponseSchema.parse(
+      (
+        await owner
+          .get(
+            `${branchPath}/publish-check?limit=1&cursor=${encodeURIComponent(
+              firstPage.meta.nextCursor!,
+            )}`,
+          )
+          .expect(200)
+      ).body,
+    );
+    expect(secondPage.data[0]?.id).not.toBe(firstPage.data[0]?.id);
+
+    const staleSourceToken = await csrf(owner);
+    await saveChapterVersion(
+      owner,
+      staleSourceToken,
+      branchPath,
+      thirdChapter.id,
+      "他在纸上写下自己的名字，墨迹却自行变成了另一个人的姓。门外有人敲门。",
+    );
+    const stale = await getPublishPreview(owner, branchPath, generic.id);
+    expect(stale.stale).toBe(true);
+    expect(stale.sourceVersionNodeId).toBe(generic.sourceVersionNodeId);
+    expect(stale.staleReason).toContain("重新运行发布检查");
+
+    const secondExport = await startExport(owner, branchPath, "publish-second-export", {
+      format: "txt",
+      scope: { kind: "book" },
+      options: exportOptions(),
+    });
+    await runExport(secondExport.jobId, secondExport.id);
+    const regenerated = await startPublishCheck(owner, branchPath, {
+      exportId: secondExport.id,
+      platformPreset: "generic",
+      metadata: publishMetadata(),
+    });
+    expect(regenerated.id).not.toBe(generic.id);
+    expect(regenerated.exportId).toBe(secondExport.id);
+    expect(regenerated.stale).toBe(false);
+    expect(regenerated.sourceVersionNodeId).not.toBe(generic.sourceVersionNodeId);
+  });
+
+  it("rejects cross-tenant and expired publish checks", async () => {
+    const owner = await createAuthenticatedAgent("publish-expiry-owner@example.com");
+    const token = await csrf(owner);
+    const work = await createWork(owner, token);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    for (const [number, title, content] of [
+      [1, "山门", "山门在夜里关闭，沈砚听见有人叫出了他的旧名。"],
+      [2, "钟声", "钟声响了三次，每一声都带走一段记忆。"],
+      [3, "旧名", "纸上的名字变成了另一个人的姓。"],
+    ] as const) {
+      const chapter = await createChapter(owner, token, branchPath, number, title);
+      await saveChapterVersion(owner, token, branchPath, chapter.id, content);
+    }
+    const receipt = await startExport(owner, branchPath, "publish-expiry-export", {
+      format: "txt",
+      scope: { kind: "book" },
+      options: exportOptions(),
+    });
+    await runExport(receipt.jobId, receipt.id);
+
+    const other = await createAuthenticatedAgent("publish-expiry-other@example.com");
+    const otherToken = await csrf(other);
+    const forbidden = await other
+      .post(`${branchPath}/publish-check`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .set("Idempotency-Key", "publish-other-tenant")
+      .send({
+        exportId: receipt.id,
+        platformPreset: "generic",
+        metadata: publishMetadata(),
+      })
+      .expect(403);
+    expect(forbidden.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+
+    await databasePool.query(
+      "UPDATE work_export_receipts SET expires_at = now() - interval '1 second' WHERE id = $1",
+      [receipt.id],
+    );
+    const expiredToken = await csrf(owner);
+    const expired = await owner
+      .post(`${branchPath}/publish-check`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", expiredToken)
+      .set("Idempotency-Key", "publish-expired-export")
+      .send({
+        exportId: receipt.id,
+        platformPreset: "generic",
+        metadata: publishMetadata(),
+      })
+      .expect(410);
+    expect(expired.body.error.code).toBe("PUBLISH_EXPORT_EXPIRED");
+  });
+
   async function startExport(
     agent: SuperAgentTest,
     branchPath: string,
@@ -514,6 +744,35 @@ describe("work export HTTP and worker integration", () => {
   async function getReceipt(agent: SuperAgentTest, branchPath: string, exportId: string) {
     return workExportReceiptResponseSchema.parse(
       (await agent.get(`${branchPath}/exports/${exportId}`).expect(200)).body,
+    ).data;
+  }
+
+  async function startPublishCheck(
+    agent: SuperAgentTest,
+    branchPath: string,
+    body: Record<string, unknown>,
+    idempotencyKey = randomUUID(),
+  ) {
+    const csrfToken = await csrf(agent);
+    const response = await agent
+      .post(`${branchPath}/publish-check`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", idempotencyKey)
+      .send(body);
+    expect(response.status, JSON.stringify(response.body)).toBe(201);
+    return publishPreviewResponseSchema.parse(response.body).data;
+  }
+
+  async function getPublishPreview(agent: SuperAgentTest, branchPath: string, previewId: string) {
+    return publishPreviewResponseSchema.parse(
+      (await agent.get(`${branchPath}/publish-check/${previewId}`).expect(200)).body,
+    ).data;
+  }
+
+  async function listPublishPreviews(agent: SuperAgentTest, branchPath: string) {
+    return publishPreviewListResponseSchema.parse(
+      (await agent.get(`${branchPath}/publish-check`).expect(200)).body,
     ).data;
   }
 
@@ -823,6 +1082,20 @@ function exportOptions() {
     paragraphBlankLine: true,
     firstLineIndent: false,
     encoding: "utf-8" as const,
+  };
+}
+
+function publishMetadata() {
+  return {
+    title: "山海照夜",
+    author: "导出作者",
+    summary: "一盏山灯在万妖夜行时熄灭，守灯人必须用自己的旧名重新点燃它。",
+    tags: ["仙侠", "山灯"],
+    coverHeadline: "山海照夜",
+    coverSubline: "最后一盏山灯",
+    coverTone: "cinnabar",
+    aiDisclosure: false,
+    copyrightAcknowledged: false,
   };
 }
 

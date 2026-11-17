@@ -1359,6 +1359,26 @@
       "covered": true
     },
     {
+      "table": "publish_previews",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "publish_previews_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
       "table": "quality_findings",
       "tenantColumns": [
         "branch_id",
