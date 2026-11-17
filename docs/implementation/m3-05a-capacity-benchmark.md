@@ -138,9 +138,9 @@ node packages/capacity-benchmark/dist/cli.js report `
 
 该改动仍属于 #137 的性能修正，因为它在真实 10M 负载下直接阻塞已批准的 search p95 目标。
 
-## 5. 初步 full-run 证据
+## 5. 受控 Compose full-run 证据
 
-最终预检使用实现提交 `da9acf460c5ac25a8cf0344ecfe10ec2487b758f`；证据提交为 `775a2b7109225390fb28cf360412fc3b030e993c`，两者之间只有 evidence 和本文档变化。
+本轮证据绑定 source commit `c059fd50c783c727f034542f9ee34dd178688024` 与 workload runId `capacity-2026-11-17T12-45-37-300Z-72acf7d2`。运行中五个容量服务均为受限容器，CPU 合计 `8` cores、内存合计 `17,179,869,184` bytes，`containerBudgetMatches=true`。
 
 Fixture：
 
@@ -153,30 +153,32 @@ Fixture：
 
 60 秒混合负载（4 API clients，10 秒 ramp；并发不是已批准目标）：
 
-- 2,584 / 2,584 请求成功，错误率 `0`。
-- throughput `41.55 req/s`，p50 `30ms`，p95 `203ms`，p99 `1,880ms`。
-- interactive read p95 `201ms`，p99 `298ms`。
-- search p95 `216ms`。
-- SSE 10 次事件首包 p95 `56.47ms`。
-- index rebuild `4,343ms`，export `1,880ms`，批量计划观测 `7,772ms`；结束时任务状态包含 `completed: 1`、`queued: 2`、`running: 2`，queue wait p95/max 为 `455ms`。
-- 数据库 `86,735,895` bytes；表 `46,080,000` bytes；索引 `27,672,576` bytes；temp `43,155,456` bytes；deadlock `0`。
+- 2,500 / 2,502 请求成功，2 次 `409 VERSION_CONFLICT`，错误率 `0.00079936`。
+- throughput `40.11 req/s`，p50 `31ms`，p95 `226ms`，p99 `1,042ms`。
+- interactive read p95 `168ms`，p99 `310ms`。
+- search p95 `344ms`。
+- SSE 事件投递 p95 `126.61ms`。
+- index rebuild `4,304ms`，export `1,042ms`，批量计划观测 `7,723ms`；结束时任务状态包含 `completed: 1`、`queued: 2`、`running: 2`，queue wait p95/max 为 `248ms`。
+- 数据库 `88,366,103` bytes；表 `45,498,368` bytes；索引 `29,941,760` bytes；temp `43,155,456` bytes；deadlock `0`。
+- 负载窗口对象存储观测为 7 objects / `31,820,017` bytes，其中 6 个为 fixture 对象。
 - fake provider 模式 model cost 为 `0 CNY`；基础设施成本仍为 `decision-required`。
 
 恢复：
 
-- 备份/隔离恢复 `status=passed`，24,368 rows、9 objects、`95,066,835` object bytes。
-- 恢复耗时 `18.188s`，实测 RTO `0.005052h`；实测 RPO `0.011227h`。
+- 备份/隔离恢复 `status=passed`，24,332 rows、10 objects、`126,690,244` object bytes。
+- 恢复耗时 `19.545s`，实测 RTO `0.00542917h`；实测 RPO `0.01324583h`。
 - FK violations `0`，数据库行数与对象 checksum 全部一致。
+- 恢复 evidence 绑定同一 workload runId 和 source commit。
 
-Query plans 位于 `docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt`，并绑定 workload runId `capacity-2026-11-17T11-44-33-857Z-eb386813`。
+Query plans 位于 `docs/implementation/evidence/m3-137-query-plans-compose-2026-11-17.txt`，并绑定同一 workload runId。
 
 ## 6. 认证边界
 
-初步 full 运行只用于验证生成器、负载模型、指标采集和恢复链路，不构成 10M-ready 结论。认证必须使用批准主机、已签收 decision-required 阈值、真实 Provider 采样和最终提交 SHA 重新运行。
+受控 Compose 运行仍不构成 10M-ready 结论。认证必须使用批准主机、已签收 decision-required 阈值、真实 Provider 采样和最终提交 SHA 重新运行。
 
 当前 release report 仍为 `blocked`：
 
-- 主机为 16 vCPU / Docker 32 GB，不符合批准的 8 vCPU / 16 GB 基线。
+- 物理主机为 16 vCPU / Docker 32 GB；容器预算精确限制为 8 vCPU / 16 GB，但“资源受限大主机”能否替代批准主机仍需正式签收。
 - 真实 Provider first-token 尚未采样。
 - 数值 p99、API concurrency、错误率、存储余量、备份磁盘边界、恢复层级、大版本比较和产品 branch 数量仍未签收。
 - 故障注入 evidence 尚未覆盖 worker/API/Redis/Postgres/provider/disk/import/index/restore 全场景。

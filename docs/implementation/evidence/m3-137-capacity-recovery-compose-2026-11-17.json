@@ -1,0 +1,44 @@
+{
+  "status": "passed",
+  "runId": "capacity-2026-11-17T12-45-37-300Z-72acf7d2",
+  "measuredRpoHours": 0.013245833333333333,
+  "measuredRtoHours": 0.005429166666666666,
+  "databaseIntegrity": true,
+  "objectIntegrity": true,
+  "evidencePath": "docs/implementation/evidence/m3-137-capacity-recovery-compose-2026-11-17.json",
+  "sourceCommit": "c059fd50c783c727f034542f9ee34dd178688024",
+  "backupId": "20261117T124724822Z-c059fd50c783-394c833b",
+  "backupPath": "artifacts/capacity/backups/20261117T124724822Z-c059fd50c783-394c833b",
+  "backupManifestSha256": "e2f7c1f1f211f1b9dc0f3e8d492752b48584eae3116789b4ee2e946aae400797",
+  "snapshotStartedAt": "2026-11-17T12:47:24.909Z",
+  "snapshotCompletedAt": "2026-11-17T12:47:30.019Z",
+  "lastSourceWriteAt": "2026-11-17 12:46:37.224483+00",
+  "dataset": {
+    "rowCount": 24332,
+    "foreignKeyConstraints": 0,
+    "objectCount": 10,
+    "objectBytes": 126690244,
+    "databaseEncryptedBytes": 4845165,
+    "backupFiles": 13,
+    "backupBytes": 131566748
+  },
+  "offlineVerification": {
+    "ok": true,
+    "backupId": "20261117T124724822Z-c059fd50c783-394c833b",
+    "databaseBytes": 4845129,
+    "objectCount": 10,
+    "objectBytes": 126690244
+  },
+  "restore": {
+    "ok": true,
+    "durationMs": 19545,
+    "verification": {
+      "ok": true,
+      "rowCount": 24332,
+      "objectCount": 10,
+      "objectBytes": 126690244,
+      "foreignKeyConstraints": 0,
+      "objectReferences": 1
+    }
+  }
+}

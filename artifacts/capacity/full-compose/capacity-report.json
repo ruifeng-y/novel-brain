@@ -1,0 +1,360 @@
+{
+  "formatVersion": 1,
+  "sourceCommit": "c059fd50c783c727f034542f9ee34dd178688024",
+  "generatedAt": "2026-11-17T12:48:01.145Z",
+  "status": "blocked",
+  "tenMReady": false,
+  "blockerCount": 11,
+  "blockers": [
+    "approved-target-failed:first-token",
+    "decision-required:api-concurrency",
+    "decision-required:backup-disk-envelope",
+    "decision-required:branch-count",
+    "decision-required:error-rate",
+    "decision-required:large-version-compare",
+    "decision-required:p99-latency",
+    "decision-required:restore-dataset-tier",
+    "decision-required:storage-headroom",
+    "environment-not-approved-baseline",
+    "failure-injection-evidence-missing"
+  ],
+  "fixtureManifest": {
+    "logicalCharacters": 10000000,
+    "chapterCount": 3500,
+    "volumeCount": 35,
+    "branchCount": 4,
+    "sha256": "4526d09e8bee2690905a1f74e8d1d6d54190e80559727fa15b2bc5b5c8a13365",
+    "objectCount": 6,
+    "objectChecksums": [
+      "bc68246112ee9a62943325cea480bd9e01b0492abe50e4973eb96c1be581da3d",
+      "6f9434dbf6f1b7afdeda5e65f5e1a66ed25fc515e9d0b9934904c879d0d53427",
+      "78718c5f97f73b41f58117f7fa459651416a93b50bcec796cf57833cd0587a7c",
+      "0f0d15d559b2ce68088d8910e3a4625ce365ffb802e5b178052eb07aa5da8f11",
+      "418299b881eaa5be90ed0624d222804d41f5149bd55f4dc5485737cd30b03e86",
+      "8ea6b20ad306b3ccf0b530c044902f15deddfdba9247fd1606755c023d788885"
+    ],
+    "branchTopology": {
+      "mainBranchName": "main",
+      "parallelBranchCount": 3,
+      "divergenceDepth": 1,
+      "branches": [
+        {
+          "name": "parallel-1",
+          "divergenceChapter": 875,
+          "branchChapterCount": 1
+        },
+        {
+          "name": "parallel-2",
+          "divergenceChapter": 1750,
+          "branchChapterCount": 1
+        },
+        {
+          "name": "parallel-3",
+          "divergenceChapter": 2625,
+          "branchChapterCount": 1
+        }
+      ]
+    },
+    "versionNodeTypes": {
+      "branch_merge": 3,
+      "canon_commit": 70,
+      "change_apply": 6,
+      "chapter_version": 3643,
+      "entity_version": 100,
+      "outline_version": 35,
+      "rollback": 1,
+      "snapshot": 4,
+      "story_bible_version": 1
+    }
+  },
+  "workloadManifest": {
+    "apiConcurrency": 4,
+    "durationSeconds": 60
+  },
+  "targetComparison": {
+    "approved": [
+      {
+        "id": "crud-p95",
+        "description": "Interactive CRUD p95",
+        "measured": 168,
+        "target": 300,
+        "unit": "ms",
+        "status": "pass"
+      },
+      {
+        "id": "search-p95",
+        "description": "Search p95",
+        "measured": 344,
+        "target": 1000,
+        "unit": "ms",
+        "status": "pass"
+      },
+      {
+        "id": "first-token",
+        "description": "Streaming first token",
+        "measured": null,
+        "target": 5000,
+        "unit": "ms",
+        "status": "fail"
+      },
+      {
+        "id": "sse-delivery-p95",
+        "description": "SSE delivery p95",
+        "measured": 126.61360000000059,
+        "target": 1000,
+        "unit": "ms",
+        "status": "pass"
+      },
+      {
+        "id": "backup-rpo",
+        "description": "Backup RPO",
+        "measured": 0.013245833333333333,
+        "target": 24,
+        "unit": "hours",
+        "status": "pass"
+      },
+      {
+        "id": "restore-rto",
+        "description": "Restore RTO",
+        "measured": 0.005429166666666666,
+        "target": 4,
+        "unit": "hours",
+        "status": "pass"
+      }
+    ],
+    "decisionRequired": [
+      {
+        "id": "p99-latency",
+        "description": "Numeric p99 latency limits",
+        "measured": 310,
+        "target": null,
+        "unit": "ms",
+        "status": "decision-required"
+      },
+      {
+        "id": "api-concurrency",
+        "description": "Approved API concurrency and session target",
+        "measured": 4,
+        "target": null,
+        "unit": "count",
+        "status": "decision-required"
+      },
+      {
+        "id": "error-rate",
+        "description": "Accepted error and saturation rate",
+        "measured": 0.0007993605115907274,
+        "target": null,
+        "unit": "ratio",
+        "status": "decision-required"
+      },
+      {
+        "id": "storage-headroom",
+        "description": "Required storage headroom",
+        "measured": null,
+        "target": null,
+        "unit": "bytes",
+        "status": "decision-required"
+      },
+      {
+        "id": "backup-disk-envelope",
+        "description": "Whether backup capacity is inside the disk envelope",
+        "measured": null,
+        "target": null,
+        "unit": "label",
+        "status": "decision-required"
+      },
+      {
+        "id": "restore-dataset-tier",
+        "description": "Required restore dataset tier",
+        "measured": null,
+        "target": null,
+        "unit": "label",
+        "status": "decision-required"
+      },
+      {
+        "id": "large-version-compare",
+        "description": "Large branch/version comparison latency allowance",
+        "measured": null,
+        "target": null,
+        "unit": "ms",
+        "status": "decision-required"
+      },
+      {
+        "id": "branch-count",
+        "description": "Approved canonical branch count",
+        "measured": 4,
+        "target": null,
+        "unit": "count",
+        "status": "decision-required"
+      }
+    ]
+  },
+  "recovery": {
+    "status": "passed",
+    "runId": "capacity-2026-11-17T12-45-37-300Z-72acf7d2",
+    "measuredRpoHours": 0.013245833333333333,
+    "measuredRtoHours": 0.005429166666666666,
+    "databaseIntegrity": true,
+    "objectIntegrity": true,
+    "evidencePath": "docs/implementation/evidence/m3-137-capacity-recovery-compose-2026-11-17.json",
+    "sourceCommit": "c059fd50c783c727f034542f9ee34dd178688024",
+    "backupId": "20261117T124724822Z-c059fd50c783-394c833b",
+    "backupPath": "artifacts/capacity/backups/20261117T124724822Z-c059fd50c783-394c833b",
+    "backupManifestSha256": "e2f7c1f1f211f1b9dc0f3e8d492752b48584eae3116789b4ee2e946aae400797",
+    "snapshotStartedAt": "2026-11-17T12:47:24.909Z",
+    "snapshotCompletedAt": "2026-11-17T12:47:30.019Z",
+    "lastSourceWriteAt": "2026-11-17 12:46:37.224483+00",
+    "dataset": {
+      "rowCount": 24332,
+      "foreignKeyConstraints": 0,
+      "objectCount": 10,
+      "objectBytes": 126690244,
+      "databaseEncryptedBytes": 4845165,
+      "backupFiles": 13,
+      "backupBytes": 131566748
+    },
+    "offlineVerification": {
+      "ok": true,
+      "backupId": "20261117T124724822Z-c059fd50c783-394c833b",
+      "databaseBytes": 4845129,
+      "objectCount": 10,
+      "objectBytes": 126690244
+    },
+    "restore": {
+      "ok": true,
+      "durationMs": 19545,
+      "verification": {
+        "ok": true,
+        "rowCount": 24332,
+        "objectCount": 10,
+        "objectBytes": 126690244,
+        "foreignKeyConstraints": 0,
+        "objectReferences": 1
+      }
+    }
+  },
+  "decisions": [],
+  "environment": {
+    "capturedAt": "2026-11-17T12:45:28.204Z",
+    "sourceCommit": "c059fd50c783c727f034542f9ee34dd178688024",
+    "node": "v24.22.1",
+    "platform": "win32",
+    "arch": "x64",
+    "osRelease": "10.0.26200",
+    "cpu": {
+      "model": "12th Gen Intel(R) Core(TM) i5-12600KF",
+      "logicalProcessors": 16
+    },
+    "memory": {
+      "totalBytes": 68523843584
+    },
+    "disk": {
+      "path": "D:\\AI\\Codex\\Worktrees\\m3-137-capacity-benchmark\\novel-brain",
+      "totalBytes": 730326970368,
+      "freeBytes": 263814389760,
+      "filesystem": "NTFS",
+      "driveType": "3"
+    },
+    "docker": {
+      "version": "Docker version 29.7.2, build a7dcaa6",
+      "composeVersion": "Docker Compose version v5.5.0",
+      "server": {
+        "version": "29.7.2",
+        "operatingSystem": "Docker Desktop",
+        "logicalProcessors": 16,
+        "memoryBytes": 33556709376,
+        "rootDir": "/var/lib/docker",
+        "storageDriver": "overlayfs"
+      },
+      "resourceLimits": [
+        {
+          "name": "novel-brain-capacity-api-1",
+          "service": "api",
+          "nanoCpus": 2000000000,
+          "memoryBytes": 3221225472
+        },
+        {
+          "name": "novel-brain-capacity-worker-1",
+          "service": "worker",
+          "nanoCpus": 2000000000,
+          "memoryBytes": 5368709120
+        },
+        {
+          "name": "novel-brain-capacity-postgres-1",
+          "service": "postgres",
+          "nanoCpus": 2000000000,
+          "memoryBytes": 4294967296
+        },
+        {
+          "name": "novel-brain-capacity-redis-1",
+          "service": "redis",
+          "nanoCpus": 500000000,
+          "memoryBytes": 1073741824
+        },
+        {
+          "name": "novel-brain-capacity-minio-1",
+          "service": "minio",
+          "nanoCpus": 1500000000,
+          "memoryBytes": 3221225472
+        }
+      ],
+      "containerBudget": {
+        "project": "novel-brain-capacity",
+        "expectedServices": [
+          "api",
+          "minio",
+          "postgres",
+          "redis",
+          "worker"
+        ],
+        "observedServices": [
+          "api",
+          "minio",
+          "postgres",
+          "redis",
+          "worker"
+        ],
+        "cpuCores": 8,
+        "memoryBytes": 17179869184,
+        "complete": true,
+        "constrained": true,
+        "withinApprovedCpu": true,
+        "withinApprovedMemory": true,
+        "matchesApprovedBudget": true
+      }
+    },
+    "api": {
+      "baseUrl": "http://localhost:3101",
+      "readinessStatus": "ready"
+    },
+    "baseline": {
+      "approvedCpuCount": 8,
+      "approvedMemoryBytes": 17179869184,
+      "approvedDiskBytes": 100000000000,
+      "cpuMatches": false,
+      "memoryMatches": false,
+      "diskTotalAtLeastApproved": true,
+      "containerBudgetMatches": true,
+      "certificationEligible": false
+    }
+  },
+  "artifactsConsistent": true,
+  "queryPlansVerified": true,
+  "failureInjectionVerified": false,
+  "artifactHashes": {
+    "artifacts/capacity/full-compose/fixture-manifest.json": "f915cf33594a6884934d62eaa7d549b42e0ad3fa4639f5809eebe7c1b0a5a328",
+    "artifacts/capacity/full-compose/workload-summary.json": "108f2a709e52af5d62a908b6bec4994141c04074d026d933f706915512330088",
+    "artifacts/capacity/full-compose/environment.json": "d5b0ec36333cc22222a0edb96db364e3e69964d7dcd68ab8f7b6b06748ab3bde",
+    "artifacts/capacity/full-compose/raw-samples.ndjson": "28a0b38584e46ac19a56d9132fed3727f583b073f557df6ab86e6d2be07151c9",
+    "docs/implementation/evidence/m3-137-capacity-recovery-compose-2026-11-17.json": "12577ec7b0494b03a6680382be94c6967c9a90418cf94b7a0dfeaa00454f771e",
+    "docs/implementation/evidence/m3-137-query-plans-compose-2026-11-17.txt": "a02926138251c91158cbef340f9bb41363edc58cc3df39bbe7dfb820d7334a9a"
+  },
+  "rawArtifacts": [
+    "artifacts/capacity/full-compose/fixture-manifest.json",
+    "artifacts/capacity/full-compose/workload-summary.json",
+    "artifacts/capacity/full-compose/environment.json",
+    "artifacts/capacity/full-compose/raw-samples.ndjson",
+    "docs/implementation/evidence/m3-137-capacity-recovery-compose-2026-11-17.json",
+    "docs/implementation/evidence/m3-137-query-plans-compose-2026-11-17.txt"
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "capturedAt": "2026-11-17T12:45:28.204Z",
+  "sourceCommit": "c059fd50c783c727f034542f9ee34dd178688024",
+  "node": "v24.22.1",
+  "platform": "win32",
+  "arch": "x64",
+  "osRelease": "10.0.26200",
+  "cpu": {
+    "model": "12th Gen Intel(R) Core(TM) i5-12600KF",
+    "logicalProcessors": 16
+  },
+  "memory": {
+    "totalBytes": 68523843584
+  },
+  "disk": {
+    "path": "D:\\AI\\Codex\\Worktrees\\m3-137-capacity-benchmark\\novel-brain",
+    "totalBytes": 730326970368,
+    "freeBytes": 263814389760,
+    "filesystem": "NTFS",
+    "driveType": "3"
+  },
+  "docker": {
+    "version": "Docker version 29.7.2, build a7dcaa6",
+    "composeVersion": "Docker Compose version v5.5.0",
+    "server": {
+      "version": "29.7.2",
+      "operatingSystem": "Docker Desktop",
+      "logicalProcessors": 16,
+      "memoryBytes": 33556709376,
+      "rootDir": "/var/lib/docker",
+      "storageDriver": "overlayfs"
+    },
+    "resourceLimits": [
+      {
+        "name": "novel-brain-capacity-api-1",
+        "service": "api",
+        "nanoCpus": 2000000000,
+        "memoryBytes": 3221225472
+      },
+      {
+        "name": "novel-brain-capacity-worker-1",
+        "service": "worker",
+        "nanoCpus": 2000000000,
+        "memoryBytes": 5368709120
+      },
+      {
+        "name": "novel-brain-capacity-postgres-1",
+        "service": "postgres",
+        "nanoCpus": 2000000000,
+        "memoryBytes": 4294967296
+      },
+      {
+        "name": "novel-brain-capacity-redis-1",
+        "service": "redis",
+        "nanoCpus": 500000000,
+        "memoryBytes": 1073741824
+      },
+      {
+        "name": "novel-brain-capacity-minio-1",
+        "service": "minio",
+        "nanoCpus": 1500000000,
+        "memoryBytes": 3221225472
+      }
+    ],
+    "containerBudget": {
+      "project": "novel-brain-capacity",
+      "expectedServices": [
+        "api",
+        "minio",
+        "postgres",
+        "redis",
+        "worker"
+      ],
+      "observedServices": [
+        "api",
+        "minio",
+        "postgres",
+        "redis",
+        "worker"
+      ],
+      "cpuCores": 8,
+      "memoryBytes": 17179869184,
+      "complete": true,
+      "constrained": true,
+      "withinApprovedCpu": true,
+      "withinApprovedMemory": true,
+      "matchesApprovedBudget": true
+    }
+  },
+  "api": {
+    "baseUrl": "http://localhost:3101",
+    "readinessStatus": "ready"
+  },
+  "baseline": {
+    "approvedCpuCount": 8,
+    "approvedMemoryBytes": 17179869184,
+    "approvedDiskBytes": 100000000000,
+    "cpuMatches": false,
+    "memoryMatches": false,
+    "diskTotalAtLeastApproved": true,
+    "containerBudgetMatches": true,
+    "certificationEligible": false
+  }
+}
