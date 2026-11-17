@@ -1,7 +1,7 @@
 # Implementation frontier v2
 
-> Updated: 2026-11-16.
-> Repository baseline: `main@8389acd`, after PR #200 integrated backup, restore drills and RPO/RTO evidence.
+> Updated: 2026-11-17.
+> Repository baseline: `main@a3140d9`, after PR #201 integrated work export and PR #202 corrected squash-commit guardrails.
 
 ## 1. Current truth
 
@@ -18,14 +18,16 @@
 - #90 product acceptance is complete after the author signed both the fixed 40-chapter sample audit and a clean-volume audit on 2026-11-13.
 - The M3 tenant authorization audit #132 is closed. Logging and trace hardening #133 is closed through PR #195; deployment, health, metrics and cost alerting #135 is closed through PR #196; account lifecycle #134 is closed through PR #199.
 - #136 backup/restore/RPO/RTO is closed through PR #200.
-- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-16. The ready frontier is #129, #137, #138 and #142.
+- #129 export formats, scope selection, durable job recovery and version manifests is closed through PR #201.
+- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-17. The ready frontier is #130, #137, #138 and #142.
 
 ## 2. Immediate frontier
 
-1. Start #129 export formats, scope selection and version manifest. It unlocks #130 and #131 on the release-critical product path.
-2. Start #137 10M capacity benchmark after #129; it measures the full integrated data model and backup/restore path at scale.
-3. Start #138 long-horizon continuity benchmark as the independent quality frontier; it unblocks #139 and then #140.
-4. #142 is ready for work-settings archive/restore/trash after #134, but should follow #129/#137/#138 unless release priority changes.
+1. Start #130 publish checks, catalog metadata and reader preview. It is the release-critical next leaf and unlocks #131.
+2. Start #131 help/legal content, AI disclosure and appeal after #130; legal copy requires owner review before release.
+3. Start #137 10M capacity benchmark after publish metadata is integrated so the benchmark measures the final V1 data model and backup/restore path at scale.
+4. Start #138 long-horizon continuity benchmark as the independent quality frontier; it unblocks #139 and then #140.
+5. #142 is ready for work-settings archive/restore/trash after #134, but should follow #130/#137/#138 unless release priority changes.
 
 ## 3. First executable frontier (historical)
 
@@ -69,7 +71,7 @@ M1 foundations:
 
 ## 6. M3 release and proof sequencing
 
-- #129 export; #130 publish checks/preview; #131 legal/help/AI disclosure and appeal.
+- #129 export is complete; #130 publish checks/preview is next; #131 legal/help/AI disclosure and appeal follows #130.
 - #132 RLS/authorization coverage and #133 logging/trace hardening are complete. Every new tenant-owned table still requires RLS coverage.
 - #135 deployment, health, metrics and cost alerting is complete. Backup expiry and restore evidence remain with #136.
 - #134 and #136 are closed. PR #200 carries the backup/restore and retention evidence.
