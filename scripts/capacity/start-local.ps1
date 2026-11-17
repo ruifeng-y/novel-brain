@@ -4,6 +4,7 @@ param(
   [string]$RedisUrl = "redis://localhost:6379/3",
   [int]$ApiPort = 3101,
   [string]$Origin = "http://localhost:3000",
+  [string]$StorageBucket = "novelbrain",
   [string]$OutputDirectory = "artifacts/capacity/runtime"
 )
 
@@ -28,7 +29,7 @@ $commonEnvironment = @{
   STORAGE_REGION = "us-east-1"
   STORAGE_ACCESS_KEY_ID = "novelbrain"
   STORAGE_SECRET_ACCESS_KEY = "novelbrain-storage-secret"
-  STORAGE_BUCKET = "novelbrain"
+  STORAGE_BUCKET = $StorageBucket
   STORAGE_HEALTH_URL = "http://localhost:9000/minio/health/live"
 }
 foreach ($entry in $commonEnvironment.GetEnumerator()) {
