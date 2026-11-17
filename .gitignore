@@ -8,6 +8,8 @@ artifacts/playwright/
 artifacts/backups/
 artifacts/capacity/backups/
 artifacts/capacity/runtime/
+artifacts/capacity/runtime-compose/
+artifacts/capacity/compose-smoke/
 artifacts/ui/candidates/
 .env
 *.log

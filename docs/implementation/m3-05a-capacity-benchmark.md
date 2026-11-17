@@ -39,14 +39,26 @@
 pnpm build:packages
 pnpm --filter @novel-brain/api build
 pnpm --filter @novel-brain/worker build
-docker exec novel-brain-m0-postgres-1 createdb -U novelbrain novelbrain_benchmark
 ```
+
+推荐使用隔离的 Docker Compose 容量栈。`scripts/capacity/compose.capacity.yml` 将 API、Worker、Postgres、Redis 和 MinIO 的稳态资源上限合计固定为 8 vCPU / 16 GB，并使用独立的 Compose project、数据库和对象桶：
+
+```powershell
+.\scripts\capacity\start-compose.ps1 -Build
+```
+
+该脚本输出：
+
+- API：`http://localhost:3101`
+- Postgres：`localhost:35432`
+- Redis：`localhost:36379`
+- MinIO metrics：`http://127.0.0.1:39000/minio/v2/metrics/cluster`
 
 生成并装载 full fixture：
 
 ```powershell
 node packages/capacity-benchmark/dist/cli.js seed `
-  --database-url "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_benchmark" `
+  --database-url "postgresql://novelbrain:novelbrain@localhost:35432/novelbrain_benchmark" `
   --confirm-database novelbrain_benchmark `
   --seed 20261117 `
   --tier full `
@@ -55,38 +67,29 @@ node packages/capacity-benchmark/dist/cli.js seed `
   --output artifacts/capacity/full/fixture-manifest.json
 ```
 
-启动隔离的本地 API/Worker：
-
-```powershell
-.\scripts\capacity\start-local.ps1 `
-  -DatabaseUrl "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_benchmark" `
-  -RedisUrl "redis://localhost:6379/3" `
-  -ApiPort 3101 `
-  -OutputDirectory "artifacts/capacity/runtime"
-```
-
-记录环境并执行负载：
+记录环境并执行负载。`--compose-project` 会把运行中容器的实际 CPU/内存限额写入 manifest：
 
 ```powershell
 node packages/capacity-benchmark/dist/cli.js environment `
   --api-base-url http://localhost:3101 `
-  --output artifacts/capacity/full/environment.json
+  --compose-project novel-brain-capacity `
+  --output artifacts/capacity/full-compose/environment.json
 
 node packages/capacity-benchmark/dist/cli.js workload `
-  --fixture artifacts/capacity/full/fixture-manifest.json `
+  --fixture artifacts/capacity/full-compose/fixture-manifest.json `
   --api-base-url http://localhost:3101 `
-  --database-url "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_benchmark" `
+  --database-url "postgresql://novelbrain:novelbrain@localhost:35432/novelbrain_benchmark" `
   --confirm-database novelbrain_benchmark `
   --concurrency 4 `
   --duration-seconds 60 `
   --ramp-seconds 10 `
-  --output artifacts/capacity/full
+  --output artifacts/capacity/full-compose
 ```
 
 停止写入者后执行 full backup/restore：
 
 ```powershell
-.\scripts\capacity\stop-local.ps1 -RuntimeDirectory "artifacts/capacity/runtime"
+.\scripts\capacity\stop-compose.ps1
 
 [Environment]::SetEnvironmentVariable(
   "BACKUP_ENCRYPTION_KEY_BASE64",
@@ -95,9 +98,10 @@ node packages/capacity-benchmark/dist/cli.js workload `
 )
 
 node scripts/capacity/recovery.mjs `
-  --project novel-brain-m0 `
+  --project novel-brain-capacity `
+  --bucket novelbrain-capacity `
   --database-name novelbrain_benchmark `
-  --database-url "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_benchmark" `
+  --database-url "postgresql://novelbrain:novelbrain@localhost:35432/novelbrain_benchmark" `
   --output artifacts/capacity/backups `
   --evidence docs/implementation/evidence/m3-137-capacity-recovery-2026-11-17.json
 ```
@@ -106,12 +110,12 @@ node scripts/capacity/recovery.mjs `
 
 ```powershell
 node packages/capacity-benchmark/dist/cli.js report `
-  --fixture artifacts/capacity/full/fixture-manifest.json `
-  --workload artifacts/capacity/full/workload-summary.json `
-  --environment artifacts/capacity/full/environment.json `
+  --fixture artifacts/capacity/full-compose/fixture-manifest.json `
+  --workload artifacts/capacity/full-compose/workload-summary.json `
+  --environment artifacts/capacity/full-compose/environment.json `
   --recovery docs/implementation/evidence/m3-137-capacity-recovery-2026-11-17.json `
   --query-plans docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt `
-  --output artifacts/capacity/full/capacity-report.json
+  --output artifacts/capacity/full-compose/capacity-report.json
 ```
 
 若已有绑定同一 `runId` 和 source commit 的故障注入结果，再追加：
@@ -121,6 +125,8 @@ node packages/capacity-benchmark/dist/cli.js report `
 ```
 
 备份 payload、运行日志和临时 artifacts 不进入 Git。提交的 evidence 只包含 manifest、summary、raw request samples 和恢复校验摘要。
+
+容器资源预算与批准主机不是同一认证条件：`containerBudgetMatches=true` 只证明该次运行的服务资源上限为 8 vCPU / 16 GB。是否允许用资源受限的大主机替代精确的 8 vCPU / 16 GB 主机，仍需发布负责人明确签收；在此之前 `certificationEligible` 仍保持 `false`。
 
 ## 4. 搜索路径修正
 

@@ -73,6 +73,7 @@ async function main(): Promise<void> {
         apiBaseUrl: options["api-base-url"] ?? "http://localhost:3001",
         ...(options["source-commit"] ? { sourceCommit: options["source-commit"] } : {}),
         ...(options.repository ? { repositoryPath: resolvePath(options.repository) } : {}),
+        ...(options["compose-project"] ? { composeProject: options["compose-project"] } : {}),
       });
       const output = options.output
         ? resolvePath(options.output)

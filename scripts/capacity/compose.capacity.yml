@@ -1,0 +1,54 @@
+services:
+  postgres:
+    cpus: "2.0"
+    mem_limit: 4g
+    environment:
+      POSTGRES_DB: ${BENCHMARK_DATABASE_NAME:-novelbrain_benchmark}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U novelbrain -d ${BENCHMARK_DATABASE_NAME:-novelbrain_benchmark}",
+        ]
+
+  redis:
+    cpus: "0.5"
+    mem_limit: 1g
+
+  minio:
+    cpus: "1.5"
+    mem_limit: 3g
+
+  minio-init:
+    cpus: "0.25"
+    mem_limit: 256m
+
+  migrate:
+    cpus: "0.25"
+    mem_limit: 256m
+    environment:
+      DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/${BENCHMARK_DATABASE_NAME:-novelbrain_benchmark}
+
+  api:
+    cpus: "2.0"
+    mem_limit: 3g
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/${BENCHMARK_DATABASE_NAME:-novelbrain_benchmark}
+      REDIS_URL: redis://redis:6379/0
+      AI_PROVIDER_MODE: fake
+      MODEL_CONNECTION_TESTER: fake
+      COOKIE_SECURE: "false"
+      ALLOW_INSECURE_LOCAL_PROXY_IP: "true"
+      ALLOW_INSECURE_LOCAL_MODEL_KEY: "true"
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-novelbrain-capacity}
+
+  worker:
+    cpus: "2.0"
+    mem_limit: 5g
+    environment:
+      DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/${BENCHMARK_DATABASE_NAME:-novelbrain_benchmark}
+      REDIS_URL: redis://redis:6379/0
+      AI_PROVIDER_MODE: fake
+      MODEL_CONFIG_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-novelbrain-capacity}

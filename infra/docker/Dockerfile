@@ -10,6 +10,7 @@ COPY apps/golden-three/package.json apps/golden-three/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/ai/package.json packages/ai/package.json
+COPY packages/capacity-benchmark/package.json packages/capacity-benchmark/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/db/package.json packages/db/package.json

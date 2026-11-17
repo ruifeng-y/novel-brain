@@ -35,11 +35,8 @@ export interface EnvironmentManifest {
       rootDir: string | null;
       storageDriver: string | null;
     };
-    resourceLimits: Array<{
-      name: string;
-      nanoCpus: number | null;
-      memoryBytes: number | null;
-    }>;
+    resourceLimits: DockerContainerLimit[];
+    containerBudget: ContainerBudgetManifest | null;
   };
   api: {
     baseUrl: string;
@@ -52,14 +49,38 @@ export interface EnvironmentManifest {
     cpuMatches: boolean;
     memoryMatches: boolean;
     diskTotalAtLeastApproved: boolean;
+    containerBudgetMatches: boolean;
     certificationEligible: boolean;
   };
 }
+
+export interface DockerContainerLimit {
+  name: string;
+  service: string | null;
+  nanoCpus: number | null;
+  memoryBytes: number | null;
+}
+
+export interface ContainerBudgetManifest {
+  project: string;
+  expectedServices: string[];
+  observedServices: string[];
+  cpuCores: number;
+  memoryBytes: number;
+  complete: boolean;
+  constrained: boolean;
+  withinApprovedCpu: boolean;
+  withinApprovedMemory: boolean;
+  matchesApprovedBudget: boolean;
+}
+
+export const CAPACITY_COMPOSE_SERVICES = ["api", "minio", "postgres", "redis", "worker"] as const;
 
 export async function collectEnvironmentManifest(input: {
   apiBaseUrl: string;
   sourceCommit?: string;
   repositoryPath?: string;
+  composeProject?: string;
 }): Promise<EnvironmentManifest> {
   const dockerInfo = dockerServerInfo();
   const cpu = os.cpus()[0]?.model ?? "unknown";
@@ -74,6 +95,10 @@ export async function collectEnvironmentManifest(input: {
   const cpuMatches = (dockerCpuCount ?? logicalProcessors) === 8;
   const memoryMatches = (dockerMemoryBytes ?? memoryBytes) === 17_179_869_184;
   const diskTotalAtLeastApproved = disk.totalBytes >= 100_000_000_000;
+  const resourceLimits = dockerResourceLimits(input.composeProject);
+  const containerBudget = input.composeProject
+    ? summarizeContainerBudget(input.composeProject, resourceLimits)
+    : null;
   return {
     capturedAt: new Date().toISOString(),
     sourceCommit: input.sourceCommit ?? resolveSourceCommit(),
@@ -103,7 +128,8 @@ export async function collectEnvironmentManifest(input: {
         rootDir: dockerInfo?.DockerRootDir ?? null,
         storageDriver: dockerInfo?.Driver ?? null,
       },
-      resourceLimits: dockerResourceLimits(),
+      resourceLimits,
+      containerBudget,
     },
     api: {
       baseUrl: input.apiBaseUrl,
@@ -116,6 +142,7 @@ export async function collectEnvironmentManifest(input: {
       cpuMatches,
       memoryMatches,
       diskTotalAtLeastApproved,
+      containerBudgetMatches: containerBudget?.matchesApprovedBudget ?? false,
       certificationEligible: cpuMatches && memoryMatches && diskTotalAtLeastApproved,
     },
   };
@@ -187,9 +214,12 @@ function windowsDiskMetadata(target: string): {
   }
 }
 
-function dockerResourceLimits(): EnvironmentManifest["docker"]["resourceLimits"] {
+function dockerResourceLimits(composeProject?: string): DockerContainerLimit[] {
   try {
-    const ids = execFileSync("docker", ["ps", "-q"], {
+    const arguments_ = composeProject
+      ? ["ps", "-q", "--filter", `label=com.docker.compose.project=${composeProject}`]
+      : ["ps", "-q"];
+    const ids = execFileSync("docker", arguments_, {
       encoding: "utf8",
       timeout: 10_000,
     })
@@ -206,18 +236,50 @@ function dockerResourceLimits(): EnvironmentManifest["docker"]["resourceLimits"]
       }),
     ) as Array<{
       Name?: string;
+      Config?: {
+        Labels?: Record<string, string>;
+      };
       HostConfig?: { NanoCpus?: number; Memory?: number };
     }>;
-    return inspected
-      .filter((container) => container.Name?.includes("novel-brain"))
-      .map((container) => ({
-        name: container.Name?.replace(/^\//u, "") ?? "unknown",
-        nanoCpus: container.HostConfig?.NanoCpus ?? null,
-        memoryBytes: container.HostConfig?.Memory ?? null,
-      }));
+    return inspected.map((container) => ({
+      name: container.Name?.replace(/^\//u, "") ?? "unknown",
+      service: container.Config?.Labels?.["com.docker.compose.service"] ?? null,
+      nanoCpus: container.HostConfig?.NanoCpus ?? null,
+      memoryBytes: container.HostConfig?.Memory ?? null,
+    }));
   } catch {
     return [];
   }
+}
+
+export function summarizeContainerBudget(
+  project: string,
+  limits: readonly DockerContainerLimit[],
+): ContainerBudgetManifest {
+  const selected = limits.filter((limit) => limit.service !== null);
+  const observedServices = [...new Set(selected.map((limit) => limit.service!))].sort();
+  const expectedServices = [...CAPACITY_COMPOSE_SERVICES];
+  const complete = expectedServices.every((service) => observedServices.includes(service));
+  const constrained = selected.every(
+    (limit) =>
+      limit.service === null || ((limit.nanoCpus ?? 0) > 0 && (limit.memoryBytes ?? 0) > 0),
+  );
+  const cpuCores = selected.reduce((total, limit) => total + (limit.nanoCpus ?? 0) / 1e9, 0);
+  const memoryBytes = selected.reduce((total, limit) => total + (limit.memoryBytes ?? 0), 0);
+  const withinApprovedCpu = cpuCores > 0 && cpuCores <= 8;
+  const withinApprovedMemory = memoryBytes > 0 && memoryBytes <= 17_179_869_184;
+  return {
+    project,
+    expectedServices,
+    observedServices,
+    cpuCores,
+    memoryBytes,
+    complete,
+    constrained,
+    withinApprovedCpu,
+    withinApprovedMemory,
+    matchesApprovedBudget: complete && constrained && withinApprovedCpu && withinApprovedMemory,
+  };
 }
 
 async function readReadiness(apiBaseUrl: string): Promise<string | null> {
