@@ -2,7 +2,7 @@
 
 > Issue: #137
 > Capability: PERF-001
-> Status: benchmark harness implemented; 10M certification is not complete
+> Status: benchmark harness implemented; preliminary full-run evidence recorded; 10M certification is not complete
 
 ## 1. 实现范围
 
@@ -110,7 +110,14 @@ node packages/capacity-benchmark/dist/cli.js report `
   --workload artifacts/capacity/full/workload-summary.json `
   --environment artifacts/capacity/full/environment.json `
   --recovery docs/implementation/evidence/m3-137-capacity-recovery-2026-11-17.json `
+  --query-plans docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt `
   --output artifacts/capacity/full/capacity-report.json
+```
+
+若已有绑定同一 `runId` 和 source commit 的故障注入结果，再追加：
+
+```powershell
+  --failure-injection artifacts/capacity/full/failure-injection.json
 ```
 
 备份 payload、运行日志和临时 artifacts 不进入 Git。提交的 evidence 只包含 manifest、summary、raw request samples 和恢复校验摘要。
@@ -127,6 +134,47 @@ node packages/capacity-benchmark/dist/cli.js report `
 
 该改动仍属于 #137 的性能修正，因为它在真实 10M 负载下直接阻塞已批准的 search p95 目标。
 
-## 5. 认证边界
+## 5. 初步 full-run 证据
+
+最终预检使用源码提交 `234743061e9242dcad013bf6999c2bf6917105d7`。
+
+Fixture：
+
+- 主线逻辑文本：`10,000,000` Unicode code points。
+- UTF-8 manuscript bytes：`30,000,000`。
+- manuscript SHA-256：`4526d09e8bee2690905a1f74e8d1d6d54190e80559727fa15b2bc5b5c8a13365`。
+- 3,500 章 / 35 卷；3 个平行分支，分叉章分别为 875、1,750、2,625。
+- 3,643 个 chapter versions、100 个 entity versions、35 个 outline versions、70 个 canon commits、6 个 change apply、3 个 branch merge 和 1 个 rollback node。
+- 生成 6 个对象，共 `196,608` bytes，并记录 SHA-256。
+
+60 秒混合负载（4 API clients，10 秒 ramp；并发不是已批准目标）：
+
+- 3,099 / 3,099 请求成功，错误率 `0`。
+- throughput `50.23 req/s`，p50 `29ms`，p95 `175ms`，p99 `323ms`。
+- interactive read p95 `167ms`，p99 `265ms`。
+- search p95 `193ms`。
+- SSE 10 次事件首包 p95 `48.37ms`。
+- index rebuild `4,720ms`，export `1,878ms`，批量计划观测 `5,591ms`；结束时任务状态包含 `completed: 1`、`queued: 2`、`running: 2`，queue wait p95/max 为 `448ms`。
+- 数据库 `85,793,815` bytes；表 `45,203,456` bytes；索引 `27,623,424` bytes；temp `43,155,456` bytes；deadlock `0`。
+- fake provider 模式 model cost 为 `0 CNY`；基础设施成本仍为 `decision-required`。
+
+恢复：
+
+- 备份/隔离恢复 `status=passed`，24,593 rows、8 objects、`63,443,426` object bytes。
+- 恢复耗时 `17.907s`，实测 RTO `0.004974h`；实测 RPO `0.019684h`。
+- FK violations `0`，数据库行数与对象 checksum 全部一致。
+
+Query plans 位于 `docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt`，并绑定 workload runId `capacity-2026-11-17T11-34-26-338Z-b6cbf9e4`。
+
+## 6. 认证边界
 
 初步 full 运行只用于验证生成器、负载模型、指标采集和恢复链路，不构成 10M-ready 结论。认证必须使用批准主机、已签收 decision-required 阈值、真实 Provider 采样和最终提交 SHA 重新运行。
+
+当前 release report 仍为 `blocked`：
+
+- 主机为 16 vCPU / Docker 32 GB，不符合批准的 8 vCPU / 16 GB 基线。
+- 真实 Provider first-token 尚未采样。
+- 数值 p99、API concurrency、错误率、存储余量、备份磁盘边界、恢复层级、大版本比较和产品 branch 数量仍未签收。
+- 故障注入 evidence 尚未覆盖 worker/API/Redis/Postgres/provider/disk/import/index/restore 全场景。
+
+因此报告保持 `tenMReady=false`。

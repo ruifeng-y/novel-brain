@@ -1,0 +1,212 @@
+﻿Run: capacity-2026-11-17T11-34-26-338Z-b6cbf9e4
+=== search: title/alias ranking plus body tsquery ===
+                                                                                               QUERY PLAN                                                                                               
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1359.06..1359.11 rows=20 width=32) (actual time=54.936..54.941 rows=20 loops=1)
+   Output: document.source_id, ((GREATEST(similarity(document.title, '灞遍洦'::text), similarity((document.aliases)::text, '灞遍洦'::text)))::double precision), document.updated_at
+   Buffers: shared hit=11567
+   ->  Sort  (cost=1359.06..1367.83 rows=3508 width=32) (actual time=54.933..54.936 rows=20 loops=1)
+         Output: document.source_id, ((GREATEST(similarity(document.title, '灞遍洦'::text), similarity((document.aliases)::text, '灞遍洦'::text)))::double precision), document.updated_at
+         Sort Key: ((GREATEST(similarity(document.title, '灞遍洦'::text), similarity((document.aliases)::text, '灞遍洦'::text)))::double precision) DESC, document.updated_at DESC, document.source_id DESC
+         Sort Method: top-N heapsort  Memory: 27kB
+         Buffers: shared hit=11567
+         ->  Nested Loop  (cost=0.00..1265.71 rows=3508 width=32) (actual time=0.312..53.998 rows=3499 loops=1)
+               Output: document.source_id, (GREATEST(similarity(document.title, '灞遍洦'::text), similarity((document.aliases)::text, '灞遍洦'::text)))::double precision, document.updated_at
+               Join Filter: ((work.user_id = document.user_id) AND (work.id = document.work_id) AND (document.branch_id = branch.id))
+               Buffers: shared hit=11558
+               ->  Limit  (cost=0.00..13.92 rows=1 width=48) (actual time=0.042..0.044 rows=1 loops=1)
+                     Output: work.user_id, work.id, branch.id
+                     Buffers: shared hit=2
+                     ->  Nested Loop  (cost=0.00..13.92 rows=1 width=48) (actual time=0.041..0.043 rows=1 loops=1)
+                           Output: work.user_id, work.id, branch.id
+                           Inner Unique: true
+                           Join Filter: ((branch.work_id = work.id) AND (work.user_id = branch.user_id))
+                           Buffers: shared hit=2
+                           ->  Seq Scan on public.works work  (cost=0.00..12.85 rows=1 width=32) (actual time=0.029..0.030 rows=1 loops=1)
+                                 Output: work.user_id, work.id
+                                 Filter: ((work.settings ->> 'benchmark'::text) = 'true'::text)
+                                 Buffers: shared hit=1
+                           ->  Seq Scan on public.work_branches branch  (cost=0.00..1.05 rows=1 width=48) (actual time=0.009..0.009 rows=1 loops=1)
+                                 Output: branch.id, branch.work_id, branch.user_id, branch.name, branch.head_node_id, branch.status, branch.created_at, branch.updated_at
+                                 Filter: (branch.name = 'main'::text)
+                                 Buffers: shared hit=1
+               ->  Seq Scan on public.search_documents document  (cost=0.00..1137.79 rows=3508 width=113) (actual time=0.255..44.416 rows=3499 loops=1)
+                     Output: document.source_id, document.title, document.aliases, document.updated_at, document.user_id, document.work_id, document.branch_id
+                     Filter: ((document.tsv @@ '''灞遍洦'':*'::tsquery) OR (lower(document.title) ~~ '%灞遍洦%'::text) OR (lower((document.aliases)::text) ~~ '%灞遍洦%'::text))
+                     Rows Removed by Filter: 289
+                     Buffers: shared hit=11556
+ Planning:
+   Buffers: shared hit=481 read=6
+ Planning Time: 2.547 ms
+ Execution Time: 55.801 ms
+(37 rows)
+
+=== chapter list and current version ===
+                                                                                                                                        QUERY PLAN                                                                                                                                        
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1771.35..1771.47 rows=50 width=1162) (actual time=10.168..10.192 rows=50 loops=1)
+   Output: chapter.id, chapter.work_id, chapter.branch_id, chapter.user_id, chapter.number, chapter.title, chapter.status, chapter.version, chapter.current_version_id, chapter.word_count, chapter.brief, chapter.created_at, chapter.updated_at, version.content
+   Buffers: shared hit=1071 read=515 dirtied=1 written=222
+   ->  Sort  (cost=1771.35..1773.54 rows=876 width=1162) (actual time=10.166..10.187 rows=50 loops=1)
+         Output: chapter.id, chapter.work_id, chapter.branch_id, chapter.user_id, chapter.number, chapter.title, chapter.status, chapter.version, chapter.current_version_id, chapter.word_count, chapter.brief, chapter.created_at, chapter.updated_at, version.content
+         Sort Key: chapter.number
+         Sort Method: top-N heapsort  Memory: 161kB
+         Buffers: shared hit=1071 read=515 dirtied=1 written=222
+         ->  Hash Right Join  (cost=604.40..1742.25 rows=876 width=1162) (actual time=2.892..8.600 rows=3500 loops=1)
+               Output: chapter.id, chapter.work_id, chapter.branch_id, chapter.user_id, chapter.number, chapter.title, chapter.status, chapter.version, chapter.current_version_id, chapter.word_count, chapter.brief, chapter.created_at, chapter.updated_at, version.content
+               Hash Cond: (version.id = chapter.current_version_id)
+               Buffers: shared hit=1068 read=515 dirtied=1 written=222
+               ->  Seq Scan on public.chapter_versions version  (cost=0.00..1115.43 rows=3643 width=836) (actual time=0.019..4.370 rows=3891 loops=1)
+                     Output: version.id, version.work_id, version.branch_id, version.user_id, version.chapter_id, version.version, version.content, version.content_hash, version.version_node_id, version.source, version.created_at, version.generation_job_id, version.generation_step
+                     Buffers: shared hit=564 read=515 dirtied=1 written=222
+               ->  Hash  (cost=593.45..593.45 rows=876 width=342) (actual time=2.856..2.862 rows=3500 loops=1)
+                     Output: chapter.id, chapter.work_id, chapter.branch_id, chapter.user_id, chapter.number, chapter.title, chapter.status, chapter.version, chapter.current_version_id, chapter.word_count, chapter.brief, chapter.created_at, chapter.updated_at
+                     Buckets: 4096 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 1318kB
+                     Buffers: shared hit=504
+                     ->  Hash Join  (cost=9.25..593.45 rows=876 width=342) (actual time=0.051..1.495 rows=3500 loops=1)
+                           Output: chapter.id, chapter.work_id, chapter.branch_id, chapter.user_id, chapter.number, chapter.title, chapter.status, chapter.version, chapter.current_version_id, chapter.word_count, chapter.brief, chapter.created_at, chapter.updated_at
+                           Hash Cond: ((chapter.user_id = work.user_id) AND (chapter.work_id = work.id) AND (chapter.branch_id = branch.id))
+                           Buffers: shared hit=504
+                           ->  Seq Scan on public.chapters chapter  (cost=0.00..536.03 rows=3503 width=342) (actual time=0.004..0.722 rows=3503 loops=1)
+                                 Output: chapter.id, chapter.work_id, chapter.branch_id, chapter.user_id, chapter.number, chapter.title, chapter.status, chapter.version, chapter.current_version_id, chapter.word_count, chapter.brief, chapter.created_at, chapter.updated_at
+                                 Buffers: shared hit=501
+                           ->  Hash  (cost=9.23..9.23 rows=1 width=48) (actual time=0.032..0.036 rows=1 loops=1)
+                                 Output: work.user_id, work.id, branch.id
+                                 Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                 Buffers: shared hit=3
+                                 ->  Limit  (cost=0.14..9.23 rows=1 width=48) (actual time=0.027..0.030 rows=1 loops=1)
+                                       Output: work.user_id, work.id, branch.id
+                                       Buffers: shared hit=3
+                                       ->  Nested Loop  (cost=0.14..9.23 rows=1 width=48) (actual time=0.027..0.028 rows=1 loops=1)
+                                             Output: work.user_id, work.id, branch.id
+                                             Inner Unique: true
+                                             Buffers: shared hit=3
+                                             ->  Seq Scan on public.work_branches branch  (cost=0.00..1.05 rows=1 width=48) (actual time=0.006..0.006 rows=1 loops=1)
+                                                   Output: branch.id, branch.work_id, branch.user_id, branch.name, branch.head_node_id, branch.status, branch.created_at, branch.updated_at
+                                                   Filter: (branch.name = 'main'::text)
+                                                   Buffers: shared hit=1
+                                             ->  Index Scan using works_user_idempotency_unique on public.works work  (cost=0.14..8.17 rows=1 width=32) (actual time=0.018..0.019 rows=1 loops=1)
+                                                   Output: work.user_id, work.id
+                                                   Index Cond: (work.user_id = branch.user_id)
+                                                   Filter: ((branch.work_id = work.id) AND ((work.settings ->> 'benchmark'::text) = 'true'::text))
+                                                   Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=219
+ Planning Time: 1.333 ms
+ Execution Time: 10.585 ms
+(50 rows)
+
+=== branch version head read ===
+                                                                                                                     QUERY PLAN                                                                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=20.25..20.26 rows=1 width=300) (actual time=0.090..0.091 rows=4 loops=1)
+   Output: node.id, node.work_id, node.branch_id, node.user_id, node.parent_node_id, node.node_type, node.object_type, node.object_id, node.object_version, node.payload, node.actor_id, node.message, node.created_at, node.snapshot_id
+   Sort Key: node.created_at DESC
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=14 read=1
+   ->  Nested Loop  (cost=0.44..20.24 rows=1 width=300) (actual time=0.045..0.080 rows=4 loops=1)
+         Output: node.id, node.work_id, node.branch_id, node.user_id, node.parent_node_id, node.node_type, node.object_type, node.object_id, node.object_version, node.payload, node.actor_id, node.message, node.created_at, node.snapshot_id
+         Inner Unique: true
+         Buffers: shared hit=14 read=1
+         ->  Limit  (cost=0.15..11.93 rows=1 width=32) (actual time=0.027..0.031 rows=4 loops=1)
+               Output: NULL::uuid, branch.head_node_id
+               Buffers: shared hit=3
+               ->  Nested Loop  (cost=0.15..11.93 rows=1 width=32) (actual time=0.026..0.030 rows=4 loops=1)
+                     Output: NULL::uuid, branch.head_node_id
+                     Inner Unique: true
+                     Buffers: shared hit=3
+                     ->  Seq Scan on public.work_branches branch  (cost=0.00..1.04 rows=4 width=48) (actual time=0.006..0.007 rows=4 loops=1)
+                           Output: branch.id, branch.work_id, branch.user_id, branch.name, branch.head_node_id, branch.status, branch.created_at, branch.updated_at
+                           Buffers: shared hit=1
+                     ->  Memoize  (cost=0.15..6.18 rows=1 width=32) (actual time=0.005..0.005 rows=1 loops=4)
+                           Output: work.id, work.user_id
+                           Cache Key: branch.work_id, branch.user_id
+                           Cache Mode: logical
+                           Hits: 3  Misses: 1  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+                           Buffers: shared hit=2
+                           ->  Index Scan using works_user_idempotency_unique on public.works work  (cost=0.14..6.17 rows=1 width=32) (actual time=0.016..0.016 rows=1 loops=1)
+                                 Output: work.id, work.user_id
+                                 Index Cond: (work.user_id = branch.user_id)
+                                 Filter: ((branch.work_id = work.id) AND ((work.settings ->> 'benchmark'::text) = 'true'::text))
+                                 Buffers: shared hit=2
+         ->  Index Scan using version_nodes_pkey on public.version_nodes node  (cost=0.28..8.30 rows=1 width=300) (actual time=0.012..0.012 rows=1 loops=4)
+               Output: node.id, node.work_id, node.branch_id, node.user_id, node.parent_node_id, node.node_type, node.object_type, node.object_id, node.object_version, node.payload, node.actor_id, node.message, node.created_at, node.snapshot_id
+               Index Cond: (node.id = branch.head_node_id)
+               Buffers: shared hit=11 read=1
+ Planning:
+   Buffers: shared hit=110 read=1
+ Planning Time: 0.866 ms
+ Execution Time: 0.157 ms
+(38 rows)
+
+=== timeline read ===
+                                                                                                                                                                                                                                QUERY PLAN                                                                                                                                                                                                                                
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=10.78..10.81 rows=12 width=319) (actual time=0.048..0.051 rows=12 loops=1)
+   Output: event.id, event.work_id, event.branch_id, event.user_id, event.era, event.story_time_label, event.story_time_sort_key, event.duration_minutes, event.duration_label, event.event_text, event.valid_from_chapter, event.valid_to_chapter, event.from_era, event.from_story_time_label, event.from_story_sort_key, event.to_era, event.to_story_time_label, event.to_story_sort_key, event.version_node_id, event.created_by, event.created_at
+   Buffers: shared hit=4
+   ->  Sort  (cost=10.78..10.81 rows=12 width=319) (actual time=0.048..0.049 rows=12 loops=1)
+         Output: event.id, event.work_id, event.branch_id, event.user_id, event.era, event.story_time_label, event.story_time_sort_key, event.duration_minutes, event.duration_label, event.event_text, event.valid_from_chapter, event.valid_to_chapter, event.from_era, event.from_story_time_label, event.from_story_sort_key, event.to_era, event.to_story_time_label, event.to_story_sort_key, event.version_node_id, event.created_by, event.created_at
+         Sort Key: event.story_time_sort_key
+         Sort Method: quicksort  Memory: 28kB
+         Buffers: shared hit=4
+         ->  Nested Loop  (cost=0.14..10.56 rows=12 width=319) (actual time=0.032..0.036 rows=12 loops=1)
+               Output: event.id, event.work_id, event.branch_id, event.user_id, event.era, event.story_time_label, event.story_time_sort_key, event.duration_minutes, event.duration_label, event.event_text, event.valid_from_chapter, event.valid_to_chapter, event.from_era, event.from_story_time_label, event.from_story_sort_key, event.to_era, event.to_story_time_label, event.to_story_sort_key, event.version_node_id, event.created_by, event.created_at
+               Join Filter: ((event.user_id = work.user_id) AND (event.work_id = work.id) AND (branch.id = event.branch_id))
+               Buffers: shared hit=4
+               ->  Limit  (cost=0.14..9.23 rows=1 width=48) (actual time=0.021..0.022 rows=1 loops=1)
+                     Output: work.user_id, work.id, branch.id
+                     Buffers: shared hit=3
+                     ->  Nested Loop  (cost=0.14..9.23 rows=1 width=48) (actual time=0.021..0.021 rows=1 loops=1)
+                           Output: work.user_id, work.id, branch.id
+                           Inner Unique: true
+                           Buffers: shared hit=3
+                           ->  Seq Scan on public.work_branches branch  (cost=0.00..1.05 rows=1 width=48) (actual time=0.006..0.006 rows=1 loops=1)
+                                 Output: branch.id, branch.work_id, branch.user_id, branch.name, branch.head_node_id, branch.status, branch.created_at, branch.updated_at
+                                 Filter: (branch.name = 'main'::text)
+                                 Buffers: shared hit=1
+                           ->  Index Scan using works_user_idempotency_unique on public.works work  (cost=0.14..8.17 rows=1 width=32) (actual time=0.014..0.014 rows=1 loops=1)
+                                 Output: work.user_id, work.id
+                                 Index Cond: (work.user_id = branch.user_id)
+                                 Filter: ((branch.work_id = work.id) AND ((work.settings ->> 'benchmark'::text) = 'true'::text))
+                                 Buffers: shared hit=2
+               ->  Seq Scan on public.timeline_events event  (cost=0.00..1.12 rows=12 width=319) (actual time=0.009..0.010 rows=12 loops=1)
+                     Output: event.id, event.work_id, event.branch_id, event.user_id, event.era, event.story_time_label, event.story_time_sort_key, event.duration_minutes, event.duration_label, event.event_text, event.valid_from_chapter, event.valid_to_chapter, event.from_era, event.from_story_time_label, event.from_story_sort_key, event.to_era, event.to_story_time_label, event.to_story_sort_key, event.version_node_id, event.created_by, event.created_at
+                     Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=122 read=3
+ Planning Time: 0.886 ms
+ Execution Time: 0.118 ms
+(35 rows)
+
+=== database, table and index sizes ===
+                                                                                                                                                                                                                                                       QUERY PLAN                                                                                                                                                                                                                                                       
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=59.73..59.74 rows=1 width=72) (actual time=53.728..53.732 rows=1 loops=1)
+   Output: pg_database_size(current_database()), COALESCE(sum(pg_table_size((c.oid)::regclass)), '0'::numeric), COALESCE(sum(pg_indexes_size((c.oid)::regclass)), '0'::numeric)
+   Buffers: shared hit=11269
+   ->  Hash Join  (cost=1.06..59.36 rows=36 width=4) (actual time=0.020..0.299 rows=112 loops=1)
+         Output: c.oid
+         Inner Unique: true
+         Hash Cond: (c.relnamespace = n.oid)
+         Buffers: shared hit=44
+         ->  Seq Scan on pg_catalog.pg_class c  (cost=0.00..57.42 rows=181 width=8) (actual time=0.004..0.212 rows=181 loops=1)
+               Output: c.oid, c.relname, c.relnamespace, c.reltype, c.reloftype, c.relowner, c.relam, c.relfilenode, c.reltablespace, c.relpages, c.reltuples, c.relallvisible, c.reltoastrelid, c.relhasindex, c.relisshared, c.relpersistence, c.relkind, c.relnatts, c.relchecks, c.relhasrules, c.relhastriggers, c.relhassubclass, c.relrowsecurity, c.relforcerowsecurity, c.relispopulated, c.relreplident, c.relispartition, c.relrewrite, c.relfrozenxid, c.relminmxid, c.relacl, c.reloptions, c.relpartbound
+               Filter: (c.relkind = 'r'::"char")
+               Rows Removed by Filter: 973
+               Buffers: shared hit=43
+         ->  Hash  (cost=1.05..1.05 rows=1 width=4) (actual time=0.008..0.010 rows=1 loops=1)
+               Output: n.oid
+               Buckets: 1024  Batches: 1  Memory Usage: 9kB
+               Buffers: shared hit=1
+               ->  Seq Scan on pg_catalog.pg_namespace n  (cost=0.00..1.05 rows=1 width=4) (actual time=0.002..0.002 rows=1 loops=1)
+                     Output: n.oid
+                     Filter: (n.nspname = 'public'::name)
+                     Rows Removed by Filter: 4
+                     Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=180
+ Planning Time: 1.163 ms
+ Execution Time: 53.832 ms
+(26 rows)
+

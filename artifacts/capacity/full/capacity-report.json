@@ -1,0 +1,324 @@
+{
+  "formatVersion": 1,
+  "sourceCommit": "234743061e9242dcad013bf6999c2bf6917105d7",
+  "generatedAt": "2026-11-17T11:37:09.224Z",
+  "status": "blocked",
+  "tenMReady": false,
+  "blockerCount": 11,
+  "blockers": [
+    "approved-target-failed:first-token",
+    "decision-required:api-concurrency",
+    "decision-required:backup-disk-envelope",
+    "decision-required:branch-count",
+    "decision-required:error-rate",
+    "decision-required:large-version-compare",
+    "decision-required:p99-latency",
+    "decision-required:restore-dataset-tier",
+    "decision-required:storage-headroom",
+    "environment-not-approved-baseline",
+    "failure-injection-evidence-missing"
+  ],
+  "fixtureManifest": {
+    "logicalCharacters": 10000000,
+    "chapterCount": 3500,
+    "volumeCount": 35,
+    "branchCount": 4,
+    "sha256": "4526d09e8bee2690905a1f74e8d1d6d54190e80559727fa15b2bc5b5c8a13365",
+    "objectCount": 6,
+    "objectChecksums": [
+      "bc68246112ee9a62943325cea480bd9e01b0492abe50e4973eb96c1be581da3d",
+      "6f9434dbf6f1b7afdeda5e65f5e1a66ed25fc515e9d0b9934904c879d0d53427",
+      "78718c5f97f73b41f58117f7fa459651416a93b50bcec796cf57833cd0587a7c",
+      "0f0d15d559b2ce68088d8910e3a4625ce365ffb802e5b178052eb07aa5da8f11",
+      "418299b881eaa5be90ed0624d222804d41f5149bd55f4dc5485737cd30b03e86",
+      "8ea6b20ad306b3ccf0b530c044902f15deddfdba9247fd1606755c023d788885"
+    ],
+    "branchTopology": {
+      "mainBranchName": "main",
+      "parallelBranchCount": 3,
+      "divergenceDepth": 1,
+      "branches": [
+        {
+          "name": "parallel-1",
+          "divergenceChapter": 875,
+          "branchChapterCount": 1
+        },
+        {
+          "name": "parallel-2",
+          "divergenceChapter": 1750,
+          "branchChapterCount": 1
+        },
+        {
+          "name": "parallel-3",
+          "divergenceChapter": 2625,
+          "branchChapterCount": 1
+        }
+      ]
+    },
+    "versionNodeTypes": {
+      "branch_merge": 3,
+      "canon_commit": 70,
+      "change_apply": 6,
+      "chapter_version": 3643,
+      "entity_version": 100,
+      "outline_version": 35,
+      "rollback": 1,
+      "snapshot": 4,
+      "story_bible_version": 1
+    }
+  },
+  "workloadManifest": {
+    "apiConcurrency": 4,
+    "durationSeconds": 60
+  },
+  "targetComparison": {
+    "approved": [
+      {
+        "id": "crud-p95",
+        "description": "Interactive CRUD p95",
+        "measured": 167,
+        "target": 300,
+        "unit": "ms",
+        "status": "pass"
+      },
+      {
+        "id": "search-p95",
+        "description": "Search p95",
+        "measured": 193,
+        "target": 1000,
+        "unit": "ms",
+        "status": "pass"
+      },
+      {
+        "id": "first-token",
+        "description": "Streaming first token",
+        "measured": null,
+        "target": 5000,
+        "unit": "ms",
+        "status": "fail"
+      },
+      {
+        "id": "sse-delivery-p95",
+        "description": "SSE delivery p95",
+        "measured": 48.37379999999939,
+        "target": 1000,
+        "unit": "ms",
+        "status": "pass"
+      },
+      {
+        "id": "backup-rpo",
+        "description": "Backup RPO",
+        "measured": 0.019684444444444445,
+        "target": 24,
+        "unit": "hours",
+        "status": "pass"
+      },
+      {
+        "id": "restore-rto",
+        "description": "Restore RTO",
+        "measured": 0.004974166666666667,
+        "target": 4,
+        "unit": "hours",
+        "status": "pass"
+      }
+    ],
+    "decisionRequired": [
+      {
+        "id": "p99-latency",
+        "description": "Numeric p99 latency limits",
+        "measured": 265,
+        "target": null,
+        "unit": "ms",
+        "status": "decision-required"
+      },
+      {
+        "id": "api-concurrency",
+        "description": "Approved API concurrency and session target",
+        "measured": 4,
+        "target": null,
+        "unit": "count",
+        "status": "decision-required"
+      },
+      {
+        "id": "error-rate",
+        "description": "Accepted error and saturation rate",
+        "measured": 0,
+        "target": null,
+        "unit": "ratio",
+        "status": "decision-required"
+      },
+      {
+        "id": "storage-headroom",
+        "description": "Required storage headroom",
+        "measured": null,
+        "target": null,
+        "unit": "bytes",
+        "status": "decision-required"
+      },
+      {
+        "id": "backup-disk-envelope",
+        "description": "Whether backup capacity is inside the disk envelope",
+        "measured": null,
+        "target": null,
+        "unit": "label",
+        "status": "decision-required"
+      },
+      {
+        "id": "restore-dataset-tier",
+        "description": "Required restore dataset tier",
+        "measured": null,
+        "target": null,
+        "unit": "label",
+        "status": "decision-required"
+      },
+      {
+        "id": "large-version-compare",
+        "description": "Large branch/version comparison latency allowance",
+        "measured": null,
+        "target": null,
+        "unit": "ms",
+        "status": "decision-required"
+      },
+      {
+        "id": "branch-count",
+        "description": "Approved canonical branch count",
+        "measured": 4,
+        "target": null,
+        "unit": "count",
+        "status": "decision-required"
+      }
+    ]
+  },
+  "recovery": {
+    "status": "passed",
+    "measuredRpoHours": 0.019684444444444445,
+    "measuredRtoHours": 0.004974166666666667,
+    "databaseIntegrity": true,
+    "objectIntegrity": true,
+    "evidencePath": "docs/implementation/evidence/m3-137-capacity-recovery-2026-11-17.json",
+    "sourceCommit": "234743061e9242dcad013bf6999c2bf6917105d7",
+    "backupId": "20261117T113637009Z-234743061e92-2b4ebe3c",
+    "backupPath": "artifacts/capacity/backups/20261117T113637009Z-234743061e92-2b4ebe3c",
+    "backupManifestSha256": "c60026663826e48e8bd58e7a87698bbd4648b73e12994f611e2471f54ee0fad0",
+    "snapshotStartedAt": "2026-11-17T11:36:37.091Z",
+    "snapshotCompletedAt": "2026-11-17T11:36:41.612Z",
+    "lastSourceWriteAt": "2026-11-17 11:35:26.227712+00",
+    "dataset": {
+      "rowCount": 24593,
+      "foreignKeyConstraints": 0,
+      "objectCount": 8,
+      "objectBytes": 63443426,
+      "databaseEncryptedBytes": 4879865,
+      "backupFiles": 11,
+      "backupBytes": 68352836
+    },
+    "offlineVerification": {
+      "ok": true,
+      "backupId": "20261117T113637009Z-234743061e92-2b4ebe3c",
+      "databaseBytes": 4879829,
+      "objectCount": 8,
+      "objectBytes": 63443426
+    },
+    "restore": {
+      "ok": true,
+      "durationMs": 17907,
+      "verification": {
+        "ok": true,
+        "rowCount": 24593,
+        "objectCount": 8,
+        "objectBytes": 63443426,
+        "foreignKeyConstraints": 0,
+        "objectReferences": 1
+      }
+    }
+  },
+  "decisions": [],
+  "environment": {
+    "capturedAt": "2026-11-17T11:34:15.933Z",
+    "sourceCommit": "234743061e9242dcad013bf6999c2bf6917105d7",
+    "node": "v24.22.1",
+    "platform": "win32",
+    "arch": "x64",
+    "osRelease": "10.0.26200",
+    "cpu": {
+      "model": "12th Gen Intel(R) Core(TM) i5-12600KF",
+      "logicalProcessors": 16
+    },
+    "memory": {
+      "totalBytes": 68523843584
+    },
+    "disk": {
+      "path": "D:\\AI\\Codex\\Worktrees\\m3-137-capacity-benchmark\\novel-brain",
+      "totalBytes": 730326970368,
+      "freeBytes": 266054672384,
+      "filesystem": "NTFS",
+      "driveType": "3"
+    },
+    "docker": {
+      "version": "Docker version 29.7.2, build a7dcaa6",
+      "composeVersion": "Docker Compose version v5.5.0",
+      "server": {
+        "version": "29.7.2",
+        "operatingSystem": "Docker Desktop",
+        "logicalProcessors": 16,
+        "memoryBytes": 33556709376,
+        "rootDir": "/var/lib/docker",
+        "storageDriver": "overlayfs"
+      },
+      "resourceLimits": [
+        {
+          "name": "novel-brain-m0-minio-1",
+          "nanoCpus": 0,
+          "memoryBytes": 0
+        },
+        {
+          "name": "novel-brain-e2e-mailpit",
+          "nanoCpus": 0,
+          "memoryBytes": 0
+        },
+        {
+          "name": "novel-brain-m0-postgres-1",
+          "nanoCpus": 0,
+          "memoryBytes": 0
+        },
+        {
+          "name": "novel-brain-m0-redis-1",
+          "nanoCpus": 0,
+          "memoryBytes": 0
+        }
+      ]
+    },
+    "api": {
+      "baseUrl": "http://localhost:3101",
+      "readinessStatus": "ready"
+    },
+    "baseline": {
+      "approvedCpuCount": 8,
+      "approvedMemoryBytes": 17179869184,
+      "approvedDiskBytes": 100000000000,
+      "cpuMatches": false,
+      "memoryMatches": false,
+      "diskTotalAtLeastApproved": true,
+      "certificationEligible": false
+    }
+  },
+  "artifactsConsistent": true,
+  "queryPlansVerified": true,
+  "failureInjectionVerified": false,
+  "artifactHashes": {
+    "artifacts/capacity/full/fixture-manifest.json": "3ab2612ec4f2d3d5662880ff90120af8dfcdc8aa68a93a26a83bcd9e25fff1b0",
+    "artifacts/capacity/full/workload-summary.json": "4cfb1e6533c429dc9d948a7040067374fedcbbe04b9b349c1ff3b27585cd49d2",
+    "artifacts/capacity/full/environment.json": "b18baf9457819522948ae351589af115ddca9e73ef021d051ee593b3e3977de7",
+    "artifacts/capacity/full/raw-samples.ndjson": "a0ad53bf6f5a384d5492180a78d42bd64c69d468d2801e9dc8d609579bfd9e21",
+    "docs/implementation/evidence/m3-137-capacity-recovery-2026-11-17.json": "f7031d033452381d72944c3887b038704ea64d53b4be6d7fa3c7a7022e1d0366",
+    "docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt": "2385690148dd2687b0ae685db0250c90889a50b10871a2d043add9b5c39cf37c"
+  },
+  "rawArtifacts": [
+    "artifacts/capacity/full/fixture-manifest.json",
+    "artifacts/capacity/full/workload-summary.json",
+    "artifacts/capacity/full/environment.json",
+    "artifacts/capacity/full/raw-samples.ndjson",
+    "docs/implementation/evidence/m3-137-capacity-recovery-2026-11-17.json",
+    "docs/implementation/evidence/m3-137-query-plans-2026-11-17.txt"
+  ]
+}
