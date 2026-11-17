@@ -225,6 +225,7 @@ export class SearchRepository implements OnModuleDestroy {
     branchId: string,
     input: SearchQuery,
   ): Promise<SearchResult[] | "not_found"> {
+    const prefixQuery = toPrefixTsQuery(input.q);
     return this.withTenant(userId, async (transaction) => {
       const context = (
         await transaction.execute<{ id: string }>(sql`
@@ -264,7 +265,6 @@ export class SearchRepository implements OnModuleDestroy {
           version_node_id,
           GREATEST(
             similarity(title, ${input.q}),
-            similarity(content, ${input.q}),
             similarity(aliases::text, ${input.q})
           )::float AS score
         FROM ranked
@@ -306,7 +306,11 @@ export class SearchRepository implements OnModuleDestroy {
                 AND version.version_node_id = ranked.version_node_id
             ))
           )
-          AND concat_ws(' ', title, content, aliases::text) ILIKE ${`%${input.q}%`}
+          AND (
+            tsv @@ to_tsquery('simple', ${prefixQuery})
+            OR lower(title) LIKE lower(${`%${input.q}%`})
+            OR lower(aliases::text) LIKE lower(${`%${input.q}%`})
+          )
         ORDER BY score DESC, updated_at DESC, source_id DESC
         LIMIT ${input.limit}
       `)
@@ -325,6 +329,7 @@ export class SearchRepository implements OnModuleDestroy {
   }
 
   async globalSearch(userId: string, input: SearchQuery): Promise<SearchResult[]> {
+    const prefixQuery = toPrefixTsQuery(input.q);
     return this.withTenant(userId, async (transaction) => {
       const rows = (
         await transaction.execute<SearchRow>(sql`
@@ -351,7 +356,6 @@ export class SearchRepository implements OnModuleDestroy {
             version_node_id,
             GREATEST(
               similarity(title, ${input.q}),
-              similarity(content, ${input.q}),
               similarity(aliases::text, ${input.q})
             )::float AS score
           FROM ranked
@@ -393,7 +397,11 @@ export class SearchRepository implements OnModuleDestroy {
                   AND version.version_node_id = ranked.version_node_id
               ))
             )
-            AND concat_ws(' ', title, content, aliases::text) ILIKE ${`%${input.q}%`}
+            AND (
+              tsv @@ to_tsquery('simple', ${prefixQuery})
+              OR lower(title) LIKE lower(${`%${input.q}%`})
+              OR lower(aliases::text) LIKE lower(${`%${input.q}%`})
+            )
           ORDER BY score DESC, updated_at DESC, source_id DESC
           LIMIT ${input.limit}
         `)
@@ -424,6 +432,19 @@ export class SearchRepository implements OnModuleDestroy {
       return operation(transaction);
     });
   }
+}
+
+function toPrefixTsQuery(value: string): string {
+  const tokens = value
+    .normalize("NFKC")
+    .split(/\s+/u)
+    .flatMap((part) => part.split(/[^\p{L}\p{N}_]+/u))
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  return tokens.length > 0
+    ? tokens.map((token) => `${token}:*`).join(" & ")
+    : "__no_search_tokens__:*";
 }
 
 async function cleanupSearchDocuments(

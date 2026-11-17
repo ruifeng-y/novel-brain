@@ -25,6 +25,14 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 const composeFile = path.join(repositoryRoot, "infra/docker/compose.yml");
 const objectReferenceConfigPath = path.join(repositoryRoot, "infra/backup/object-references.json");
 
+export function backupDatabaseNameForTarget(env = {}) {
+  const databaseName = env.BACKUP_DATABASE_NAME ?? process.env.BACKUP_DATABASE_NAME ?? "novelbrain";
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(databaseName)) {
+    throw new Error("BACKUP_DATABASE_NAME_INVALID");
+  }
+  return databaseName;
+}
+
 function runCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -212,7 +220,7 @@ async function psql(project, sql, env = {}) {
         "-U",
         "novelbrain",
         "-d",
-        "novelbrain",
+        backupDatabaseNameForTarget(env),
         "-X",
         "-A",
         "-t",
@@ -592,7 +600,7 @@ export async function createBackup({
         "-U",
         "novelbrain",
         "-d",
-        "novelbrain",
+        backupDatabaseNameForTarget(env),
         "--format=custom",
         "--no-owner",
         "--no-acl",
@@ -848,6 +856,10 @@ export async function restoreBackup({
     const backup = await loadBackup(backupDirectory);
     phase = "preparing";
     managedEnv = managedEnv ?? (await isolatedComposeEnvironment());
+    managedEnv = {
+      ...managedEnv,
+      STORAGE_BUCKET: backup.manifest.objects.bucket,
+    };
     if (!(await projectIsEmpty(project, managedEnv))) {
       throw new Error(`Restore project ${project} is not empty; refusing to overwrite it.`);
     }
@@ -1149,7 +1161,10 @@ async function captureFault(scenario, operation, expectedPattern) {
 export async function runBackupDrill({ outputDirectory, key, bucket = "novelbrain" }) {
   const drillStartedAt = new Date().toISOString();
   const sourceProject = `novelbrain-source-${randomUUID().slice(0, 8)}`;
-  const sourceEnv = await isolatedComposeEnvironment();
+  const sourceEnv = {
+    ...(await isolatedComposeEnvironment()),
+    STORAGE_BUCKET: bucket,
+  };
   let backup;
   let seed;
   try {
