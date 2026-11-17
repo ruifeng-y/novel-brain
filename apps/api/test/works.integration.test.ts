@@ -624,6 +624,13 @@ describe("works HTTP integration", () => {
         WHERE id = $1`,
       [workId],
     );
+    await owner
+      .post(`/api/v1/works/${workId}/purge`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: trashedAgain.body.data.version + 1 })
+      .expect(409);
+    expect(await countRows(databasePool, "work_export_receipts", workId)).toBe(1);
     const purged = await owner
       .post(`/api/v1/works/${workId}/purge`)
       .set("Origin", origin)

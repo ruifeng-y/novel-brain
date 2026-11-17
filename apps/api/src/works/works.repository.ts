@@ -1017,6 +1017,7 @@ export interface WorksAuditContext {
 
 export type WorkPurgePreview =
   | { status: "not_found" }
+  | { status: "version_conflict" }
   | { status: "not_due" }
   | { status: "export_required" }
   | { status: "ready"; workId: string; objectKeys: string[] };
@@ -1466,9 +1467,13 @@ export class WorksRepository implements OnModuleDestroy {
     });
   }
 
-  async preparePurge(userId: string, workId: string): Promise<WorkPurgePreview> {
+  async preparePurge(
+    userId: string,
+    workId: string,
+    expectedVersion: number,
+  ): Promise<WorkPurgePreview> {
     return this.withTenant(userId, (transaction) =>
-      this.preparePurgeInTransaction(transaction, userId, workId),
+      this.preparePurgeInTransaction(transaction, userId, workId, expectedVersion),
     );
   }
 
@@ -1476,6 +1481,7 @@ export class WorksRepository implements OnModuleDestroy {
     transaction: DatabaseTransaction,
     userId: string,
     workId: string,
+    expectedVersion: number,
   ): Promise<WorkPurgePreview> {
     const [work] = await transaction
       .select()
@@ -1485,6 +1491,9 @@ export class WorksRepository implements OnModuleDestroy {
     if (!work) {
       return { status: "not_found" };
     }
+      if (work.version !== expectedVersion) {
+        return { status: "version_conflict" };
+      }
     if (!work.purgeAfter || work.purgeAfter.getTime() > Date.now()) {
       return { status: "not_due" };
     }
@@ -1528,7 +1537,12 @@ export class WorksRepository implements OnModuleDestroy {
       if (!current || current.version !== expectedVersion) {
         return undefined;
       }
-      const preview = await this.preparePurgeInTransaction(transaction, userId, workId);
+      const preview = await this.preparePurgeInTransaction(
+        transaction,
+        userId,
+        workId,
+        expectedVersion,
+      );
       if (preview.status !== "ready") {
         return undefined;
       }

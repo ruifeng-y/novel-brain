@@ -402,9 +402,12 @@ export class WorksService {
     input: WorkLifecycleRequest,
     audit: WorksAuditContext,
   ): Promise<WorkPurgeResponse["data"]> {
-    const preview = await this.repository.preparePurge(userId, workId);
+    const preview = await this.repository.preparePurge(userId, workId, input.version);
     if (preview.status === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
+    }
+    if (preview.status === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "作品状态已变化，请刷新后重试");
     }
     if (preview.status === "not_due") {
       throw new ApiError(409, "WORK_PURGE_NOT_DUE", "作品仍在 30 天回收站保留期内");
