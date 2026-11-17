@@ -1016,7 +1016,9 @@ export interface WorksAuditContext {
 }
 
 export type WorkPurgePreview =
-  | { status: "not_found" | "not_due" | "export_required" }
+  | { status: "not_found" }
+  | { status: "not_due" }
+  | { status: "export_required" }
   | { status: "ready"; workId: string; objectKeys: string[] };
 
 export type WorkTrashRestoreResult = "not_found" | "expired" | WorkRecord;
@@ -1133,6 +1135,25 @@ export class WorksRepository implements OnModuleDestroy {
     });
   }
 
+  async exportReadyWorkIds(userId: string, workIds: readonly string[]): Promise<Set<string>> {
+    if (workIds.length === 0) return new Set();
+    return this.withTenant(userId, async (transaction) => {
+      const rows = await transaction
+        .select({ workId: workExportReceipts.workId })
+        .from(workExportReceipts)
+        .where(
+          and(
+            eq(workExportReceipts.userId, userId),
+            inArray(workExportReceipts.workId, [...workIds]),
+            eq(workExportReceipts.status, "completed"),
+            gt(workExportReceipts.expiresAt, new Date()),
+            isNotNull(workExportReceipts.artifactObjectKey),
+          ),
+        );
+      return new Set(rows.map((row) => row.workId));
+    });
+  }
+
   async update(
     userId: string,
     workId: string,
@@ -1141,10 +1162,14 @@ export class WorksRepository implements OnModuleDestroy {
     audit: WorksAuditContext,
   ): Promise<WorkRecord | undefined> {
     return this.withTenant(userId, async (transaction) => {
+      const updateValues = {
+        ...values,
+        ...(values.coverImageUrl !== undefined ? { coverObjectKey: null } : {}),
+      };
       const [work] = await transaction
         .update(works)
         .set({
-          ...values,
+          ...updateValues,
           version: sql`${works.version} + 1`,
           updatedAt: new Date(),
         })

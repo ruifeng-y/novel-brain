@@ -10,12 +10,13 @@ describe("WorkPurgeProcessor", () => {
     const purged: string[][] = [];
     const repository = {
       listDueWorkIds: async () => ["blocked", "ready"],
-      purge: async (workId: string) => {
+      preparePurge: async (workId: string) => {
         if (workId === "blocked") {
           throw new Error("blocked by export");
         }
         return ["exports/ready.txt", "covers/ready.webp"];
       },
+      purge: async () => true,
     } as unknown as WorkerWorkPurgeRepository;
     const storage = {
       putObject: async () => undefined,

@@ -308,6 +308,15 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
                   {work.chapterLengthTarget.toLocaleString("zh-CN")} 字
                 </p>
                 <small>最近编辑 {formatDate(work.updatedAt)}</small>
+                {work.deletedAt ? (
+                  <small>
+                    {work.canPurge
+                      ? "已完成导出，可永久删除"
+                      : work.exportReady
+                        ? "导出已完成，保留期结束后可永久删除"
+                        : "永久删除前必须先完成导出"}
+                  </small>
+                ) : null}
                 <div className="project-actions">
                   {work.deletedAt ? (
                     <>
@@ -326,11 +335,7 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
                       </button>
                       <button
                         className="text-btn small danger-text"
-                        disabled={
-                          busyWorkId === work.id ||
-                          !work.purgeAfter ||
-                          new Date(work.purgeAfter).getTime() > Date.now()
-                        }
+                        disabled={busyWorkId === work.id || !work.canPurge}
                         onClick={() => purgeWork(work)}
                         type="button"
                       >

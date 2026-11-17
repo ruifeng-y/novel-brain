@@ -16,12 +16,14 @@ export class WorkPurgeProcessor {
     let purged = 0;
     for (const workId of await this.repository.listDueWorkIds()) {
       try {
-        const objectKeys = await this.repository.purge(workId);
+        const objectKeys = await this.repository.preparePurge(workId);
         if (!objectKeys) {
           continue;
         }
         await this.storage.deleteObjects(objectKeys);
-        purged += 1;
+        if (await this.repository.purge(workId)) {
+          purged += 1;
+        }
       } catch {
         // One blocked work must not stop the remaining due purge attempts.
       }

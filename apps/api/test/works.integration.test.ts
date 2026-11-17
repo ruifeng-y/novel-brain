@@ -699,8 +699,20 @@ describe("works HTTP integration", () => {
     expect(image.body).toBeInstanceOf(Buffer);
     expect(image.body.length).toBeGreaterThan(0);
 
+    const external = await owner
+      .patch(`/api/v1/works/${workId}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: uploaded.body.data.version,
+        coverImageUrl: "https://assets.example.com/cover.webp",
+      })
+      .expect(200);
+    expect(external.body.data.coverImageUrl).toBe("https://assets.example.com/cover.webp");
+    await owner.get(`/api/v1/works/${workId}/cover`).expect(404);
+
     const invalid = await owner
-      .put(`/api/v1/works/${workId}/cover?version=${uploaded.body.data.version}`)
+      .put(`/api/v1/works/${workId}/cover?version=${external.body.data.version}`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .attach("file", Buffer.from("not an image", "utf8"), {
@@ -1413,6 +1425,14 @@ describe("works HTTP integration", () => {
       await expect(
         databasePool.query("UPDATE works SET tags = $1::jsonb WHERE id = $2", [
           JSON.stringify(tags),
+          workId,
+        ]),
+      ).rejects.toThrow();
+    }
+    for (const coverImageUrl of ["https://.", "https://-:99999/%zz"]) {
+      await expect(
+        databasePool.query("UPDATE works SET cover_image_url = $1 WHERE id = $2", [
+          coverImageUrl,
           workId,
         ]),
       ).rejects.toThrow();

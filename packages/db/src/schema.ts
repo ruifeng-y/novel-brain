@@ -369,7 +369,7 @@ export const works = pgTable(
     check("works_version_check", sql`${table.version} > 0`),
     check(
       "works_cover_image_url_check",
-      sql`${table.coverImageUrl} is null or ${table.coverImageUrl} ~ '^https://[A-Za-z0-9.-]+(?::[0-9]+)?(?:/[^[:space:]]*)?$'`,
+      sql`works_cover_image_url_valid(${table.coverImageUrl})`,
     ),
     check(
       "works_cover_object_key_check",

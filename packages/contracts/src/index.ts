@@ -769,6 +769,8 @@ export const workSchema = z.object({
   archivedAt: z.string().datetime().nullable().default(null),
   deletedAt: z.string().datetime().nullable().default(null),
   purgeAfter: z.string().datetime().nullable().default(null),
+  exportReady: z.boolean().default(false),
+  canPurge: z.boolean().default(false),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

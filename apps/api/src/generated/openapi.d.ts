@@ -17551,6 +17551,10 @@ export interface operations {
                  * @default null
                  */
                 purgeAfter: string | null;
+                /** @default false */
+                exportReady: boolean;
+                /** @default false */
+                canPurge: boolean;
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -17729,6 +17733,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -17902,6 +17910,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -18045,6 +18057,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -18214,6 +18230,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -18382,6 +18402,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -18532,6 +18556,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -18679,6 +18707,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -18826,6 +18858,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -18979,6 +19015,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -19169,6 +19209,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -19819,6 +19863,10 @@ export interface operations {
                * @default null
                */
               purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */

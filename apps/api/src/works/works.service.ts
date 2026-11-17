@@ -108,10 +108,18 @@ export class WorksService {
     const packs = await this.repository.findGenrePacksByIds(
       result.works.flatMap((work) => (work.templatePackId ? [work.templatePackId] : [])),
     );
+    const exportReadyIds = await this.repository.exportReadyWorkIds(
+      userId,
+      result.works.flatMap((work) => (work.deletedAt ? [work.id] : [])),
+    );
     const packById = new Map(packs.map((pack) => [pack.id, pack]));
     return {
       works: result.works.map((work) =>
-        this.toContract(work, work.templatePackId ? packById.get(work.templatePackId) : undefined),
+        this.toContract(
+          work,
+          work.templatePackId ? packById.get(work.templatePackId) : undefined,
+          exportReadyIds.has(work.id),
+        ),
       ),
       nextCursor: result.nextCursor,
     };
@@ -259,6 +267,9 @@ export class WorksService {
     if (!updated) {
       throw new ApiError(409, "VERSION_CONFLICT", "作品设置已被其他操作更新，请刷新后重试");
     }
+    if (input.coverImageUrl !== undefined && current.coverObjectKey) {
+      await this.storage.deleteObject(current.coverObjectKey).catch(() => undefined);
+    }
     return this.toOverview(userId, updated);
   }
 
@@ -401,11 +412,11 @@ export class WorksService {
     if (preview.status === "export_required") {
       throw new ApiError(409, "WORK_EXPORT_REQUIRED", "永久删除前必须完成作品导出");
     }
+    await this.storage.deleteObjects(preview.objectKeys);
     const purged = await this.repository.purge(userId, workId, input.version, audit);
     if (!purged) {
       throw new ApiError(409, "VERSION_CONFLICT", "作品状态已变化，请刷新后重试");
     }
-    await this.storage.deleteObjects(purged.objectKeys);
     return { id: workId, deleted: true };
   }
 
@@ -499,7 +510,15 @@ export class WorksService {
     };
   }
 
-  private toContract(work: WorkRecord, templatePack?: GenrePackRecord): Work {
+  private toContract(
+    work: WorkRecord,
+    templatePack?: GenrePackRecord,
+    hasCompletedExport = false,
+  ): Work {
+    const exportReady = hasCompletedExport;
+    const purgeDue = Boolean(
+      work.deletedAt && work.purgeAfter && work.purgeAfter.getTime() <= Date.now(),
+    );
     return {
       id: work.id,
       title: work.title,
@@ -518,6 +537,8 @@ export class WorksService {
       archivedAt: work.archivedAt?.toISOString() ?? null,
       deletedAt: work.deletedAt?.toISOString() ?? null,
       purgeAfter: work.purgeAfter?.toISOString() ?? null,
+      exportReady,
+      canPurge: purgeDue && exportReady,
       createdAt: work.createdAt.toISOString(),
       updatedAt: work.updatedAt.toISOString(),
     };

@@ -50,7 +50,7 @@ export class WorkerWorkPurgeRepository implements OnModuleDestroy {
     }
   }
 
-  async purge(workId: string): Promise<string[] | undefined> {
+  async preparePurge(workId: string): Promise<string[] | undefined> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
@@ -90,6 +90,51 @@ export class WorkerWorkPurgeRepository implements OnModuleDestroy {
         await client.query("ROLLBACK");
         return undefined;
       }
+      await client.query("COMMIT");
+      return [
+        ...new Set([
+          ...exports.rows.map((row) => row.artifact_object_key),
+          ...(work.coverObjectKey ? [work.coverObjectKey] : []),
+        ]),
+      ];
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async purge(workId: string): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await setWorkDeletionRole(client);
+      const [work] = (
+        await client.query<{ id: string; userId: string }>(
+          `SELECT id, user_id AS "userId"
+             FROM works
+            WHERE id = $1
+              AND deleted_at IS NOT NULL
+              AND purge_after <= now()
+              AND EXISTS (
+                SELECT 1
+                  FROM work_export_receipts AS receipt
+                 WHERE receipt.work_id = works.id
+                   AND receipt.user_id = works.user_id
+                   AND receipt.status = 'completed'
+                   AND receipt.expires_at > now()
+                   AND receipt.artifact_object_key IS NOT NULL
+              )
+            FOR UPDATE`,
+          [workId],
+        )
+      ).rows;
+      if (!work) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+      await client.query("SELECT set_config('app.user_id', $1, true)", [work.userId]);
       await client.query("DELETE FROM works WHERE id = $1 AND user_id = $2", [
         work.id,
         work.userId,
@@ -101,12 +146,7 @@ export class WorkerWorkPurgeRepository implements OnModuleDestroy {
         [uuidv7(), work.userId, work.id, `work-purge:${work.id}`],
       );
       await client.query("COMMIT");
-      return [
-        ...new Set([
-          ...exports.rows.map((row) => row.artifact_object_key),
-          ...(work.coverObjectKey ? [work.coverObjectKey] : []),
-        ]),
-      ];
+      return true;
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
       throw error;
