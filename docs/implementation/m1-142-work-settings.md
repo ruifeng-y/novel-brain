@@ -2,7 +2,7 @@
 
 > Issue: #142
 > Capabilities: WORK-006, WORK-007, WORK-008
-> Status: implementation complete; visual golden generated, author sign-off pending
+> Status: implementation and visual sign-off complete; final normal PR CI required before merge
 
 ## 实现范围
 
@@ -22,4 +22,4 @@
 
 ## 视觉状态
 
-四视口生产 Golden 已生成到 `artifacts/ui/golden/work-settings/`。当前 parity matrix 保持 `production-built`；在作者完成初始视觉签收前不得改为 `parity-verified`。
+四视口生产 Golden 已生成到 `artifacts/ui/golden/work-settings/`。作者已确认四档生产布局，并确认使用 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122) 的 Linux/Chromium actual 替换 `work-settings` 与 `dashboard` 的 390px Golden。`work-settings` 的 parity 状态已提升为 `parity-verified`；最终正常 PR CI 必须再次通过全部视觉和行为门禁后才合并。
