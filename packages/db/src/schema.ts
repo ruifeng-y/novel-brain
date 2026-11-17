@@ -367,10 +367,7 @@ export const works = pgTable(
       sql`${table.sourceMode} in ('idea', 'blank', 'template', 'settings_import', 'manuscript_import')`,
     ),
     check("works_version_check", sql`${table.version} > 0`),
-    check(
-      "works_cover_image_url_check",
-      sql`works_cover_image_url_valid(${table.coverImageUrl})`,
-    ),
+    check("works_cover_image_url_check", sql`works_cover_image_url_valid(${table.coverImageUrl})`),
     check(
       "works_cover_object_key_check",
       sql`${table.coverObjectKey} is null or ${table.coverObjectKey} ~ '^covers/[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}\.webp$'`,

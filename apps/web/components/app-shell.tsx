@@ -76,31 +76,31 @@ export function AppShell({
       ? "故事圣经"
       : pathname.endsWith("/work-settings")
         ? "作品设置"
-      : pathname.endsWith("/settings") && pathname.startsWith("/workspace/")
-        ? "设定中心"
-        : pathname.endsWith("/outline")
-          ? "大纲工作台"
-          : pathname.endsWith("/foreshadows")
-            ? "伏笔账本"
-            : pathname.endsWith("/write")
-              ? "写作台"
-              : pathname.endsWith("/batch")
-                ? "批量生产"
-                : pathname.endsWith("/changes")
-                  ? "修改与版本"
-                  : pathname.endsWith("/export")
-                    ? "导出与发布"
-                    : pathname === "/workspace/new-project"
-                      ? "新建作品"
-                      : pathname.startsWith("/workspace/settings")
-                        ? "账号与模型"
-                        : pathname === "/help"
-                          ? "帮助"
-                          : pathname.startsWith("/legal")
-                            ? "法律与合规"
-                            : pathname.startsWith("/workspace")
-                              ? "工作台"
-                              : "服务状态";
+        : pathname.endsWith("/settings") && pathname.startsWith("/workspace/")
+          ? "设定中心"
+          : pathname.endsWith("/outline")
+            ? "大纲工作台"
+            : pathname.endsWith("/foreshadows")
+              ? "伏笔账本"
+              : pathname.endsWith("/write")
+                ? "写作台"
+                : pathname.endsWith("/batch")
+                  ? "批量生产"
+                  : pathname.endsWith("/changes")
+                    ? "修改与版本"
+                    : pathname.endsWith("/export")
+                      ? "导出与发布"
+                      : pathname === "/workspace/new-project"
+                        ? "新建作品"
+                        : pathname.startsWith("/workspace/settings")
+                          ? "账号与模型"
+                          : pathname === "/help"
+                            ? "帮助"
+                            : pathname.startsWith("/legal")
+                              ? "法律与合规"
+                              : pathname.startsWith("/workspace")
+                                ? "工作台"
+                                : "服务状态";
   const selectedBranch = activeWork?.branches.find((branch) => branch.id === selectedBranchId);
   const selectedBranchName = selectedBranch
     ? branchLabel(selectedBranch.name)
