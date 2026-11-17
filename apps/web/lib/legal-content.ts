@@ -15,7 +15,7 @@ export interface LegalDocument {
 
 export const legalCopy = legalCopyJson as {
   version: string;
-  status: "owner-review-required";
+  status: "owner-approved-draft";
   lastUpdated: string;
   documents: Record<LegalDocumentKey, LegalDocument>;
 };

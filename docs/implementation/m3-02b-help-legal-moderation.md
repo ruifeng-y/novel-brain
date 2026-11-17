@@ -2,12 +2,12 @@
 
 > Issue: #131
 > Capability: SEC-005
-> Status: implemented; owner legal review and production visual sign-off pending
+> Status: implemented; owner legal draft reviewed and production visual signed off
 
 ## 1. 实现范围
 
 - 新增无需作品上下文的 `/help`、`/legal` 和 `/legal/{terms|privacy|ai-disclosure}` 生产路由，并提供运行错误边界与帮助搜索空状态。
-- 法律内容集中保存在 `apps/web/content/legal-copy.json`，明确当前为运营前草案；正式上线前必须由负责人复核运营主体、联系渠道、适用地域和争议处理条款。
+- 法律内容集中保存在 `apps/web/content/legal-copy.json`，2026-11-17 已由负责人复核确认运营前草案。正式公开上线前仍需补齐运营主体、联系渠道、适用地域和争议处理条款。
 - 新增法务文案扫描，检测无依据的隐私、训练和安全承诺。实际文案与负例测试均由 `scripts/test/legal-copy-guardrails.test.mjs` 覆盖。
 - 导出 manifest 升至 `schemaVersion: 2` 并新增 `aiDisclosureMetadata`，固定 `ai-disclosure-v1`、作者可读标签和作品级要求；TXT/Markdown/DOCX/EPUB 正文、版本清单、发布文案和重新导出都保留该标识。旧 `schemaVersion: 1` 仍可读取下载，但发布检查缺少当前元数据时 fail closed。
 - 发布检查读取导出清单中的 AI 标识元数据，并在检查证据中展示说明、规则版本和要求状态。
@@ -43,7 +43,7 @@
 - contract/typecheck：新增 moderation schema、OpenAPI 与 Web 路由类型。
 - HTTP + worker integration：导出重新生成保留同一 AI manifest；发布预览生成 clear/needs_review 记录；申诉提交、幂等 replay、撤回、clear 案件拒绝申诉和跨租户拒绝。
 - RLS integration：新 moderation 表强制 RLS，租户审计 `uncovered=[]`。
-- Playwright：help/legal 与 export-publish 的真实路由、作者语言、无横向溢出和语义流程已通过；`help`、`legal` 与改版后的 `export-publish` 新 Golden 仍需 Linux CI 生成和作者签收，签收前 snapshot 测试必须保持失败。
+- Playwright：help/legal 与 export-publish 的真实路由、作者语言、无横向溢出和语义流程已通过。作者已确认 `artifacts/ui/candidates/m3-131/` 的 12 张 Linux/Chromium 候选；正式 Golden 已写入 `artifacts/ui/golden/`，生成证据为 [Production CI #44045578715](https://github.com/ruifeng-y/novel-brain/actions/runs/44045578715)。
 
 ## 6. 边界
 

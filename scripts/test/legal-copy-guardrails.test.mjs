@@ -22,7 +22,7 @@ const publicClaimFiles = [
 describe("legal copy guardrails", () => {
   it("accepts the current reviewed-by-owner-pending copy", async () => {
     const copy = JSON.parse(await readFile(legalCopyPath, "utf8"));
-    expect(copy.status).toBe("owner-review-required");
+    expect(copy.status).toBe("owner-approved-draft");
     expect(scanLegalCopy(copy)).toEqual([]);
     const sourceFiles = [...publicClaimFiles];
     for (const root of publicClaimRoots) {
@@ -40,7 +40,7 @@ describe("legal copy guardrails", () => {
 
   it("rejects unsupported privacy, training and security claims", () => {
     const findings = scanLegalCopy({
-      status: "owner-review-required",
+      status: "owner-approved-draft",
       documents: {
         privacy: {
           sections: [
