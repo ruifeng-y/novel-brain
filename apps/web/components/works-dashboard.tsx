@@ -1,7 +1,16 @@
 "use client";
 
-import { BookOpen, LoaderCircle, Plus, RefreshCw, Search, TriangleAlert } from "lucide-react";
+import {
+  BookOpen,
+  LoaderCircle,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  TriangleAlert,
+} from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   apiErrorSchema,
@@ -11,6 +20,8 @@ import {
   type WorkStatus,
 } from "@novel-brain/contracts";
 
+import { getCsrfToken } from "../lib/csrf-client";
+
 const genreLabels: Record<WorkGenre, string> = {
   xianxia: "仙侠",
   history: "历史",
@@ -18,7 +29,7 @@ const genreLabels: Record<WorkGenre, string> = {
 };
 
 const statusLabels: Record<WorkStatus, string> = {
-  draft: "草稿",
+  draft: "筹备中",
   preparing: "筹备中",
   serializing: "连载中",
   paused: "暂停",
@@ -42,6 +53,11 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
   const [status, setStatus] = useState("");
+  const [busyWorkId, setBusyWorkId] = useState("");
+  const searchParams = useSearchParams();
+  const [view, setView] = useState<"active" | "archived" | "trash">(
+    searchParams.get("trash") === "true" ? "trash" : "active",
+  );
 
   const loadPage = useCallback(
     async (cursor: string | null, append: boolean) => {
@@ -59,8 +75,13 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
         if (genre) {
           params.set("genre", genre);
         }
-        if (status) {
+        if (view === "archived") {
+          params.set("status", "archived");
+        } else if (view === "active" && status) {
           params.set("status", status);
+        }
+        if (view === "trash") {
+          params.set("trash", "true");
         }
         if (cursor) {
           params.set("cursor", cursor);
@@ -79,10 +100,56 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
         setLoadingMore(false);
       }
     },
-    [genre, query, status],
+    [genre, query, status, view],
   );
 
   const load = useCallback(async () => loadPage(null, false), [loadPage]);
+
+  async function restoreWork(work: Work) {
+    setBusyWorkId(work.id);
+    setError("");
+    try {
+      const token = await getCsrfToken();
+      const response = await fetch(
+        `/api/v1/works/${work.id}/${work.deletedAt ? "trash/restore" : "restore"}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-csrf-token": token },
+          body: JSON.stringify({ version: work.version }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "作品恢复失败。");
+    } finally {
+      setBusyWorkId("");
+    }
+  }
+
+  async function purgeWork(work: Work) {
+    if (!window.confirm(`永久删除《${work.title}》？此操作不可恢复。`)) return;
+    setBusyWorkId(work.id);
+    setError("");
+    try {
+      const token = await getCsrfToken();
+      const response = await fetch(`/api/v1/works/${work.id}/purge`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": token },
+        body: JSON.stringify({ version: work.version }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "永久删除失败。");
+    } finally {
+      setBusyWorkId("");
+    }
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -112,6 +179,41 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
       </section>
 
       <section className="works-toolbar" aria-label="作品筛选">
+        <div className="works-view-tabs" aria-label="作品视图">
+          <button
+            aria-pressed={view === "active"}
+            className={view === "active" ? "active" : ""}
+            onClick={() => {
+              setStatus("");
+              setView("active");
+            }}
+            type="button"
+          >
+            作品
+          </button>
+          <button
+            aria-pressed={view === "archived"}
+            className={view === "archived" ? "active" : ""}
+            onClick={() => {
+              setStatus("");
+              setView("archived");
+            }}
+            type="button"
+          >
+            已归档
+          </button>
+          <button
+            aria-pressed={view === "trash"}
+            className={view === "trash" ? "active" : ""}
+            onClick={() => {
+              setStatus("");
+              setView("trash");
+            }}
+            type="button"
+          >
+            回收站
+          </button>
+        </div>
         <label className="works-search">
           <Search size={15} aria-hidden="true" />
           <span className="sr-only">搜索作品</span>
@@ -143,11 +245,11 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
             value={status}
           >
             <option value="">全部状态</option>
-            <option value="draft">草稿</option>
             <option value="preparing">筹备中</option>
             <option value="serializing">连载中</option>
             <option value="paused">暂停</option>
             <option value="completed">已完本</option>
+            <option value="archived">已归档</option>
           </select>
         </label>
       </section>
@@ -185,8 +287,14 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
           {works.map((work) => (
             <article className="project-card" key={work.id}>
               <div className={`project-cover project-cover-${work.genre}`}>
-                <span>{genreLabels[work.genre]}</span>
-                <strong>{work.title.slice(0, 8)}</strong>
+                {work.coverImageUrl ? (
+                  <img alt="" src={work.coverImageUrl} />
+                ) : (
+                  <>
+                    <span>{genreLabels[work.genre]}</span>
+                    <strong>{work.title.slice(0, 8)}</strong>
+                  </>
+                )}
               </div>
               <div className="project-info">
                 <div className="project-title-row">
@@ -201,17 +309,58 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
                 </p>
                 <small>最近编辑 {formatDate(work.updatedAt)}</small>
                 <div className="project-actions">
-                  <Link className="text-btn small" href={`/workspace/${work.id}/overview`}>
-                    打开总览
-                  </Link>
-                  <button
-                    className="text-btn small"
-                    disabled
-                    title="作品管理将在作品设置中开放"
-                    type="button"
-                  >
-                    管理
-                  </button>
+                  {work.deletedAt ? (
+                    <>
+                      <button
+                        className="text-btn small"
+                        disabled={busyWorkId === work.id}
+                        onClick={() => restoreWork(work)}
+                        type="button"
+                      >
+                        {busyWorkId === work.id ? (
+                          <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                        ) : (
+                          <RotateCcw size={13} aria-hidden="true" />
+                        )}
+                        恢复
+                      </button>
+                      <button
+                        className="text-btn small danger-text"
+                        disabled={
+                          busyWorkId === work.id ||
+                          !work.purgeAfter ||
+                          new Date(work.purgeAfter).getTime() > Date.now()
+                        }
+                        onClick={() => purgeWork(work)}
+                        type="button"
+                      >
+                        永久删除
+                      </button>
+                    </>
+                  ) : work.status === "archived" ? (
+                    <button
+                      className="text-btn small"
+                      disabled={busyWorkId === work.id}
+                      onClick={() => restoreWork(work)}
+                      type="button"
+                    >
+                      {busyWorkId === work.id ? (
+                        <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                      ) : (
+                        <RotateCcw size={13} aria-hidden="true" />
+                      )}
+                      恢复
+                    </button>
+                  ) : (
+                    <Link className="text-btn small" href={`/workspace/${work.id}/overview`}>
+                      打开总览
+                    </Link>
+                  )}
+                  {work.deletedAt ? null : (
+                    <Link className="text-btn small" href={`/workspace/${work.id}/work-settings`}>
+                      管理
+                    </Link>
+                  )}
                 </div>
               </div>
             </article>

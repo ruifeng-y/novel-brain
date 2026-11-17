@@ -84,7 +84,10 @@ test("shows loading, disabled and long-content states", async ({ page, context }
   release?.();
 
   await expect(page.getByRole("heading", { name: longTitle })).toBeVisible();
-  await expect(page.getByRole("button", { name: "管理" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "管理" })).toHaveAttribute(
+    "href",
+    /\/workspace\/[0-9a-f-]+\/work-settings$/,
+  );
 });
 
 test("loads additional pages for a long work list", async ({ page, context }) => {

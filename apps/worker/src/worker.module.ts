@@ -33,6 +33,8 @@ import { WorkerSummaryRepository } from "./summaries/summary.repository";
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 import { WorkExportProcessor } from "./exports/work-export.processor";
 import { WorkerWorkExportRepository } from "./exports/work-export.repository";
+import { WorkPurgeProcessor } from "./works/work-purge.processor";
+import { WorkerWorkPurgeRepository } from "./works/work-purge.repository";
 
 @Module({
   providers: [
@@ -111,6 +113,8 @@ import { WorkerWorkExportRepository } from "./exports/work-export.repository";
     SummaryRebuildProcessor,
     WritingActionProcessor,
     WorkerWorkExportRepository,
+    WorkerWorkPurgeRepository,
+    WorkPurgeProcessor,
     {
       provide: OBJECT_STORAGE,
       useFactory: () => createObjectStorageFromEnvironment(),

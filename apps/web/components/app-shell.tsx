@@ -15,6 +15,7 @@ import {
   PenLine,
   Send,
   Settings,
+  SlidersHorizontal,
 } from "lucide-react";
 import { type AuthUser, type Work, type WorkOverview } from "@novel-brain/contracts";
 import Link from "next/link";
@@ -43,6 +44,7 @@ const workNavigation = [
   { suffix: "batch", label: "批量生产", icon: Layers3 },
   { suffix: "changes", label: "修改与版本", icon: GitBranch },
   { suffix: "export", label: "导出与发布", icon: Send },
+  { suffix: "work-settings", label: "作品设置", icon: SlidersHorizontal },
 ];
 
 interface ActiveWorkContext {
@@ -72,6 +74,8 @@ export function AppShell({
     ? "作品总览"
     : pathname.endsWith("/bible")
       ? "故事圣经"
+      : pathname.endsWith("/work-settings")
+        ? "作品设置"
       : pathname.endsWith("/settings") && pathname.startsWith("/workspace/")
         ? "设定中心"
         : pathname.endsWith("/outline")

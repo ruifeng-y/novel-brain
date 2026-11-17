@@ -52,6 +52,9 @@ import { AccountPurgeProcessor } from "./account-lifecycle/account-purge.process
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorkExportProcessor } from "./exports/work-export.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { WorkPurgeProcessor } from "./works/work-purge.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
 import {
   durableJobStatusToOutcome,
@@ -79,6 +82,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     private readonly writingActionProcessor: WritingActionProcessor,
     private readonly accountPurgeProcessor: AccountPurgeProcessor,
     private readonly workExportProcessor: WorkExportProcessor,
+    private readonly workPurgeProcessor: WorkPurgeProcessor,
     private readonly generationRepository: WorkerGenerationRepository,
     @Inject(WORKER_REDIS) private readonly connection: Redis,
     @Inject(WorkerOperationalMetricsRecorder)
@@ -197,6 +201,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
               await this.enqueueRecoveredWorkExport(pending);
             }
           },
+          undefined,
+        );
+        await this.runMaintenance(
+          "work_trash_purge",
+          () => this.workPurgeProcessor.cleanupDue(),
           undefined,
         );
         const dueRequestIds = await this.runMaintenance(

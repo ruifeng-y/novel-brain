@@ -118,6 +118,7 @@ M0 关键错误：
 - `FACT_SUBMISSION_BLOCKED`
 - `CANON_CHAPTER_NOT_APPROVED`
 - `IMPORT_CONFLICT_UNRESOLVED`
+- `WORK_IDEMPOTENCY_CONFLICT`
 - `VERSION_CONFLICT`
 - `FORBIDDEN_TENANT_ACCESS`
 - `ACCOUNT_EXPORT_EXPIRED`
@@ -172,6 +173,10 @@ M0 关键错误：
 | GET | `/api/v1/works` | 作者作品列表 |
 | POST | `/api/v1/works` | 从想法/空白/模板/设定导入/旧稿导入创建作品 |
 | GET | `/api/v1/works/:workId` | 作品总览 |
+| PATCH | `/api/v1/works/:workId` | 更新作品 metadata、标签、封面引用和连载状态 |
+| POST | `/api/v1/works/:workId/archive` | 可逆归档作品，保留分支与版本数据 |
+| POST | `/api/v1/works/:workId/restore` | 恢复归档前状态 |
+| POST | `/api/v1/works/:workId/duplicate` | 幂等复制作品设定内容，正文与版本默认排除 |
 | GET | `/api/v1/works/:workId/branches` | M0 返回 main 分支 |
 | POST | `/api/v1/works/:workId/import` | 设定导入或旧稿导入 |
 | POST | `/api/v1/imports` | 从粘贴文本或小型 TXT/Markdown 文件识别设定候选，不创建作品 |
@@ -359,9 +364,25 @@ manifest `schemaVersion` 为 2 时固定 `aiDisclosureMetadata`：`required` 来
 
 ### Work / Branch
 
-- Work：`id`、`title`、`penName`、`genre`、`status`、`scaleTarget`、`chapterLengthTarget`、`createdAt`、`updatedAt`。
+- Work：`id`、`title`、`penName`、`genre`、`status`、`scaleTarget`、`chapterLengthTarget`、`settings`、`coverImageUrl`、`tags`、`version`、`archivedAt`、`deletedAt`、`purgeAfter`、`createdAt`、`updatedAt`。
 - Branch：`id`、`workId`、`name`、`headNodeId`、`status`。
 - M0 每部作品至少有 `main` 分支。
+
+### Work Settings Lifecycle
+
+- `PATCH /api/v1/works/:workId` 请求体必须包含当前 `version`，可更新 `title`、`penName`、`genre`、`status`、`scaleTarget`、`chapterLengthTarget`、`coverImageUrl`、`tags` 和 `settings`。成功响应为最新 `WorkOverview`，`version` 加一。
+- 可编辑状态只接受 `preparing`、`serializing`、`paused` 和 `completed`。`archive` 和 `restore` 通过独立端点改变 `archived` 状态，不能借 PATCH 绕过。
+- `coverImageUrl` 为空或 HTTPS URL；`tags` 最多 20 个、每个 1–30 个字符且不得重复。API 和 PostgreSQL 都必须拒绝不合法值。
+- `POST archive` 与 `POST restore` 请求体均为 `{ "version": number }`。版本不匹配返回 `409 VERSION_CONFLICT`。归档保留 branch、版本节点、故事圣经、设定和大纲；恢复回到归档前状态。
+- `POST /api/v1/works/:workId/trash` 将作品软删除并写入 30 天 `purgeAfter`；`GET /api/v1/works?trash=true` 只返回当前用户的回收站作品；`POST /api/v1/works/:workId/trash/restore` 在保留期内恢复作品。
+- `POST /api/v1/works/:workId/purge` 只在保留期结束且存在未过期的已完成作品导出时永久删除作品。正文、分支、版本、正史、对象和导出引用按外键级联清理；清理任务只自动处理已满足导出门禁的作品。
+- `PUT /api/v1/works/:workId/cover?version=number` 接受 JPEG、PNG 或 WebP multipart 文件，重新编码为 WebP 后写入对象存储；`GET /api/v1/works/:workId/cover` 通过作者会话私有读取封面。
+- `POST /api/v1/works/:workId/duplicate` 必须带 `Idempotency-Key`，请求体为 `{ title?, copyManuscript?, copyHistory? }`。`copyManuscript` 和 `copyHistory` 默认均为 `false`，选择历史时必须同时选择正文。成功响应为新的独立 `WorkOverview`。
+- duplicate 默认复制作品 metadata/settings、故事圣经、可独立存在的设定与账本、大纲，以及 `settings.styleSample` 中的作者风格样本。`style_profiles`/`style_baselines` 只有在其来源、样本和版本引用都不依赖章节/章节版本时才可复制；当前 chapter-bound profile、golden-three baseline 和候选一律不复制。
+- duplicate 明确排除正文、`chapters`、`chapter_versions`、章节派生事实、事实决策、canon commit、人物认知状态、黄金三章候选/评审/锁定，以及依赖章节版本的风格档案。这些内容必须在新作品中重新生成或重新确认。
+- 所有被复制对象必须生成新 ID。实体、地图、时间线、大纲、账本、场景引用，以及账本 `history` 中嵌套的 `chapter.id`、`event.eventId` 等 ID 必须重映射；不可独立重建的章节引用必须清空，不能保留源作品 ID。默认不复制正文与版本章节；`copyManuscript`/`copyHistory` 仅为显式作者 opt-in。
+- duplicate 的幂等 scope 固定为当前用户、`work.duplicate:<sourceWorkId>` 和 key，有效期 24 小时。同一 key 与同一请求返回同一作品；同一 key 与不同请求返回 `409 WORK_IDEMPOTENCY_CONFLICT`。
+- 所有 Work mutation 都校验租户归属。跨用户读取或写入返回 `403 FORBIDDEN_TENANT_ACCESS`，并由 RLS 在数据库层再次拒绝。
 
 ### StoryBible
 

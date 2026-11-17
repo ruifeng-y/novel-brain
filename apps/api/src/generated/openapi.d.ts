@@ -1473,6 +1473,22 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
+    patch: operations["WorksController_update"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/cover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorksController_cover"];
+    put: operations["WorksController_uploadCover"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
     patch?: never;
     trace?: never;
   };
@@ -1486,6 +1502,102 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["WorksController_changeGenrePackVersion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorksController_archive"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorksController_restore"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/duplicate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorksController_duplicate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/trash": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorksController_trash"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/trash/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorksController_restoreTrash"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/purge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorksController_purge"];
     delete?: never;
     options?: never;
     head?: never;
@@ -4796,6 +4908,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -5158,6 +5275,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -11102,6 +11224,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11688,6 +11815,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12100,6 +12232,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12513,6 +12650,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12926,6 +13068,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -13352,6 +13499,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13887,6 +14039,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14341,6 +14498,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14650,6 +14812,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14869,6 +15036,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -15236,6 +15408,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15666,6 +15843,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16101,6 +16283,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16536,6 +16723,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -17338,6 +17530,27 @@ export interface operations {
                 settings: {
                   [key: string]: unknown;
                 };
+                /** @default null */
+                coverImageUrl: string | null;
+                /** @default [] */
+                tags: string[];
+                /** @default 1 */
+                version: number;
+                /**
+                 * Format: date-time
+                 * @default null
+                 */
+                archivedAt: string | null;
+                /**
+                 * Format: date-time
+                 * @default null
+                 */
+                deletedAt: string | null;
+                /**
+                 * Format: date-time
+                 * @default null
+                 */
+                purgeAfter: string | null;
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -17422,6 +17635,7 @@ export interface operations {
         q?: string;
         status?: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
         genre?: "xianxia" | "history" | "urban";
+        trash?: "true" | "false";
       };
       header?: never;
       path?: never;
@@ -17494,6 +17708,27 @@ export interface operations {
               settings: {
                 [key: string]: unknown;
               };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -17646,6 +17881,27 @@ export interface operations {
               settings: {
                 [key: string]: unknown;
               };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -17768,6 +18024,364 @@ export interface operations {
               settings: {
                 [key: string]: unknown;
               };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          title?: string;
+          penName?: string;
+          /** @enum {string} */
+          genre?: "xianxia" | "history" | "urban";
+          /** @enum {string} */
+          status?: "preparing" | "serializing" | "paused" | "completed";
+          /** @enum {string} */
+          scaleTarget?: "short" | "medium" | "long" | "epic";
+          chapterLengthTarget?: number;
+          /** Format: uri */
+          coverImageUrl?: string | null;
+          tags?: string[];
+          settings?: {
+            targetPlatform: string;
+            targetAudience: string;
+            readerPromise: string;
+            /** @enum {string} */
+            updateCadence: "daily" | "every_other_day" | "weekly" | "irregular";
+            synopsis: string;
+            styleSample: string;
+            taboos: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_cover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work cover image */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  WorksController_uploadCover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: binary */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Work with uploaded cover */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -17897,6 +18511,27 @@ export interface operations {
               settings: {
                 [key: string]: unknown;
               };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -17929,6 +18564,683 @@ export interface operations {
                   ready: boolean;
                 }[];
               };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_archive: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Archived work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_restore: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Restored work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_duplicate: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          title?: string;
+          /** @default false */
+          copyManuscript: boolean;
+          /** @default false */
+          copyHistory: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Duplicated work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_trash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Trashed work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** Format: date-time */
+              deletedAt: string;
+              /** Format: date-time */
+              purgeAfter: string;
+              version: number;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_restoreTrash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Restored work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_purge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Permanently deleted work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {boolean} */
+              deleted: true;
             };
             /** Format: starts_with */
             requestId: string;
@@ -18486,6 +19798,27 @@ export interface operations {
               settings: {
                 [key: string]: unknown;
               };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
               /** Format: date-time */
               createdAt: string;
               /** Format: date-time */
@@ -33210,6 +34543,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -33452,6 +34790,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -33670,6 +35013,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -43978,6 +45326,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44777,6 +46130,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45353,6 +46711,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45929,6 +47292,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46505,6 +47873,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47094,6 +48467,11 @@ export interface operations {
                     | "MODERATION_APPEAL_NOT_FOUND"
                     | "MODERATION_APPEAL_LIMIT_REACHED"
                     | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                    | "WORK_IDEMPOTENCY_CONFLICT"
+                    | "WORK_PURGE_NOT_DUE"
+                    | "WORK_EXPORT_REQUIRED"
+                    | "WORK_COVER_INVALID"
+                    | "WORK_COVER_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -47473,6 +48851,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47874,6 +49257,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -48193,6 +49581,11 @@ export interface operations {
                   | "MODERATION_APPEAL_NOT_FOUND"
                   | "MODERATION_APPEAL_LIMIT_REACHED"
                   | "MODERATION_APPEAL_IDEMPOTENCY_CONFLICT"
+                  | "WORK_IDEMPOTENCY_CONFLICT"
+                  | "WORK_PURGE_NOT_DUE"
+                  | "WORK_EXPORT_REQUIRED"
+                  | "WORK_COVER_INVALID"
+                  | "WORK_COVER_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
