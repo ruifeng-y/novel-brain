@@ -61,6 +61,7 @@ export interface BenchmarkReportInput {
   recovery: RecoveryEvidence | null;
   decisions: readonly BenchmarkDecision[];
   environment?: ReportEnvironmentManifest | null;
+  environmentMatchesWorkload?: boolean;
   artifactsConsistent?: boolean;
   queryPlansVerified?: boolean;
   failureInjectionVerified?: boolean;
@@ -82,6 +83,7 @@ export interface BenchmarkReport {
   recovery: RecoveryEvidence | null;
   decisions: readonly BenchmarkDecision[];
   environment: ReportEnvironmentManifest | null;
+  environmentMatchesWorkload: boolean;
   artifactsConsistent: boolean;
   queryPlansVerified: boolean;
   failureInjectionVerified: boolean;
@@ -154,6 +156,10 @@ export function buildBenchmarkReport(
   } else if (!input.environment.baseline.certificationEligible) {
     blockers.add("environment-not-approved-baseline");
   }
+  const environmentMatchesWorkload = input.environmentMatchesWorkload === true;
+  if (!environmentMatchesWorkload) {
+    blockers.add("environment-workload-mismatch");
+  }
   for (const target of input.targetComparison.approved) {
     if (target.status !== "pass") {
       blockers.add(`approved-target-failed:${target.id}`);
@@ -206,6 +212,7 @@ export function buildBenchmarkReport(
     recovery: input.recovery,
     decisions: input.decisions,
     environment: input.environment ?? null,
+    environmentMatchesWorkload,
     artifactsConsistent,
     queryPlansVerified,
     failureInjectionVerified,

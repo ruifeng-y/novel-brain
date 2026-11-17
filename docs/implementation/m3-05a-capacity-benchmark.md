@@ -72,6 +72,7 @@ node packages/capacity-benchmark/dist/cli.js environment `
 
 node packages/capacity-benchmark/dist/cli.js workload `
   --fixture artifacts/capacity/full-compose/fixture-manifest.json `
+  --environment artifacts/capacity/full-compose/environment.json `
   --api-base-url http://localhost:3101 `
   --database-url "postgresql://novelbrain:novelbrain@localhost:35432/novelbrain_benchmark" `
   --confirm-database novelbrain_benchmark `

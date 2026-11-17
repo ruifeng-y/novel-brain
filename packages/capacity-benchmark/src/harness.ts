@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
@@ -20,6 +20,7 @@ export interface WorkloadRunInput {
   fixtureManifest: FixtureManifest;
   apiBaseUrl: string;
   databaseUrl: string;
+  environmentPath: string;
   concurrency: number;
   durationSeconds: number;
   rampSeconds: number;
@@ -50,6 +51,7 @@ export interface WorkloadSummary {
   runId: string;
   sourceCommit: string;
   fixtureSha256: string;
+  environmentSha256: string | null;
   apiBaseUrl: string;
   startedAt: string;
   completedAt: string;
@@ -146,6 +148,9 @@ export async function runWorkload(input: WorkloadRunInput): Promise<WorkloadSumm
   });
   const rawSamplesPath = path.join(input.outputDirectory, "raw-samples.ndjson");
   const summaryPath = path.join(input.outputDirectory, "workload-summary.json");
+  const environmentSha256 = createHash("sha256")
+    .update(await readFile(input.environmentPath))
+    .digest("hex");
   await mkdir(input.outputDirectory, { recursive: true });
   await writeFile(rawSamplesPath, "", "utf8");
   const writer = createSampleWriter(rawSamplesPath);
@@ -276,6 +281,7 @@ export async function runWorkload(input: WorkloadRunInput): Promise<WorkloadSumm
     runId,
     sourceCommit: input.fixtureManifest.sourceCommit,
     fixtureSha256: input.fixtureManifest.manuscriptSha256,
+    environmentSha256,
     apiBaseUrl: input.apiBaseUrl,
     startedAt: started.toISOString(),
     completedAt: completed.toISOString(),

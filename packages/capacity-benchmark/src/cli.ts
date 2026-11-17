@@ -10,6 +10,10 @@ import {
   type BenchmarkTopology,
 } from "./dataset";
 import { collectEnvironmentManifest } from "./environment";
+import {
+  validateFailureInjectionEvidence,
+  type FailureInjectionEvidence,
+} from "./failure-injection";
 import { runWorkload, type WorkloadSummary } from "./harness";
 import { buildBenchmarkReport, type BenchmarkDecision, type RecoveryEvidence } from "./report";
 import { readJsonArtifact, writeJsonArtifact } from "./report-io";
@@ -88,11 +92,13 @@ async function main(): Promise<void> {
       const confirmDatabase = required(options, "confirm-database");
       assertBenchmarkDatabaseTarget(databaseUrl, confirmDatabase);
       const fixture = await readJsonArtifact<FixtureManifest>(fixturePath);
+      const environmentPath = resolvePath(required(options, "environment"));
       const outputDirectory = resolvePath(options.output ?? path.dirname(fixturePath));
       const summary = await runWorkload({
         fixtureManifest: fixture,
         apiBaseUrl: options["api-base-url"] ?? "http://localhost:3001",
         databaseUrl,
+        environmentPath,
         concurrency: Number(options.concurrency ?? "4"),
         durationSeconds: Number(options["duration-seconds"] ?? "60"),
         rampSeconds: Number(options["ramp-seconds"] ?? "10"),
@@ -122,6 +128,9 @@ async function main(): Promise<void> {
         sourceCommit?: string;
         baseline: { certificationEligible: boolean };
       }>(environmentPath);
+      const environmentSha256 = createHash("sha256")
+        .update(await readFile(environmentPath))
+        .digest("hex");
       const recovery = options.recovery
         ? await readJsonArtifact<RecoveryEvidence>(resolvePath(options.recovery))
         : null;
@@ -190,6 +199,8 @@ async function main(): Promise<void> {
           fixture.sourceCommit === workload.sourceCommit &&
           fixture.manuscriptSha256 === workload.fixtureSha256 &&
           environment.sourceCommit === fixture.sourceCommit,
+        environmentMatchesWorkload:
+          workload.environmentSha256 !== null && workload.environmentSha256 === environmentSha256,
         queryPlansVerified,
         failureInjectionVerified,
         artifactHashes: Object.fromEntries(
@@ -278,16 +289,8 @@ async function failureInjectionMatchesRun(
   runId: string,
   sourceCommit: string,
 ): Promise<boolean> {
-  const evidence = await readJsonArtifact<{
-    status?: string;
-    runId?: string;
-    sourceCommit?: string;
-  }>(filePath);
-  return (
-    evidence.status === "passed" &&
-    evidence.runId === runId &&
-    evidence.sourceCommit === sourceCommit
-  );
+  const evidence = await readJsonArtifact<FailureInjectionEvidence>(filePath);
+  return validateFailureInjectionEvidence(evidence, { runId, sourceCommit });
 }
 
 function writeOutput(value: unknown): void {

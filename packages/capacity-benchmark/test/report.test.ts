@@ -248,10 +248,12 @@ describe("capacity benchmark release report", () => {
         objectIntegrity: true,
         evidencePath: "recovery/evidence.json",
       },
+      environmentMatchesWorkload: false,
       decisions: [],
       rawArtifacts: ["raw/samples.ndjson", "summary.json"],
     });
 
     expect(report.blockers).toContain("recovery-evidence-run-mismatch");
+    expect(report.blockers).toContain("environment-workload-mismatch");
   });
 });
