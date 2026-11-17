@@ -3435,6 +3435,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -4258,6 +4259,7 @@
                                   "PUBLISH_EXPORT_NOT_READY",
                                   "PUBLISH_EXPORT_EXPIRED",
                                   "PUBLISH_PREVIEW_NOT_FOUND",
+                                  "PUBLISH_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -22117,6 +22119,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -23667,6 +23670,7 @@
                                   "PUBLISH_EXPORT_NOT_READY",
                                   "PUBLISH_EXPORT_EXPIRED",
                                   "PUBLISH_PREVIEW_NOT_FOUND",
+                                  "PUBLISH_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -24637,6 +24641,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -25599,6 +25604,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -26561,6 +26567,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -27572,6 +27579,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -29061,6 +29069,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30297,6 +30306,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -30930,6 +30940,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -31231,6 +31242,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -32128,6 +32140,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -33274,6 +33287,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -34436,6 +34450,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -35606,6 +35621,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -90386,6 +90402,7 @@
                                       "PUBLISH_EXPORT_NOT_READY",
                                       "PUBLISH_EXPORT_EXPIRED",
                                       "PUBLISH_PREVIEW_NOT_FOUND",
+                                      "PUBLISH_IDEMPOTENCY_CONFLICT",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -90778,6 +90795,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -91105,6 +91123,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -122049,6 +122068,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -123628,6 +123648,7 @@
                                   "PUBLISH_EXPORT_NOT_READY",
                                   "PUBLISH_EXPORT_EXPIRED",
                                   "PUBLISH_PREVIEW_NOT_FOUND",
+                                  "PUBLISH_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -125195,6 +125216,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -126754,6 +126776,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -128313,6 +128336,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -129931,6 +129955,7 @@
                                     "PUBLISH_EXPORT_NOT_READY",
                                     "PUBLISH_EXPORT_EXPIRED",
                                     "PUBLISH_PREVIEW_NOT_FOUND",
+                                    "PUBLISH_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -130928,6 +130953,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -131610,6 +131636,7 @@
                                   "PUBLISH_EXPORT_NOT_READY",
                                   "PUBLISH_EXPORT_EXPIRED",
                                   "PUBLISH_PREVIEW_NOT_FOUND",
+                                  "PUBLISH_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -132281,6 +132308,7 @@
                                 "PUBLISH_EXPORT_NOT_READY",
                                 "PUBLISH_EXPORT_EXPIRED",
                                 "PUBLISH_PREVIEW_NOT_FOUND",
+                                "PUBLISH_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -132444,6 +132472,15 @@
             "name": "branchId",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Stable key for replaying the same publish check",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -133043,18 +133080,38 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Recent pinned publish previews",
+            "description": "Pinned publish preview history",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "data": {
-                      "maxItems": 20,
+                      "maxItems": 100,
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -133543,9 +133600,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],

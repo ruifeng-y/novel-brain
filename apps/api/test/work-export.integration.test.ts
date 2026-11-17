@@ -19,7 +19,7 @@ import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import { FileObjectStorage, type ObjectStorage } from "@novel-brain/storage";
 import { Worker as BullWorker } from "bullmq";
 import Redis from "ioredis";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -548,11 +548,41 @@ describe("work export HTTP and worker integration", () => {
       ]),
     );
 
-    const generic = await startPublishCheck(owner, branchPath, {
-      exportId: firstExport.id,
-      platformPreset: "generic",
-      metadata: publishMetadata(),
-    });
+    const genericKey = "publish-generic-preview";
+    const generic = await startPublishCheck(
+      owner,
+      branchPath,
+      {
+        exportId: firstExport.id,
+        platformPreset: "generic",
+        metadata: publishMetadata(),
+      },
+      genericKey,
+    );
+    const replayed = await startPublishCheck(
+      owner,
+      branchPath,
+      {
+        exportId: firstExport.id,
+        platformPreset: "generic",
+        metadata: publishMetadata(),
+      },
+      genericKey,
+    );
+    expect(replayed.id).toBe(generic.id);
+    const conflictToken = await csrf(owner);
+    const idempotencyConflict = await owner
+      .post(`${branchPath}/publish-check`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", conflictToken)
+      .set("Idempotency-Key", genericKey)
+      .send({
+        exportId: firstExport.id,
+        platformPreset: "fanqie",
+        metadata: publishMetadata(),
+      })
+      .expect(409);
+    expect(idempotencyConflict.body.error.code).toBe("PUBLISH_IDEMPOTENCY_CONFLICT");
     const fanqie = await startPublishCheck(owner, branchPath, {
       exportId: firstExport.id,
       platformPreset: "fanqie",
@@ -592,6 +622,23 @@ describe("work export HTTP and worker integration", () => {
     expect(listed.map((preview) => preview.id)).toEqual(
       expect.arrayContaining([generic.id, fanqie.id]),
     );
+    const firstPage = publishPreviewListResponseSchema.parse(
+      (await owner.get(`${branchPath}/publish-check?limit=1`).expect(200)).body,
+    );
+    expect(firstPage.data).toHaveLength(1);
+    expect(firstPage.meta.nextCursor).toBeTruthy();
+    const secondPage = publishPreviewListResponseSchema.parse(
+      (
+        await owner
+          .get(
+            `${branchPath}/publish-check?limit=1&cursor=${encodeURIComponent(
+              firstPage.meta.nextCursor!,
+            )}`,
+          )
+          .expect(200)
+      ).body,
+    );
+    expect(secondPage.data[0]?.id).not.toBe(firstPage.data[0]?.id);
 
     const staleSourceToken = await csrf(owner);
     await saveChapterVersion(
@@ -649,6 +696,7 @@ describe("work export HTTP and worker integration", () => {
       .post(`${branchPath}/publish-check`)
       .set("Origin", origin)
       .set("X-CSRF-Token", otherToken)
+      .set("Idempotency-Key", "publish-other-tenant")
       .send({
         exportId: receipt.id,
         platformPreset: "generic",
@@ -666,6 +714,7 @@ describe("work export HTTP and worker integration", () => {
       .post(`${branchPath}/publish-check`)
       .set("Origin", origin)
       .set("X-CSRF-Token", expiredToken)
+      .set("Idempotency-Key", "publish-expired-export")
       .send({
         exportId: receipt.id,
         platformPreset: "generic",
@@ -702,12 +751,14 @@ describe("work export HTTP and worker integration", () => {
     agent: SuperAgentTest,
     branchPath: string,
     body: Record<string, unknown>,
+    idempotencyKey = randomUUID(),
   ) {
     const csrfToken = await csrf(agent);
     const response = await agent
       .post(`${branchPath}/publish-check`)
       .set("Origin", origin)
       .set("X-CSRF-Token", csrfToken)
+      .set("Idempotency-Key", idempotencyKey)
       .send(body);
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return publishPreviewResponseSchema.parse(response.body).data;

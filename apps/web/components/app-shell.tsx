@@ -67,7 +67,7 @@ export function AppShell({
   const workPathMatch = pathname.match(/^\/workspace\/([^/]+)\/([^/]+)/u);
   const workId = workPathMatch?.[1];
   const workSection = workPathMatch?.[2];
-  const showWorkContext = workSection === "overview";
+  const showWorkContext = workSection === "overview" || workSection === "export";
   const current = pathname.endsWith("/overview")
     ? "作品总览"
     : pathname.endsWith("/bible")

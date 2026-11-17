@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
-import { buildPublishPreview } from "../src";
+import { buildPublishPreview, resolveGoldenThreeEvidence } from "../src";
 
 describe("publish preview", () => {
   it("blocks publish readiness on missing metadata while preserving warning severity", () => {
@@ -69,6 +71,85 @@ describe("publish preview", () => {
     expect(generic.publishCopy.chapterTitleSuggestions[0]).toBe("1. 山门");
     expect(fanqie.publishCopy.chapterTitleSuggestions[0]).toBe("第1章 山门");
     expect(fanqie.publishCopy.platformNote).toContain("不会上传");
+    expect(fanqie.checks.map((check) => [check.code, check.status])).toEqual(
+      generic.checks.map((check) => [check.code, check.status]),
+    );
+  });
+
+  it("blocks exports that do not contain the continuous first three chapters", () => {
+    const preview = buildPublishPreview({
+      ...publishInput(),
+      platformPreset: "generic",
+      chapters: [
+        publishChapter(4, "夜路", "第四章正文。"),
+        publishChapter(5, "渡口", "第五章正文。"),
+        publishChapter(6, "纸人", "第六章正文。"),
+      ],
+    });
+
+    expect(preview.publishReady).toBe(false);
+    expect(preview.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "first_three_chapters_present",
+          status: "blocked",
+        }),
+        expect.objectContaining({
+          code: "content_safety_review",
+          status: "warning",
+        }),
+      ]),
+    );
+  });
+
+  it("only reuses golden-three evidence pinned to the exported chapter versions", () => {
+    const chapters = publishInput().chapters;
+    const pins = chapters.map(
+      ({ chapterId, chapterNumber, chapterVersionId, versionNodeId, content }) => ({
+        chapterId,
+        chapterNumber,
+        chapterVersionId,
+        versionNodeId,
+        contentHash: createHash("sha256").update(content).digest("hex"),
+      }),
+    );
+    const reviews = [
+      {
+        dimension: "opening_hook",
+        score: 5,
+        evidenceChapterVersionId: chapters[0]!.chapterVersionId,
+      },
+      {
+        dimension: "chapter_end_hook",
+        score: 4,
+        evidenceChapterVersionId: chapters[2]!.chapterVersionId,
+      },
+    ];
+
+    expect(
+      resolveGoldenThreeEvidence(chapters, {
+        chapterPins: pins,
+        reviewSnapshot: reviews,
+      }),
+    ).toEqual({
+      locked: true,
+      openingHookScore: 5,
+      chapterEndHookScore: 4,
+    });
+    expect(
+      resolveGoldenThreeEvidence(chapters, {
+        chapterPins: pins.map((pin, index) =>
+          index === 0
+            ? { ...pin, chapterVersionId: publishChapter(9, "别章", "正文").chapterVersionId }
+            : pin,
+        ),
+        reviewSnapshot: reviews,
+      }),
+    ).toEqual({
+      locked: false,
+      openingHookScore: null,
+      chapterEndHookScore: null,
+    });
   });
 });
 

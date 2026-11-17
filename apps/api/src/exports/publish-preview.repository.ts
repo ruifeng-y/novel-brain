@@ -7,8 +7,10 @@ import {
   type PublishCheckRequest,
   type PublishPlatformPreset,
   type PublishPreview,
+  type PublishPreviewListQuery,
 } from "@novel-brain/contracts";
 import { createDatabasePool } from "@novel-brain/db";
+import { resolveGoldenThreeEvidence } from "@novel-brain/core";
 import type { Pool, PoolClient } from "pg";
 import { uuidv7 } from "uuidv7";
 
@@ -76,6 +78,10 @@ type PreviewRow = {
   created_at: Date;
   updated_at: Date;
   head_node_id: string | null;
+};
+
+type IdempotencyReplayRow = PreviewRow & {
+  request_hash: string | null;
 };
 
 const PREVIEW_COLUMNS = `preview.id, preview.export_id, preview.work_id, preview.branch_id,
@@ -181,13 +187,33 @@ export class PublishPreviewRepository implements OnModuleDestroy {
         };
       });
       const golden = await client.query<{
-        review_snapshot: Array<{ dimension: string; score: number }>;
+        chapter_pins: Array<{
+          chapterId: string;
+          chapterNumber: number;
+          chapterVersionId: string;
+          versionNodeId: string;
+          contentHash: string;
+        }>;
+        review_snapshot: Array<{
+          dimension: string;
+          score: number;
+          evidenceChapterVersionId?: string;
+        }>;
       }>(
-        `SELECT review_snapshot FROM golden_three_locks
+        `SELECT chapter_pins, review_snapshot FROM golden_three_locks
           WHERE user_id = $1 AND work_id = $2 AND branch_id = $3`,
         [userId, context.workId, context.branchId],
       );
-      const reviews = golden.rows[0]?.review_snapshot ?? [];
+      const goldenLock = golden.rows[0];
+      const goldenThree = resolveGoldenThreeEvidence(
+        chapters,
+        goldenLock
+          ? {
+              chapterPins: goldenLock.chapter_pins,
+              reviewSnapshot: goldenLock.review_snapshot,
+            }
+          : null,
+      );
       return {
         exportId,
         work: {
@@ -209,11 +235,7 @@ export class PublishPreviewRepository implements OnModuleDestroy {
           requestedVersionNodeId: manifest.branch.requestedVersionNodeId,
         },
         chapters,
-        goldenThree: {
-          locked: Boolean(golden.rows[0]),
-          openingHookScore: scoreFor(reviews, "opening_hook"),
-          chapterEndHookScore: scoreFor(reviews, "chapter_end_hook"),
-        },
+        goldenThree,
       };
     }).catch((error: unknown) => {
       if (error instanceof PublishSourceChangedError) {
@@ -227,9 +249,27 @@ export class PublishPreviewRepository implements OnModuleDestroy {
     userId: string,
     context: PublishContext,
     request: PublishCheckRequest,
+    idempotencyKey: string,
+    requestHash: string,
     preview: Omit<PublishPreview, "id" | "createdAt" | "updatedAt" | "stale" | "staleReason">,
   ): Promise<PublishPreview> {
     return this.withTenant(userId, async (client) => {
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [
+        `${userId}:${idempotencyScope(context)}:${idempotencyKey}`,
+      ]);
+      const replay = await this.findIdempotentWithClient(
+        client,
+        userId,
+        context,
+        idempotencyKey,
+        requestHash,
+      );
+      if (replay === "conflict") {
+        throw new PublishIdempotencyConflictError();
+      }
+      if (replay) {
+        return replay;
+      }
       const now = new Date();
       const id = uuidv7();
       await client.query(
@@ -260,12 +300,36 @@ export class PublishPreviewRepository implements OnModuleDestroy {
           now,
         ],
       );
+      await client.query(
+        `INSERT INTO idempotency_records
+          (id, user_id, scope, idempotency_key, request_hash, resource_type, resource_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, 'publish_preview', $6, $7)
+         ON CONFLICT (user_id, scope, idempotency_key) DO UPDATE
+           SET id = EXCLUDED.id,
+               request_hash = EXCLUDED.request_hash,
+               resource_type = EXCLUDED.resource_type,
+               resource_id = EXCLUDED.resource_id,
+               created_at = EXCLUDED.created_at
+         WHERE idempotency_records.created_at <= now() - interval '24 hours'`,
+        [uuidv7(), userId, idempotencyScope(context), idempotencyKey, requestHash, id, now],
+      );
       const row = await this.getRow(client, userId, context, id);
       if (!row) {
         throw new Error("Failed to create publish preview");
       }
       return toPreview(row);
     });
+  }
+
+  async findIdempotent(
+    userId: string,
+    context: PublishContext,
+    idempotencyKey: string,
+    requestHash: string,
+  ): Promise<PublishPreview | "conflict" | null> {
+    return this.withTenant(userId, (client) =>
+      this.findIdempotentWithClient(client, userId, context, idempotencyKey, requestHash),
+    );
   }
 
   async get(
@@ -279,18 +343,36 @@ export class PublishPreviewRepository implements OnModuleDestroy {
     });
   }
 
-  async list(userId: string, context: PublishContext): Promise<PublishPreview[]> {
+  async list(
+    userId: string,
+    context: PublishContext,
+    query: PublishPreviewListQuery,
+  ): Promise<{ previews: PublishPreview[]; nextCursor: string | null }> {
     return this.withTenant(userId, async (client) => {
       const result = await client.query<PreviewRow>(
         `SELECT ${PREVIEW_COLUMNS}
            FROM publish_previews preview
            JOIN work_branches branch ON branch.id = preview.branch_id
           WHERE preview.user_id = $1 AND preview.work_id = $2 AND preview.branch_id = $3
-          ORDER BY preview.created_at DESC
-          LIMIT 20`,
-        [userId, context.workId, context.branchId],
+            AND (
+              $4::uuid IS NULL
+              OR (preview.created_at, preview.id) < (
+                SELECT anchor.created_at, anchor.id
+                  FROM publish_previews anchor
+                 WHERE anchor.id = $4 AND anchor.user_id = $1
+                   AND anchor.work_id = $2 AND anchor.branch_id = $3
+              )
+            )
+          ORDER BY preview.created_at DESC, preview.id DESC
+          LIMIT $5`,
+        [userId, context.workId, context.branchId, query.cursor ?? null, query.limit + 1],
       );
-      return result.rows.map(toPreview);
+      const hasMore = result.rows.length > query.limit;
+      const rows = result.rows.slice(0, query.limit);
+      return {
+        previews: rows.map(toPreview),
+        nextCursor: hasMore ? (rows.at(-1)?.id ?? null) : null,
+      };
     });
   }
 
@@ -313,6 +395,32 @@ export class PublishPreviewRepository implements OnModuleDestroy {
       [previewId, userId, context.workId, context.branchId],
     );
     return result.rows[0];
+  }
+
+  private async findIdempotentWithClient(
+    client: PoolClient,
+    userId: string,
+    context: PublishContext,
+    idempotencyKey: string,
+    requestHash: string,
+  ): Promise<PublishPreview | "conflict" | null> {
+    const result = await client.query<IdempotencyReplayRow>(
+      `SELECT ${PREVIEW_COLUMNS}, record.request_hash
+         FROM idempotency_records record
+         JOIN publish_previews preview ON preview.id = record.resource_id
+         JOIN work_branches branch ON branch.id = preview.branch_id
+        WHERE record.user_id = $1 AND record.scope = $2
+          AND record.idempotency_key = $3
+          AND record.created_at > now() - interval '24 hours'
+          AND record.resource_type = 'publish_preview'
+          AND preview.user_id = $1 AND preview.work_id = $4 AND preview.branch_id = $5`,
+      [userId, idempotencyScope(context), idempotencyKey, context.workId, context.branchId],
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return null;
+    }
+    return row.request_hash === requestHash ? toPreview(row) : "conflict";
   }
 
   private async withTenant<T>(
@@ -364,11 +472,6 @@ function toPreview(row: PreviewRow): PublishPreview {
   };
 }
 
-function scoreFor(reviews: Array<{ dimension: string; score: number }>, dimension: string) {
-  const score = reviews.find((review) => review.dimension === dimension)?.score;
-  return typeof score === "number" ? score : null;
-}
-
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -378,4 +481,15 @@ export class PublishSourceChangedError extends Error {
     super("Publish preview source changed");
     this.name = "PublishSourceChangedError";
   }
+}
+
+export class PublishIdempotencyConflictError extends Error {
+  constructor() {
+    super("Publish preview idempotency conflict");
+    this.name = "PublishIdempotencyConflictError";
+  }
+}
+
+function idempotencyScope(context: PublishContext): string {
+  return `publish-check:${context.workId}:${context.branchId}`;
 }

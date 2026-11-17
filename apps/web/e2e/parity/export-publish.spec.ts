@@ -6,6 +6,8 @@ import {
   type Page,
   type Route,
 } from "@playwright/test";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { Pool } from "pg";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
@@ -28,7 +30,8 @@ test.beforeEach(async () => {
 test("runs export, publish check and reader preview, then covers four viewports", async ({
   page,
   context,
-}) => {
+  playwright,
+}, testInfo) => {
   await authenticatedPage(page, context, "导出发布作者");
   const work = await createWork(page.request, {
     mode: "idea",
@@ -75,10 +78,16 @@ test("runs export, publish check and reader preview, then covers four viewports"
     await expect(page.locator(".publish-check.blocked")).toHaveCount(0);
     await expect(page.locator(".publish-check.warning").first()).toBeVisible();
 
-    await page.getByRole("button", { name: "读者预览" }).click();
+    const readerTrigger = page.getByRole("button", { name: "读者预览" });
+    await readerTrigger.click();
     const readerDialog = page.getByRole("dialog", { name: "山海照夜" });
     await expect(readerDialog).toBeVisible();
     await expect(readerDialog.getByText("第 1 章", { exact: true })).toBeVisible();
+    await expect(readerDialog.getByRole("button", { name: "关闭读者预览" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(readerDialog).toHaveCount(0);
+    await expect(readerTrigger).toBeFocused();
+    await readerTrigger.click();
     await readerDialog.getByRole("button", { name: "返回编辑" }).click();
     await expect(readerDialog).toHaveCount(0);
 
@@ -97,6 +106,64 @@ test("runs export, publish check and reader preview, then covers four viewports"
     await page.getByRole("button", { name: "应用并重新检查" }).click();
     await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
 
+    const chapterResponse = await page.request.get(`${branchPath}/chapters/${chapters[0]!.id}`);
+    expect(chapterResponse.ok()).toBe(true);
+    const chapter = (await chapterResponse.json()).data as { version: number };
+    const chapterToken = await getCsrf(page.request);
+    const changedChapter = await page.request.post(
+      `${branchPath}/chapters/${chapters[0]!.id}/versions`,
+      {
+        headers: { Origin: origin, "X-CSRF-Token": chapterToken },
+        data: {
+          version: chapter.version,
+          content: `${"山灯换了新的旧名。".repeat(260)}这是第 1 章的后续修订。`,
+        },
+      },
+    );
+    expect(changedChapter.status()).toBe(201);
+    await page.reload();
+    await expect(page.getByText("作品版本已变化，请重新运行发布检查。")).toBeVisible();
+
+    await page.getByRole("button", { name: "开始导出" }).click();
+    await expect(page.getByText("导出完成，已写入导出历史。")).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.getByRole("button", { name: "重新检查" }).click();
+    await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
+    await expect(page.getByText("作品版本已变化，请重新运行发布检查。")).toHaveCount(0);
+
+    const otherRequest = await playwright.request.newContext({ baseURL: origin });
+    try {
+      await registerUser(
+        otherRequest,
+        uniqueEmail("export-publish-other"),
+        "StrongPassword123",
+        "其他租户",
+      );
+      const exportListResponse = await page.request.get(`${branchPath}/exports`);
+      expect(exportListResponse.ok()).toBe(true);
+      const exportList = (await exportListResponse.json()) as {
+        data: Array<{ id: string }>;
+      };
+      const otherToken = await getCsrf(otherRequest);
+      const forbidden = await otherRequest.post(`${branchPath}/publish-check`, {
+        headers: {
+          Origin: origin,
+          "Idempotency-Key": "other-tenant-publish",
+          "X-CSRF-Token": otherToken,
+        },
+        data: {
+          exportId: exportList.data[0]!.id,
+          platformPreset: "generic",
+          metadata: publishMetadata(),
+        },
+      });
+      expect(forbidden.status()).toBe(403);
+      expect((await forbidden.json()).error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    } finally {
+      await otherRequest.dispose();
+    }
+
     await page.getByRole("button", { name: "查看完整目录" }).click();
     await expect(page.locator(".export-toc > div")).toHaveCount(chapters.length);
     await expect(page.getByRole("button", { name: "收起目录" })).toBeVisible();
@@ -108,9 +175,10 @@ test("runs export, publish check and reader preview, then covers four viewports"
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`/workspace/${work.id}/export`);
       await expect(page.getByRole("heading", { name: "把故事带出去" })).toBeVisible();
-      await expect(page.locator(".export-history-row")).toHaveCount(1);
+      await expect(page.locator(".export-history-row")).toHaveCount(2);
       await expect(page.locator(".publish-check").first()).toBeVisible();
-      await expect(page.getByLabel("当前作品与创作线")).toHaveCount(0);
+      await expect(page.getByLabel("当前作品与创作线")).toContainText("山海照夜");
+      await expect(page.getByLabel("当前作品与创作线")).toContainText("主线");
       await expectAuthorFacingLanguage(page);
       await expectNoPrototypeOnlyLeakage(page);
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -118,10 +186,28 @@ test("runs export, publish check and reader preview, then covers four viewports"
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
-      await expect(page).toHaveScreenshot(
-        ["export-publish", `export-publish-${width}.png`],
-        productionScreenshotOptions,
+      const goldenPath = path.resolve(
+        "artifacts/ui/golden/export-publish",
+        `export-publish-${width}.png`,
       );
+      if (existsSync(goldenPath)) {
+        await expect(page).toHaveScreenshot(
+          ["export-publish", `export-publish-${width}.png`],
+          productionScreenshotOptions,
+        );
+      } else {
+        const candidatePath = testInfo.outputPath(`export-publish-${width}.png`);
+        await page.screenshot({
+          animations: "disabled",
+          caret: "hide",
+          fullPage: true,
+          path: candidatePath,
+        });
+        await testInfo.attach(`export-publish-${width}-candidate`, {
+          contentType: "image/png",
+          path: candidatePath,
+        });
+      }
     }
     await unfreezeTimestamps();
 
@@ -238,6 +324,20 @@ async function authenticatedPage(page: Page, context: BrowserContext, displayNam
       sameSite: "Lax",
     },
   ]);
+}
+
+function publishMetadata() {
+  return {
+    title: "山海照夜",
+    author: "导出发布作者",
+    summary: "一盏山灯在万妖夜行时熄灭，守灯人必须用自己的旧名重新点燃它。",
+    tags: ["仙侠", "山灯"],
+    coverHeadline: "山海照夜",
+    coverSubline: "最后一盏山灯",
+    coverTone: "cinnabar",
+    aiDisclosure: false,
+    copyrightAcknowledged: false,
+  };
 }
 
 async function createChapters(

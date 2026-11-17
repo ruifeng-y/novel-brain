@@ -1,7 +1,14 @@
-export type PublishPlatformPreset = "generic" | "qidian" | "fanqie";
-export type PublishCheckStatus = "pass" | "warning" | "blocked";
-export type PublishReadinessStatus = "ready" | "warning" | "blocked";
-export type PublishGenre = "xianxia" | "history" | "urban";
+import { createHash } from "node:crypto";
+
+import {
+  PUBLISH_PLATFORM_PRESETS,
+  type PublishCheckStatus,
+  type PublishPlatformPreset,
+  type PublishReadinessStatus,
+  type WorkGenre,
+} from "@novel-brain/contracts";
+
+type PublishGenre = WorkGenre;
 
 export interface PublishMetadataInput {
   title?: string;
@@ -75,6 +82,62 @@ export interface PublishCheckResult {
   evidence: Array<{ label: string; value: string | number | boolean | null }>;
 }
 
+export interface GoldenThreeEvidenceSnapshot {
+  chapterPins: Array<{
+    chapterId: string;
+    chapterNumber: number;
+    chapterVersionId: string;
+    versionNodeId: string;
+    contentHash: string;
+  }>;
+  reviewSnapshot: Array<{
+    dimension: string;
+    score: number;
+    evidenceChapterVersionId?: string;
+  }>;
+}
+
+export function resolveGoldenThreeEvidence(
+  chapters: PublishChapterSource[],
+  lock: GoldenThreeEvidenceSnapshot | null,
+) {
+  const firstThree = chapters.slice(0, 3);
+  const pinnedToPreview =
+    Boolean(lock) &&
+    firstThree.length === 3 &&
+    firstThree.every((chapter, index) => {
+      const pin = lock?.chapterPins[index];
+      return (
+        pin?.chapterId === chapter.chapterId &&
+        pin.chapterNumber === chapter.chapterNumber &&
+        pin.chapterVersionId === chapter.chapterVersionId &&
+        pin.versionNodeId === chapter.versionNodeId &&
+        pin.contentHash === sha256(chapter.content)
+      );
+    });
+  const pinnedVersionIds = new Set(firstThree.map((chapter) => chapter.chapterVersionId));
+  const reviews = pinnedToPreview
+    ? (lock?.reviewSnapshot ?? []).filter(
+        (review) =>
+          review.evidenceChapterVersionId !== undefined &&
+          pinnedVersionIds.has(review.evidenceChapterVersionId),
+      )
+    : [];
+  return {
+    locked: pinnedToPreview,
+    openingHookScore: reviewScore(reviews, "opening_hook"),
+    chapterEndHookScore: reviewScore(reviews, "chapter_end_hook"),
+  };
+}
+
+interface PlatformPresetDefinition {
+  label: string;
+  minChapterCharacters: number;
+  maxChapterCharacters: number;
+  tagLimit: number;
+  chapterTitleFormat: string;
+}
+
 const PLATFORM_PRESETS = {
   generic: {
     label: "通用网文",
@@ -97,7 +160,11 @@ const PLATFORM_PRESETS = {
     tagLimit: 8,
     chapterTitleFormat: "第{number}章 {title}",
   },
-} as const;
+} as const satisfies Record<PublishPlatformPreset, PlatformPresetDefinition>;
+
+if (Object.keys(PLATFORM_PRESETS).length !== PUBLISH_PLATFORM_PRESETS.length) {
+  throw new Error("Publish platform presets drifted from contracts");
+}
 
 const GENRE_LABELS: Record<PublishGenre, string> = {
   xianxia: "仙侠",
@@ -108,13 +175,22 @@ const GENRE_LABELS: Record<PublishGenre, string> = {
 const CONTENT_REVIEW_TERMS = ["毒品制作", "儿童色情", "自杀方法"] as const;
 const PUBLISH_RULE_VERSION = "publish-check-v1";
 
+function reviewScore(reviews: GoldenThreeEvidenceSnapshot["reviewSnapshot"], dimension: string) {
+  const score = reviews.find((review) => review.dimension === dimension)?.score;
+  return typeof score === "number" ? score : null;
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
 export function buildPublishPreview(input: PublishPreviewInput) {
   const platform = PLATFORM_PRESETS[input.platformPreset];
   const metadata = resolveMetadata(input.metadata, input.work);
   const chapters = [...input.chapters].sort(
     (left, right) => left.chapterNumber - right.chapterNumber,
   );
-  const checks = buildChecks({ input, metadata, platform, chapters });
+  const checks = buildChecks({ preview: input, metadata, platform, chapters });
   const blocked = checks.some((check) => check.status === "blocked");
   const warning = checks.some((check) => check.status === "warning");
   const status: PublishReadinessStatus = blocked ? "blocked" : warning ? "warning" : "ready";
@@ -152,22 +228,29 @@ export function buildPublishPreview(input: PublishPreviewInput) {
 }
 
 function buildChecks(input: {
-  input: PublishPreviewInput;
+  preview: PublishPreviewInput;
   metadata: ResolvedPublishMetadata;
   platform: (typeof PLATFORM_PRESETS)[PublishPlatformKey];
   chapters: PublishChapterSource[];
 }): PublishCheckResult[] {
-  const { metadata, platform, chapters } = input;
+  const { metadata, platform, chapters, preview } = input;
   const openingScores = [
-    input.input.goldenThree.openingHookScore,
-    input.input.goldenThree.chapterEndHookScore,
+    preview.goldenThree.openingHookScore,
+    preview.goldenThree.chapterEndHookScore,
   ];
   const hookPassed =
-    input.input.goldenThree.locked &&
+    preview.goldenThree.locked &&
     openingScores.every((score) => typeof score === "number" && score >= 4);
   const reviewTerm = CONTENT_REVIEW_TERMS.find((term) =>
     chapters.some((chapter) => chapter.content.includes(term)),
   );
+  const firstThreeChapterNumbers = chapters.slice(0, 3).map((chapter) => chapter.chapterNumber);
+  const firstThreeComplete =
+    firstThreeChapterNumbers.length === 3 &&
+    firstThreeChapterNumbers.every((chapterNumber, index) => chapterNumber === index + 1);
+  const chapterLengthCompatible = chapters
+    .slice(0, 3)
+    .every((chapter) => chapter.characterCount >= 1_500 && chapter.characterCount <= 6_000);
   return [
     check(
       "title_present",
@@ -217,9 +300,14 @@ function buildChecks(input: {
     check(
       "first_three_chapters_present",
       "前三章完整",
-      chapters.length >= 3 ? "pass" : "blocked",
-      chapters.length >= 3 ? "前三章已纳入预览。" : "发布检查至少需要前三章。",
-      [{ label: "预览章节数", value: chapters.length }],
+      firstThreeComplete ? "pass" : "blocked",
+      firstThreeComplete
+        ? "第 1、2、3 章已纳入预览。"
+        : "发布检查必须从第 1 章开始，并包含连续的第 1、2、3 章。",
+      [
+        { label: "预览章节数", value: chapters.length },
+        { label: "前三章编号", value: firstThreeChapterNumbers.join(",") },
+      ],
     ),
     check(
       "golden_three_hook",
@@ -227,25 +315,19 @@ function buildChecks(input: {
       hookPassed ? "pass" : "warning",
       hookPassed ? "黄金三章钩子检查已通过。" : "黄金三章钩子检查尚未完成或未达标。",
       [
-        { label: "已锁定", value: input.input.goldenThree.locked },
-        { label: "开篇钩子", value: input.input.goldenThree.openingHookScore },
-        { label: "章末钩子", value: input.input.goldenThree.chapterEndHookScore },
+        { label: "已锁定", value: preview.goldenThree.locked },
+        { label: "开篇钩子", value: preview.goldenThree.openingHookScore },
+        { label: "章末钩子", value: preview.goldenThree.chapterEndHookScore },
       ],
     ),
     check(
       "chapter_length",
       "章节字数",
-      chapters
-        .slice(0, 3)
-        .every(
-          (chapter) =>
-            chapter.characterCount >= platform.minChapterCharacters &&
-            chapter.characterCount <= platform.maxChapterCharacters,
-        )
-        ? "pass"
-        : "warning",
-      `平台建议单章 ${platform.minChapterCharacters}-${platform.maxChapterCharacters} 字符。`,
+      chapterLengthCompatible ? "pass" : "warning",
+      `平台建议单章 ${platform.minChapterCharacters}-${platform.maxChapterCharacters} 字符；检查按跨平台可发布区间 1500-6000 字符判定。`,
       [
+        { label: "平台建议最小字符数", value: platform.minChapterCharacters },
+        { label: "平台建议最大字符数", value: platform.maxChapterCharacters },
         { label: "最小字符数", value: platform.minChapterCharacters },
         { label: "最大字符数", value: platform.maxChapterCharacters },
         {
@@ -260,11 +342,14 @@ function buildChecks(input: {
     check(
       "content_safety_review",
       "内容安全提示",
-      reviewTerm ? "warning" : "pass",
+      "warning",
       reviewTerm
-        ? "预览中发现需要作者复核的安全提示，不会自动封禁。"
-        : "未发现需要作者额外复核的内容安全提示。",
-      [{ label: "复核提示", value: reviewTerm ?? null }],
+        ? "预览中发现需要作者复核的安全提示，不会自动封禁；发布前仍需按目标平台规则复核。"
+        : "本地规则未发现提示；发布前仍需按目标平台规则复核内容安全。",
+      [
+        { label: "本地复核提示", value: reviewTerm ?? null },
+        { label: "平台规则复核", value: true },
+      ],
     ),
     check(
       "ai_disclosure",
@@ -283,16 +368,16 @@ function buildChecks(input: {
     check(
       "export_format",
       "导出格式",
-      input.input.export.completed && /^[a-f0-9]{64}$/u.test(input.input.export.manifestHash)
+      preview.export.completed && /^[a-f0-9]{64}$/u.test(preview.export.manifestHash)
         ? "pass"
         : "blocked",
-      input.input.export.completed
-        ? `已固定 ${input.input.export.format.toUpperCase()} 导出清单。`
+      preview.export.completed
+        ? `已固定 ${preview.export.format.toUpperCase()} 导出清单。`
         : "发布检查需要已完成的导出文件。",
       [
-        { label: "格式", value: input.input.export.format },
-        { label: "导出完成", value: input.input.export.completed },
-        { label: "清单哈希", value: input.input.export.manifestHash },
+        { label: "格式", value: preview.export.format },
+        { label: "导出完成", value: preview.export.completed },
+        { label: "清单哈希", value: preview.export.manifestHash },
       ],
     ),
   ];

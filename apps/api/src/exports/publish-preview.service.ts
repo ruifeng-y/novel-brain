@@ -1,17 +1,44 @@
 import { Injectable } from "@nestjs/common";
-import type { PublishCheckRequest } from "@novel-brain/contracts";
+import { createHash } from "node:crypto";
+
+import type { PublishCheckRequest, PublishPreviewListQuery } from "@novel-brain/contracts";
 import { buildPublishPreview, type PublishMetadataInput } from "@novel-brain/core";
 
 import { ApiError } from "../common/api-error";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { PublishPreviewRepository, type PublishContext } from "./publish-preview.repository";
+import {
+  PublishIdempotencyConflictError,
+  PublishPreviewRepository,
+  type PublishContext,
+} from "./publish-preview.repository";
 
 @Injectable()
 export class PublishPreviewService {
   constructor(private readonly repository: PublishPreviewRepository) {}
 
-  async create(userId: string, context: PublishContext, request: PublishCheckRequest) {
+  async create(
+    userId: string,
+    context: PublishContext,
+    request: PublishCheckRequest,
+    idempotencyKey: string,
+  ) {
+    const key = idempotencyKey.trim();
+    if (!key || key.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的 Idempotency-Key");
+    }
+    const requestHash = sha256(JSON.stringify(request));
+    const replay = await this.repository.findIdempotent(userId, context, key, requestHash);
+    if (replay === "conflict") {
+      throw new ApiError(
+        409,
+        "PUBLISH_IDEMPOTENCY_CONFLICT",
+        "相同 Idempotency-Key 不能提交不同的发布检查",
+      );
+    }
+    if (replay) {
+      return replay;
+    }
     const source = await this.repository.loadSource(userId, context, request.exportId);
     if (source === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导出记录不存在或无权访问");
@@ -33,23 +60,34 @@ export class PublishPreviewService {
       chapters: source.chapters,
       goldenThree: source.goldenThree,
     });
-    return this.repository.save(userId, context, request, {
-      exportId: source.exportId,
-      workId: source.work.id,
-      branchId: source.branch.id,
-      platformPreset: request.platformPreset,
-      status: preview.status,
-      publishReady: preview.publishReady,
-      sourceVersionNodeId: source.export.sourceVersionNodeId,
-      requestedVersionNodeId: source.export.requestedVersionNodeId,
-      manifestHash: source.export.manifestHash,
-      platform: preview.platform,
-      metadata: preview.metadata,
-      checks: preview.checks,
-      catalog: preview.catalog,
-      readerPreview: preview.readerPreview,
-      publishCopy: preview.publishCopy,
-    });
+    try {
+      return await this.repository.save(userId, context, request, key, requestHash, {
+        exportId: source.exportId,
+        workId: source.work.id,
+        branchId: source.branch.id,
+        platformPreset: request.platformPreset,
+        status: preview.status,
+        publishReady: preview.publishReady,
+        sourceVersionNodeId: source.export.sourceVersionNodeId,
+        requestedVersionNodeId: source.export.requestedVersionNodeId,
+        manifestHash: source.export.manifestHash,
+        platform: preview.platform,
+        metadata: preview.metadata,
+        checks: preview.checks,
+        catalog: preview.catalog,
+        readerPreview: preview.readerPreview,
+        publishCopy: preview.publishCopy,
+      });
+    } catch (error) {
+      if (error instanceof PublishIdempotencyConflictError) {
+        throw new ApiError(
+          409,
+          "PUBLISH_IDEMPOTENCY_CONFLICT",
+          "相同 Idempotency-Key 不能提交不同的发布检查",
+        );
+      }
+      throw error;
+    }
   }
 
   async get(userId: string, context: PublishContext, previewId: string) {
@@ -60,9 +98,13 @@ export class PublishPreviewService {
     return preview;
   }
 
-  list(userId: string, context: PublishContext) {
-    return this.repository.list(userId, context);
+  list(userId: string, context: PublishContext, query: PublishPreviewListQuery) {
+    return this.repository.list(userId, context, query);
   }
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function definedMetadata(metadata: PublishCheckRequest["metadata"]): PublishMetadataInput {

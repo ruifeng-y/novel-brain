@@ -20,7 +20,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   chapterWorkspaceListResponseSchema,
   chapterWorkspaceResponseSchema,
@@ -159,6 +159,8 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
   const [error, setError] = useState("");
   const [partialError, setPartialError] = useState("");
   const [notice, setNotice] = useState("");
+  const readerDialogRef = useRef<HTMLElement>(null);
+  const readerReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const load = useCallback(
     async (showLoading = true) => {
@@ -270,6 +272,48 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!readerOpen) {
+      return;
+    }
+    const dialog = readerDialogRef.current;
+    const previousFocus = readerReturnFocusRef.current;
+    const focusable = dialog
+      ? [
+          ...dialog.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        ]
+      : [];
+    (focusable[0] ?? dialog)?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setReaderOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || focusable.length === 0) {
+        return;
+      }
+      const first = focusable[0]!;
+      const last = focusable.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      if (previousFocus?.isConnected) {
+        previousFocus.focus();
+      }
+    };
+  }, [readerOpen]);
 
   const branchPath = work && `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
   const selectedExport = exports.find((receipt) => receipt.id === selectedExportId) ?? null;
@@ -438,6 +482,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          "idempotency-key": crypto.randomUUID(),
           "x-csrf-token": await getCsrfToken(),
         },
         body: JSON.stringify(request),
@@ -470,6 +515,8 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
   }
 
   async function openReaderPreview() {
+    readerReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const target = selectedPreview ?? (await runPublishCheck());
     if (target) {
       setReaderOpen(true);
@@ -1351,12 +1398,21 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
 
       {readerOpen ? (
         <div
-          aria-labelledby="reader-preview-title"
-          aria-modal="true"
           className="export-reader-backdrop"
-          role="dialog"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setReaderOpen(false);
+            }
+          }}
         >
-          <section className="export-reader-modal">
+          <section
+            aria-labelledby="reader-preview-title"
+            aria-modal="true"
+            className="export-reader-modal"
+            ref={readerDialogRef}
+            role="dialog"
+            tabIndex={-1}
+          >
             <div className="export-reader-head">
               <div>
                 <span className="panel-kicker">读者预览</span>

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { PUBLISH_PLATFORM_PRESETS, publishCheckRequestSchema, publishPreviewSchema } from "../src";
+import {
+  PUBLISH_PLATFORM_PRESETS,
+  publishCheckRequestSchema,
+  publishPreviewListQuerySchema,
+  publishPreviewSchema,
+} from "../src";
 
 const exportId = "01910000-0000-7000-8000-000000000001";
 const workId = "01910000-0000-7000-8000-000000000002";
@@ -37,6 +42,19 @@ describe("publish preview contracts", () => {
         status: "pending",
       }),
     ).toThrow();
+  });
+
+  it("uses cursor pagination for pinned preview history", () => {
+    expect(
+      publishPreviewListQuerySchema.parse({
+        limit: "20",
+        cursor: sourceVersionNodeId,
+      }),
+    ).toEqual({
+      limit: 20,
+      cursor: sourceVersionNodeId,
+    });
+    expect(() => publishPreviewListQuerySchema.parse({ limit: "101" })).toThrow();
   });
 });
 

@@ -1,6 +1,18 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import {
   publishCheckRequestSchema,
+  publishPreviewListQuerySchema,
   publishPreviewListResponseSchema,
   publishPreviewResponseSchema,
   uuidV7Schema,
@@ -8,6 +20,7 @@ import {
 import {
   ApiBody,
   ApiCreatedResponse,
+  ApiHeader,
   ApiOkResponse,
   ApiTags,
   type SchemaObject,
@@ -39,6 +52,11 @@ export class PublishPreviewController {
 
   @Post()
   @HttpCode(201)
+  @ApiHeader({
+    name: "Idempotency-Key",
+    required: true,
+    description: "Stable key for replaying the same publish check",
+  })
   @ApiBody({ schema: requestJsonSchema })
   @ApiCreatedResponse({
     description: "Pinned publish check and reader preview",
@@ -48,6 +66,7 @@ export class PublishPreviewController {
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
@@ -57,6 +76,7 @@ export class PublishPreviewController {
         this.userId(request),
         context,
         publishCheckRequestSchema.parse(body ?? {}),
+        idempotencyKey ?? "",
       ),
       requestId,
       meta: {},
@@ -64,18 +84,24 @@ export class PublishPreviewController {
   }
 
   @Get()
-  @ApiQuerySchema(z.object({}).strict())
-  @ApiOkResponse({ description: "Recent pinned publish previews", schema: previewListJsonSchema })
+  @ApiQuerySchema(publishPreviewListQuerySchema)
+  @ApiOkResponse({ description: "Pinned publish preview history", schema: previewListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const result = await this.service.list(
+      this.userId(request),
+      this.context(workId, branchId),
+      publishPreviewListQuerySchema.parse(query ?? {}),
+    );
     return publishPreviewListResponseSchema.parse({
-      data: await this.service.list(this.userId(request), this.context(workId, branchId)),
+      data: result.previews,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 

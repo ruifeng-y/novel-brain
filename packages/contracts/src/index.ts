@@ -152,6 +152,7 @@ export const ERROR_CODES = [
   "PUBLISH_EXPORT_NOT_READY",
   "PUBLISH_EXPORT_EXPIRED",
   "PUBLISH_PREVIEW_NOT_FOUND",
+  "PUBLISH_IDEMPOTENCY_CONFLICT",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -5265,8 +5266,10 @@ export const publishPreviewSchema = z
 export type PublishPreview = z.infer<typeof publishPreviewSchema>;
 
 export const publishPreviewResponseSchema = apiEnvelopeSchema(publishPreviewSchema);
-export const publishPreviewListResponseSchema = apiEnvelopeSchema(
-  z.array(publishPreviewSchema).max(20),
+export const publishPreviewListQuerySchema = cursorPageQuerySchema;
+export type PublishPreviewListQuery = z.infer<typeof publishPreviewListQuerySchema>;
+export const publishPreviewListResponseSchema = cursorListResponseSchema(
+  z.array(publishPreviewSchema).max(100),
 );
 
 export const EXPORT_WORK_JOB = "export_work";

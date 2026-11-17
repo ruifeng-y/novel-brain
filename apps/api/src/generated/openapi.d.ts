@@ -4740,6 +4740,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -5094,6 +5095,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -11030,6 +11032,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11608,6 +11611,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12012,6 +12016,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12417,6 +12422,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12822,6 +12828,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -13240,6 +13247,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -13767,6 +13775,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14213,6 +14222,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14514,6 +14524,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -14725,6 +14736,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -15084,6 +15096,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15506,6 +15519,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15933,6 +15947,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16360,6 +16375,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -32789,6 +32805,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -33023,6 +33040,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -33233,6 +33251,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -43533,6 +43552,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44324,6 +44344,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -44892,6 +44913,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45460,6 +45482,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46028,6 +46051,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46609,6 +46633,7 @@ export interface operations {
                     | "PUBLISH_EXPORT_NOT_READY"
                     | "PUBLISH_EXPORT_EXPIRED"
                     | "PUBLISH_PREVIEW_NOT_FOUND"
+                    | "PUBLISH_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -46975,6 +47000,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47363,6 +47389,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47669,6 +47696,7 @@ export interface operations {
                   | "PUBLISH_EXPORT_NOT_READY"
                   | "PUBLISH_EXPORT_EXPIRED"
                   | "PUBLISH_PREVIEW_NOT_FOUND"
+                  | "PUBLISH_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47724,7 +47752,10 @@ export interface operations {
   };
   PublishPreviewController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -47734,7 +47765,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Recent pinned publish previews */
+      /** @description Pinned publish preview history */
       200: {
         headers: {
           [name: string]: unknown;
@@ -47839,9 +47870,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -47851,7 +47881,10 @@ export interface operations {
   PublishPreviewController_create: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        /** @description Stable key for replaying the same publish check */
+        "Idempotency-Key": string;
+      };
       path: {
         workId: string;
         branchId: string;
