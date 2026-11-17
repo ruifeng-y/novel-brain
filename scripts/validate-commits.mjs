@@ -44,6 +44,7 @@ const TECHNICAL_WORDS = new Set([
   "journal",
   "json",
   "lockfile",
+  "linux",
   "main",
   "merge",
   "migration",
