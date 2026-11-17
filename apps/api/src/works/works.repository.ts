@@ -1491,9 +1491,9 @@ export class WorksRepository implements OnModuleDestroy {
     if (!work) {
       return { status: "not_found" };
     }
-      if (work.version !== expectedVersion) {
-        return { status: "version_conflict" };
-      }
+    if (work.version !== expectedVersion) {
+      return { status: "version_conflict" };
+    }
     if (!work.purgeAfter || work.purgeAfter.getTime() > Date.now()) {
       return { status: "not_due" };
     }
