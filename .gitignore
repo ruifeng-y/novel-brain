@@ -6,6 +6,8 @@ playwright-report/
 test-results/
 artifacts/playwright/
 artifacts/backups/
+artifacts/capacity/backups/
+artifacts/capacity/runtime/
 artifacts/ui/candidates/
 .env
 *.log

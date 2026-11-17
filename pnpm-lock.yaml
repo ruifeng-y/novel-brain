@@ -392,6 +392,27 @@ importers:
 
   packages/ai: {}
 
+  packages/capacity-benchmark:
+    dependencies:
+      '@novel-brain/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@novel-brain/db':
+        specifier: workspace:*
+        version: link:../db
+      '@novel-brain/storage':
+        specifier: workspace:*
+        version: link:../storage
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      uuidv7:
+        specifier: 1.2.1
+        version: 1.2.1
+
   packages/contracts:
     dependencies:
       zod:
