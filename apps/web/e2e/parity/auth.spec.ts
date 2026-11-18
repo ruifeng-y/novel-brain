@@ -15,6 +15,17 @@ import {
   productionScreenshotOptions,
 } from "../helpers/ui";
 
+/*
+ * auth action/API evidence:
+ * register -> /api/v1/auth/register
+ * login -> /api/v1/auth/login
+ * send-verification-code -> /api/v1/auth/register/send-code
+ * recover-password -> /api/v1/auth/password/forgot
+ * reset-password -> /api/v1/auth/password/reset
+ * logout-session -> /api/v1/auth/logout
+ * disabled-account -> /api/v1/auth/me
+ */
+
 const viewports = [390, 900, 1180, 1440] as const;
 
 test.beforeEach(async () => {
@@ -128,9 +139,14 @@ test("registers, enters the workspace and logs out", async ({ page }) => {
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByRole("heading", { name: "工作台" })).toBeVisible();
   await expect(page.getByText("新作者", { exact: true })).toBeVisible();
+  const registeredSession = await page.request.get("/api/v1/auth/me");
+  expect(registeredSession.status()).toBe(200);
+  expect((await registeredSession.json()).data.user.displayName).toBe("新作者");
 
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(page).toHaveURL(/\/login$/);
+  const loggedOutSession = await page.request.get("/api/v1/auth/me");
+  expect(loggedOutSession.status()).toBe(401);
 });
 
 test("logs in and reaches the authenticated shell", async ({ page, request }) => {
@@ -146,6 +162,9 @@ test("logs in and reaches the authenticated shell", async ({ page, request }) =>
 
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByText("林见鹿", { exact: true })).toBeVisible();
+  const loginSession = await page.request.get("/api/v1/auth/me");
+  expect(loginSession.status()).toBe(200);
+  expect((await loginSession.json()).data.user.displayName).toBe("林见鹿");
 });
 
 test("recovers a forgotten password from the email link", async ({ page, request }) => {
