@@ -2,7 +2,11 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { workResponseSchema } from "@novel-brain/contracts";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage, productionScreenshotOptions } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewportWidths = [390, 900, 1180, 1440];
@@ -23,6 +27,7 @@ for (const width of viewportWidths) {
     ).toBeAttached();
     await expectNoOverflow(page);
     await expectAuthorFacingLanguage(page);
+    await expectNoPrototypeOnlyLeakage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await expect
       .soft(page)

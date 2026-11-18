@@ -1,7 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { createWork, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import { expectAuthorFacingLanguage, expectNoPrototypeOnlyLeakage } from "../helpers/ui";
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("dashboard");
@@ -19,6 +19,18 @@ async function authenticatedPage(page: Page, context: BrowserContext) {
   await page.goto("/workspace");
 }
 
+async function holdWorksApi(page: Page) {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/works?*", async (route) => {
+    await gate;
+    await route.continue();
+  });
+  return release;
+}
+
 test.beforeEach(async () => {
   await resetRateLimits();
 });
@@ -27,6 +39,7 @@ test("shows the empty work library with a real create action", async ({ page, co
   await authenticatedPage(page, context);
   await expect(page.getByRole("heading", { name: "工作台" })).toBeVisible();
   await expectAuthorFacingLanguage(page);
+  await expectNoPrototypeOnlyLeakage(page);
   await expect(page.getByText("还没有作品", { exact: true })).toBeVisible();
   await page
     .getByRole("region", { name: "还没有作品" })
@@ -71,17 +84,10 @@ test("shows loading, disabled and long-content states", async ({ page, context }
     title: longTitle,
   });
 
-  let release: (() => void) | undefined;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await page.route("**/api/v1/works?*", async (route) => {
-    await gate;
-    await route.continue();
-  });
+  const releaseWorks = await holdWorksApi(page);
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByText("正在加载作品")).toBeVisible();
-  release?.();
+  releaseWorks();
 
   await expect(page.getByRole("heading", { name: longTitle })).toBeVisible();
   await expect(page.getByRole("link", { name: "管理" })).toHaveAttribute(
@@ -101,8 +107,13 @@ test("loads additional pages for a long work list", async ({ page, context }) =>
   await page.reload();
 
   await expect(page.getByRole("heading", { name: /批量作品/ })).toHaveCount(20);
-  await page.getByRole("button", { name: "加载更多作品" }).click();
+  const releaseWorks = await holdWorksApi(page);
+  const loadMore = page.getByRole("button", { name: "加载更多作品" });
+  await loadMore.click();
+  await expect(loadMore).toBeDisabled();
+  releaseWorks();
   await expect(page.getByRole("heading", { name: /批量作品/ })).toHaveCount(22);
+  await page.unroute("**/api/v1/works?*");
 });
 
 test("dashboard states and four viewports hold", async ({ page, context }, testInfo) => {

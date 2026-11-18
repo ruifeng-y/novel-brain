@@ -1,12 +1,14 @@
 # V1 1000 万字容量、检索、并发与恢复基准
 
 > Owner: M3 #102 (package) / #137 (implementation)
-> Status: specification baseline; no capacity certification has been run.
+> Status: deferred outside V1 scope; no capacity certification has been run.
 > This benchmark verifies system capacity and recoverability. It does not measure narrative continuity or writing quality.
+
+V1 does not claim 10,000,000-character capacity certification. `#102/#137` were closed as explicitly deferred on 2026-11-18. This specification remains the required starting point if a future release resumes the capacity claim.
 
 ## 1. Objective and claim boundary
 
-The V1 capacity claim is a single-work logical manuscript scale of **10,000,000 Chinese characters**, approximately 3,000–4,000 chapters across 30–40 volumes, with multiple branches and version history. The baseline is the approved local-first modular monolith, not an imagined horizontally scaled deployment.
+The deferred 10M capacity claim would target a single-work logical manuscript scale of **10,000,000 Chinese characters**, approximately 3,000–4,000 chapters across 30–40 volumes, with multiple branches and version history. The baseline is the approved local-first modular monolith, not an imagined horizontally scaled deployment.
 
 A passing run must demonstrate the application against its integrated production schema, APIs, worker, indexes, object storage and backup/restore path. A synthetic toy schema or a prototype page is not acceptable evidence.
 

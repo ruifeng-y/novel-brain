@@ -8,24 +8,24 @@
 
 | 页面 | 生产路由 | 关键动作 | 必备状态 | Agent UX | 当前状态 |
 | --- | --- | --- | --- | --- | --- |
-| auth | `/login`、`/register`、`/forgot-password`、`/reset-password` | 登录、注册、验证码、找回 | loading/error/disabled/rate-limit/session-expired | 无 | 部分，缺会话过期和网络错误 |
-| dashboard | `/workspace` | 搜索、筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | 活跃、已归档和回收站视图、长列表与错误态已生产实现；作者视觉签收通过 |
-| new-project | `/workspace/new-project` | 想法/空白/三题材模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long | 导入报告 | 已含三题材模板、设定导入、旧稿双模式、冲突裁决和断点续跑 |
-| work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改、跨卷风格检查、卷末审计与签收 | loading/empty/error/readonly/archived/long | 生成摘要/风格证据/卷审计证据 | 分支上下文、最近修改与长内容证据已由 #176 补齐；作者视觉签收通过 |
-| bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | 三题材生成已生产实现；新布局待作者视觉签收 |
-| settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线、题材包版本切换 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | 题材包版本切换已生产实现；新布局待作者视觉签收 |
-| outline | `/workspace/[workId]/outline` | 树/看板/张力曲线/账本、黄金三章；章节/场景规划张力（0–100） | loading/empty/error/locked/partial | 黄金三章候选 | 五层大纲、卷契约、场景卡、剧情账本与黄金三章候选比较/选择/失败阻断/锁定已实现；作者视觉签收通过；自动化 Golden 比较由 #174 跟踪 |
-| foreshadows | `/workspace/[workId]/foreshadows` | 新增/编辑/埋设/推进/回收/失败回收/放弃/延期/检查 | loading/empty/error/disabled/long | 逾期提醒 | M1 生产实现，作者视觉签收通过；四档 Golden 比较已由 #172 补齐；loading 状态与完整 checklist 由 #174 跟踪 |
-| writing | `/workspace/[workId]/write` | 生成/续写/改写/检查/批准章节/确认事实/提交本章事实/版本 | loading/empty/error/disabled/partial/conflict/long | 本章参考/来源/淘汰/修订 diff/成本/检查点 | 已含三段状态机和页面状态 |
-| batch | `/workspace/[workId]/batch` | 开始/暂停/恢复/取消/重试/审核/报告 | loading/empty/error/partial/disabled/long | 失败断点/成本/审批 | 审核队列、自动通过、成本硬停和报告已生产实现；最终页面 parity 待 #97 |
-| changes | `/workspace/[workId]/changes` | 新建/分析/应用/撤销/分支/比较/合并 | loading/error/conflict/partial/disabled | 逐对象比较/摘取 | 部分，对象比较已加，合并门禁待补 |
-| export-publish | `/workspace/[workId]/export` | 导出/下载/发布检查/预览/文案 | loading/empty/error/partial/expired/long | 任务报告 | 已实现 loading/empty/error/partial/expired/long；作者已确认四档正式 Golden |
-| work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/readonly | 无 | 已含删除强制导出和权限/只读状态；作者视觉签收通过 |
-| entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | M1 生产实现；力量层级文案随题材包变化，新布局待作者视觉签收 |
-| account-settings | `/workspace/settings`、`/workspace/settings/account` | 资料/笔名/会话/模型/导出/注销 | loading/error/invalid-key/disabled/partial/rate-limit | 无 | 生产导出、注销和 30 天恢复已由 #134 实现；恢复期映射 `disabled`，删除失败映射 `partial`；作者已完成 Linux Golden 视觉签收 |
-| help | `/help` | 快捷键/术语/FAQ | static/empty/error | 无 | 静态 |
-| legal | `/legal/*` | 协议/隐私/AI 标识 | static | 无 | 静态 |
-| states | `/workspace/[workId]/states` | 全局状态演示 | normal/empty/loading/error/locked/readonly/conflict | 无 | 演示页，缺 disabled/permission/partial/long |
+| auth | `/login`、`/register`、`/forgot-password`、`/reset-password` | 登录、注册、验证码、找回 | loading/error/disabled/permission/rate-limit/session-expired | 无 | production-built；四档 Golden、会话过期、网络错误、限流和禁用账号状态已实现，等待最终正常 PR Linux/Chromium CI |
+| dashboard | `/workspace` | 搜索、筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | production-built；活跃、已归档和回收站视图、长列表与错误态已实现，等待动作审计和最终正常 PR CI |
+| new-project | `/workspace/new-project` | 想法/空白/三题材模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long/conflict | 导入报告 | production-built；三题材模板、导入双模式、冲突裁决、断点续跑和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改、跨卷风格检查、卷末审计与签收 | loading/empty/error/partial/readonly/archived/long | 生成摘要/风格证据/卷审计证据 | production-built；正常态、长内容态和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | production-built；三题材、世界铁律、版本/锁定和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线、题材包版本切换 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | production-built；七栏 CRUD、题材包切换、状态矩阵和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| outline | `/workspace/[workId]/outline` | 树/看板/张力曲线/账本、黄金三章；章节/场景规划张力（0–100） | loading/empty/error/locked/partial/long | 黄金三章候选 | production-built；五层大纲、卷契约、场景卡、账本、黄金三章和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| foreshadows | `/workspace/[workId]/foreshadows` | 新增/编辑/埋设/推进/回收/失败回收/放弃/延期/检查 | loading/empty/error/disabled/long | 逾期提醒 | production-built；完整动作、loading 状态和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| writing | `/workspace/[workId]/write` | 生成/续写/改写/检查/批准章节/确认事实/提交本章事实/版本 | loading/empty/error/disabled/partial/conflict/long | 本章参考/来源/淘汰/修订 diff/成本/检查点 | production-built；三段状态机、生成/修订/提交门禁和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| batch | `/workspace/[workId]/batch` | 开始/暂停/恢复/取消/重试/审核/报告 | loading/empty/error/partial/disabled/long/paused/failed | 失败断点/成本/审批 | production-built；暂停、失败、成本硬停、审核决策和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| changes | `/workspace/[workId]/changes` | 新建/分析/应用/撤销/分支/比较/合并 | loading/error/conflict/partial/disabled/stale-version | 逐对象比较/摘取 | production-built；请求/影响/应用、分支比较、高风险门禁和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| export-publish | `/workspace/[workId]/export` | 导出/下载/发布检查/预览/文案 | loading/empty/error/partial/expired/long | 任务报告 | production-built；导出、发布检查、预览、过期恢复、AI 标识和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/permission/readonly/confirmation | 无 | production-built；复制、归档恢复、回收站、导出后删除和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | production-built；七类档案、题材化层级文案、引用/历史和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| account-settings | `/workspace/settings`、`/workspace/settings/account` | 资料/笔名/会话/模型/导出/注销 | loading/error/invalid-key/disabled/partial/rate-limit | 无 | production-built；常规态、Key 错误态、导出/注销恢复和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| help | `/help` | 快捷键/术语/FAQ | static/empty/error | 无 | production-built；FAQ、空搜索和四档 Golden 已签收；真实路由错误态与重试恢复仍待补 |
+| legal | `/legal/*` | 协议/隐私/AI 标识 | static/error | 无 | parity-verified；隐私、条款、AI 标识和四档 Golden 已签收 |
+| states | 无生产路由（prototype-only） | 全局状态演示 | normal/empty/loading/error/locked/readonly/conflict | 无 | 演示页，缺 disabled/permission/partial/long |
 
 ## 2. 组件清单
 

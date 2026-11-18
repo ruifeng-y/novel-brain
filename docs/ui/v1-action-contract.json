@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "auth": [
+      "register",
+      "login",
+      "send-verification-code",
+      "recover-password",
+      "reset-password",
+      "logout-session",
+      "disabled-account"
+    ],
+    "dashboard": [
+      "create-work",
+      "search",
+      "filter",
+      "archive-work",
+      "restore-work",
+      "delete-work",
+      "load-more"
+    ],
+    "new-project": [
+      "create-from-idea",
+      "blank-work",
+      "genre-template",
+      "settings-import",
+      "manuscript-import",
+      "import-conflict-resolution",
+      "create-blueprint"
+    ],
+    "work-overview": [
+      "continue-writing",
+      "tasks",
+      "recent-changes",
+      "style-drift",
+      "volume-audit",
+      "volume-signoff",
+      "branch-context"
+    ],
+    "bible": [
+      "generate-cards",
+      "edit-card",
+      "ai-check",
+      "complete-card",
+      "world-rule",
+      "lock-bible",
+      "version-history",
+      "request-change",
+      "unlock-bible"
+    ],
+    "settings": [
+      "create-setting",
+      "edit-setting",
+      "delete-setting",
+      "relationship",
+      "map",
+      "power-system",
+      "timeline",
+      "custom-field",
+      "proposal-decision",
+      "genre-pack-switch"
+    ],
+    "outline": [
+      "create-outline-node",
+      "edit-outline-node",
+      "tree-view",
+      "board-view",
+      "tension-curve",
+      "ledger-view",
+      "scene-card",
+      "golden-three-select",
+      "volume-contract",
+      "reorder-outline",
+      "lock-outline"
+    ],
+    "foreshadows": [
+      "create-entry",
+      "edit-entry",
+      "plant-entry",
+      "advance-entry",
+      "recover-entry",
+      "failed-recovery",
+      "abandon-entry",
+      "postpone-entry",
+      "check-foreshadows"
+    ],
+    "writing": [
+      "generate",
+      "new-chapter",
+      "continue",
+      "rewrite",
+      "expand",
+      "condense",
+      "change-pov",
+      "hook",
+      "title",
+      "summary",
+      "rewrite-selection",
+      "check-chapter",
+      "confirm-fact",
+      "reject-fact",
+      "approve-chapter",
+      "submit-facts",
+      "restore-version"
+      ,"save-version"
+    ],
+    "batch": [
+      "start-batch",
+      "pause-batch",
+      "resume-batch",
+      "cancel-batch",
+      "retry-batch",
+      "review-item",
+      "report"
+    ],
+    "changes": [
+      "create-change",
+      "analyze-impact",
+      "apply-change",
+      "revert-change",
+      "create-branch",
+      "branch-compare",
+      "merge-selection"
+    ],
+    "export-publish": [
+      "create-export",
+      "download-export",
+      "run-publish-check",
+      "preview-publish",
+      "copy-publish-metadata",
+      "expire-export",
+      "appeal-moderation"
+    ],
+    "work-settings": [
+      "save-settings",
+      "upload-cover",
+      "edit-tags",
+      "change-status",
+      "copy-work",
+      "archive-work",
+      "restore-work",
+      "trash-work",
+      "delete-work"
+    ],
+    "entity-detail": [
+      "edit-entity",
+      "create-relationship",
+      "edit-knowledge",
+      "view-references",
+      "create-proposal",
+      "lock-entity",
+      "view-history"
+    ],
+    "account-settings": [
+      "create-model-config",
+      "test-model-config",
+      "edit-model-config",
+      "delete-model-config",
+      "save-profile",
+      "create-pen-name",
+      "edit-pen-name",
+      "delete-pen-name",
+      "revoke-session",
+      "revoke-all-sessions",
+      "export-account",
+      "delete-account",
+      "recover-account"
+    ]
+  }
+}

@@ -9,7 +9,11 @@ import {
   sendCode,
   uniqueEmail,
 } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const viewports = [390, 900, 1180, 1440] as const;
 
@@ -57,6 +61,8 @@ test("auth pages match the shell at four viewports", async ({ page }, testInfo) 
         );
       }
       await expectAuthorFacingLanguage(page);
+      await expectNoPrototypeOnlyLeakage(page);
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -65,6 +71,11 @@ test("auth pages match the shell at four viewports", async ({ page }, testInfo) 
 
       const screenshot = await page.screenshot({ animations: "disabled", caret: "hide" });
       expect(screenshot.byteLength).toBeGreaterThan(10_000);
+      if (pageContract.id === "login") {
+        await expect
+          .soft(page)
+          .toHaveScreenshot(["auth", `auth-${width}.png`], productionScreenshotOptions);
+      }
       await testInfo.attach(`${pageContract.id}-${width}`, {
         body: screenshot,
         contentType: "image/png",

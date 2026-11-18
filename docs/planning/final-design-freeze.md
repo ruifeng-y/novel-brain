@@ -2,7 +2,7 @@
 
 > Status: accepted baseline for V1 implementation.
 > Date: 2026-11-04.
-> Authority: accepted ADRs 0025–0027 plus the V1 requirements, technical design, UI parity matrix and post-V1 scope register.
+> Authority: accepted ADRs 0025–0028 plus the V1 requirements, technical design, UI parity matrix and post-V1 scope register.
 > This document closes the five pre-implementation design issues; it is not a new product specification.
 
 ## 1. Five closure decisions

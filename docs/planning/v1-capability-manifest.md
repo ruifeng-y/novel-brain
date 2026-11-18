@@ -1,8 +1,8 @@
 # V1 Capability Manifest v2
 
-> 状态：V1 delivery scope baseline v2（2026-11-04）。本版保留 117 个原始能力，并新增两个独立的跨切面发布门禁：PERF-001 与 CONT-001。
+> 状态：V1 delivery scope baseline v3（2026-11-18）。本版保留 117 个原始能力；CONT-001 仍为 V1 长线连续性门禁，PERF-001 已按 ADR 0028 和产品决定延期到 V1 之后。
 >
-> 优先级：ADR 0010–0024 > 需求/技术/原型中的旧条款。发现冲突时，先更新基线，再进入 `/to-spec`。
+> 优先级：ADR 0010–0028 > 需求/技术/原型中的旧条款。ADR 0028 取代 ADR 0010 中 V1 必须认证 1000 万字容量的条款。发现冲突时，先更新基线，再进入 `/to-spec`。
 
 ## 1. 使用规则
 
@@ -198,10 +198,11 @@
 
 | ID | 能力 | 范围 | 原型 | 后端/数据 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| PERF-001 | 1000 万字容量/性能/恢复基准 | V1 | — | Perf/Storage/Search/Jobs | 固定 10M fixture、负载模型、p50/p95/p99、资源/成本/容量和恢复报告 |
+| PERF-001 | 1000 万字容量/性能/恢复基准 | 后续 | — | Perf/Storage/Search/Jobs | V1 不声明 10M 容量；未来重启需完成固定 fixture、负载模型、资源/成本和恢复报告 |
 | CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | writing/settings/outline | Continuity/Eval/Canon/Knowledge | Ground-truth 跨卷 fixture、知识边界/状态不变量/伏笔/分支验证与人工盲评 |
 
-PERF-001 与 CONT-001 是互不替代的发布门禁：容量测试不证明叙事正确，长线内容评分也不证明数据库、索引和恢复满足容量目标。
+CONT-001 仍是 V1 的长线连续性发布门禁。PERF-001 已按产品决定延期，V1 不声明 10M 容量认证；未来恢复容量声明时必须重新完成基准，不能复用未执行的规格作为通过证据。
+所有授权延期都登记在 `docs/planning/v1-deferrals.json`；未登记的延期不能进入 V1 release 账本。
 
 ## 16. 覆盖规则
 
