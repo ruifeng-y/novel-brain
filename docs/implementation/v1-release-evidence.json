@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "releaseStatus": "blocked",
+  "p0Failures": [],
+  "waivers": [],
+  "gates": [
+    {
+      "id": "capability-ledger",
+      "status": "pass",
+      "owner": "#104",
+      "evidence": [
+        "docs/planning/v1-capability-manifest.md",
+        "docs/planning/v1-capability-traceability.md",
+        "scripts/validate-readiness.mjs"
+      ]
+    },
+    {
+      "id": "ui-parity",
+      "status": "blocked",
+      "owner": "#104",
+      "rationale": "The help route's production error-boundary trigger and retry recovery are not yet covered by a reproducible route-level Playwright test.",
+      "evidence": [
+        "docs/ui/v1-ui-parity-matrix.md",
+        "apps/web/e2e/parity",
+        "artifacts/ui/golden"
+      ]
+    },
+    {
+      "id": "security-lifecycle",
+      "status": "pass",
+      "owner": "#100",
+      "evidence": [
+        "docs/implementation/m3-03b-logging-and-tracing.md",
+        "docs/implementation/m3-03c-account-lifecycle.md",
+        "https://github.com/ruifeng-y/novel-brain/actions/runs/44315536079"
+      ]
+    },
+    {
+      "id": "deployment-observability",
+      "status": "pass",
+      "owner": "#101",
+      "evidence": [
+        "docs/implementation/m3-04a-deployment-observability.md",
+        "https://github.com/ruifeng-y/novel-brain/actions/runs/44315536079"
+      ]
+    },
+    {
+      "id": "backup-restore",
+      "status": "pass",
+      "owner": "#101",
+      "evidence": ["docs/implementation/m3-04b-backup-restore.md"]
+    },
+    {
+      "id": "export-publish-moderation",
+      "status": "pass",
+      "owner": "#99",
+      "evidence": [
+        "docs/implementation/m3-01a-work-export.md",
+        "docs/implementation/m3-02a-publish-preview.md",
+        "docs/implementation/m3-02b-help-legal-moderation.md"
+      ]
+    },
+    {
+      "id": "deterministic-quality",
+      "status": "pass",
+      "owner": "#103",
+      "evidence": [
+        "docs/implementation/m3-06a-quality-benchmark-registry.md",
+        "docs/implementation/m3-06b-provider-canary.md",
+        "https://github.com/ruifeng-y/novel-brain/actions/runs/44315536079"
+      ]
+    },
+    {
+      "id": "final-production-ci",
+      "status": "blocked",
+      "owner": "release-owner",
+      "rationale": "The final #104 PR Production CI run has not completed yet.",
+      "evidence": []
+    },
+    {
+      "id": "real-provider-smoke",
+      "status": "blocked",
+      "owner": "release-owner",
+      "rationale": "The protected provider-smoke environment has not produced real-provider evidence for this release.",
+      "evidence": [".github/workflows/provider-smoke.yml"]
+    },
+    {
+      "id": "human-blind-review",
+      "status": "blocked",
+      "owner": "product-owner",
+      "rationale": "Actual human blind-review scores and the approved inter-rater variance threshold are not recorded.",
+      "evidence": [
+        "docs/quality/v1-quality-benchmark-registry.md",
+        "docs/quality/v1-long-horizon-continuity-benchmark.md"
+      ]
+    }
+  ]
+}

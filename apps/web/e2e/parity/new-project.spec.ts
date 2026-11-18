@@ -1,7 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import { expectAuthorFacingLanguage, expectNoPrototypeOnlyLeakage } from "../helpers/ui";
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("new-project");
@@ -27,6 +27,7 @@ test("creates a work from an idea and opens its overview", async ({ page, contex
   await authenticatedPage(page, context);
   await expect(page.getByRole("heading", { name: "把一个想法，长成一本书" })).toBeVisible();
   await expectAuthorFacingLanguage(page);
+  await expectNoPrototypeOnlyLeakage(page);
 
   await page.getByLabel("书名").fill("忘川书");
   await page.getByLabel("故事灵感").fill("一个被宗门抛弃的杂役，意外得到一本会吞噬记忆的古书。");

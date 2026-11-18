@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "deferrals": [
+    {
+      "id": "PERF-001",
+      "scope": "后续",
+      "status": "deferred",
+      "approvedBy": "product-owner",
+      "approvedAt": "2026-11-18",
+      "rationale": "V1 does not claim 10M capacity certification; #102/#137 were explicitly deferred.",
+      "evidence": [
+        "docs/adr/0028-v1-scope-deferrals.md",
+        "docs/planning/v1-capability-manifest.md",
+        "docs/performance/v1-10m-capacity-benchmark.md"
+      ]
+    },
+    {
+      "id": "AGENT-007",
+      "scope": "后续",
+      "status": "deferred",
+      "approvedBy": "product-owner",
+      "approvedAt": "2026-11-18",
+      "rationale": "Vector retrieval remains post-V1; V1 uses PostgreSQL structured and text search.",
+      "evidence": [
+        "docs/adr/0028-v1-scope-deferrals.md",
+        "docs/planning/v1-capability-manifest.md",
+        "docs/planning/v1-capability-traceability.md"
+      ]
+    },
+    {
+      "id": "QUALITY-009",
+      "scope": "后续",
+      "status": "deferred",
+      "approvedBy": "product-owner",
+      "approvedAt": "2026-11-18",
+      "rationale": "Real-reader feedback is post-V1 and is not a V1 quality claim.",
+      "evidence": [
+        "docs/adr/0028-v1-scope-deferrals.md",
+        "docs/planning/v1-capability-manifest.md",
+        "docs/planning/v1-capability-traceability.md"
+      ]
+    }
+  ]
+}

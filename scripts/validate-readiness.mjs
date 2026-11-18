@@ -1,18 +1,23 @@
 import { readFileSync } from 'node:fs';
 
+import {
+  GOLDEN_VIEWPORTS,
+  PRODUCTION_PAGE_IDS,
+  expandGoldenPaths,
+  isValidGoldenImage,
+  parseTraceabilityRows,
+  parseUiMatrix,
+} from "./v1-ledger.mjs";
+
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const errors = [];
 const requireCheck = (condition, message) => {
   if (!condition) errors.push(message);
 };
-const pipeCells = (line) => line.split('|').map((cell) => cell.trim());
-const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const isValidGolden = (path, viewport) => {
   try {
     const image = readFileSync(new URL(`../${path}`, import.meta.url));
-    return image.length >= 24 &&
-      image.subarray(0, pngSignature.length).equals(pngSignature) &&
-      image.readUInt32BE(16) === Number(viewport);
+    return isValidGoldenImage(image, viewport);
   } catch {
     return false;
   }
@@ -32,10 +37,8 @@ const manifestIds = manifest.split('\n')
   .map((line) => line.match(/^\|\s*([A-Z]+-\d{3})\s*\|/))
   .filter(Boolean)
   .map((match) => match[1]);
-const traceRows = traceability.split('\n')
-  .filter((line) => /^\|\s*[A-Z]+-\d{3}\s*\|/.test(line))
-  .map(pipeCells);
-const traceIds = traceRows.map((cells) => cells[1]);
+const traceRows = parseTraceabilityRows(traceability);
+const traceIds = traceRows.map((row) => row.id);
 const manifestSet = new Set(manifestIds);
 const traceSet = new Set(traceIds);
 
@@ -45,56 +48,37 @@ requireCheck(manifestSet.size === traceSet.size &&
   [...manifestSet].every((id) => traceSet.has(id)),
 'Manifest and traceability capability ID sets differ.');
 
-for (const cells of traceRows) {
-  const id = cells[1];
-  const scope = cells[3];
-  const status = cells[4];
-  const primary = cells[5];
+for (const row of traceRows) {
+  const { id, scope, status, primaryIssue } = row;
 
   if (scope === '后续' || status === 'deferred') {
-    requireCheck(status === 'deferred' && primary === '—',
+    requireCheck(status === 'deferred' && primaryIssue === '—',
       `Deferred capability ${id} must have status deferred and no primary issue.`);
     continue;
   }
 
   requireCheck(status !== 'deferred', `V1 capability ${id} cannot be deferred.`);
-  requireCheck(/^#\d+$/.test(primary), `V1 capability ${id} has no single primary issue.`);
-  if (/^#\d+$/.test(primary)) {
-    const issueId = primary.slice(1);
+  requireCheck(/^#\d+$/.test(primaryIssue), `V1 capability ${id} has no single primary issue.`);
+  if (/^#\d+$/.test(primaryIssue)) {
+    const issueId = primaryIssue.slice(1);
     requireCheck(Boolean(nodes[issueId]),
-      `Primary issue ${primary} for ${id} is missing from dependency graph.`);
+      `Primary issue ${primaryIssue} for ${id} is missing from dependency graph.`);
   }
 }
 
-const productionPageIds = [
-  'auth', 'dashboard', 'new-project', 'work-overview', 'bible', 'settings',
-  'outline', 'foreshadows', 'writing', 'batch', 'changes', 'export-publish',
-  'work-settings', 'entity-detail', 'account-settings', 'help', 'legal',
-];
-const productionPageSet = new Set(productionPageIds);
-const productionRows = [];
-const prototypeOnlyRows = [];
+const { productionRows, prototypeOnlyRows } = parseUiMatrix(uiMatrix);
 
-for (const line of uiMatrix.split('\n')) {
-  if (!/^\|\s*[a-z-]+\s*\|/.test(line)) continue;
-  const cells = pipeCells(line);
-  const page = cells[1];
-  if (page === 'states') prototypeOnlyRows.push(cells);
-  else if (productionPageSet.has(page)) productionRows.push(cells);
-}
-
-requireCheck(productionRows.length === productionPageIds.length,
-  `Expected ${productionPageIds.length} production UI rows, found ${productionRows.length}.`);
-requireCheck(new Set(productionRows.map((cells) => cells[1])).size === productionPageIds.length,
+requireCheck(productionRows.length === PRODUCTION_PAGE_IDS.length,
+  `Expected ${PRODUCTION_PAGE_IDS.length} production UI rows, found ${productionRows.length}.`);
+requireCheck(new Set(productionRows.map((row) => row.page)).size === PRODUCTION_PAGE_IDS.length,
   'Production UI matrix contains duplicate or missing page IDs.');
 requireCheck(prototypeOnlyRows.length === 1,
   `Expected exactly one prototype-only states row, found ${prototypeOnlyRows.length}.`);
 requireCheck(!/\bTBD\b|待定/i.test(uiMatrix),
   'UI parity matrix still contains TBD/待定 placeholders.');
 
-for (const cells of productionRows) {
-  const page = cells[1];
-  const primaryIssue = cells[5];
+for (const row of productionRows) {
+  const { page, primaryIssue, status } = row;
   requireCheck(/^#\d+$/.test(primaryIssue),
     `Production page ${page} has no primary page issue.`);
 
@@ -104,38 +88,33 @@ for (const cells of productionRows) {
       `Production page ${page} must be owned by a leaf issue, not a package.`);
   }
 
-  requireCheck(cells[10]?.includes('apps/web/e2e/parity/'),
+  requireCheck(row.playwrightSpecPath?.includes('apps/web/e2e/parity/'),
     `Production page ${page} has no production Playwright spec path.`);
-  requireCheck(cells[11]?.includes('artifacts/ui/golden/'),
+  requireCheck(row.goldenPath?.includes('artifacts/ui/golden/'),
     `Production page ${page} has no production golden path.`);
-  const status = cells[12];
   requireCheck(
     ['production-pending', 'production-built', 'parity-verified', 'deviation-approved'].includes(status),
     `Production page ${page} has an unknown status "${status}".`);
 
-  if (status === 'parity-verified') {
-    const goldenTemplate = cells[11]?.match(/`([^`]+)`/)?.[1] ?? '';
-    const viewportPlaceholder = goldenTemplate.match(/\{([^}]+)\}/);
-    const viewports = viewportPlaceholder?.[1].split(',').map((value) => value.trim()) ?? [];
+  if (status === 'parity-verified' || status === 'deviation-approved') {
+    const goldenPaths = expandGoldenPaths(row.goldenPath);
     requireCheck(
-      viewports.length === 4 && ['390', '900', '1180', '1440'].every((value) => viewports.includes(value)),
-      `Production page ${page} must declare golden files for 390/900/1180/1440 before parity-verified.`,
+      goldenPaths.length === GOLDEN_VIEWPORTS.length,
+      `Production page ${page} must declare golden files for 390/900/1180/1440 before release approval.`,
     );
 
-    for (const viewport of viewports) {
-      const goldenPath = viewportPlaceholder
-        ? goldenTemplate.replace(viewportPlaceholder[0], viewport)
-        : '';
+    for (const [index, goldenPath] of goldenPaths.entries()) {
+      const viewport = GOLDEN_VIEWPORTS[index];
       requireCheck(
         Boolean(goldenPath) && isValidGolden(goldenPath, viewport),
-        `Production page ${page} is parity-verified but has an invalid ${viewport}px golden artifact ${goldenPath || '(unknown path)'}.`,
+        `Production page ${page} is release-approved but has an invalid ${viewport}px golden artifact ${goldenPath || '(unknown path)'}.`,
       );
     }
   }
 }
 
 if (prototypeOnlyRows[0]) {
-  requireCheck(prototypeOnlyRows[0][12] === 'prototype-only',
+  requireCheck(prototypeOnlyRows[0].status === 'prototype-only',
     'states gallery must remain prototype-only.');
 }
 

@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "auth": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "dashboard": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "new-project": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "work-overview": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "bible": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "settings": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "outline": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "foreshadows": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "writing": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "batch": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "changes": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "export-publish": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "work-settings": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "entity-detail": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    },
+    "account-settings": {
+      "status": "pending",
+      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+    }
+  }
+}

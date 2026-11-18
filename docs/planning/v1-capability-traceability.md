@@ -1,8 +1,7 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery baseline，2026-11-04。基于 manifest 中的 117 个原始能力，新增 PERF-001 与 CONT-001 两项跨切面发布门禁，现共 **119 个唯一能力 ID**。
-> 本表只表示能力有唯一 primary issue；不代表该 issue 已可启动、已实现或已验证。
-> main implementation is not started; issue #84–#104 are packages where noted. Use child issues for /implement.
+> 状态：V1 delivery ledger，2026-11-18。共 **119 个唯一能力 ID**；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
+> `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
 
 ## 状态定义
 
@@ -121,23 +120,23 @@
 | SEC-004 | 删除/备份过期/孤儿数据清理 | V1 | mapped | #134 | — | ADR 0023; M0 Protocol Freeze §§3, 8 | Jobs/Storage; 删除 SLA | M3 |
 | SEC-005 | 内容安全/AI 标识/申诉 | V1 | mapped | #131 | — | ADR 0023; M0 Protocol Freeze §§3, 8 | Moderation; 内容治理 | M3 |
 | SEC-006 | 限流/审计/无管理员越权 | V1 | mapped | #132 | — | ADR 0023; M0 Protocol Freeze §§3, 8 | Security/Audit; 安全回归 | M3 |
-| UI-001 | 页面/动作/API/状态矩阵 | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 矩阵完整 | M0–M3 |
-| UI-002 | 设计令牌/组件清单 | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 组件对照 | M0–M3 |
-| UI-003 | 7 栏/3 题材/统一状态枚举 | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 信息架构 | M0–M3 |
-| UI-004 | 逐页 loading/empty/error/disabled/permission/partial/long | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 状态矩阵 | M0–M3 |
-| UI-005 | 1440/1180/900/390 响应式 | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; Playwright 截图 | M0–M3 |
-| UI-006 | Playwright 结构/截图基线 | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; CI 门禁 | M0–M3 |
-| UI-007 | Agent UX：本章参考/来源/冲突/修订/成本/失败/确认 | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 页面验收 | M0–M3 |
-| UI-008 | 导入报告/黄金三章/分支比较页面 | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 页面验收 | M0–M3 |
-| UI-009 | 作者语言/无内部术语/prototype_only 登记 | V1 | mapped | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 术语扫描 | M0–M3 |
+| UI-001 | 页面/动作/API/状态矩阵 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 矩阵完整，等待最终 Production CI | M0–M3 |
+| UI-002 | 设计令牌/组件清单 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 组件对照，等待最终 Production CI | M0–M3 |
+| UI-003 | 7 栏/3 题材/统一状态枚举 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 信息架构，等待最终 Production CI | M0–M3 |
+| UI-004 | 逐页 loading/empty/error/disabled/permission/partial/long | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | help 的真实路由错误态与重试恢复仍待补 | M0–M3 |
+| UI-005 | 1440/1180/900/390 响应式 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | auth 与 help 等待最终 Production CI | M0–M3 |
+| UI-006 | Playwright 结构/截图基线 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | 等待最终 Production CI | M0–M3 |
+| UI-007 | Agent UX：本章参考/来源/冲突/修订/成本/失败/确认 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 页面验收待最终 CI | M0–M3 |
+| UI-008 | 导入报告/黄金三章/分支比较页面 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 页面验收待最终 CI | M0–M3 |
+| UI-009 | 作者语言/无内部术语/prototype_only 登记 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 术语扫描待最终 CI | M0–M3 |
 | OPS-001 | 健康检查/局域网与云部署 | V1 | mapped | #135 | #67 | Backend design §§11–13; ADR 0023 | Ops/Deploy; 部署 smoke | M3 |
 | OPS-002 | 备份/恢复演练 | V1 | mapped | #136 | — | Backend design §§11–13; ADR 0023 | Ops/Backup; RPO/RTO | M3 |
 | OPS-003 | 监控/日志/成本告警 | V1 | mapped | #135 | — | Backend design §§11–13; ADR 0023 | Observability; 告警演练 | M3 |
 | EVAL-001 | 三题材 + 长线基准集 | V1 | implemented | #139 | #79 | M3 Spec #82; EvalModule; ADR 0022 | 180 chapter + 24 #138 cases; eval_cases/eval_runs frozen hashes | M3 |
 | EVAL-002 | 评分 rubric/阈值/回归 | V1 | implemented | #139 | — | M3 Spec #82; EvalModule; ADR 0022 | ADR rubric、eval_scores、eval_gates、P0 regression gate | M3 |
-| EVAL-003 | 真实 DeepSeek smoke | V1 | mapped | #140 | #79 | M3 Spec #82; EvalModule; ADR 0022 | Eval/AI; 连接与质量 | M3 |
-| EVAL-004 | Prompt/模型灰度与回滚 | V1 | mapped | #140 | — | M3 Spec #82; EvalModule; ADR 0022 | Eval/Agents; 版本治理 | M3 |
-| PERF-001 | 1000 万字容量/性能/恢复基准 | V1 | mapped | #137 | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 确定性 10M fixture；p50/p95/p99、吞吐/错误/资源/存储/成本；容量与恢复压测 | M3 |
+| EVAL-003 | 真实 DeepSeek smoke | V1 | implemented | #140 | #79 | M3 Spec #82; EvalModule; ADR 0022 | 手动 workflow 已实现；真实 provider evidence 尚未运行 | M3 |
+| EVAL-004 | Prompt/模型灰度与回滚 | V1 | implemented | #140 | — | M3 Spec #82; EvalModule; ADR 0022 | canary/rollback 与版本治理已实现；真实 provider 发布证据待 smoke | M3 |
+| PERF-001 | 1000 万字容量/性能/恢复基准 | 后续 | deferred | — | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 产品决定 V1 不声明 10M 容量；未来重启需重新认证 | Post-V1 |
 | CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | implemented | #138 | #106–#119/#86/#90/#115 | ADR 0017/0019/0022; #138 | 3,500/4,000 章 deterministic fixture、strict finding locators、TP/FP/FN/TN、masked mixed blind-review packet；人工盲评与阈值仍待批 | M3 |
 
 ## 强制规则
@@ -148,5 +147,5 @@
 4. 每个 leaf issue 必须链接设计来源、受影响 API/DB/Worker/UI 面、可执行测试类型和可复现验收证据。
 5. `mapped` 不等于 `ready`。依赖全部满足后才允许 /implement；不得仅凭 issue 存在或标签开始。
 6. `implemented` 不等于 `verified`；发布前必须提供机器测试结果、人工签收或基准报告。
-7. AGENT-007（向量检索增强）与 QUALITY-009（真实读者反馈）保持 post-V1/deferred，不得用假接口计入 V1。
-8. PERF-001 与 CONT-001 是独立的 V1 发布门禁：前者验证系统容量，后者验证长篇叙事连续性，彼此不可替代。
+7. AGENT-007（向量检索增强）与 QUALITY-009（真实读者反馈）保持 post-V1/deferred，不得用假接口计入 V1；授权记录见 `docs/planning/v1-deferrals.json` 与 ADR 0028。
+8. PERF-001 已明确延期，不属于 V1 发布承诺；CONT-001、EVAL-003 与 EVAL-004 的人工/真实 Provider 证据仍是 #104 发布阻塞项。任何未登记解除 V1 归属的能力都会使 release gate 失败。

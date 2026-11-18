@@ -1,7 +1,11 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage, productionScreenshotOptions } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 async function authenticatedWorkPage(
   page: Page,
@@ -42,6 +46,7 @@ test("saves work metadata and archives/restores it from the dashboard", async ({
 }) => {
   await authenticatedWorkPage(page, context);
   await expectAuthorFacingLanguage(page);
+  await expectNoPrototypeOnlyLeakage(page);
 
   await page.getByLabel("书名").fill("仙途：忘川书 · 修订");
   await page.getByLabel("笔名").fill("青舟");

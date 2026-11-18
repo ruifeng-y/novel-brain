@@ -19,6 +19,7 @@ The repository contains product/technical documentation, accepted ADRs, a signed
 - Long-horizon continuity benchmark: `docs/implementation/m3-05b-continuity-benchmark.md`.
 - Fixed quality benchmark registry: `docs/implementation/m3-06a-quality-benchmark-registry.md`.
 - Provider smoke, canary and rollback strategy: `docs/implementation/m3-06b-provider-canary.md`.
+- V1 UI/release closeout and final checklist: `docs/implementation/m3-104-v1-closeout.md`, `docs/implementation/v1-release-checklist.md`.
 
 M1/M2/M3 package parents are not single /implement tasks: #84–#89, #91, #93–#96 and #98–#103. Implement their bounded child issues first, then close each parent with integration evidence. #90, #97 and #104 are integration/release gates. The new leaf issues are mapped, not automatically ready or verified. Never infer readiness from labels alone.
 
@@ -86,7 +87,7 @@ Independent frontier tickets may run in parallel only when they share no mutable
 5. Continuity before prose: generation receives versioned, source-cited context; objective story facts and per-character knowledge/belief/suspicion remain distinct.
 6. Long-work retrieval: structured facts and state projections are authoritative; summaries and search indexes are derived, versioned and rebuildable.
 7. No fake production behavior: fake providers are test seams only. UI demo controls and static prototype data do not satisfy production acceptance.
-8. 10M is a release claim, not an assumption: capacity must be demonstrated with #137 and the recorded load/recovery evidence.
+8. 10M is outside the V1 release claim after the explicit #102/#137 deferral. A future release may claim it only by reopening the benchmark and recording load/recovery evidence.
 9. Long-horizon continuity is a separate release claim: #138 must test ground-truth state and knowledge boundaries over 3,000–4,000 chapters; a capacity benchmark cannot substitute for it.
 
 ## 6. M1–M3 implementation readiness gate
@@ -104,7 +105,7 @@ The graph validator is run from the repository root:
 
     node scripts/validate-readiness.mjs
 
-The same command is enforced by `.github/workflows/readiness-validation.yml` for pull requests and relevant branch updates. It validates documentation/issue graph structure only; it does not certify implementation or release readiness.
+The same command is enforced by `.github/workflows/readiness-validation.yml` for pull requests and relevant branch updates. It validates capability/UI/dependency contracts, including committed Golden artifact dimensions; release certification remains the separate `pnpm release:check` gate.
 
 The dependency graph is normative together with each issue's Dependencies section. GitHub native dependency edges are not assumed to exist. A milestone is not implementation-ready merely because child tickets exist: blockers must close, shared contracts must be integrated and tests/evidence must pass.
 
@@ -112,7 +113,9 @@ The capability ledger contains **119 IDs**: the 117 original manifest entries pl
 
 ## 7. UI parity and prototype evidence
 
-The signed-off prototype contains 18 screens: 17 production page contracts plus one prototype-only states gallery. Production Web/API/Worker code exists for M0, and its nine pages have committed production golden screenshots; M1–M3 page evidence is still pending.
+The signed-off prototype contains 18 screens: 17 production page contracts plus one prototype-only states gallery. All 17 production pages have owner Playwright specs and four viewport production Golden artifacts; only `legal` is currently `parity-verified`. The 15 non-static pages remain `production-built` until per-action API/persistence evidence and final normal PR CI pass, while `help` also needs a real route-level error-boundary trigger and retry-recovery test. V1 release approval depends on `v1-release-checklist.md`.
+
+Release-only UI checks are split across `docs/ui/v1-ui-deviations.json` for recorded product-owner deviations, `docs/ui/v1-action-contract.json` for the required action IDs, and `docs/implementation/v1-action-evidence.json` for per-action API/persistence evidence. Pending entries intentionally block `pnpm release:check`.
 
 Prototype regression remains independently runnable from prototype/:
 
@@ -125,7 +128,7 @@ The prototype suite is not a substitute for production Web/API/Worker or product
 
 ## 8. Scale and quality gates
 
-- #137 / `docs/performance/v1-10m-capacity-benchmark.md`: deterministic 10,000,000-character fixture, mixed workload, p50/p95/p99 measurements, storage/index growth, job recovery and backup/restore.
+- #137 / `docs/performance/v1-10m-capacity-benchmark.md`: explicitly deferred outside V1; resuming the claim requires a deterministic 10,000,000-character fixture, mixed workload, p50/p95/p99 measurements, storage/index growth, job recovery and backup/restore.
 - #138 / `docs/quality/v1-long-horizon-continuity-benchmark.md`: 3,000–4,000 chapter / 30–40 volume continuity ground truth, character knowledge boundaries, state invariants, plot/foreshadow checks and human blind review.
 - #139 / `docs/quality/v1-quality-benchmark-registry.md`: frozen three-genre dataset, ADR 0022 release rubric, raw scorer evidence, P0 regression gate and CLI exit status.
 
