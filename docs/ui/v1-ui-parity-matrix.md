@@ -107,7 +107,7 @@ In the columns below, the prototype screenshot path and production test/golden p
 >
 > 2026-11-19：#220 增加生产 `/help` 路由级 Playwright 测试：通过真实浏览器运行时异常触发 `error.tsx`，恢复运行时后点击“重新加载”回到帮助内容，并覆盖四档无横向溢出、作者语言和 prototype_only 扫描。targeted Playwright 已本地通过；测试未注入 HTML，也未增加生产测试开关。正常 PR Production CI [44356549065](https://github.com/ruifeng-y/novel-brain/actions/runs/44356549065) 的 `check`、`playwright`、`parity` 和 Deployment Smoke 全部通过后，`help` 提升为 `parity-verified`。
 >
-> 2026-11-19：#221 完成 `auth` 七个必需动作的 API 与持久化证据绑定：每个 UI 动作等待真实 POST 响应，注册/登录/重置密码后验证 `/api/v1/auth/me`，退出后携带旧 session cookie 验证 401。Production CI [44366629164](https://github.com/ruifeng-y/novel-brain/actions/runs/44366629164) 的 `check`、`playwright` 与独立 Deployment Smoke [44366628799](https://github.com/ruifeng-y/novel-brain/actions/runs/44366628799) 通过后，`auth` 提升为 `parity-verified`。
+> 2026-11-19：#221 完成 `auth` 七个必需动作的 API 与持久化证据绑定：每个 UI 动作等待真实 POST 响应，注册/登录/重置密码后验证 `/api/v1/auth/me`，退出后携带旧 session cookie 验证 401。正常 PR Production CI 与独立 Deployment Smoke 均通过；绿色运行链接记录在 issue #221。
 
 ## 4. UI issue ownership rules
 
