@@ -21,14 +21,14 @@
 - #129 export formats, scope selection, durable job recovery and version manifests is closed through PR #201.
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
 - #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207; `help`, `legal` and `export-publish` are `parity-verified` with Linux Golden evidence.
-- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142 is closed; #137 remains explicitly `deferred`; #138 implementation and deterministic full/maximum fixture evidence are complete on `codex/m3-138-continuity-benchmark`, but the issue remains open until PR merge. #139 stays blocked until #138 merges; #140 follows #139.
+- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142 and #138 are closed; #137 remains explicitly `deferred`; #139 is in implementation on `codex/m3-139-quality-registry`; #140 follows #139.
 - PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.
 
 ## 2. Immediate frontier
 
-1. Land #138 through normal review and Production CI; its automated benchmark evidence is recorded in `docs/implementation/m3-05b-continuity-benchmark.md`.
-2. Do not claim #138 release-ready: actual human blind review, approved sample/agreement thresholds and narrative evidence remain outstanding.
-3. After #138 merges, start #139 as the fixed quality registry/regression consumer. Do not start #140 until #139 is complete.
+1. Finish and merge #139; its frozen registry and execution/gate evidence are recorded in `docs/implementation/m3-06a-quality-benchmark-registry.md`.
+2. Do not claim #139 release-ready: the automated gate is implemented, but real blind-human evidence and approved inter-rater variance threshold remain outstanding.
+3. After #139 merges, start #140 for real-provider smoke, canary and rollback.
 4. #137 remains independently deferred until an explicit decision to resume the 10M capacity benchmark.
 
 ## 3. First executable frontier (historical)
@@ -79,7 +79,9 @@ M1 foundations:
 - #134 and #136 are closed. PR #200 carries the backup/restore and retention evidence.
 - #129 follows #136; #130 follows #129; #131 follows #130. #137 follows #134 and #136; #142 is closed through PR #211.
 - #138 has deterministic 3,500-chapter full and 4,000-chapter maximum evidence. Its report remains intentionally blocked pending actual human blind review, approved thresholds and narrative evidence; merge closes the implementation/fixture contract, not the release-quality claim.
-- #139 consumes the long-horizon fixture after #138 merges; #140 gates real-provider canary/rollback after #139.
+- #138 is closed through PR #216.
+- #139 consumes the pinned long-horizon fixture into a frozen three-genre dataset, release rubric and cross-run P0 regression gate. It does not replace real human review.
+- #140 gates real-provider canary/rollback after #139.
 - #104 is the V1-wide UI closeout and is last among page parity aggregators.
 
 ## 7. Package-parent rule

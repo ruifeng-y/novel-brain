@@ -17,6 +17,7 @@ The repository contains product/technical documentation, accepted ADRs, a signed
 - Retro and immediate frontier: `docs/implementation/m2-retro.md`, `docs/planning/m1-tracker-reconciliation.md` and `docs/planning/implementation-frontier.md`.
 - Agent delivery retro after #142: `docs/implementation/m1-142-retro.md`.
 - Long-horizon continuity benchmark: `docs/implementation/m3-05b-continuity-benchmark.md`.
+- Fixed quality benchmark registry: `docs/implementation/m3-06a-quality-benchmark-registry.md`.
 
 M1/M2/M3 package parents are not single /implement tasks: #84–#89, #91, #93–#96 and #98–#103. Implement their bounded child issues first, then close each parent with integration evidence. #90, #97 and #104 are integration/release gates. The new leaf issues are mapped, not automatically ready or verified. Never infer readiness from labels alone.
 
@@ -125,6 +126,7 @@ The prototype suite is not a substitute for production Web/API/Worker or product
 
 - #137 / `docs/performance/v1-10m-capacity-benchmark.md`: deterministic 10,000,000-character fixture, mixed workload, p50/p95/p99 measurements, storage/index growth, job recovery and backup/restore.
 - #138 / `docs/quality/v1-long-horizon-continuity-benchmark.md`: 3,000–4,000 chapter / 30–40 volume continuity ground truth, character knowledge boundaries, state invariants, plot/foreshadow checks and human blind review.
+- #139 / `docs/quality/v1-quality-benchmark-registry.md`: frozen three-genre dataset, ADR 0022 release rubric, raw scorer evidence, P0 regression gate and CLI exit status.
 
 Existing p95/streaming/SSE/RPO/RTO targets are taken from the technical baseline. Numeric p99, concurrent-user, storage-headroom and selected reviewer-agreement thresholds remain decision-required until formally approved; do not invent pass values.
 

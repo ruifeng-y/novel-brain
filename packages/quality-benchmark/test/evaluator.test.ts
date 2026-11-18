@@ -57,18 +57,15 @@ describe("quality benchmark evaluator", () => {
   });
 
   it("blocks any ADR threshold regression even when aggregate quality looks high", () => {
-    const run = createQualityRun({ runId: "failing-run" });
+    const run = createQualityRun({ runId: "failing-run", p0Count: 1 });
     const failingRun: QualityBenchmarkRun = {
       ...run,
-      scores: run.scores.map((score, index) => {
+      scores: run.scores.map((score) => {
         if (score.dimension === "outline_adherence") {
           return { ...score, value: 0.8 };
         }
         if (score.dimension === "hook_prose_score") {
           return { ...score, value: 3.5 };
-        }
-        if (score.dimension === "p0_fact_loss" && index < 2) {
-          return { ...score, value: 1 };
         }
         return score;
       }),
@@ -118,5 +115,18 @@ describe("quality benchmark evaluator", () => {
     expect(report.releaseGate.blockers).toEqual(
       expect.arrayContaining(["score-range-invalid", "duplicate-score"]),
     );
+  });
+
+  it("blocks a run that was not produced by the continuity execution seam", () => {
+    const run = createQualityRun({ runId: "unexecuted" });
+    const unexecuted = { ...run } as Partial<typeof run>;
+    delete unexecuted.continuityEvaluation;
+    const report = evaluateQualityBenchmarkRun({
+      dataset,
+      rubric,
+      run: unexecuted as typeof run,
+    });
+
+    expect(report.releaseGate.blockers).toContain("continuity-evaluation-invalid");
   });
 });

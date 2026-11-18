@@ -2,7 +2,11 @@ import path from "node:path";
 
 import { readJsonArtifact, writeJsonArtifact } from "@novel-brain/continuity-benchmark";
 
-import { createApprovedQualityBenchmarkDataset, type QualityBenchmarkDataset } from "./dataset";
+import {
+  APPROVED_QUALITY_BENCHMARK_DATASET_SHA256,
+  verifyQualityBenchmarkDataset,
+  type QualityBenchmarkDataset,
+} from "./dataset";
 import {
   evaluateQualityBenchmarkRun,
   type QualityBenchmarkReport,
@@ -10,7 +14,11 @@ import {
 } from "./evaluator";
 import { executeQualityBenchmarkCandidate, type QualityBenchmarkCandidate } from "./execute";
 import { compareQualityBenchmarkRuns, type QualityRegressionReport } from "./regression";
-import { createReleaseQualityRubric, type ReleaseQualityRubric } from "./rubric";
+import {
+  APPROVED_QUALITY_RUBRIC_SHA256,
+  verifyReleaseQualityRubric,
+  type ReleaseQualityRubric,
+} from "./rubric";
 
 export interface QualityBenchmarkCliResult {
   command: string;
@@ -24,7 +32,15 @@ export async function runQualityBenchmarkCli(
   const { command, options } = parseArguments(argv);
   switch (command) {
     case "dataset": {
-      const dataset = createApprovedQualityBenchmarkDataset();
+      const dataset = await readJsonArtifact<QualityBenchmarkDataset>(
+        resolvePath(options.source ?? "docs/quality/quality-benchmark-v1.dataset.json"),
+      );
+      if (
+        !verifyQualityBenchmarkDataset(dataset) ||
+        dataset.manifest.datasetSha256 !== APPROVED_QUALITY_BENCHMARK_DATASET_SHA256
+      ) {
+        throw new Error("QUALITY_DATASET_NOT_APPROVED");
+      }
       const output = resolvePath(
         options.output ?? `artifacts/quality/benchmark/${dataset.manifest.seed}/dataset.json`,
       );
@@ -32,8 +48,14 @@ export async function runQualityBenchmarkCli(
       return { command, outputs: [output], passed: true };
     }
     case "rubric": {
+      const rubric = await readJsonArtifact<ReleaseQualityRubric>(
+        resolvePath(options.source ?? "docs/quality/quality-benchmark-v1.rubric.json"),
+      );
+      if (!verifyReleaseQualityRubric(rubric) || rubric.sha256 !== APPROVED_QUALITY_RUBRIC_SHA256) {
+        throw new Error("QUALITY_RUBRIC_NOT_APPROVED");
+      }
       const output = resolvePath(options.output ?? "artifacts/quality/benchmark/rubric.json");
-      await writeJsonArtifact(output, createReleaseQualityRubric());
+      await writeJsonArtifact(output, rubric);
       return { command, outputs: [output], passed: true };
     }
     case "execute": {

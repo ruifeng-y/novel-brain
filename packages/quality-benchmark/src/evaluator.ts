@@ -1,5 +1,8 @@
 import { sha256Json } from "@novel-brain/continuity-benchmark";
-import type { ContinuityEvaluation } from "@novel-brain/continuity-benchmark";
+import {
+  verifyContinuityEvaluation,
+  type ContinuityEvaluation,
+} from "@novel-brain/continuity-benchmark";
 
 import type {
   QualityAdversarialCase,
@@ -50,7 +53,7 @@ export interface QualityBenchmarkRun {
   };
   scores: readonly QualityMetricScore[];
   decisions: readonly QualityBenchmarkDecision[];
-  continuityEvaluation?: ContinuityEvaluation;
+  continuityEvaluation: ContinuityEvaluation;
 }
 
 export interface QualityMetricResult {
@@ -118,6 +121,15 @@ export function evaluateQualityBenchmarkRun(input: {
   if (Object.values(run.provenance).some((value) => value.trim().length === 0)) {
     blockers.add("run-provenance-incomplete");
   }
+  const continuityEvaluation =
+    run.continuityEvaluation && verifyContinuityEvaluation(run.continuityEvaluation)
+      ? run.continuityEvaluation
+      : null;
+  if (!continuityEvaluation) {
+    blockers.add("continuity-evaluation-invalid");
+  } else if (continuityEvaluation.fixtureSha256 !== dataset.manifest.continuityFixtureSha256) {
+    blockers.add("continuity-evaluation-fixture-mismatch");
+  }
 
   const scoresByDimension = new Map<QualityBenchmarkDimensionId, QualityMetricScore[]>();
   const dimensionById = new Map(rubric.dimensions.map((dimension) => [dimension.id, dimension]));
@@ -159,6 +171,7 @@ export function evaluateQualityBenchmarkRun(input: {
       dataset,
       dimension,
       scores: scoresByDimension.get(dimension.id) ?? [],
+      continuityEvaluation,
       blockers,
     });
     if (!result.passed) {
@@ -195,7 +208,7 @@ export function evaluateQualityBenchmarkRun(input: {
     provenance: run.provenance,
     scores: run.scores,
     decisions: run.decisions,
-    continuityEvaluation: run.continuityEvaluation ?? null,
+    continuityEvaluation,
     datasetSha256: run.datasetSha256,
     rubricVersion: run.rubricVersion,
   };
@@ -214,9 +227,10 @@ function measureDimension(input: {
   dataset: QualityBenchmarkDataset;
   dimension: QualityDimensionDefinition;
   scores: readonly QualityMetricScore[];
+  continuityEvaluation: ContinuityEvaluation | null;
   blockers: Set<string>;
 }): QualityMetricResult {
-  const { dataset, dimension, scores, blockers } = input;
+  const { dataset, dimension, scores, continuityEvaluation, blockers } = input;
   const samples = [...dataset.chapterSamples, ...dataset.adversarialCases];
   const sampleIds = new Set(samples.map((sample) => sample.id));
   if (dimension.scorerType === "deterministic") {
@@ -239,7 +253,7 @@ function measureDimension(input: {
     }
   }
 
-  const value = roundMetric(measureValue(dataset, dimension.id, scores));
+  const value = roundMetric(measureValue(dataset, dimension, scores, continuityEvaluation));
   const passed =
     dimension.threshold.operator === "min"
       ? value >= dimension.threshold.value
@@ -256,28 +270,27 @@ function measureDimension(input: {
 
 function measureValue(
   dataset: QualityBenchmarkDataset,
-  dimension: QualityBenchmarkDimensionId,
+  dimension: QualityDimensionDefinition,
   scores: readonly QualityMetricScore[],
+  continuityEvaluation: ContinuityEvaluation | null,
 ): number {
-  if (dimension === "continuity_conflicts_per_50k") {
+  if (dimension.id === "p0_fact_loss") {
+    return continuityEvaluation?.releaseGate.p0FalseNegatives ?? 0;
+  }
+  if (dimension.id === "knowledge_boundary_violation") {
+    return continuityEvaluation?.releaseGate.knowledgeBoundaryFalseNegatives ?? 0;
+  }
+  if (dimension.id === "continuity_conflicts_per_50k") {
     const totalCharacters = [...dataset.chapterSamples, ...dataset.adversarialCases].reduce(
       (sum, sample) => sum + sample.text.length,
       0,
     );
-    const totalConflicts = scores
-      .filter((score) => score.scorerType === "deterministic")
-      .reduce((sum, score) => sum + score.value, 0);
+    const totalConflicts = continuityEvaluation?.unexpectedFindings.length ?? 0;
     return totalCharacters === 0 ? 0 : (totalConflicts / totalCharacters) * 50_000;
   }
-  const relevant =
-    dimension === "p0_fact_loss" || dimension === "knowledge_boundary_violation"
-      ? scores.filter((score) => score.scorerType === "deterministic")
-      : scores.filter((score) => score.scorerType !== "model_assisted");
+  const relevant = scores.filter((score) => score.scorerType === dimension.scorerType);
   if (relevant.length === 0) {
     return 0;
-  }
-  if (dimension === "p0_fact_loss" || dimension === "knowledge_boundary_violation") {
-    return relevant.reduce((sum, score) => sum + score.value, 0);
   }
   return relevant.reduce((sum, score) => sum + score.value, 0) / relevant.length;
 }

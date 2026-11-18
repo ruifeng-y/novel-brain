@@ -1,0 +1,58 @@
+# M3-06a 固定质量基准集、评分 Rubric 与回归门禁
+
+> Issue: #139
+> Capabilities: QUALITY-006, EVAL-001, EVAL-002
+> Status: implementation complete; automated registry/execution/regression evidence recorded; release use still requires real blind-human evidence and approved inter-rater variance threshold.
+
+## 实现范围
+
+新增独立 `@novel-brain/quality-benchmark` 包，作为 file-backed release Eval registry 和 CLI gate。它不调用真实 provider，也不把 model self-score 或生成样本冒充人工盲评。
+
+- 固定 release dataset：3 个题材各 60 个 chapter samples，共 180 个；另有 24 个来自 #138 full fixture 的 long-horizon adversarial cases。
+- Dataset manifest 固定 sample id、genre、difficulty、source version/hash、known issues、continuity fixture hash 和 dataset SHA-256。
+- Release rubric 固定 ADR 0022 的五个初始门槛、证据要求、scorer type、score range、variance decision、waiver owner 和 rubric SHA-256。
+- `executeQualityBenchmarkCandidate` 重新生成 #138 fixture，真实运行 `evaluateContinuityFindings`，从 execution result 生成 P0、knowledge-boundary 和 continuity-conflict 指标。
+- `evaluateQualityBenchmarkRun` 只使用 approved dataset/rubric；校验 continuity evaluation digest、fixture hash、human scorer coverage、confidence、evidence span、重复 scorer record 和 score range。
+- Report 内嵌 `runId`、全部逐样本 scores、decisions、continuity evaluation、provenance 和 report SHA-256。
+- `compareQualityBenchmarkRuns` 要求 baseline/candidate 使用相同 dataset/rubric；candidate gate 失败或 P0 增加时拒绝 rollout。
+- `evaluate` 与 `regress` 返回 non-zero process exit code，可用于 CI/release gate。
+
+## Frozen registry
+
+- Seed：`20261118`
+- Fixture source commit：`38a85cb3f45bc9d1a6f8bcf66f5b5d50c16132ca`
+- Continuity tier：`full`
+- Dataset SHA-256：`c6c22e8922df49a9dbff52321e09ae463163e99726db5530eb08cf5f8f7d76ef`
+- Continuity fixture SHA-256：`2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319`
+- Rubric SHA-256：`4a3bd567da67c0340a3efa07c78e0efc50190793ba7f22cdade3e72bf6bb7e35`
+- Dataset snapshot：`docs/quality/quality-benchmark-v1.dataset.json`
+- Manifest snapshot：`docs/quality/quality-benchmark-v1.manifest.json`
+- Rubric snapshot：`docs/quality/quality-benchmark-v1.rubric.json`
+
+Registry tests compare all three frozen artifacts against the runtime approved generator/rubric. Any dataset/rubric change that is not deliberately versioned and re-approved fails `dataset-not-approved` or `rubric-not-approved`.
+
+## Commands
+
+```powershell
+pnpm quality dataset --output artifacts/quality/benchmark/dataset.json
+pnpm quality rubric --output artifacts/quality/benchmark/rubric.json
+pnpm quality execute --dataset docs/quality/quality-benchmark-v1.dataset.json --rubric docs/quality/quality-benchmark-v1.rubric.json --candidate candidate.json --output artifacts/quality/benchmark/run.json
+pnpm quality evaluate --dataset docs/quality/quality-benchmark-v1.dataset.json --rubric docs/quality/quality-benchmark-v1.rubric.json --run artifacts/quality/benchmark/run.json --output artifacts/quality/benchmark/report.json
+pnpm quality regress --baseline baseline-report.json --candidate artifacts/quality/benchmark/report.json --output artifacts/quality/benchmark/regression.json
+```
+
+`quality evaluate` exits non-zero when the candidate report is blocked. `quality regress` exits non-zero when rollout is not allowed.
+
+## 验证
+
+- Quality benchmark package：7 test files / 18 tests passed。
+- Covers deterministic registry, #138 execution integration, model-only rejection, missing human evidence, confidence/evidence validation, duplicate score rejection, ADR threshold failures, report integrity, frozen snapshot consistency and P0 regression.
+- Full repository typecheck, lint, format, tests and executable guardrails are rerun before PR merge.
+
+## 发布边界
+
+- Automated tests intentionally use clearly labeled synthetic reviewer records to verify the gate implementation; they are not release blind-review evidence.
+- Real human review must supply at least two distinct reviewers per sample and the approved `interRaterVarianceThreshold` decision.
+- The current gate blocks model-only judgement and any non-approved dataset/rubric artifact.
+- Real DeepSeek provider smoke, canary and rollback remain #140.
+- 10M capacity/performance remains #137.

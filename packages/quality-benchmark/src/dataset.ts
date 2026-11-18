@@ -27,12 +27,6 @@ export interface QualityKnownIssue {
   description: string;
 }
 
-export interface QualitySampleSource {
-  type: "synthetic" | "continuity_fixture";
-  version: string;
-  hash: string;
-}
-
 export interface QualityChapterSample {
   id: string;
   kind: "chapter";
