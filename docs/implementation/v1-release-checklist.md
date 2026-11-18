@@ -17,7 +17,7 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 | Gate | Evidence | Status |
 | --- | --- | --- |
 | Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`; `node scripts/validate-readiness.mjs` | structure pass; UI release remains blocked |
-| UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | blocked: only `legal` is `parity-verified`; 15 non-static pages await action evidence and final Linux/Chromium PR CI, and `help` awaits normal Production CI for status promotion |
+| UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | blocked: `help` and `legal` are `parity-verified`; 15 non-static pages await action evidence and final Linux/Chromium PR CI |
 | Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | existing Golden baseline evidence pass; final normal PR CI pending |
 | Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | implemented; final normal PR CI pending |
 | Per-action API and persistence evidence | `docs/ui/v1-action-contract.json` + `docs/implementation/v1-action-evidence.json`; every required action must bind to its owner spec, `/api/v1/*` and persisted-result Playwright assertions | blocked / 15 pages pending |
@@ -59,7 +59,7 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 
 1. Complete the capability-by-capability evidence audit and move applicable V1 traceability rows from `mapped`/`implemented` to `verified`; `pnpm release:check` currently reports 116 unresolved V1 capabilities.
 2. Complete the per-action API/persistence audit for all 15 non-static production pages and replace each pending action-evidence ledger entry with reproducible Playwright evidence.
-3. Pass normal Production CI for the new route-level `help` error-boundary and retry-recovery test, then promote the page after green evidence.
+3. Keep `help` parity status bound to the recorded Production CI run; rerun normal CI after any further help-page change.
 4. Record actual human blind-review scores for the frozen quality packet.
 5. Approve and record the inter-rater variance threshold with an owner and rationale.
 6. Run the manual real-provider smoke against the approved commit/config and attach its redacted evidence.

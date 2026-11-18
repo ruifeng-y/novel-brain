@@ -23,7 +23,7 @@
 | work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/permission/readonly/confirmation | 无 | production-built；复制、归档恢复、回收站、导出后删除和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
 | entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | production-built；七类档案、题材化层级文案、引用/历史和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
 | account-settings | `/workspace/settings`、`/workspace/settings/account` | 资料/笔名/会话/模型/导出/注销 | loading/error/invalid-key/disabled/partial/rate-limit | 无 | production-built；常规态、Key 错误态、导出/注销恢复和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
-| help | `/help` | 快捷键/术语/FAQ | static/empty/error | 无 | production-built；FAQ、空搜索、四档 Golden 和真实路由错误态/重试恢复测试已实现，targeted 本地通过，等待正常 PR Production CI |
+| help | `/help` | 快捷键/术语/FAQ | static/empty/error | 无 | parity-verified；FAQ、空搜索、四档 Golden、真实路由错误态/重试恢复和正常 PR Production CI 均已通过 |
 | legal | `/legal/*` | 协议/隐私/AI 标识 | static/error | 无 | parity-verified；隐私、条款、AI 标识和四档 Golden 已签收 |
 | states | 无生产路由（prototype-only） | 全局状态演示 | normal/empty/loading/error/locked/readonly/conflict | 无 | 演示页，缺 disabled/permission/partial/long |
 
