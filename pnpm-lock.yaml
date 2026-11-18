@@ -416,6 +416,8 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
 
+  packages/continuity-benchmark: {}
+
   packages/contracts:
     dependencies:
       zod:
@@ -449,6 +451,12 @@ importers:
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11
+
+  packages/quality-benchmark:
+    dependencies:
+      '@novel-brain/continuity-benchmark':
+        specifier: workspace:*
+        version: link:../continuity-benchmark
 
   packages/storage:
     dependencies:
