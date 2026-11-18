@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { Pool } from "pg";
 
 import {
@@ -16,6 +16,13 @@ import {
 } from "../helpers/ui";
 
 const viewports = [390, 900, 1180, 1440] as const;
+
+function waitForAuthResponse(page: Page, path: string) {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === path && response.request().method() === "POST";
+  });
+}
 
 test.beforeEach(async () => {
   await resetRateLimits();
@@ -118,19 +125,38 @@ test("registers, enters the workspace and logs out", async ({ page }) => {
   await page.getByLabel("邮箱").fill(email);
   const sendCodeButton = page.getByRole("button", { name: "发送验证码" });
   await expect(sendCodeButton).toBeEnabled();
+  const sendCodeResponse = waitForAuthResponse(page, "/api/v1/auth/register/send-code");
   await sendCodeButton.click();
+  expect((await sendCodeResponse).status()).toBe(200);
   await expect(page.getByText("验证码已发送，请检查邮箱。")).toBeVisible();
   await page.getByLabel("验证码").fill(await mailCode(email));
   await page.getByLabel("显示名称").fill("新作者");
   await page.getByLabel("密码").fill("StrongPassword123");
+  const registerResponse = waitForAuthResponse(page, "/api/v1/auth/register");
   await page.getByRole("button", { name: "注册并进入" }).click();
+  expect((await registerResponse).status()).toBe(200);
 
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByRole("heading", { name: "工作台" })).toBeVisible();
   await expect(page.getByText("新作者", { exact: true })).toBeVisible();
+  const registeredSession = await page.request.get("/api/v1/auth/me");
+  expect(registeredSession.status()).toBe(200);
+  expect((await registeredSession.json()).data.user.displayName).toBe("新作者");
 
+  const sessionCookie = (await page.context().cookies()).find(
+    (cookie) => cookie.name === "nb_session",
+  );
+  if (!sessionCookie) {
+    throw new Error("Registration did not persist nb_session");
+  }
+  const logoutResponse = waitForAuthResponse(page, "/api/v1/auth/logout");
   await page.getByRole("button", { name: "退出登录" }).click();
+  expect((await logoutResponse).status()).toBe(200);
   await expect(page).toHaveURL(/\/login$/);
+  const revokedSession = await page.request.get("/api/v1/auth/me", {
+    headers: { cookie: `nb_session=${sessionCookie.value}` },
+  });
+  expect(revokedSession.status()).toBe(401);
 });
 
 test("logs in and reaches the authenticated shell", async ({ page, request }) => {
@@ -142,10 +168,15 @@ test("logs in and reaches the authenticated shell", async ({ page, request }) =>
   await page.getByLabel("密码").fill("StrongPassword123");
   const loginButton = page.getByRole("button", { name: "登录" });
   await expect(loginButton).toBeEnabled();
+  const loginResponse = waitForAuthResponse(page, "/api/v1/auth/login");
   await loginButton.click();
+  expect((await loginResponse).status()).toBe(200);
 
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByText("林见鹿", { exact: true })).toBeVisible();
+  const loginSession = await page.request.get("/api/v1/auth/me");
+  expect(loginSession.status()).toBe(200);
+  expect((await loginSession.json()).data.user.displayName).toBe("林见鹿");
 });
 
 test("recovers a forgotten password from the email link", async ({ page, request }) => {
@@ -155,7 +186,9 @@ test("recovers a forgotten password from the email link", async ({ page, request
 
   await page.goto("/forgot-password");
   await page.getByLabel("邮箱").fill(email);
+  const forgotPasswordResponse = waitForAuthResponse(page, "/api/v1/auth/password/forgot");
   await page.getByRole("button", { name: "发送重置链接" }).click();
+  expect((await forgotPasswordResponse).status()).toBe(200);
   await expect(
     page.getByText("如果该邮箱已注册，重置链接会发送到邮箱。链接 30 分钟内有效。"),
   ).toBeVisible();
@@ -164,7 +197,9 @@ test("recovers a forgotten password from the email link", async ({ page, request
   await page.goto(`/reset-password?token=${token}`);
   await page.getByLabel("新密码", { exact: true }).fill(newPassword);
   await page.getByLabel("再次输入新密码").fill(newPassword);
+  const resetPasswordResponse = waitForAuthResponse(page, "/api/v1/auth/password/reset");
   await page.getByRole("button", { name: "重置密码" }).click();
+  expect((await resetPasswordResponse).status()).toBe(200);
   await expect(page.getByText("密码已重置，请使用新密码重新登录。")).toBeVisible();
 
   await page.goto(`/reset-password?token=${token}`);
@@ -176,9 +211,14 @@ test("recovers a forgotten password from the email link", async ({ page, request
   await page.goto("/login");
   await page.getByLabel("邮箱").fill(email);
   await page.getByLabel("密码").fill(newPassword);
+  const resetLoginResponse = waitForAuthResponse(page, "/api/v1/auth/login");
   await page.getByRole("button", { name: "登录" }).click();
+  expect((await resetLoginResponse).status()).toBe(200);
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByText("找回密码作者", { exact: true })).toBeVisible();
+  const resetSession = await page.request.get("/api/v1/auth/me");
+  expect(resetSession.status()).toBe(200);
+  expect((await resetSession.json()).data.user.displayName).toBe("找回密码作者");
 });
 
 test("stale sessions redirect to login with an expired-session message at four viewports", async ({
