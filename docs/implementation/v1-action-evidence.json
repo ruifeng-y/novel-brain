@@ -2,8 +2,65 @@
   "schemaVersion": 1,
   "pages": {
     "auth": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "actions": [
+        {
+          "id": "register",
+          "name": "邮箱验证码注册",
+          "api": "/api/v1/auth/register",
+          "spec": "apps/web/e2e/parity/auth.spec.ts",
+          "test": "registers, enters the workspace and logs out",
+          "assertion": "expect((await registeredSession.json()).data.user.displayName).toBe(\"新作者\")"
+        },
+        {
+          "id": "login",
+          "name": "邮箱密码登录",
+          "api": "/api/v1/auth/login",
+          "spec": "apps/web/e2e/parity/auth.spec.ts",
+          "test": "logs in and reaches the authenticated shell",
+          "assertion": "expect((await loginSession.json()).data.user.displayName).toBe(\"林见鹿\")"
+        },
+        {
+          "id": "send-verification-code",
+          "name": "发送注册验证码",
+          "api": "/api/v1/auth/register/send-code",
+          "spec": "apps/web/e2e/parity/auth.spec.ts",
+          "test": "registers, enters the workspace and logs out",
+          "assertion": "await mailCode(email)"
+        },
+        {
+          "id": "recover-password",
+          "name": "发送密码重置链接",
+          "api": "/api/v1/auth/password/forgot",
+          "spec": "apps/web/e2e/parity/auth.spec.ts",
+          "test": "recovers a forgotten password from the email link",
+          "assertion": "await mailPasswordResetToken(email)"
+        },
+        {
+          "id": "reset-password",
+          "name": "重置密码",
+          "api": "/api/v1/auth/password/reset",
+          "spec": "apps/web/e2e/parity/auth.spec.ts",
+          "test": "recovers a forgotten password from the email link",
+          "assertion": "await page.getByLabel(\"密码\").fill(newPassword)"
+        },
+        {
+          "id": "logout-session",
+          "name": "退出当前会话",
+          "api": "/api/v1/auth/logout",
+          "spec": "apps/web/e2e/parity/auth.spec.ts",
+          "test": "registers, enters the workspace and logs out",
+          "assertion": "expect(loggedOutSession.status()).toBe(401)"
+        },
+        {
+          "id": "disabled-account",
+          "name": "禁用账号拒绝访问",
+          "api": "/api/v1/auth/me",
+          "spec": "apps/web/e2e/parity/auth.spec.ts",
+          "test": "disabled accounts redirect to the permission state at four viewports",
+          "assertion": "expect(disabledSession.status()).toBe(403)"
+        }
+      ]
     },
     "dashboard": {
       "status": "pending",

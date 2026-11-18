@@ -8,7 +8,7 @@
 
 | 页面 | 生产路由 | 关键动作 | 必备状态 | Agent UX | 当前状态 |
 | --- | --- | --- | --- | --- | --- |
-| auth | `/login`、`/register`、`/forgot-password`、`/reset-password` | 登录、注册、验证码、找回 | loading/error/disabled/permission/rate-limit/session-expired | 无 | production-built；四档 Golden、会话过期、网络错误、限流和禁用账号状态已实现，等待最终正常 PR Linux/Chromium CI |
+| auth | `/login`、`/register`、`/forgot-password`、`/reset-password` | 登录、注册、验证码、找回 | loading/error/disabled/permission/rate-limit/session-expired | 无 | parity-verified；七个必需动作、持久化会话、四档 Golden、错误与权限状态和正常 PR Production CI 均已通过 |
 | dashboard | `/workspace` | 搜索、筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | production-built；活跃、已归档和回收站视图、长列表与错误态已实现，等待动作审计和最终正常 PR CI |
 | new-project | `/workspace/new-project` | 想法/空白/三题材模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long/conflict | 导入报告 | production-built；三题材模板、导入双模式、冲突裁决、断点续跑和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
 | work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改、跨卷风格检查、卷末审计与签收 | loading/empty/error/partial/readonly/archived/long | 生成摘要/风格证据/卷审计证据 | production-built；正常态、长内容态和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
