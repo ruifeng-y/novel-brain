@@ -1,12 +1,12 @@
 # Implementation frontier v2
 
-> Updated: 2026-11-17.
-> Repository baseline: `main@df7a3e9`, after PR #207 integrated help, legal, AI disclosure, moderation appeal, and their signed Linux Golden baselines.
+> Updated: 2026-11-18.
+> Repository baseline: `main@f40435d`, after PR #211 completed M1-142 and PR #213 hardened agent delivery guardrails.
 
 ## 1. Current truth
 
 - M0 production Web/API/Worker source exists through integrated #67–#78; #79 records closeout evidence and remaining demo gates. The signed-off prototype remains the UI baseline, not production evidence by itself.
-- M1 leaf implementation is present in the integrated codebase and is recorded in `docs/implementation/m1-spec-closeout.md`; tracker closure is still incomplete and must not be inferred from milestone order.
+- M1 leaf implementation is present in the integrated codebase and is recorded in `docs/implementation/m1-spec-closeout.md`. #142 account/work lifecycle is closed through PR #211 and recorded in `docs/implementation/m1-142-work-settings.md`.
 - M2 production implementation is integrated through #185. Issues #91–#97 and #120–#128 are closed with Production CI evidence.
 - M0 specification: #66; M0 implementation tickets: #67–#79.
 - M1 specification: #80; M1 package/integration tickets: #84–#90.
@@ -21,13 +21,15 @@
 - #129 export formats, scope selection, durable job recovery and version manifests is closed through PR #201.
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
 - #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207; `help`, `legal` and `export-publish` are `parity-verified` with Linux Golden evidence.
-- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-17. The ready frontier is #137, #138 and #142.
+- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142 is closed; #137 and #138 are explicitly `deferred`; #139 is blocked by #138 and #140 by #139. There is currently no ready implementation leaf.
+- PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.
 
 ## 2. Immediate frontier
 
-1. Start #137 10M capacity benchmark now that publish metadata is integrated so the benchmark measures the final V1 data model and backup/restore path at scale.
-2. Start #138 long-horizon continuity benchmark as the independent quality frontier; it unblocks #139 and then #140.
-3. #142 is ready for work-settings archive/restore/trash after #134.
+1. No bounded implementation leaf is ready while #137 and #138 remain `deferred`.
+2. #137 is independently startable only after an explicit decision to resume the 10M capacity benchmark.
+3. #138 must be resumed before #139 and #140; it is the critical path for fixed quality evaluation, real-provider smoke, canary and rollback evidence.
+4. Do not start #139 or #140 while their blocker edges remain open.
 
 ## 3. First executable frontier (historical)
 
@@ -75,8 +77,8 @@ M1 foundations:
 - #132 RLS/authorization coverage and #133 logging/trace hardening are complete. Every new tenant-owned table still requires RLS coverage.
 - #135 deployment, health, metrics and cost alerting is complete. Backup expiry and restore evidence remain with #136.
 - #134 and #136 are closed. PR #200 carries the backup/restore and retention evidence.
-- #129 follows #136; #130 follows #129; #131 follows #130. #137 follows #134 and #136; #142 follows #134.
-- #138 is the other ready leaf. #139 consumes its long-horizon fixture; #140 gates real-provider canary/rollback after #139.
+- #129 follows #136; #130 follows #129; #131 follows #130. #137 follows #134 and #136; #142 is closed through PR #211.
+- #138 is `deferred`. #139 consumes its long-horizon fixture after it resumes; #140 gates real-provider canary/rollback after #139.
 - #104 is the V1-wide UI closeout and is last among page parity aggregators.
 
 ## 7. Package-parent rule

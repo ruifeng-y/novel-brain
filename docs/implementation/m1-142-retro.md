@@ -15,10 +15,26 @@
 - `scripts/test/commit-guardrails.test.mjs` 固化 PR #210 的真实失败正文，防止同一误判回归。
 - `apps/web/e2e/parity/*.spec.ts` 的截图比较统一使用 `expect.soft(page).toHaveScreenshot(...)`，让一次测试运行继续检查后续视口并保留全部 diff artifact。
 
-## 3. 后续环境项
+## 3. P2 环境同步
 
-- [Implementation frontier](../planning/implementation-frontier.md) 仍需独立同步 #142 已合并、#137/#138 deferred 和无 ready leaf 的真实状态。
-- `scripts/download-gh-artifact.ps1` 仍使用单连接下载；容量大或网络受限时应增加分段并行与断点续传。
+Issue #214 完成后续环境项：
+
+- [Implementation frontier](../planning/implementation-frontier.md) 已同步 #142 已合并、#137/#138 deferred 和无 ready leaf 的真实状态。
+- `scripts/download-gh-artifact.ps1` 对大 artifact 使用可恢复的分段并行下载；失败 chunk 保留供重试，成功后校验总大小并解包。
+
+验证使用 Production CI run `44228905270` 的 `playwright-evidence` artifact：
+
+- artifact ID：`14395232453`
+- GitHub metadata 大小与下载结果：`87515636` bytes
+- `-MetadataOnly`：通过
+- `-Parallelism 8`：通过，8 个分段全部完成；运行中的 8 个 `curl.exe` 参数均不含 token
+- 完整文件重跑：`-Parallelism 1` 在长度、sidecar SHA-256 和 zip entry 均有效时直接复用，不再发出无效 range 请求
+- 同长度损坏 zip：内容损坏导致 sidecar 哈希不匹配后未被复用，脚本重新下载并通过解包
+- 工作区外 destination：按预期拒绝且未创建目录
+- Junction 逃逸：按预期拒绝且目标目录未创建
+- 崩溃续传：注入 chunk 0 的 1 MB `.part` 和 meta，只下载剩余字节；最终 zip SHA-256 与完整下载一致，为 `12CA9656635DB592A4FEF54FC7853D8792A98CB7162DA0D3BACC078BD1D13563`
+- 解包目录：`artifacts/playwright/retro-214-download/`
+- 成功后分段目录已清理
 
 ## 4. 导航
 
