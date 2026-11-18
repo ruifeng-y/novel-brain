@@ -138,7 +138,7 @@
 | EVAL-003 | 真实 DeepSeek smoke | V1 | mapped | #140 | #79 | M3 Spec #82; EvalModule; ADR 0022 | Eval/AI; 连接与质量 | M3 |
 | EVAL-004 | Prompt/模型灰度与回滚 | V1 | mapped | #140 | — | M3 Spec #82; EvalModule; ADR 0022 | Eval/Agents; 版本治理 | M3 |
 | PERF-001 | 1000 万字容量/性能/恢复基准 | V1 | mapped | #137 | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 确定性 10M fixture；p50/p95/p99、吞吐/错误/资源/存储/成本；容量与恢复压测 | M3 |
-| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | mapped | #138 | #106–#119/#86/#90/#115 | ADR 0017/0019/0022; #138 | 跨卷 ground truth；角色知识边界/状态/时间/伏笔/分支；自动检测 + 分层人工盲评 | M3 |
+| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | implemented | #138 | #106–#119/#86/#90/#115 | ADR 0017/0019/0022; #138 | 3,500/4,000 章 deterministic fixture、strict finding locators、TP/FP/FN/TN、masked mixed blind-review packet；人工盲评与阈值仍待批 | M3 |
 
 ## 强制规则
 

@@ -1,7 +1,7 @@
 # V1 3000–4000 章跨卷叙事连续性基准
 
 > Owner: M3 #103 (quality/release package) / #138 (implementation)
-> Status: specification baseline; benchmark corpus and runs are not yet implemented.
+> Status: implementation complete with deterministic full/maximum fixture evidence; release use still requires approved blind-review thresholds, narrative evidence and actual human review evidence.
 > This benchmark verifies long-horizon story correctness. It does not certify storage capacity or infrastructure performance.
 
 ## 1. Objective and claim boundary
@@ -169,3 +169,10 @@ Every failure must identify work/branch, chapter range, source event, affected e
 ## 9. Out of scope
 
 This benchmark does not certify 10M data storage, database/index latency, 100GB disk fit, import/export throughput, backup/restore time or provider rate limits. Those belong to docs/performance/v1-10m-capacity-benchmark.md and #137.
+
+## 10. Implementation entry points
+
+- Package: `packages/continuity-benchmark/`
+- Implementation report: `docs/implementation/m3-05b-continuity-benchmark.md`
+- CLI: `pnpm continuity <plan|generate|evaluate|review-plan|report>`
+- Generated artifacts: ignored `artifacts/quality/continuity/`

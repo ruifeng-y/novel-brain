@@ -19,7 +19,7 @@
 
 Issue #214 完成后续环境项：
 
-- [Implementation frontier](../planning/implementation-frontier.md) 已同步 #142 已合并、#137/#138 deferred 和无 ready leaf 的真实状态。
+- #142 收口时，[Implementation frontier](../planning/implementation-frontier.md) 曾同步 #142 已合并、#137/#138 deferred 和无 ready leaf 的真实状态；后续 #138 已恢复实现并记录独立 full/maximum benchmark 证据。
 - `scripts/download-gh-artifact.ps1` 对大 artifact 使用可恢复的分段并行下载；失败 chunk 保留供重试，成功后校验总大小并解包。
 
 验证使用 Production CI run `44228905270` 的 `playwright-evidence` artifact：
