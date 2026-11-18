@@ -7,7 +7,7 @@
 ## 实现结果
 
 - 17 个生产页面均有唯一 owner、production Playwright spec 和四档生产 Golden；`auth.spec.ts` 新增直接 `toHaveScreenshot` 与 `prototype_only` 扫描。
-- 当前仅 `legal` 为 `parity-verified`；15 个非静态页面在逐动作 API/持久化审计和最终 Linux/Chromium PR CI 通过前保持 `production-built`，`help` 还需真实生产路由错误边界与重试恢复证据。
+- 当前仅 `legal` 为 `parity-verified`；15 个非静态页面在逐动作 API/持久化审计和最终 Linux/Chromium PR CI 通过前保持 `production-built`。`help` 已实现真实生产路由错误边界与重试恢复测试，targeted Playwright 本地通过，等待正常 Production CI。
 - `scripts/validate-readiness.mjs` 校验页面、依赖和 Golden 结构；`pnpm release:check` 才负责要求所有生产页面为 `parity-verified` 或 `deviation-approved`。
 - `docs/ui/prototype-contract.md` 与 `docs/ui/v1-ui-parity-matrix.md` 已对齐 M0–M3 当前生产状态。
 - `#98/#99/#100/#101/#103` package parents 已用子项合并与 CI 证据关闭。
@@ -25,7 +25,7 @@
 
 自动化完成不等于 V1 release approved。以下证据仍缺失：
 
-- `help` 的真实生产路由错误边界触发与重试恢复 Playwright 证据；
+- `help` 的 targeted 错误边界与重试恢复 Playwright 已通过；正常 Production CI 通过后再提升页面状态；
 - 116 个仍为 `mapped`/`implemented` 的 V1 capability 逐项证据审计；
 - 15 个非静态生产页的逐动作 API 与持久化结果证据；
 - 真实 human blind review 记录；

@@ -105,7 +105,7 @@ In the columns below, the prototype screenshot path and production test/golden p
 >
 > 2026-11-18：#104 将 `auth.spec.ts` 纳入直接的 390 / 900 / 1180 / 1440 `toHaveScreenshot` 与 `prototype_only` 扫描。`auth` 仍为 `production-built`，直到最终正常 PR 的 Linux/Chromium CI 通过；17 个生产页面均具备页面所有者 spec、四档生产 Golden 和作者语言/泄漏门禁。全局发布状态仍由真实人工质量证据和 release checklist 决定。
 >
-> 2026-11-18：`help` 的错误组件已有 unit test，但尚未通过真实生产路由稳定触发并验证重试恢复。为避免把注入 HTML 当作生产证据，该页保持 `production-built`，并作为 #104 的明确 UI release blocker。
+> 2026-11-19：#220 增加生产 `/help` 路由级 Playwright 测试：通过真实浏览器运行时异常触发 `error.tsx`，恢复运行时后点击“重新加载”回到帮助内容，并覆盖四档无横向溢出、作者语言和 prototype_only 扫描。targeted Playwright 已本地通过；测试未注入 HTML，也未增加生产测试开关。`help` 在正常 PR Production CI 通过前仍保持 `production-built`。
 
 ## 4. UI issue ownership rules
 
