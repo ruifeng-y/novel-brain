@@ -5171,6 +5171,139 @@ export const qualityFindings = pgTable(
   ],
 );
 
+export const evalCases = pgTable(
+  "eval_cases",
+  {
+    id: uuid("id").primaryKey(),
+    datasetSha256: text("dataset_sha256").notNull(),
+    datasetVersion: text("dataset_version").notNull(),
+    caseKey: text("case_key").notNull(),
+    kind: text("kind").notNull(),
+    genre: text("genre").notNull(),
+    difficulty: text("difficulty").notNull(),
+    sourceVersion: text("source_version").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    knownIssues: jsonb("known_issues")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("eval_cases_dataset_case_unique").on(table.datasetSha256, table.caseKey),
+    index("eval_cases_genre_difficulty_idx").on(table.genre, table.difficulty),
+    check("eval_cases_dataset_hash_check", sql`${table.datasetSha256} ~ '^[a-f0-9]{64}$'`),
+    check("eval_cases_source_hash_check", sql`${table.sourceHash} ~ '^[a-f0-9]{64}$'`),
+    check("eval_cases_kind_check", sql`${table.kind} in ('chapter', 'long_horizon_case')`),
+    check("eval_cases_difficulty_check", sql`${table.difficulty} in ('easy', 'medium', 'hard')`),
+  ],
+);
+
+export const evalRuns = pgTable(
+  "eval_runs",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    runKey: text("run_key").notNull(),
+    datasetSha256: text("dataset_sha256").notNull(),
+    rubricVersion: text("rubric_version").notNull(),
+    rubricSha256: text("rubric_sha256").notNull(),
+    status: text("status").notNull(),
+    reportSha256: text("report_sha256").notNull(),
+    provenance: jsonb("provenance").$type<Record<string, unknown>>().notNull(),
+    report: jsonb("report").$type<Record<string, unknown>>().notNull(),
+    continuityEvaluation: jsonb("continuity_evaluation").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("eval_runs_user_run_key_unique").on(table.userId, table.runKey),
+    index("eval_runs_user_created_idx").on(table.userId, table.createdAt),
+    index("eval_runs_dataset_status_idx").on(table.datasetSha256, table.status),
+    check("eval_runs_dataset_hash_check", sql`${table.datasetSha256} ~ '^[a-f0-9]{64}$'`),
+    check("eval_runs_rubric_hash_check", sql`${table.rubricSha256} ~ '^[a-f0-9]{64}$'`),
+    check("eval_runs_report_hash_check", sql`${table.reportSha256} ~ '^[a-f0-9]{64}$'`),
+    check("eval_runs_status_check", sql`${table.status} in ('passed', 'blocked')`),
+  ],
+);
+
+export const evalScores = pgTable(
+  "eval_scores",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => evalRuns.id, { onDelete: "cascade" }),
+    sampleId: text("sample_id").notNull(),
+    dimension: text("dimension").notNull(),
+    scorerType: text("scorer_type").notNull(),
+    scorerId: text("scorer_id").notNull(),
+    value: real("value").notNull(),
+    confidence: real("confidence").notNull(),
+    evidenceQuote: text("evidence_quote").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("eval_scores_run_scorer_unique").on(
+      table.runId,
+      table.sampleId,
+      table.dimension,
+      table.scorerType,
+      table.scorerId,
+    ),
+    index("eval_scores_user_run_idx").on(table.userId, table.runId),
+    check(
+      "eval_scores_dimension_check",
+      sql`${table.dimension} in ('p0_fact_loss', 'knowledge_boundary_violation', 'outline_adherence', 'hook_prose_score', 'continuity_conflicts_per_50k')`,
+    ),
+    check(
+      "eval_scores_scorer_type_check",
+      sql`${table.scorerType} in ('deterministic', 'human_blind', 'model_assisted')`,
+    ),
+    check(
+      "eval_scores_confidence_check",
+      sql`${table.confidence} >= 0 and ${table.confidence} <= 1`,
+    ),
+    check("eval_scores_evidence_check", sql`length(trim(${table.evidenceQuote})) > 0`),
+  ],
+);
+
+export const evalGates = pgTable(
+  "eval_gates",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    baselineRunId: uuid("baseline_run_id")
+      .notNull()
+      .references(() => evalRuns.id, { onDelete: "restrict" }),
+    candidateRunId: uuid("candidate_run_id")
+      .notNull()
+      .references(() => evalRuns.id, { onDelete: "restrict" }),
+    rolloutAllowed: boolean("rollout_allowed").notNull(),
+    blockers: jsonb("blockers").$type<string[]>().notNull().default([]),
+    changedProvenance: jsonb("changed_provenance").$type<string[]>().notNull().default([]),
+    p0Baseline: real("p0_baseline").notNull(),
+    p0Candidate: real("p0_candidate").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("eval_gates_user_runs_unique").on(
+      table.userId,
+      table.baselineRunId,
+      table.candidateRunId,
+    ),
+    index("eval_gates_user_created_idx").on(table.userId, table.createdAt),
+    check("eval_gates_run_distinct_check", sql`${table.baselineRunId} <> ${table.candidateRunId}`),
+    check("eval_gates_p0_check", sql`${table.p0Baseline} >= 0 and ${table.p0Candidate} >= 0`),
+  ],
+);
+
 export type VolumeAuditFindingJson = {
   id: string;
   chapterId: string | null;

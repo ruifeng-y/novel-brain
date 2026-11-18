@@ -16,6 +16,9 @@
 - Report 内嵌 `runId`、全部逐样本 scores、decisions、continuity evaluation、provenance 和 report SHA-256。
 - `compareQualityBenchmarkRuns` 要求 baseline/candidate 使用相同 dataset/rubric；candidate gate 失败或 P0 增加时拒绝 rollout。
 - `evaluate` 与 `regress` 返回 non-zero process exit code，可用于 CI/release gate。
+- 新增内部 Nest `EvalModule`：`EvalService.run/gate` 调用 approved package execution，`EvalRepository` 在 tenant context 下持久化 case、run、逐 score 和 gate 结果。
+- 新增 `eval_cases`、`eval_runs`、`eval_scores`、`eval_gates`；run/score/gate 强制 RLS，`eval_cases` 保存冻结的全局 benchmark 样本元数据。
+- 数据库迁移：`packages/db/migrations/0069_broken_triton.sql`。
 
 ## Frozen registry
 
@@ -46,6 +49,7 @@ pnpm quality regress --baseline baseline-report.json --candidate artifacts/quali
 ## 验证
 
 - Quality benchmark package：7 test files / 18 tests passed。
+- API `EvalService`：真实执行 approved benchmark 后再调用持久化 seam。
 - Covers deterministic registry, #138 execution integration, model-only rejection, missing human evidence, confidence/evidence validation, duplicate score rejection, ADR threshold failures, report integrity, frozen snapshot consistency and P0 regression.
 - Full repository typecheck, lint, format, tests and executable guardrails are rerun before PR merge.
 

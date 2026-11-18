@@ -26,7 +26,7 @@
 
 ## 2. Immediate frontier
 
-1. Finish and merge #139; its frozen registry and execution/gate evidence are recorded in `docs/implementation/m3-06a-quality-benchmark-registry.md`.
+1. Finish and merge #139; its frozen registry, internal EvalModule persistence and execution/gate evidence are recorded in `docs/implementation/m3-06a-quality-benchmark-registry.md`.
 2. Do not claim #139 release-ready: the automated gate is implemented, but real blind-human evidence and approved inter-rater variance threshold remain outstanding.
 3. After #139 merges, start #140 for real-provider smoke, canary and rollback.
 4. #137 remains independently deferred until an explicit decision to resume the 10M capacity benchmark.

@@ -32,6 +32,13 @@ The complete frozen dataset is `docs/quality/quality-benchmark-v1.dataset.json`;
 - Baseline and candidate runs must share dataset and rubric hashes.
 - Candidate release failure, invalid report digest, dataset/rubric mismatch or P0 regression blocks rollout.
 
+## Persistence and module boundary
+
+- Internal Nest `EvalModule` exposes `EvalService.run` and `EvalService.gate` for release orchestration.
+- `eval_cases` stores frozen case metadata; `eval_runs`, `eval_scores` and `eval_gates` store tenant-scoped run evidence and rollout decisions.
+- The three tenant tables force RLS. The curated `eval_cases` table is global and immutable for a dataset hash.
+- This ticket does not add an unapproved external HTTP/UI contract; #140 can consume the service for provider smoke, canary and rollback.
+
 ## Release boundary
 
 File-backed registry and CLI evidence prove benchmark implementation and gate mechanics. They do not prove that actual human blind review occurred. Real review records and the approved inter-rater variance threshold remain mandatory before a V1 release claim.
