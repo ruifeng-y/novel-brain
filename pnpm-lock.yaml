@@ -399,7 +399,11 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
 
-  packages/ai: {}
+  packages/ai:
+    dependencies:
+      '@novel-brain/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/capacity-benchmark:
     dependencies:
@@ -460,9 +464,15 @@ importers:
 
   packages/quality-benchmark:
     dependencies:
+      '@novel-brain/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@novel-brain/continuity-benchmark':
         specifier: workspace:*
         version: link:../continuity-benchmark
+      '@novel-brain/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/storage:
     dependencies:

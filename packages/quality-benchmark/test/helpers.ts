@@ -1,7 +1,7 @@
 import {
   createContinuityPlan,
   generateContinuityFixture,
-  sha256Json,
+  sha256CanonicalJson,
 } from "@novel-brain/continuity-benchmark";
 
 import { createApprovedQualityBenchmarkDataset } from "../src/dataset";
@@ -17,7 +17,7 @@ export const qualityReviewPolicy = {
   rationale: "contract-test-only policy",
   decidedAt: "2026-11-18T00:00:00.000Z",
 } as const;
-const qualityBlindPacketSha256 = sha256Json({
+const qualityBlindPacketSha256 = sha256CanonicalJson({
   datasetSha256: qualityDataset.manifest.datasetSha256,
   rubricSha256: qualityRubric.sha256,
 });
@@ -45,6 +45,7 @@ export function createQualityRun(input: {
   promptVersion?: string;
   contextCompilerVersion?: string;
   agentContractVersion?: string;
+  configHash?: string;
   p0Count?: number;
   outline?: number;
   hookProse?: number;
@@ -114,6 +115,7 @@ export function createQualityRun(input: {
         promptVersion: input.promptVersion ?? "prompt-v1",
         contextCompilerVersion: input.contextCompilerVersion ?? "context-v1",
         agentContractVersion: input.agentContractVersion ?? "agent-v1",
+        configHash: input.configHash ?? "1".repeat(64),
       },
       continuityFindings: continuityFindings.filter(
         (finding) => !missingP0Ids.has(finding.defectId),

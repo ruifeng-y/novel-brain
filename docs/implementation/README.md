@@ -18,6 +18,7 @@ The repository contains product/technical documentation, accepted ADRs, a signed
 - Agent delivery retro after #142: `docs/implementation/m1-142-retro.md`.
 - Long-horizon continuity benchmark: `docs/implementation/m3-05b-continuity-benchmark.md`.
 - Fixed quality benchmark registry: `docs/implementation/m3-06a-quality-benchmark-registry.md`.
+- Provider smoke, canary and rollback strategy: `docs/implementation/m3-06b-provider-canary.md`.
 
 M1/M2/M3 package parents are not single /implement tasks: #84–#89, #91, #93–#96 and #98–#103. Implement their bounded child issues first, then close each parent with integration evidence. #90, #97 and #104 are integration/release gates. The new leaf issues are mapped, not automatically ready or verified. Never infer readiness from labels alone.
 

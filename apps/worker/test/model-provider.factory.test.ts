@@ -9,15 +9,18 @@ import {
 describe("BYOK model provider factory", () => {
   const originalEncryptionKey = process.env.MODEL_CONFIG_ENCRYPTION_KEY;
   const originalAllowLocal = process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY;
+  const originalAllowlist = process.env.MODEL_PROVIDER_ALLOWLIST;
 
   beforeEach(() => {
     process.env.MODEL_CONFIG_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
     process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
+    process.env.MODEL_PROVIDER_ALLOWLIST = "https://models.example.com/v1";
   });
 
   afterEach(() => {
     process.env.MODEL_CONFIG_ENCRYPTION_KEY = originalEncryptionKey;
     process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = originalAllowLocal;
+    process.env.MODEL_PROVIDER_ALLOWLIST = originalAllowlist;
   });
 
   it("uses the stored provider, model and base URL with the decrypted key", async () => {
@@ -38,7 +41,14 @@ describe("BYOK model provider factory", () => {
         { status: 200, headers: { "content-type": "application/json" } },
       );
     });
-    const factory = new ByokAiGatewayFactory({ mode: "byok", fetchImpl });
+    const factory = new ByokAiGatewayFactory({
+      mode: "byok",
+      fetchImpl,
+      endpointValidator: async (input) => ({
+        normalizedBaseUrl: input.baseUrl.replace(/\/$/, ""),
+        addresses: ["93.184.216.34"],
+      }),
+    });
     const gateway = factory.create({
       provider: "openai-compatible",
       baseUrl: "https://models.example.com/v1",

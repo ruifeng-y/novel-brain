@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  compileChapterContextManifest,
   compileContextManifest,
   ContextBudgetExceededError,
   ContextWindowTooSmallError,
@@ -206,6 +207,113 @@ describe("M1 context manifest compiler", () => {
       expect.arrayContaining([
         expect.objectContaining({ key: "p1:revision-only", reason: "task_mismatch" }),
         expect.objectContaining({ key: "p1:other-pov", reason: "pov_mismatch" }),
+      ]),
+    );
+  });
+
+  it("v1 requires branch-bound provenance for non-P0 candidates while v0 preserves legacy acceptance", () => {
+    const candidates = [
+      candidate({
+        key: "p0:hard-constraint",
+        layer: "P0",
+        content: "断臂不可双手结印",
+        branchId: undefined,
+      }),
+      candidate({
+        key: "p1:branch-bound",
+        layer: "P1",
+        content: "沈砚左臂骨折",
+      }),
+      candidate({
+        key: "p1:legacy-unbound",
+        layer: "P1",
+        content: "荒寺外有追兵",
+        branchId: undefined,
+      }),
+    ];
+    const legacy = compileContextManifest(input({ compilerVersion: "m1-context-v0", candidates }));
+    const strict = compileContextManifest(input({ compilerVersion: "m1-context-v1", candidates }));
+
+    expect(legacy.selected.map((entry) => entry.key)).toEqual([
+      "p0:hard-constraint",
+      "p1:branch-bound",
+      "p1:legacy-unbound",
+    ]);
+    expect(strict.selected.map((entry) => entry.key)).toEqual([
+      "p0:hard-constraint",
+      "p1:branch-bound",
+    ]);
+    expect(strict.evicted).toEqual([
+      expect.objectContaining({
+        key: "p1:legacy-unbound",
+        reason: "stale_branch",
+      }),
+    ]);
+  });
+
+  it("v1 replaces a covered chapter version with its fresh summary while v0 keeps both", () => {
+    const input = {
+      branchId: mainBranchId,
+      branchStatus: "active" as const,
+      chapter: {
+        id: chapterId,
+        number: 3,
+        title: "雨夜",
+        brief: {
+          goal: "沈砚在荒寺外迎敌",
+          pov: "沈砚",
+          location: "荒寺外",
+          requiredFacts: ["左臂骨折"],
+        },
+      },
+      storyBible: {
+        id: factId,
+        cards: [{ title: "一句话故事", content: "杂役以记忆换仙途。" }],
+      },
+      settings: [],
+      previousVersions: [
+        {
+          chapterId: shenId,
+          chapterNumber: 2,
+          chapterTitle: "追兵",
+          versionId: otherBranchId,
+          content: "第二章追兵逼近荒寺。",
+        },
+      ],
+      summaries: [
+        {
+          id: "summary-2",
+          level: "chapter" as const,
+          label: "第二章概要",
+          content: "追兵已经逼近荒寺。",
+          branchId: mainBranchId,
+          fromChapter: 2,
+          toChapter: 2,
+          status: "fresh" as const,
+        },
+      ],
+    };
+
+    const legacy = compileChapterContextManifest(
+      { ...input, compilerVersion: "m1-context-v0" },
+      200,
+    );
+    const strict = compileChapterContextManifest(
+      { ...input, compilerVersion: "m1-context-v1" },
+      200,
+    );
+
+    expect(legacy.selected.map((entry) => entry.key)).toEqual(
+      expect.arrayContaining([`recent:${shenId}`, "summary:chapter:summary-2"]),
+    );
+    expect(strict.selected.map((entry) => entry.key)).toContain("summary:chapter:summary-2");
+    expect(strict.selected.map((entry) => entry.key)).not.toContain(`recent:${shenId}`);
+    expect(strict.evicted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: `recent:${shenId}`,
+          reason: "summary_superseded",
+        }),
       ]),
     );
   });

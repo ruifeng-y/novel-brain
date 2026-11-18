@@ -19,10 +19,16 @@ async function main(): Promise<void> {
       networkCalls: evidence.networkCalls,
       outputPath,
       ...(evidence.status === "skipped" ? { reason: evidence.reason } : {}),
+      ...(evidence.status === "failed"
+        ? { reason: evidence.reason, failureClass: evidence.failureClass }
+        : {}),
     }),
   );
 
-  if (evidence.status === "skipped" && process.env.REQUIRE_DEEPSEEK_SMOKE === "1") {
+  if (
+    evidence.status === "failed" ||
+    (evidence.status === "skipped" && process.env.REQUIRE_DEEPSEEK_SMOKE === "1")
+  ) {
     process.exitCode = 1;
   }
 }

@@ -5,12 +5,14 @@ import {
   batchCostBindingScopeSchema,
   contextPackManifestSchema,
   contextPackVersionSchema,
+  PROVIDER_CANARY_CHANNEL,
   WRITING_ACTION_STEPS,
   WORKER_JOB_STEPS,
   type BatchCostBindingScope,
   type ContextPackManifest,
   type GenerateChapterJob,
   type GenerationCost,
+  type ProviderReleaseRuntime,
   type WriteActionJob,
   type WritingActionOutput,
   type WorkerJobStep,
@@ -27,6 +29,7 @@ import {
   createDatabaseClient,
   createDatabasePool,
   entities,
+  evalReleaseDecisions,
   facts as canonicalFacts,
   jobCheckpoints,
   jobEvents,
@@ -57,7 +60,12 @@ import {
   type DatabaseClient,
   type FactProposalCandidate,
 } from "@novel-brain/db";
-import { M0_COST_PER_TOKEN_CNY, type GenerationResult } from "@novel-brain/ai";
+import {
+  M0_COST_PER_TOKEN_CNY,
+  assertReleaseRuntimePinMatchesModelConfig,
+  releaseRuntimePinForSubject,
+  type GenerationResult,
+} from "@novel-brain/ai";
 import {
   outputRefsFromStepOutput,
   resolveRecoveryStep,
@@ -87,7 +95,10 @@ type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[
 export interface LoadedGenerationJob {
   job: JobRecord;
   modelConfig: ModelConfigRecord;
+  releasePin?: ReleaseRuntimePin;
 }
+
+export type ReleaseRuntimePin = ProviderReleaseRuntime;
 
 export interface WorkerJobBase {
   jobId: string;
@@ -275,7 +286,37 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           ),
         )
         .limit(1);
-      return row;
+      if (!row) {
+        return undefined;
+      }
+      const releaseRows = await transaction
+        .select({ evidence: evalReleaseDecisions.evidence })
+        .from(evalReleaseDecisions)
+        .where(
+          and(
+            eq(evalReleaseDecisions.userId, payload.actorId),
+            eq(evalReleaseDecisions.channelKey, PROVIDER_CANARY_CHANNEL),
+            inArray(evalReleaseDecisions.status, ["approved", "rolled_back"]),
+          ),
+        )
+        .orderBy(desc(evalReleaseDecisions.createdAt), desc(evalReleaseDecisions.id))
+        .limit(1);
+      const releasePin = releaseRows[0]
+        ? releaseRuntimePinForSubject(releaseRows[0].evidence, payload.actorId)
+        : undefined;
+      assertReleaseRuntimePinMatchesModelConfig(releasePin, row.modelConfig);
+      return releasePin
+        ? {
+            ...row,
+            modelConfig: {
+              ...row.modelConfig,
+              provider: releasePin.provider,
+              baseUrl: releasePin.baseUrl,
+              model: releasePin.model,
+            },
+            releasePin,
+          }
+        : row;
     });
   }
 
@@ -1708,6 +1749,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     estimatedTokens: number;
     estimatedCostCny: number;
     parameters: Record<string, unknown>;
+    releasePin?: ReleaseRuntimePin;
   }): Promise<StartedModelCall> {
     return this.withTenant(input.payload.actorId, async (transaction) => {
       const [job] = await transaction
@@ -1735,6 +1777,13 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!modelConfig) {
         throw new Error("Model configuration no longer exists");
       }
+      const provider = input.releasePin?.provider ?? modelConfig.provider;
+      const model = input.releasePin?.model ?? modelConfig.model;
+      const configHash =
+        input.releasePin?.configHash ??
+        sha256(
+          `${modelConfig.provider}\u0000${modelConfig.model}\u0000${modelConfig.baseUrl}\u0000${modelConfig.version}`,
+        );
 
       const now = new Date();
       const promptHash = sha256(input.prompt);
@@ -1756,8 +1805,8 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         role: input.role,
         promptVersionId: promptVersion.id,
         modelConfigId: modelConfig.id,
-        provider: modelConfig.provider,
-        model: modelConfig.model,
+        provider,
+        model,
         inputHash,
         inputSummary: {
           promptBytes: Buffer.byteLength(input.prompt, "utf8"),
@@ -1793,12 +1842,10 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           stepKey: input.step,
           attempt: input.attempt,
           status: "started",
-          provider: modelConfig.provider,
-          model: modelConfig.model,
+          provider,
+          model,
           parameters: input.parameters,
-          configHash: sha256(
-            `${modelConfig.provider}\u0000${modelConfig.model}\u0000${modelConfig.baseUrl}\u0000${modelConfig.version}`,
-          ),
+          configHash,
           inputHash,
           inputSummary: {
             promptBytes: Buffer.byteLength(input.prompt, "utf8"),
@@ -2122,6 +2169,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     message: string;
     escalationReason: string;
     bindingScope?: BatchCostBindingScope;
+    releasePin?: ReleaseRuntimePin;
   }): Promise<void> {
     await this.withTenant(input.payload.actorId, async (transaction) => {
       const now = new Date();
@@ -2140,6 +2188,9 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         payload: input.payload,
         step: input.step,
         role: input.role,
+        ...(input.releasePin
+          ? { promptKey: `release.${input.releasePin.promptVersion}.${input.step}` }
+          : {}),
         promptHash,
         systemHash,
         inputHash,
@@ -2155,14 +2206,21 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           ),
         )
         .limit(1);
+      const provider = input.releasePin?.provider ?? modelConfig?.provider ?? "unknown";
+      const model = input.releasePin?.model ?? modelConfig?.model ?? "unknown";
+      const configHash =
+        input.releasePin?.configHash ??
+        sha256(
+          `${modelConfig?.provider ?? "unknown"}\u0000${modelConfig?.model ?? "unknown"}\u0000${modelConfig?.baseUrl ?? ""}\u0000${modelConfig?.version ?? 0}`,
+        );
       const run = await upsertAgentRun(transaction, {
         payload: input.payload,
         step: input.step,
         role: input.role,
         promptVersionId: promptVersion.id,
         modelConfigId: modelConfig?.id ?? null,
-        provider: modelConfig?.provider ?? "unknown",
-        model: modelConfig?.model ?? "unknown",
+        provider,
+        model,
         inputHash,
         inputSummary: {
           promptBytes: Buffer.byteLength(input.prompt, "utf8"),
@@ -2206,12 +2264,13 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         stepKey: input.step,
         attempt: input.attempt,
         status: "failed",
-        provider: modelConfig?.provider ?? "unknown",
-        model: modelConfig?.model ?? "unknown",
-        parameters: { operation: input.step },
-        configHash: sha256(
-          `${modelConfig?.provider ?? "unknown"}\u0000${modelConfig?.model ?? "unknown"}\u0000${modelConfig?.baseUrl ?? ""}\u0000${modelConfig?.version ?? 0}`,
-        ),
+        provider,
+        model,
+        parameters: {
+          operation: input.step,
+          ...(input.releasePin ? { releasePin: input.releasePin } : {}),
+        },
+        configHash,
         inputHash,
         inputSummary: {
           promptBytes: Buffer.byteLength(input.prompt, "utf8"),

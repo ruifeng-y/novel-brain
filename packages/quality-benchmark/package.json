@@ -19,6 +19,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@novel-brain/ai": "workspace:*",
+    "@novel-brain/contracts": "workspace:*",
     "@novel-brain/continuity-benchmark": "workspace:*"
   }
 }

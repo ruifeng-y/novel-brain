@@ -10,6 +10,7 @@ export interface QualityRegressionReport {
   rolloutAllowed: boolean;
   blockers: readonly string[];
   changedProvenance: readonly (keyof QualityBenchmarkReport["provenance"])[];
+  candidateProvenance: QualityBenchmarkReport["provenance"];
   p0: {
     baseline: number | null;
     candidate: number | null;
@@ -82,6 +83,7 @@ export function compareQualityBenchmarkRuns(input: {
     rolloutAllowed: blockerList.length === 0,
     blockers: blockerList,
     changedProvenance: changedProvenance(baseline.provenance, candidate.provenance),
+    candidateProvenance: candidate.provenance,
     p0: {
       baseline: baselineP0 ?? null,
       candidate: candidateP0 ?? null,

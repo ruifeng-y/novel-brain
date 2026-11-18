@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DeepSeekProvider, M0_COST_PER_TOKEN_CNY, runDeepSeekSmoke } from "../src";
 
+const endpointValidator = vi.fn(async (input: { baseUrl: string }) => ({
+  normalizedBaseUrl: input.baseUrl.replace(/\/$/, ""),
+  addresses: ["93.184.216.34"],
+}));
+
 describe("DeepSeek provider", () => {
   it("parses a real-provider generation response and usage", async () => {
     const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
@@ -33,6 +38,7 @@ describe("DeepSeek provider", () => {
     const provider = new DeepSeekProvider({
       apiKey: "sk-test-secret",
       fetchImpl,
+      endpointValidator,
     });
 
     const result = await provider.generateText({
@@ -50,11 +56,43 @@ describe("DeepSeek provider", () => {
     });
   });
 
+  it("uses the validated public address for the production request", async () => {
+    const pinnedRequest = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: "pinned-response",
+            model: "deepseek-chat",
+            choices: [{ message: { content: "固定地址成功。" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 5, completion_tokens: 3 },
+          }),
+          { status: 200 },
+        ),
+    );
+    const provider = new DeepSeekProvider({
+      apiKey: "sk-pinned-secret",
+      endpointValidator: async (input) => ({
+        normalizedBaseUrl: input.baseUrl.replace(/\/$/, ""),
+        addresses: ["93.184.216.34"],
+      }),
+      pinnedRequest,
+    });
+
+    await provider.generateText({ prompt: "写一段" });
+
+    expect(pinnedRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: "93.184.216.34",
+        baseUrl: "https://api.deepseek.com",
+      }),
+    );
+  });
+
   it("skips the live smoke without a credential and never calls the network", async () => {
     const fetchImpl = vi.fn();
 
     const evidence = await runDeepSeekSmoke({
-      env: {},
+      env: { DEEPSEEK_SMOKE_ENABLED: "1" },
       fetchImpl,
     });
 
@@ -62,6 +100,23 @@ describe("DeepSeek provider", () => {
       status: "skipped",
       reason: "DEEPSEEK_API_KEY_MISSING",
       provider: "deepseek",
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("skips the live smoke unless explicitly enabled", async () => {
+    const fetchImpl = vi.fn();
+
+    const evidence = await runDeepSeekSmoke({
+      env: { DEEPSEEK_API_KEY: "sk-live-secret" },
+      fetchImpl,
+    });
+
+    expect(evidence).toMatchObject({
+      status: "skipped",
+      reason: "DEEPSEEK_SMOKE_DISABLED",
+      provider: "deepseek",
+      networkCalls: 0,
     });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -81,8 +136,13 @@ describe("DeepSeek provider", () => {
     );
 
     const evidence = await runDeepSeekSmoke({
-      env: { DEEPSEEK_API_KEY: "sk-live-secret" },
+      env: {
+        DEEPSEEK_SMOKE_ENABLED: "1",
+        DEEPSEEK_API_KEY: "sk-live-secret",
+        DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0.01",
+      },
       fetchImpl,
+      endpointValidator,
       now: () => new Date("2026-11-05T05:00:00.000Z"),
     });
 
@@ -101,14 +161,220 @@ describe("DeepSeek provider", () => {
         finishReason: "stop",
       },
       providerResponseId: "deepseek-smoke-response",
+      promptVersion: "m1-writing-prompts-v1",
+      configVersion: "deepseek-default-v1",
+      attempts: 1,
     });
     expect(JSON.stringify(evidence)).not.toContain("sk-live-secret");
+    expect(JSON.stringify(evidence)).not.toContain("写一句包含山门");
+  });
+
+  it("blocks before the network when the configured smoke budget is too low", async () => {
+    const fetchImpl = vi.fn();
+
+    const evidence = await runDeepSeekSmoke({
+      env: {
+        DEEPSEEK_SMOKE_ENABLED: "1",
+        DEEPSEEK_API_KEY: "sk-live-secret",
+        DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0",
+      },
+      fetchImpl,
+    });
+
+    expect(evidence).toMatchObject({
+      status: "failed",
+      failureClass: "budget",
+      reason: "DEEPSEEK_SMOKE_BUDGET_EXCEEDED",
+      networkCalls: 0,
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("records an actual-cost overrun as a failed smoke outcome", async () => {
+    const evidence = await runDeepSeekSmoke({
+      env: {
+        DEEPSEEK_SMOKE_ENABLED: "1",
+        DEEPSEEK_API_KEY: "sk-live-secret",
+        DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0.001",
+      },
+      fetchImpl: vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              id: "deepseek-overrun-response",
+              model: "deepseek-chat",
+              choices: [{ message: { content: "超预算。" }, finish_reason: "stop" }],
+              usage: { prompt_tokens: 800, completion_tokens: 400, total_tokens: 1_200 },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      ),
+      endpointValidator,
+    });
+
+    expect(evidence).toMatchObject({
+      status: "failed",
+      failureClass: "budget",
+      reason: "DEEPSEEK_SMOKE_BUDGET_EXCEEDED",
+      networkCalls: 1,
+    });
+  });
+
+  it("rejects non-official or private smoke endpoints before network access", async () => {
+    const fetchImpl = vi.fn();
+    for (const baseUrl of ["https://127.0.0.1/v1", "http://api.deepseek.com"]) {
+      const evidence = await runDeepSeekSmoke({
+        env: {
+          DEEPSEEK_SMOKE_ENABLED: "1",
+          DEEPSEEK_API_KEY: "sk-live-secret",
+          DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0.01",
+          DEEPSEEK_BASE_URL: baseUrl,
+        },
+        fetchImpl,
+      });
+      expect(evidence).toMatchObject({
+        status: "failed",
+        reason: "DEEPSEEK_BASE_URL_INVALID",
+        networkCalls: 0,
+      });
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("retries rate limits within the configured hard bound", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("busy", { status: 429 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "deepseek-retry-response",
+            model: "deepseek-chat",
+            choices: [{ message: { content: "重试成功。" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+
+    const evidence = await runDeepSeekSmoke({
+      env: {
+        DEEPSEEK_SMOKE_ENABLED: "1",
+        DEEPSEEK_API_KEY: "sk-live-secret",
+        DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0.01",
+        DEEPSEEK_SMOKE_MAX_ATTEMPTS: "2",
+      },
+      fetchImpl,
+      endpointValidator,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(evidence).toMatchObject({
+      status: "succeeded",
+      attempts: 2,
+      networkCalls: 2,
+      providerRequestId: "deepseek-retry-response",
+    });
+  });
+
+  it("records a sanitized failed outcome instead of throwing a provider error", async () => {
+    const evidence = await runDeepSeekSmoke({
+      env: {
+        DEEPSEEK_SMOKE_ENABLED: "1",
+        DEEPSEEK_API_KEY: "sk-live-secret",
+        DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0.01",
+      },
+      fetchImpl: vi.fn(async () => new Response("denied", { status: 401 })),
+      endpointValidator,
+    });
+
+    expect(evidence).toMatchObject({
+      status: "failed",
+      failureClass: "policy",
+      networkCalls: 1,
+      attempts: 1,
+    });
+    expect(JSON.stringify(evidence)).not.toContain("sk-live-secret");
+  });
+
+  it("classifies a bounded timeout without retrying indefinitely", async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new DOMException("timed out", "TimeoutError");
+    });
+
+    const evidence = await runDeepSeekSmoke({
+      env: {
+        DEEPSEEK_SMOKE_ENABLED: "1",
+        DEEPSEEK_API_KEY: "sk-live-secret",
+        DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0.01",
+        DEEPSEEK_SMOKE_MAX_ATTEMPTS: "3",
+        DEEPSEEK_SMOKE_TIMEOUT_MS: "1000",
+      },
+      fetchImpl,
+      endpointValidator,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(evidence).toMatchObject({
+      status: "failed",
+      failureClass: "timeout",
+      attempts: 1,
+      timeoutMs: 1_000,
+    });
+  });
+
+  it("does not report truncated provider output as a successful smoke", async () => {
+    const evidence = await runDeepSeekSmoke({
+      env: {
+        DEEPSEEK_SMOKE_ENABLED: "1",
+        DEEPSEEK_API_KEY: "sk-live-secret",
+        DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0.01",
+      },
+      fetchImpl: vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              id: "deepseek-truncated",
+              model: "deepseek-chat",
+              choices: [{ message: { content: "未完成" }, finish_reason: "length" }],
+              usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      ),
+      endpointValidator,
+    });
+
+    expect(evidence).toMatchObject({
+      status: "failed",
+      failureClass: "provider",
+      attempts: 1,
+      costCny: Number((14 * M0_COST_PER_TOKEN_CNY).toFixed(8)),
+      networkCalls: 1,
+    });
+  });
+
+  it("rejects a private endpoint before a provider request can carry the credential", async () => {
+    const fetchImpl = vi.fn();
+    const provider = new DeepSeekProvider({
+      apiKey: "sk-private-endpoint-secret",
+      baseUrl: "https://127.0.0.1/v1",
+      provider: "openai-compatible",
+      openAiAllowlist: ["https://127.0.0.1/v1"],
+      fetchImpl,
+    });
+
+    await expect(provider.generateText({ prompt: "写一段" })).rejects.toMatchObject({
+      code: "PRIVATE_NETWORK",
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("rejects provider errors without exposing the credential", async () => {
     const provider = new DeepSeekProvider({
       apiKey: "sk-error-secret",
       fetchImpl: vi.fn(async () => new Response("denied", { status: 401 })),
+      endpointValidator,
     });
 
     await expect(provider.generateText({ prompt: "测试失败路径" })).rejects.toThrow(

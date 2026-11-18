@@ -31,6 +31,7 @@ const DEFAULT_INCLUSION_REASON: Record<ContextLayer, ContextInclusionReason> = {
   P3: "style_and_promise",
   P4: "optional_reference",
 };
+const STRICT_CONTEXT_COMPILER_VERSION = "m1-context-v1";
 
 export interface ContextCandidateValidity {
   fromChapter?: number;
@@ -53,6 +54,7 @@ export interface ContextCandidate {
   knowledgeFactId?: string;
   inclusionReason?: ContextInclusionReason;
   summaryStatus?: "fresh" | "stale" | "rebuilding";
+  supersededBySummary?: boolean;
 }
 
 export interface ContextKnowledgeFact {
@@ -232,6 +234,7 @@ export function compileChapterContextManifest(
   input: ChapterContextManifestInput,
   tokenBudget: number,
 ): ContextPackManifest {
+  const compilerVersion = input.compilerVersion ?? "m1-context-v0";
   const chapterRef = {
     sourceType: "chapter_brief" as const,
     sourceId: input.chapter.id,
@@ -372,6 +375,14 @@ export function compileChapterContextManifest(
       branchId: input.branchId,
       order: index,
       tasks: ["chapter_draft", "chapter_revision", "continuity_check"] as ContextTask[],
+      supersededBySummary:
+        compilerVersion === STRICT_CONTEXT_COMPILER_VERSION &&
+        (input.summaries ?? []).some(
+          (summary) =>
+            summary.status === "fresh" &&
+            summary.level === "chapter" &&
+            summaryCoversChapter(summary, version.chapterNumber),
+        ),
     })),
     ...(input.summaries ?? []).map((summary, index) => ({
       key: `summary:${summary.level}:${summary.id}`,
@@ -396,7 +407,7 @@ export function compileChapterContextManifest(
     })),
   ];
   return compileContextManifest({
-    compilerVersion: input.compilerVersion ?? "m1-context-v1",
+    compilerVersion,
     task: input.task ?? "chapter_draft",
     chapterId: input.chapter.id,
     chapterNumber: input.chapter.number,
@@ -475,11 +486,21 @@ function rejectionReason(
   if (!candidate.content.trim()) {
     return "empty_content";
   }
+  if (
+    input.compilerVersion === STRICT_CONTEXT_COMPILER_VERSION &&
+    candidate.layer !== "P0" &&
+    !candidate.branchId
+  ) {
+    return "stale_branch";
+  }
   if (candidate.branchId && candidate.branchId !== input.branchId) {
     return "stale_branch";
   }
   if (candidate.summaryStatus && candidate.summaryStatus !== "fresh") {
     return "summary_stale";
+  }
+  if (input.compilerVersion === STRICT_CONTEXT_COMPILER_VERSION && candidate.supersededBySummary) {
+    return "summary_superseded";
   }
   if (candidate.tasks && !candidate.tasks.includes(input.task)) {
     return "task_mismatch";
@@ -562,6 +583,16 @@ function isFactKnownToPov(
           (right.validToChapter ?? Number.MAX_SAFE_INTEGER),
     );
   return activeStates.at(-1)?.state === "knowledge";
+}
+
+function summaryCoversChapter(
+  summary: { fromChapter: number; toChapter: number | null },
+  chapterNumber: number,
+): boolean {
+  return (
+    summary.fromChapter <= chapterNumber &&
+    (summary.toChapter === null || summary.toChapter >= chapterNumber)
+  );
 }
 
 function prepare(candidate: ContextCandidate): PreparedCandidate {

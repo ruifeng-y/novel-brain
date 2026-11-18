@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { ModelConfig, ModelConnectionTestStatus } from "@novel-brain/contracts";
-import { isIP } from "node:net";
-import { request as httpsRequest } from "node:https";
+import { requestPinnedHttps } from "@novel-brain/ai";
 
 import { validateProviderConfig } from "./provider-registry";
 
@@ -81,38 +80,23 @@ function requestPinned(
   model: string,
   apiKey: string,
 ): Promise<{ status: number; statusCode: number }> {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
-      model,
-      messages: [{ role: "user", content: "ping" }],
-      max_tokens: 1,
-    });
-    const request = httpsRequest(
-      target,
-      {
-        method: "POST",
-        timeout: 8_000,
-        headers: {
-          authorization: `Bearer ${apiKey}`,
-          "content-type": "application/json",
-          "content-length": Buffer.byteLength(body),
-        },
-        lookup: (_hostname, _options, callback) => {
-          callback(null, address, isIP(address));
-        },
-        servername: target.hostname,
-      },
-      (response) => {
-        response.resume();
-        const status = response.statusCode ?? 0;
-        resolve({ status, statusCode: status });
-      },
-    );
-    request.on("timeout", () =>
-      request.destroy(Object.assign(new Error("timeout"), { name: "TimeoutError" })),
-    );
-    request.on("error", reject);
-    request.end(body);
+  const body = JSON.stringify({
+    model,
+    messages: [{ role: "user", content: "ping" }],
+    max_tokens: 1,
+  });
+  return requestPinnedHttps({
+    target,
+    address,
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body,
+    timeoutMs: 8_000,
+  }).then((response) => {
+    return { status: response.status, statusCode: response.status };
   });
 }
 

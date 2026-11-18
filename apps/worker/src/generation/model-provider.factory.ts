@@ -6,6 +6,7 @@ import {
   type AiGateway,
   type GenerationOperation,
 } from "@novel-brain/ai";
+import type { validateProviderEndpoint as ValidateProviderEndpoint } from "@novel-brain/ai";
 
 export interface StoredModelConfig {
   provider: string;
@@ -21,12 +22,13 @@ interface ByokAiGatewayFactoryOptions {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   failOperations?: GenerationOperation[];
+  endpointValidator?: typeof ValidateProviderEndpoint;
 }
 
 export class ByokAiGatewayFactory {
   constructor(private readonly options: ByokAiGatewayFactoryOptions) {}
 
-  create(config: StoredModelConfig): AiGateway {
+  create(config: StoredModelConfig, runtime: { timeoutMs?: number } = {}): AiGateway {
     if (this.options.mode === "fake") {
       return new FakeAiProvider({
         ...(this.options.failOperations ? { failOperations: this.options.failOperations } : {}),
@@ -35,12 +37,21 @@ export class ByokAiGatewayFactory {
     if (config.provider !== "deepseek" && config.provider !== "openai-compatible") {
       throw new Error("Unsupported model provider");
     }
+    const timeoutMs = runtime.timeoutMs ?? this.options.timeoutMs;
     return new DeepSeekProvider({
       apiKey: decryptApiKey(config.encryptedKey),
       baseUrl: config.baseUrl,
       model: config.model,
+      provider: config.provider,
+      openAiAllowlist: (process.env.MODEL_PROVIDER_ALLOWLIST ?? "")
+        .split(",")
+        .map((value) => value.trim().replace(/\/$/, ""))
+        .filter(Boolean),
+      ...(this.options.endpointValidator
+        ? { endpointValidator: this.options.endpointValidator }
+        : {}),
       ...(this.options.fetchImpl ? { fetchImpl: this.options.fetchImpl } : {}),
-      ...(this.options.timeoutMs ? { timeoutMs: this.options.timeoutMs } : {}),
+      ...(timeoutMs ? { timeoutMs } : {}),
     });
   }
 }

@@ -1,11 +1,14 @@
 import { Injectable } from "@nestjs/common";
-import { sha256Json } from "@novel-brain/continuity-benchmark";
+import { sha256CanonicalJson } from "@novel-brain/continuity-benchmark";
 import {
   compareQualityBenchmarkRuns,
+  createCanaryDecision,
   createApprovedQualityBenchmarkDataset,
   createReleaseQualityRubric,
   evaluateQualityBenchmarkRun,
   executeQualityBenchmarkCandidate,
+  type ProviderCanaryPolicy,
+  type ProviderSmokeEvidence,
   type QualityBenchmarkCandidate,
   type QualityBenchmarkReport,
   type QualityBenchmarkReviewPolicy,
@@ -14,7 +17,7 @@ import {
 
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { EvalRepository } from "./eval.repository";
+import { EvalRepository, type StoredReleaseDecision } from "./eval.repository";
 
 @Injectable()
 export class EvalService {
@@ -68,13 +71,59 @@ export class EvalService {
       candidate,
       ...(reviewPolicy ? { reviewPolicy } : {}),
     });
-    await this.repository.saveGate({
+    return this.repository.saveGate({
       userId,
       baselineRunKey,
       candidateRunKey,
       result,
     });
-    return result;
+  }
+
+  async canary(input: {
+    userId: string;
+    policy: ProviderCanaryPolicy;
+    smoke: ProviderSmokeEvidence;
+    baselineRunKey: string;
+    candidateRunKey: string;
+    reviewPolicy?: QualityBenchmarkReviewPolicy | null;
+    createdAt?: string;
+  }): Promise<StoredReleaseDecision> {
+    const regression = await this.gate(
+      input.userId,
+      input.baselineRunKey,
+      input.candidateRunKey,
+      input.reviewPolicy,
+    );
+    const decision = createCanaryDecision({
+      policy: input.policy,
+      smoke: input.smoke,
+      regression,
+      createdAt: input.createdAt ?? new Date().toISOString(),
+    });
+    return this.repository.saveReleaseDecision({
+      userId: input.userId,
+      decision,
+    });
+  }
+
+  async rollback(input: {
+    userId: string;
+    currentDecisionId: string;
+    reason: string;
+    actorId: string;
+    createdAt?: string;
+  }): Promise<StoredReleaseDecision> {
+    return this.repository.rollbackRelease({
+      userId: input.userId,
+      currentDecisionId: input.currentDecisionId,
+      actorId: input.actorId,
+      reason: input.reason,
+      createdAt: input.createdAt ?? new Date().toISOString(),
+    });
+  }
+
+  activeRelease(userId: string, channelKey: string): Promise<StoredReleaseDecision | undefined> {
+    return this.repository.activeRelease(userId, channelKey);
   }
 }
 
@@ -82,19 +131,5 @@ function qualityRunIdentity(
   candidate: QualityBenchmarkCandidate,
   reviewPolicy: QualityBenchmarkReviewPolicy | null,
 ): string {
-  return `${candidate.candidateId}:${sha256Json(canonicalize({ candidate, reviewPolicy }))}`;
-}
-
-function canonicalize(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(canonicalize);
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, entry]) => [key, canonicalize(entry)]),
-    );
-  }
-  return value;
+  return `${candidate.candidateId}:${sha256CanonicalJson({ candidate, reviewPolicy })}`;
 }

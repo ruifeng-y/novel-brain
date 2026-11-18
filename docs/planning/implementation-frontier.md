@@ -1,7 +1,7 @@
 # Implementation frontier v2
 
 > Updated: 2026-11-18.
-> Repository baseline: `main@f40435d`, after PR #211 completed M1-142 and PR #213 hardened agent delivery guardrails.
+> Repository baseline: `main@880a0f1`, after PR #217 completed M3-06a.
 
 ## 1. Current truth
 
@@ -21,15 +21,14 @@
 - #129 export formats, scope selection, durable job recovery and version manifests is closed through PR #201.
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
 - #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207; `help`, `legal` and `export-publish` are `parity-verified` with Linux Golden evidence.
-- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142 and #138 are closed; #137 remains explicitly `deferred`; #139 is in implementation on `codex/m3-139-quality-registry`; #140 follows #139.
+- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142, #138 and #139 are closed; #137 remains explicitly `deferred`; #140 is in implementation on `codex/m3-140-provider-canary`.
 - PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.
 
 ## 2. Immediate frontier
 
-1. Finish and merge #139; its frozen registry, internal EvalModule persistence and execution/gate evidence are recorded in `docs/implementation/m3-06a-quality-benchmark-registry.md`.
-2. Do not claim #139 release-ready: the automated gate is implemented, but real blind-human evidence and approved inter-rater variance threshold remain outstanding.
-3. After #139 merges, start #140 for real-provider smoke, canary and rollback.
-4. #137 remains independently deferred until an explicit decision to resume the 10M capacity benchmark.
+1. Finish and merge #140; real-provider smoke, canary and rollback evidence are recorded in `docs/implementation/m3-06b-provider-canary.md`.
+2. Do not treat the gated smoke as release approval: real blind-human evidence and the approved inter-rater variance threshold remain outstanding.
+3. #137 remains independently deferred until an explicit decision to resume the 10M capacity benchmark.
 
 ## 3. First executable frontier (historical)
 

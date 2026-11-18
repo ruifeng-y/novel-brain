@@ -40,7 +40,60 @@ const RESULT: GenerationResult = {
   usage: { inputTokens: 20, outputTokens: 30 },
 };
 
+const RELEASE_PIN = {
+  releaseVersion: "2026-11-18.1",
+  provider: "deepseek" as const,
+  model: "deepseek-chat",
+  promptVersion: "m1-writing-prompts-v1",
+  promptHash: "4e0ad7d7ce883b32a83be12ea7d7593bfeeafc4374e88c22404ed056f70af1cd",
+  smokePromptHash: "d".repeat(64),
+  baseUrl: "https://api.deepseek.com",
+  contextCompilerVersion: "m1-context-v1",
+  agentContractVersion: "agent-m3-06b-v1",
+  configHash: "a".repeat(64),
+  maxCostCny: 1,
+  maxLatencyMs: 10_000,
+  maxAttempts: 2,
+  timeoutMs: 15_000,
+};
+
 describe("budgeted provider call", () => {
+  it("records the active release pin with the model call parameters", async () => {
+    const beginModelCall = vi.fn(async () => STARTED_CALL);
+    const repository = {
+      beginModelCall,
+      completeModelCall: vi.fn(async () => false),
+      failModelCall: vi.fn(async () => undefined),
+    } as unknown as WorkerGenerationRepository;
+    const provider: AiGateway = {
+      async generateText() {
+        return RESULT;
+      },
+      async *streamText() {
+        yield { text: "", done: true };
+      },
+    };
+    await new BudgetedProviderCallExecutor(repository).call({
+      payload: PAYLOAD,
+      provider,
+      step: "draft",
+      attempt: 1,
+      role: "writer",
+      operation: "draft",
+      prompt: "写一段正文",
+      system: "只输出正文",
+      citations: [],
+      parameters: { operation: "draft" },
+      releasePin: RELEASE_PIN,
+    });
+
+    expect(beginModelCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parameters: expect.objectContaining({ releasePin: RELEASE_PIN }),
+      }),
+    );
+  });
+
   it("stops before the provider when reservation is rejected", async () => {
     const recordBudgetFailure = vi.fn(async () => undefined);
     const generateText = vi.fn(async () => RESULT);
@@ -83,6 +136,7 @@ describe("budgeted provider call", () => {
         system: "只输出正文",
         citations: [],
         parameters: { operation: "draft" },
+        releasePin: RELEASE_PIN,
         traceLogger,
       }),
     ).rejects.toBeInstanceOf(ProviderBudgetExceededError);
@@ -95,6 +149,45 @@ describe("budgeted provider call", () => {
         attempt: 1,
         errorCode: "JOB_BUDGET_EXCEEDED",
         bindingScope: "volume",
+        releasePin: RELEASE_PIN,
+      }),
+    );
+  });
+
+  it("stops before the provider when the active release budget is lower than the call estimate", async () => {
+    const recordBudgetFailure = vi.fn(async () => undefined);
+    const generateText = vi.fn(async () => RESULT);
+    const repository = {
+      recordBudgetFailure,
+    } as unknown as WorkerGenerationRepository;
+    const provider: AiGateway = {
+      generateText,
+      async *streamText() {
+        yield { text: "", done: true };
+      },
+    };
+
+    await expect(
+      new BudgetedProviderCallExecutor(repository).call({
+        payload: PAYLOAD,
+        provider,
+        step: "draft",
+        attempt: 1,
+        role: "writer",
+        operation: "draft",
+        prompt: "写一段正文",
+        system: "只输出正文",
+        citations: [],
+        parameters: { operation: "draft" },
+        releasePin: { ...RELEASE_PIN, maxCostCny: 0 },
+      }),
+    ).rejects.toBeInstanceOf(ProviderBudgetExceededError);
+
+    expect(generateText).not.toHaveBeenCalled();
+    expect(recordBudgetFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        errorCode: "RELEASE_BUDGET_EXCEEDED",
+        releasePin: expect.objectContaining({ maxCostCny: 0 }),
       }),
     );
   });

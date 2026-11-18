@@ -11285,6 +11285,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -11465,6 +11466,7 @@ export interface operations {
                   | "expired_fact"
                   | "time_window"
                   | "knowledge_boundary"
+                  | "summary_superseded"
                   | "empty_content"
                   | "missing_source";
                 tokenCount: number;
@@ -11876,6 +11878,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -12293,6 +12296,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -12711,6 +12715,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -13129,6 +13134,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -13560,6 +13566,7 @@ export interface operations {
                       | "expired_fact"
                       | "time_window"
                       | "knowledge_boundary"
+                      | "summary_superseded"
                       | "empty_content"
                       | "missing_source";
                     tokenCount: number;
@@ -45128,6 +45135,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -45932,6 +45940,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -46513,6 +46522,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -47094,6 +47104,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -47675,6 +47686,7 @@ export interface operations {
                     | "expired_fact"
                     | "time_window"
                     | "knowledge_boundary"
+                    | "summary_superseded"
                     | "empty_content"
                     | "missing_source";
                   tokenCount: number;
@@ -48269,6 +48281,7 @@ export interface operations {
                       | "expired_fact"
                       | "time_window"
                       | "knowledge_boundary"
+                      | "summary_superseded"
                       | "empty_content"
                       | "missing_source";
                     tokenCount: number;
