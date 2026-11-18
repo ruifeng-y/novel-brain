@@ -118,6 +118,13 @@ test("requires a Chinese commit body when a body is present", () => {
   assert.deepEqual(validateCommitMessages(["feat: 增加校验\n\n- 增加发布护栏"]), []);
 });
 
+test("rejects Traditional Chinese commit bodies", () => {
+  assert.match(
+    validateCommitMessages(["feat: 增加校验\n\n- 增加錯誤檢查"]).join("\n"),
+    /body must include 简体中文/,
+  );
+});
+
 test("rejects an English-majority commit body", () => {
   assert.match(
     validateCommitMessages(["feat: 增加校验\n\nThis guard adds 中文 support for releases"]).join(
