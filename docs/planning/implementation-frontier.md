@@ -21,15 +21,15 @@
 - #129 export formats, scope selection, durable job recovery and version manifests is closed through PR #201.
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
 - #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207; `help`, `legal` and `export-publish` are `parity-verified` with Linux Golden evidence.
-- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142 is closed; #137 and #138 are explicitly `deferred`; #139 is blocked by #138 and #140 by #139. There is currently no ready implementation leaf.
+- Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142 is closed; #137 remains explicitly `deferred`; #138 implementation and deterministic full/maximum fixture evidence are complete on `codex/m3-138-continuity-benchmark`, but the issue remains open until PR merge. #139 stays blocked until #138 merges; #140 follows #139.
 - PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.
 
 ## 2. Immediate frontier
 
-1. No bounded implementation leaf is ready while #137 and #138 remain `deferred`.
-2. #137 is independently startable only after an explicit decision to resume the 10M capacity benchmark.
-3. #138 must be resumed before #139 and #140; it is the critical path for fixed quality evaluation, real-provider smoke, canary and rollback evidence.
-4. Do not start #139 or #140 while their blocker edges remain open.
+1. Land #138 through normal review and Production CI; its automated benchmark evidence is recorded in `docs/implementation/m3-05b-continuity-benchmark.md`.
+2. Do not claim #138 release-ready: actual human blind review, approved sample/agreement thresholds and narrative evidence remain outstanding.
+3. After #138 merges, start #139 as the fixed quality registry/regression consumer. Do not start #140 until #139 is complete.
+4. #137 remains independently deferred until an explicit decision to resume the 10M capacity benchmark.
 
 ## 3. First executable frontier (historical)
 
@@ -78,7 +78,8 @@ M1 foundations:
 - #135 deployment, health, metrics and cost alerting is complete. Backup expiry and restore evidence remain with #136.
 - #134 and #136 are closed. PR #200 carries the backup/restore and retention evidence.
 - #129 follows #136; #130 follows #129; #131 follows #130. #137 follows #134 and #136; #142 is closed through PR #211.
-- #138 is `deferred`. #139 consumes its long-horizon fixture after it resumes; #140 gates real-provider canary/rollback after #139.
+- #138 has deterministic 3,500-chapter full and 4,000-chapter maximum evidence. Its report remains intentionally blocked pending actual human blind review, approved thresholds and narrative evidence; merge closes the implementation/fixture contract, not the release-quality claim.
+- #139 consumes the long-horizon fixture after #138 merges; #140 gates real-provider canary/rollback after #139.
 - #104 is the V1-wide UI closeout and is last among page parity aggregators.
 
 ## 7. Package-parent rule
