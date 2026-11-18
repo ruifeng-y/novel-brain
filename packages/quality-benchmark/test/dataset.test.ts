@@ -1,19 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { createQualityBenchmarkDataset, verifyQualityBenchmarkDataset } from "../src/dataset";
+import {
+  createApprovedQualityBenchmarkDataset,
+  createQualityBenchmarkDataset,
+  verifyQualityBenchmarkDataset,
+} from "../src/dataset";
 
 describe("quality benchmark dataset", () => {
   it("pins three genres, difficulty coverage and long-horizon adversarial cases", () => {
-    const first = createQualityBenchmarkDataset({
-      seed: 20261118,
-      sourceCommit: "abc1234",
-      continuityTier: "minimum",
-    });
-    const second = createQualityBenchmarkDataset({
-      seed: 20261118,
-      sourceCommit: "abc1234",
-      continuityTier: "minimum",
-    });
+    const first = createApprovedQualityBenchmarkDataset();
+    const second = createApprovedQualityBenchmarkDataset();
 
     expect(first).toEqual(second);
     expect(first.manifest).toMatchObject({
@@ -51,11 +47,7 @@ describe("quality benchmark dataset", () => {
   });
 
   it("detects dataset content that no longer matches the manifest digest", () => {
-    const dataset = createQualityBenchmarkDataset({
-      seed: 20261118,
-      sourceCommit: "abc1234",
-      continuityTier: "minimum",
-    });
+    const dataset = createApprovedQualityBenchmarkDataset();
     const tampered = structuredClone(dataset);
     tampered.chapterSamples[0]!.text += "tampered";
 

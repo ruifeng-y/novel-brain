@@ -8,6 +8,13 @@ import {
 
 export const QUALITY_BENCHMARK_GENERATOR_VERSION = "quality-benchmark-v1" as const;
 export const RELEASE_QUALITY_RUBRIC_VERSION = "adr-0022-v1" as const;
+export const APPROVED_QUALITY_BENCHMARK_DATASET_SHA256 =
+  "c6c22e8922df49a9dbff52321e09ae463163e99726db5530eb08cf5f8f7d76ef" as const;
+export const APPROVED_QUALITY_BENCHMARK_INPUT = {
+  seed: 20261118,
+  sourceCommit: "38a85cb3f45bc9d1a6f8bcf66f5b5d50c16132ca",
+  continuityTier: "full",
+} as const;
 
 export const QUALITY_BENCHMARK_GENRES = ["仙侠", "历史", "都市"] as const;
 export type QualityBenchmarkGenre = (typeof QUALITY_BENCHMARK_GENRES)[number];
@@ -145,6 +152,10 @@ export function createQualityBenchmarkDataset(input: {
       datasetSha256,
     },
   };
+}
+
+export function createApprovedQualityBenchmarkDataset(): QualityBenchmarkDataset {
+  return createQualityBenchmarkDataset(APPROVED_QUALITY_BENCHMARK_INPUT);
 }
 
 export function verifyQualityBenchmarkDataset(dataset: QualityBenchmarkDataset): boolean {

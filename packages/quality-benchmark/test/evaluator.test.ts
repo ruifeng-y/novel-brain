@@ -25,6 +25,9 @@ describe("quality benchmark evaluator", () => {
     );
     expect(report.humanReview.reviewerCount).toBe(2);
     expect(report.humanReview.maxVariance).toBe(0);
+    expect(report.runId).toBe("quality-run-1");
+    expect(report.scores.length).toBeGreaterThan(0);
+    expect(report.decisions).toHaveLength(1);
   });
 
   it("blocks model-only judgement and missing inter-rater variance approval", () => {

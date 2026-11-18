@@ -1,0 +1,2724 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "quality-benchmark-v1",
+  "rubricVersion": "adr-0022-v1",
+  "seed": 20261118,
+  "sourceCommit": "38a85cb3f45bc9d1a6f8bcf66f5b5d50c16132ca",
+  "continuityTier": "full",
+  "continuityFixtureSha256": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+  "chapterCount": 3500,
+  "volumeCount": 35,
+  "chapterSampleCount": 180,
+  "adversarialCaseCount": 24,
+  "genres": [
+    "仙侠",
+    "历史",
+    "都市"
+  ],
+  "entries": [
+    {
+      "id": "chapter:仙侠:001",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "8585e5f68b25c278552860c6a084318cf6f2f59822be607fd8142402c978aa06",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:002",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "ddfbbceb1e64c9de3d19b452294104b0939568d9fdacef9e4e4c58948d68d25f",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 2 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:003",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "8f44bf7415237ae9414abd01ccfd2258661a4db038dafbc2cabf9e7f8404d5f8",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 3 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:004",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "31e42e6d59c4e03ad9b60c6db71d3e0d9151ffddefc73a46313ead71db24105b",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:005",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "6937cd8ae06c00716f88deb41cb257136f90942128be949afb9a9f943215cc82",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 5 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:006",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "ff95e7cd7c95d03f4986b4e9c6ba91b3beea66b166b4f018c465d0b368f33ed0",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 6 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:007",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "9a85a9156602dfc140c435a72c9a12a51db41f84c0bd497b645c932be1375849",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:008",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e1359bd042aac8edc699150e7852ade3ab6ebef049bd75e1e66ba2e49abc2030",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 8 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:009",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "8cb7ff8a041c23f5e9f6e638da5d412d3e5f3a49fe557a9b7be6d939b5f717dd",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 9 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:010",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "afd75cac43dad368eb45313c8d65507c54c8ad72efbceb5ffd18cc64f9b31c41",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:011",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "6f799252e228934ecff3ea90dfb2b521cd50d29ee65971c55a2a4b011192e623",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 11 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:012",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "6d756d4341c6ecd6ae726f5bfea8b6034124fc2148c826c3062b942c9a160f3e",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 12 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:013",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5bb64187bc08ceed0ef3a5fa757de0763cba20be957d6858c0dcbea706d1521f",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:014",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "faaa23bdc1c797a4dd33699c5815e3658610fbf382fc6aa36a8b5e4b58028d71",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 14 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:015",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f41e787c39a9c00b75b0d434535085ac9644d09578740f7771d78926a6e24ff7",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 15 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:016",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "a4116036da6e4cf0a85b5fb17c54b1aa150f8de02d52e8d4cc3db59eb60b08b2",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:017",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "65120ec01e2543aec800dfa659b87fc60c194350bcf0da698912033977a4c11d",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 17 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:018",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f7e451ced137515465e6ea682982dd26d14702db53964f9411e1c955770ed8e9",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 18 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:019",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "10bbff3e946577456858b3f00935eece86584911ba53223564d50f805961926f",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:020",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "18b72d40d5a23bb84e14fb470de146dbd8b3eacb0e8f2e3256b8253f629882e5",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 20 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:021",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "ed70cbe9e12c01c036a988249c55e75859446e08e9d154b850b358a980a8eac9",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 21 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:022",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "7b720221a0f0c97fe7290b533f9cdb764bc8598e5f0772231d7027dc692ef559",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:023",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e14b653073476bbfaaf5381ac0caf1ac59d23d47eab39e14a98539d8f1560eab",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 23 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:024",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "aa391acde3f25e68f80ecb1de07f79edaf42083388de1b5c7f0031eee3528030",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 24 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:025",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "469f5e1676a211f32bffbafa3c2935014c69f687083e893b7e3ca27f3c35ee78",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:026",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "4b72a81df9f2bac7d1c0dcdc797fc21425fb298e7a47bc48b394c85bc22ff25c",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 26 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:027",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "742c44f9d4fa475527651493e5433998e008653b1c6121992c146990d375a1ab",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 27 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:028",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "cc61e2f549fc9cba470ab74a1434d2222382ddf62e66f8bb3cdf576ecd282854",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:029",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "85be2da9d45717da0f7de7b9d3726b8587dcf1001e3a99dadcebf1d9438dfd13",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 29 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:030",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "de0ca3c05fb473030d5e73af5148f73e06e4f6ea523d55489a4d069b77956f94",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 30 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:031",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "d2e7c289b4d3300dc953a78e6e1aecd3582839afa211c62b8c4740622baab6cb",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:032",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "70bb534f4aac6dbc8153e88b9a36b730612dbb69834793c892530ef6bb03643b",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 32 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:033",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "510ad890bf4de6d89cd79a2f98e4fb1b62503e622d84b65abf69a16cf7ad6561",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 33 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:034",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "a6ce324fc189ee2ec6134c6e9fc9b124a1c00f355ccee2cb4e9ca9d249325c7f",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:035",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "904852e2acfe9d08342be9de3d9a819ab00b5f6fc3b10bd6f849b5e5eb0850ef",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 35 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:036",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "bd01da31b2d0ddc64ceb1fef3d9317fc48db3b82ef8516c2b38e5d660eddfc1f",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 36 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:037",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2f841a6ee2ecbe9f16b20c0a487fa388fd6e2e4548620ad05d67a740b15dabda",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:038",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5a7f1112ff2df2249dcab4a9b533d43265ecec58a5768456bf02c4183b099745",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 38 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:039",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "265af472e09c8d27ef5da96147dcefea1bd985a0db8f750003ee418aa661acbf",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 39 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:040",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "ca81aeb78a4433424e56cc390c6e491200eaf05d6d6bbf7b74d0f9e534b9b812",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:041",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "bcdbc5747842cb89e1f7ea27f555d0cc8f6ea9c03a4d1eefd0c8d95886c300cc",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 41 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:042",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "05375cb5115b60c36de2200d01b0ff1ef93fc97d477432fd9bcb3e97bf9c6a7f",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 42 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:043",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "fd3b23c82a013f5b129dfc109186f3b7b79e58d65ded845613c73679fc54f693",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:044",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "3d7a4d6545aee7b4d4e3c45d48ac72812fef28610aa33dfb7df1f593ffb52a71",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 44 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:045",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "d68e6b94847c7b7c75b732b28216445d8e6f3faa8dea59f4b374c69ea1aed8ff",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 45 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:046",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "9370b4c12e1baccc9a4628ace2746af4d5cda3b261dffa9252e59165e6281608",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:047",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "4a03cc866f5efd54457fa0bc94abd6a7701f71f5f0968c4aa795f263a3ea935c",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 47 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:048",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "408dac78b6cb18fee3394f4a84b821a2a1a91b263008ba5d836ce60643f50956",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 48 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:049",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5dd56780bf6b2220a01fb47c42a2a051dc6f189baa5ee51961f0039a184fc28c",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:050",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "b0806a2b214a3d963c0a8489515046f2eb639f25c764fc12bd71da802f055893",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 50 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:051",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "694d4a642679c0ffa2ef9b02d676eb8e61d6300e1e611607b62437c8dc947b63",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 51 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:052",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "93c67f15b87fba4d2ae270f5b3a657773a365b4c35ebf27d84eb1333f2d2b6b8",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:053",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e7572d24159dff6c354d06e3dfa4f7af174c2f478854013c87ab14c615669270",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 53 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:054",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "15b249fda3ea429c33b926847d6560a9134aa342b1a9b8d05d80703517033229",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 54 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:055",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5cdc2c45f1343e9996c4e188cfdf86916d7b08a2ad62139e1902b5e12af06ca2",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:056",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "dbab6f60a3a45b918a06bb9e9eb69f8e58ef3672374ac9c515bf4aeb950451b1",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 56 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:057",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e243496a895112e4cce488dd899a95b1678a8b4f778fd9d6d28bb5fc0b269d40",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 57 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:058",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "6c55d709c315661e18f8143224821fbc09ff06ae5e22692f2d347623a827ad5a",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:仙侠:059",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "0d440b04653c2b38b389427967bd6ddd0e802ff75edbff8d2ef8f0d0989e176d",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 59 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:仙侠:060",
+      "kind": "chapter",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "55133fb26b95a004a104acf39e2d51d67c78ccc68949f48a7561ff021bc54a4e",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 60 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:001",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "bc62a31966b1023161999435a95eb76d1315ef8c0f82ddc26196b11ca3c5c880",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:002",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "454098b6c90103b5664a7299e563c7296bb02f4b6af5e2e2d1436688aba38e42",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 2 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:003",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2f52b532a94c32d1953fa7efbacb01440d1543ca4a5c1f7ac046a2f9870c1136",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 3 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:004",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "3ceb38db1992c69150d8d13e7ca0592575a731352d457d5bf52955e36b75cfc3",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:005",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "1429a8d1a2a70f92544303aa27036e386a408080f91a6b0c5a85b9e2525df04e",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 5 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:006",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "ce768f29b5b2763b35f50dc2937a1d15e43983be64b90e359db2ca593303514d",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 6 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:007",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f6b3bf0fe0588118719c1b4fd465d7bbaf859aef3aa53afed91b2792e8922154",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:008",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "3b1b1148755e23939ef2a01dde7f959381b68ede815731a2218cb61261135bb2",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 8 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:009",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "1ce92902cad8a7cb00a2c8526fdf994831eae0442cbdf3fd9302f98bd7d20983",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 9 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:010",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "9284cc2eb4a5d5c347ea2dd5702f9c502a68f4ab943861f75a384c95fac0f314",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:011",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "000c7cb02ad18cd00e7700f434945c0ff753cbe4b9dba36c53713b6f51fa1475",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 11 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:012",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f137dda289a98e3d88b86913922661b558ab618c6cf5636ca796203b1e0d01f9",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 12 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:013",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "49f13cc6a8fac32cdd4f42b421d23e3b6e6c4c104b4a666c5a94e1dfc1af4472",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:014",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "015461af0f73e28363ee2c209f95571e9d463a69249864c66f3d773807c22e04",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 14 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:015",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "177d871377fb9fec99800fbc97dc3df3308c34be5a5f42b8a55401f01c54a911",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 15 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:016",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "784c155b5dd068e1899b03baa8b71c645a74237d9a079b4446b4ab804f5d4e50",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:017",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "67caebe6ded745b846e4d7a460e4e8568632e27e11dbdb3a3735e1402368ec68",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 17 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:018",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5685985419acacc61b2b5f4835d438a3ec7fdd503c08256a5425c615d90f89f2",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 18 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:019",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "dd8bc4b3e8e68fcf3b7b81bd4321b2d641a80e69148975eb6197d423ee921d89",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:020",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "af604c9b92a4930ef688e8ff93fc0530c958c2ab6112b4eb63e4a3b7991daa50",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 20 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:021",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "24f38a008cbae45754f2723abb0adef36ee0575c301157f1c4c7f519a05fc911",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 21 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:022",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "67b6b62c3d38f2c3734fd57b2b932b5fcaba4e3f30157f96a823fe8542044afb",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:023",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "d9e2fa7e052e4b5747db003e36e4dce8e709db9d0c5e46f67abfb6f17c793532",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 23 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:024",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "72c03ae22413db7ea6a51c71e1d25eb77a84e51c444ad6b47ba55e508471b021",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 24 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:025",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "0e2a84f39ed319a4b68122da8db2ca31d909cfcea857b5e6e10deb6773ddf25a",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:026",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "cbe14183c0088865bcaecffcf610a96ecb868d8f68eb1451b521d666186664a9",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 26 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:027",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "caeb7de877427eff166ab089f3faf6525c7f4563837aac30b8212a1b3950293a",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 27 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:028",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "d20a40fc322c6bda044f6b5a645fa69a2b1a02d385fcac91ffc7530ad0819919",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:029",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2ed4c26e8e1cd9a393e8aab58be637b8ccea7e9cb6b5203cba01f0815d02e639",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 29 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:030",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "dfb4ce24d97d9a9f02316c22c3c909cac61fcf9b167447a767d58d9725030e82",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 30 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:031",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "0df7e9d029caa7aa24a0865ab319583850e7047008b7cc2af6bdc1dbc7e59da8",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:032",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "099502861b04752b9d6307f0b4c81a88394362a5257e94f5bc026bece59e1a0b",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 32 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:033",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "0ed7fb3454b69c281f29d778d52e6f70527bbb571a6f18b917096e97e8cba387",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 33 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:034",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "421d9dc56d6d13433bb6a660564291cef25f1000d6003a8abec7a32d918d4abc",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:035",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2a34b948115cd39d54be2bd0aef3effca910f7541f81faf7ff18b085f715d86f",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 35 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:036",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "93497a3eaa62c27c6bbc941a37c65cce5c7e9881dbb7454cbb41635a6edd780e",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 36 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:037",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "b239b522ba5959efe1317838416d91aede46f6d6f575b552defd5ec9608f7942",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:038",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5ebe604c855c64c60c1febdaa2d7fcd9019f87a804ca52724b97079535ce1f15",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 38 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:039",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "4fe10ca9edf65559a67bfeddd27f5ce52494c3a59a714123b7d6fe20423313f9",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 39 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:040",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "528830ff97d918565c0e6a9f60ed5cdd42c72f3c110be29106dd08b421203fd8",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:041",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "293a0e0dcc483e82aad7de1286e7480c867ddfc5f3e261dd27a027e121fb44d8",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 41 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:042",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f0295ef4db3adc523b8a8546d83bfc20e9e7f6e80e6fde28254c7112e392587b",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 42 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:043",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "365dcec9e0ab90f840f6eccd0032bdbef333ca41f09823255aabc0a0ce2f91d6",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:044",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "4cbb798cdfa190ffab010e083321f915fa2714596970553a54225542839c4dc8",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 44 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:045",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "dd346ff2433e33f206bc27455441c63ff9328da302ad19528872addbde6f1018",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 45 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:046",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "deee5dee85e7bec9dc08d77a2f70e4a1ed1aeeb5cc773e622b1835a68654d2ae",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:047",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "802bd7654f5e60fdbd8878b42362de333c08112d9d1b22c6619bcc37ab179615",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 47 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:048",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "a2de8ef8fdcf102b1c7d9f98e374f15f3398436a308e079d59318e3353495b67",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 48 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:049",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "d8da6bf49736d09e06272b871e309f4852c0571c039c002f37024a6235e5642a",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:050",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "ee47db2068ad3dfa96071aba0ac12fedf08be1e4d8e0f003f8b57070326625af",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 50 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:051",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "3f6638f7527b87bd3e96d03bc0ff83a02134c584939d9269664e976925f622dd",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 51 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:052",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5154a5a72e167d0d53d2f8ff21a5ee48df1a35a05f30c70d4103a92008d8cc6d",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:053",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "3abe416079ce366b91fe8fb42ad8f33401eb50e02d8bfc9a926160f8bfdd4ed2",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 53 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:054",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "deca6fa8acb51b8cfca3d5898727434bfc4dcbd5aa30a2c0365af54284913d0a",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 54 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:055",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5fec771f5c050f68ba8e7e300c3200990ac387af491e9cb1645437b2bc086297",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:056",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "8755a1021e3467859a5f98a5788b6b813e1a5698637b86c8b7c3e404efe16cbd",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 56 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:057",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2ec57327a3548c3c74f44a4bda4df8007adab7c787a5e5f887a04a679ab1ca22",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 57 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:058",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e01e9aa4fcaf28415463a3f895854fc81725f08d2831f8836207dbdc2643ae28",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:历史:059",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "8b5d721c812f39723d71e54b091ff5749b2eb07f0e0a85982c51fb2b5328f1b6",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 59 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:历史:060",
+      "kind": "chapter",
+      "genre": "历史",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "6afb8b7e505685837400e3073caccbbc94fece2197a169ac72f037b297f0e0ff",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 60 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:001",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "23d0e2bbfb37932e038fb0fd3279d47de94ce3b3306ad051e79aae7e932f9591",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:002",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e674d6e431f5b9c057b30bf08894acb608164831567a3771f602426eff98e362",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 2 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:003",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e83c1e1325fca1208b4d49d2c7caaacd6d4d7e8a6da9e1633f0c4aee5cbea1b1",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 3 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:004",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "02c8ee0f6437cc5a770436acccefb5d961434e11b55c3842eae43299959f36ae",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:005",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "527c51c70f70ebc1abdc8aeb45ed5974ff2aef03082d11933aadf2495712fba9",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 5 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:006",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "dd59aea4a9e70b5e3de88c33a7f8becc308d336055a7efc491781b289cea45f9",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 6 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:007",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "c81851da493a05d405a36d4a19c95a2a210343c80da7f40d4c1d9eca006a35d5",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:008",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "ff4adf86170a42346f9c409ab6848ef8916f7f08dd6f163fd488b850fdd7f747",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 8 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:009",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "b0d1c9228ba2529b6f990ffebb9ddbeec71cdd391d73921e6b05df8eaa27dce7",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 9 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:010",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "a7bb4e0afd1c4354fd62eb55ab5e8932c235eed16b24fbd15b029fa52b58ba45",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:011",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "43aec300488ea1feaa6916e5991358e9ccf02c373c8c65e64b2e8a5d914441a1",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 11 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:012",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "eebad38e96f044370eaddaa915d385149b209627c365d4c23d265f6c9adb13b4",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 12 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:013",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "77c75d53a3c2f0024b5ad8b6eea59fe77d6cef13998f7c23b440fb40fa31b809",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:014",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "1648dce291739dda3ed6688e3961df0c59d083309a6abd11bb42c3a638f2787e",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 14 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:015",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "afc2ce7a6a709753c06b698e84ab8dfb8b90c63e0c1ff8adb880e584255788eb",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 15 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:016",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f021929099d5aa963bf6c90430b85de6be96ac1c7a000a39079cf8c24bfd2e80",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:017",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f5d24e0e0978c15a22dfeec84128c2d9039eb339df416850c948f2c23fd2bd1a",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 17 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:018",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "dfebda1a3dafc134c46a4486e10baf5605a420af54f1147a2022d120cfe1e009",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 18 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:019",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "856dd1ecb4efd5aa8e3477377a2fc83b91aaf8813b2b2a6dc550a7ae2e0a326d",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:020",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "0fd26c630d32f067b44e79678e6993dc1159797589925370e6c898c5dd4e94f7",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 20 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:021",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "1279bbbf23c76a1d2eff45311a56c4884ff895d83d9cb2fbfe21ddb3c2af64b8",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 21 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:022",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "67c448c92d5957843660a92efb363075c1662f7e44f1d9dd5cd20cb11e16d091",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:023",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "607cd86b63382c39de9742867490728facc553b6d3d588b99d24350421a50e18",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 23 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:024",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "3d617479b68d6f07fe65ca28e3b03c6b7b684729f6b94bd0e356ddcb636b1348",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 24 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:025",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "d93bffc74eb3e9afb3a5cc63d3099ccc1b46ce61d43e7d29815e0d41220fe9c2",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:026",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "7778ae92101b78f93ebc10cb7e617e550e495b0d605181b897c5cd95d8a8f955",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 26 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:027",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "56227a29e9bd24031769deae55519dcd102c5be17b5db7921964cab5841c76ed",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 27 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:028",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "832d941b77aee0c9a76a704d21fa7a45574589668aafa650c65b33d32eca974d",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:029",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "93cb42f1ab24478792b9baa18fab23a923efb78fe4cc96bbc241dd7862acd899",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 29 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:030",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "fcbf93c0c00fe765e79da5d7f72073dbdde73a91efc2cba6e2a36bcac0d264ee",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 30 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:031",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2c7f0e74f5a3f81434556981fefad16ff632c97e5168bf9c98e5ef90de931096",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:032",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f571d6d347065e646c4993398791469e31f434eb3fa691ca06f8a37d84a07831",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 32 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:033",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e1f350449e0dfd0c97d26417a56c0896759b90d252ee4c61fd209270f9bb3225",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 33 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:034",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "ff4dd0078176852d1bc81a33caba001867cf581f4e519d6c227ed10da064e9e0",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:035",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "e3650d3d371822bd98a3ebc14c6972b8fe547a79c97472aa96286a561b4cc650",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 35 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:036",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "186b54b2b4a14863b51226050345c67d27bba4c0eb098513995cf0fcf04bd4d6",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 36 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:037",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "bdcf2933d7784fe17d0eb4852d50ca35cc50f488e769030214ac74b1b373ea38",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:038",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "41271a4c364f85468c6df8b1f94bf274b9d6ac4650824be60187298a1ed9ee3f",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 38 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:039",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "822a48e6e0f03d929de34c5f674ca7a372e27232c9b0627ddbbfe54961191bf1",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 39 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:040",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "49399caa5323e06be4debe0b4974e81f40694e81681ba59a06a9719b80231adc",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:041",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2973c1a2bac387ffdf8a0d2a68e36407fe048211e85d9d1a5c670fb62142d904",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 41 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:042",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2d3157f1bcd64947c982296490acd354134dd553b677327c3554931edf412314",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 42 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:043",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "9712825b4ee8e60fc361cdea370e6d696eab873eea10a601c1cbf5bf3c781a4f",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:044",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "fdba9110735c46854e4cc88b0d37ce394415a5bf68aaadfa11754b1cf811a4f6",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 44 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:045",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "0fc0f61e77d4fd2aa79512927bc355bc8aef8d5ac87ed6d382a207f09ef93d11",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 45 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:046",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5f912033a49917af23f41bf96533232b0990af3a16f38c6bc1994abe9fe272ae",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:047",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f808d1691ccf1b70f28652eff1eab00ca965115cbcffe9de239b4ba5b8fba41e",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 47 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:048",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "a42ea7f50a29dd1e69cdcff20872ef682839964f4555a73cf4cd88a5959ec021",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 48 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:049",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5fcf53c91e899b1f1d8f511ac1f08f0a106b28853f04fde1db571c43b0591323",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:050",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "2b087d2581c9648cefd39c298ff487d90d1aaec268fd071fd818c59b67a80843",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 50 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:051",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "c9db5adbd088c3fc3d0d8a9dfd7a019cce55b4a68818edab4c3109c62c43bdc0",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 51 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:052",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "89a11e9d841596d1b165359dc846bba98392a556c2e1d2b5d9f5db784cea5314",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:053",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "fc667a8adc2626c5855725ae9b0c27d5ce6414dbf0adbfbec65ff859b86333be",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 53 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:054",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "08457f9cd0536d420a1514d2f939f9655595c4a8532dd64123147f712af064b6",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 54 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:055",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "8f11591b36d7457fcb21c09d5bdfde0d03ff1e8750f144dc4ab8be916ee10a13",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:056",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "5912933211e3d8e71b276522b6cf3dee9630b360e266767f7273a297f718fd59",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 56 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:057",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "24777c7c0ac1b50292a728fcadaffac94ba9677b6db9527c1f5e40d5edf6f9f6",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 57 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:058",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "easy",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "f120fa6b49b390b3c9d8e05fc3eafada35fddea982c112da295b032e395d6f64",
+      "knownIssues": []
+    },
+    {
+      "id": "chapter:都市:059",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "medium",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "8566f7b1e72a946e1b816e086d8b2bf6cb08b397b56de4d288d0f3c4c5940efa",
+      "knownIssues": [
+        {
+          "code": "WEAK_CHAPTER_END_HOOK",
+          "severity": "P2",
+          "description": "medium sample 59 ends without a decisive hook"
+        }
+      ]
+    },
+    {
+      "id": "chapter:都市:060",
+      "kind": "chapter",
+      "genre": "都市",
+      "difficulty": "hard",
+      "sourceVersion": "quality-chapter-sample-v1",
+      "sourceHash": "7b0a896adb38cd3f914398fde8bb0f67690a8801de24da1dd877f9774a49befc",
+      "knownIssues": [
+        {
+          "code": "MOTIVATION_BREAK",
+          "severity": "P1",
+          "description": "hard sample 60 contains a motivation discontinuity"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:aa978572-2345-7347-86d4-115ffe7402c4",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "knowledge_boundary",
+          "severity": "P0",
+          "description": "knowledge_boundary seeded defect at chapter 140"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:3cc35faf-667e-79d9-ba72-10a67e763de4",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "knowledge_boundary",
+          "severity": "P0",
+          "description": "knowledge_boundary seeded defect at chapter 280"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:32477622-f702-74fa-afdc-6d598a83ff47",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "knowledge_boundary",
+          "severity": "P0",
+          "description": "knowledge_boundary seeded defect at chapter 420"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:4f8808b7-2ab9-752c-9261-37dc21d1eca9",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "body_continuity",
+          "severity": "P0",
+          "description": "body_continuity seeded defect at chapter 560"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:a00db5ab-9d1c-78e6-951c-5bba5e108254",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "body_continuity",
+          "severity": "P0",
+          "description": "body_continuity seeded defect at chapter 700"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:5f8bf2cc-7b2d-7806-be53-571921247644",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "body_continuity",
+          "severity": "P0",
+          "description": "body_continuity seeded defect at chapter 840"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:58705aef-3273-70b0-9f5b-e50f18d6c623",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "identity_transition",
+          "severity": "P0",
+          "description": "identity_transition seeded defect at chapter 980"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:8a5af746-0f64-7482-b101-833244833444",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "identity_transition",
+          "severity": "P0",
+          "description": "identity_transition seeded defect at chapter 1120"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:3b758333-3e08-7896-9f8d-ae2ff25e4f79",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "identity_transition",
+          "severity": "P0",
+          "description": "identity_transition seeded defect at chapter 1260"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:34c6a1a1-1813-7d64-81c3-f6601d00bf3a",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "inventory_rights",
+          "severity": "P1",
+          "description": "inventory_rights seeded defect at chapter 1400"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:192f700e-1069-7e2e-a9d7-20c47706eaf5",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "inventory_rights",
+          "severity": "P1",
+          "description": "inventory_rights seeded defect at chapter 1540"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:a1818166-ed50-75dd-adf9-b60792d3c06a",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "inventory_rights",
+          "severity": "P1",
+          "description": "inventory_rights seeded defect at chapter 1680"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:c127c949-e5d0-7feb-aa67-ebdaefc60e18",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "travel_time",
+          "severity": "P1",
+          "description": "travel_time seeded defect at chapter 1820"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:b167737e-b483-752c-bcef-0a892a8e5ed8",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "travel_time",
+          "severity": "P1",
+          "description": "travel_time seeded defect at chapter 1960"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:63cac527-f915-7115-898a-1ceba6387075",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "travel_time",
+          "severity": "P1",
+          "description": "travel_time seeded defect at chapter 2100"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:23fbd96e-de64-71bb-816c-f0c9d6a32fd1",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "foreshadow_payoff",
+          "severity": "P1",
+          "description": "foreshadow_payoff seeded defect at chapter 2240"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:4893ac54-7adb-79cc-96a9-713d8969c502",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "foreshadow_payoff",
+          "severity": "P1",
+          "description": "foreshadow_payoff seeded defect at chapter 2380"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:baf9375a-66d8-7645-9fd5-566e7aee765a",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "medium",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "foreshadow_payoff",
+          "severity": "P1",
+          "description": "foreshadow_payoff seeded defect at chapter 2520"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:0188cf39-464e-72c1-ab5b-0518f0341535",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "motivation_drift",
+          "severity": "P2",
+          "description": "motivation_drift seeded defect at chapter 2660"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:9e48e7d7-a00c-7238-85f4-ab03bce90dd5",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "motivation_drift",
+          "severity": "P2",
+          "description": "motivation_drift seeded defect at chapter 2800"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:8e6c52dc-e798-7219-8e33-5a49ce4034f8",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "easy",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "motivation_drift",
+          "severity": "P2",
+          "description": "motivation_drift seeded defect at chapter 2940"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:8e7bd8d2-4a4d-75c8-b958-79dfb460ea37",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "branch_divergence",
+          "severity": "P0",
+          "description": "branch_divergence seeded defect at chapter 300"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:390a62d1-0700-7228-b314-98922fa1f519",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "branch_divergence",
+          "severity": "P0",
+          "description": "branch_divergence seeded defect at chapter 1750"
+        }
+      ]
+    },
+    {
+      "id": "long-horizon:0d24c9fd-681f-70f5-b9c2-bbb3587a0a0b",
+      "kind": "long_horizon_case",
+      "genre": "仙侠",
+      "difficulty": "hard",
+      "sourceVersion": "continuity-benchmark-v1",
+      "sourceHash": "2b66c641e0b6d3dc22761cea00e246ed5f34c8fd32488d51b15e4327a47da319",
+      "knownIssues": [
+        {
+          "code": "branch_divergence",
+          "severity": "P0",
+          "description": "branch_divergence seeded defect at chapter 3200"
+        }
+      ]
+    }
+  ],
+  "decisionRequired": [
+    "interRaterVarianceThreshold"
+  ],
+  "datasetSha256": "c6c22e8922df49a9dbff52321e09ae463163e99726db5530eb08cf5f8f7d76ef"
+}

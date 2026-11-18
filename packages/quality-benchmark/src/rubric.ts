@@ -2,6 +2,9 @@ import { sha256Json } from "@novel-brain/continuity-benchmark";
 
 import { RELEASE_QUALITY_RUBRIC_VERSION } from "./dataset";
 
+export const APPROVED_QUALITY_RUBRIC_SHA256 =
+  "4a3bd567da67c0340a3efa07c78e0efc50190793ba7f22cdade3e72bf6bb7e35" as const;
+
 export type QualityBenchmarkDimensionId =
   | "p0_fact_loss"
   | "knowledge_boundary_violation"

@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { createContinuityPlan, generateContinuityFixture } from "@novel-brain/continuity-benchmark";
 import { describe, expect, it } from "vitest";
 
 import { runQualityBenchmarkCli } from "../src/cli";
@@ -13,46 +14,61 @@ describe("quality benchmark cli", () => {
     try {
       const datasetPath = path.join(directory, "dataset.json");
       const rubricPath = path.join(directory, "rubric.json");
+      const baselineCandidatePath = path.join(directory, "baseline-candidate.json");
+      const candidateCandidatePath = path.join(directory, "candidate-candidate.json");
       const baselineRunPath = path.join(directory, "baseline-run.json");
       const candidateRunPath = path.join(directory, "candidate-run.json");
       const baselineReportPath = path.join(directory, "baseline-report.json");
       const candidateReportPath = path.join(directory, "candidate-report.json");
       const regressionPath = path.join(directory, "regression.json");
 
-      await runQualityBenchmarkCli([
-        "dataset",
-        "--seed",
-        "20261118",
-        "--source-commit",
-        "abc1234",
-        "--tier",
-        "minimum",
-        "--output",
-        datasetPath,
-      ]);
+      await runQualityBenchmarkCli(["dataset", "--output", datasetPath]);
       await runQualityBenchmarkCli(["rubric", "--output", rubricPath]);
+      const fixture = generateContinuityFixture({
+        plan: createContinuityPlan({ seed: 20261118, tier: "full" }),
+        sourceCommit: "38a85cb3f45bc9d1a6f8bcf66f5b5d50c16132ca",
+      });
+      const baseline = createQualityRun({ runId: "baseline" });
+      const candidate = createQualityRun({
+        runId: "candidate",
+        promptVersion: "prompt-v2",
+      });
+      const continuityFindings = fixture.defects.map((defect) => ({
+        family: defect.family,
+        severity: defect.severity,
+        chapterNumber: defect.chapterNumber,
+        branchId: defect.branchId,
+        entityIds: defect.entityIds,
+        sourceFactId: defect.sourceFactId,
+        versionNodeId: defect.versionNodeId,
+        evidence: defect.evidence,
+      }));
       await writeFile(
-        baselineRunPath,
-        `${JSON.stringify(createQualityRun({ runId: "baseline" }), null, 2)}\n`,
+        baselineCandidatePath,
+        `${JSON.stringify(candidateArtifact(baseline, continuityFindings), null, 2)}\n`,
         "utf8",
       );
       await writeFile(
-        candidateRunPath,
-        `${JSON.stringify(
-          createQualityRun({
-            runId: "candidate",
-            promptVersion: "prompt-v2",
-          }),
-          null,
-          2,
-        )}\n`,
+        candidateCandidatePath,
+        `${JSON.stringify(candidateArtifact(candidate, continuityFindings), null, 2)}\n`,
         "utf8",
       );
 
-      for (const [runPath, reportPath] of [
-        [baselineRunPath, baselineReportPath],
-        [candidateRunPath, candidateReportPath],
+      for (const [candidatePath, runPath, reportPath] of [
+        [baselineCandidatePath, baselineRunPath, baselineReportPath],
+        [candidateCandidatePath, candidateRunPath, candidateReportPath],
       ] as const) {
+        await runQualityBenchmarkCli([
+          "execute",
+          "--dataset",
+          datasetPath,
+          "--rubric",
+          rubricPath,
+          "--candidate",
+          candidatePath,
+          "--output",
+          runPath,
+        ]);
         await runQualityBenchmarkCli([
           "evaluate",
           "--dataset",
@@ -94,3 +110,19 @@ describe("quality benchmark cli", () => {
     }
   });
 });
+
+function candidateArtifact(
+  run: ReturnType<typeof createQualityRun>,
+  continuityFindings: readonly Record<string, unknown>[],
+) {
+  return {
+    schemaVersion: 1,
+    candidateId: run.runId,
+    datasetSha256: run.datasetSha256,
+    rubricVersion: run.rubricVersion,
+    provenance: run.provenance,
+    continuityFindings,
+    humanScores: run.scores.filter((score) => score.scorerType === "human_blind"),
+    decisions: run.decisions,
+  };
+}

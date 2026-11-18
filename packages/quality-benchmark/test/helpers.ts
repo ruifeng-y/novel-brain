@@ -1,12 +1,8 @@
-import { createQualityBenchmarkDataset } from "../src/dataset";
+import { createApprovedQualityBenchmarkDataset } from "../src/dataset";
 import type { QualityBenchmarkRun, QualityMetricScore } from "../src/evaluator";
 import { createReleaseQualityRubric } from "../src/rubric";
 
-export const qualityDataset = createQualityBenchmarkDataset({
-  seed: 20261118,
-  sourceCommit: "abc1234",
-  continuityTier: "minimum",
-});
+export const qualityDataset = createApprovedQualityBenchmarkDataset();
 export const qualityRubric = createReleaseQualityRubric();
 
 export function createQualityRun(input: {
@@ -98,5 +94,6 @@ function score(
     scorerId,
     value,
     evidenceQuote,
+    confidence: 0.9,
   };
 }

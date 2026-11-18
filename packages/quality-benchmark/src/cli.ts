@@ -2,18 +2,20 @@ import path from "node:path";
 
 import { readJsonArtifact, writeJsonArtifact } from "@novel-brain/continuity-benchmark";
 
-import { createQualityBenchmarkDataset, type QualityBenchmarkDataset } from "./dataset";
+import { createApprovedQualityBenchmarkDataset, type QualityBenchmarkDataset } from "./dataset";
 import {
   evaluateQualityBenchmarkRun,
   type QualityBenchmarkReport,
   type QualityBenchmarkRun,
 } from "./evaluator";
+import { executeQualityBenchmarkCandidate, type QualityBenchmarkCandidate } from "./execute";
 import { compareQualityBenchmarkRuns, type QualityRegressionReport } from "./regression";
 import { createReleaseQualityRubric, type ReleaseQualityRubric } from "./rubric";
 
 export interface QualityBenchmarkCliResult {
   command: string;
   outputs: readonly string[];
+  passed: boolean;
 }
 
 export async function runQualityBenchmarkCli(
@@ -22,21 +24,37 @@ export async function runQualityBenchmarkCli(
   const { command, options } = parseArguments(argv);
   switch (command) {
     case "dataset": {
-      const dataset = createQualityBenchmarkDataset({
-        seed: Number(options.seed ?? "20261118"),
-        sourceCommit: required(options, "source-commit"),
-        continuityTier: parseTier(required(options, "tier")),
-      });
+      const dataset = createApprovedQualityBenchmarkDataset();
       const output = resolvePath(
         options.output ?? `artifacts/quality/benchmark/${dataset.manifest.seed}/dataset.json`,
       );
       await writeJsonArtifact(output, dataset);
-      return { command, outputs: [output] };
+      return { command, outputs: [output], passed: true };
     }
     case "rubric": {
       const output = resolvePath(options.output ?? "artifacts/quality/benchmark/rubric.json");
       await writeJsonArtifact(output, createReleaseQualityRubric());
-      return { command, outputs: [output] };
+      return { command, outputs: [output], passed: true };
+    }
+    case "execute": {
+      const dataset = await readJsonArtifact<QualityBenchmarkDataset>(
+        resolvePath(required(options, "dataset")),
+      );
+      const rubric = await readJsonArtifact<ReleaseQualityRubric>(
+        resolvePath(required(options, "rubric")),
+      );
+      const candidate = await readJsonArtifact<QualityBenchmarkCandidate>(
+        resolvePath(required(options, "candidate")),
+      );
+      const output = resolvePath(
+        options.output ??
+          path.join(path.dirname(resolvePath(required(options, "candidate"))), "quality-run.json"),
+      );
+      await writeJsonArtifact(
+        output,
+        executeQualityBenchmarkCandidate({ dataset, rubric, candidate }),
+      );
+      return { command, outputs: [output], passed: true };
     }
     case "evaluate": {
       const dataset = await readJsonArtifact<QualityBenchmarkDataset>(
@@ -52,8 +70,9 @@ export async function runQualityBenchmarkCli(
         options.output ??
           path.join(path.dirname(resolvePath(required(options, "run"))), "quality-report.json"),
       );
-      await writeJsonArtifact(output, evaluateQualityBenchmarkRun({ dataset, rubric, run }));
-      return { command, outputs: [output] };
+      const report = evaluateQualityBenchmarkRun({ dataset, rubric, run });
+      await writeJsonArtifact(output, report);
+      return { command, outputs: [output], passed: report.status === "passed" };
     }
     case "regress": {
       const baseline = await readJsonArtifact<QualityBenchmarkReport>(
@@ -71,18 +90,11 @@ export async function runQualityBenchmarkCli(
         candidate,
       });
       await writeJsonArtifact(output, report);
-      return { command, outputs: [output] };
+      return { command, outputs: [output], passed: report.rolloutAllowed };
     }
     default:
-      throw new Error("Usage: quality <dataset|rubric|evaluate|regress> [options]");
+      throw new Error("Usage: quality <dataset|rubric|execute|evaluate|regress> [options]");
   }
-}
-
-function parseTier(value: string): "minimum" | "full" | "maximum" {
-  if (value === "minimum" || value === "full" || value === "maximum") {
-    return value;
-  }
-  throw new Error("TIER_INVALID");
 }
 
 function parseArguments(argv: readonly string[]): {
@@ -122,6 +134,9 @@ function resolvePath(value: string): string {
 async function main(): Promise<void> {
   const result = await runQualityBenchmarkCli(process.argv.slice(2));
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  if (!result.passed) {
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1]?.endsWith("cli.js") || process.argv[1]?.endsWith("cli.ts")) {

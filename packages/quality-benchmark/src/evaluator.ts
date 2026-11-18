@@ -1,4 +1,5 @@
 import { sha256Json } from "@novel-brain/continuity-benchmark";
+import type { ContinuityEvaluation } from "@novel-brain/continuity-benchmark";
 
 import type {
   QualityAdversarialCase,
@@ -6,6 +7,7 @@ import type {
   QualityChapterSample,
 } from "./dataset";
 import { verifyQualityBenchmarkDataset } from "./dataset";
+import { APPROVED_QUALITY_BENCHMARK_DATASET_SHA256 } from "./dataset";
 import type {
   QualityBenchmarkDimensionId,
   QualityDimensionDefinition,
@@ -13,6 +15,7 @@ import type {
   ReleaseQualityRubric,
 } from "./rubric";
 import { verifyReleaseQualityRubric } from "./rubric";
+import { APPROVED_QUALITY_RUBRIC_SHA256 } from "./rubric";
 
 export interface QualityMetricScore {
   sampleId: string;
@@ -21,6 +24,7 @@ export interface QualityMetricScore {
   scorerId: string;
   value: number;
   evidenceQuote: string;
+  confidence: number;
 }
 
 export interface QualityBenchmarkDecision {
@@ -46,6 +50,7 @@ export interface QualityBenchmarkRun {
   };
   scores: readonly QualityMetricScore[];
   decisions: readonly QualityBenchmarkDecision[];
+  continuityEvaluation?: ContinuityEvaluation;
 }
 
 export interface QualityMetricResult {
@@ -59,6 +64,7 @@ export interface QualityMetricResult {
 
 export interface QualityBenchmarkReport {
   schemaVersion: 1;
+  runId: string;
   status: "passed" | "blocked";
   releaseGate: {
     passed: boolean;
@@ -71,6 +77,9 @@ export interface QualityBenchmarkReport {
     varianceThreshold: number | null;
   };
   provenance: QualityBenchmarkRun["provenance"];
+  scores: readonly QualityMetricScore[];
+  decisions: readonly QualityBenchmarkDecision[];
+  continuityEvaluation: ContinuityEvaluation | null;
   datasetSha256: string;
   rubricVersion: string;
   sha256: string;
@@ -94,11 +103,17 @@ export function evaluateQualityBenchmarkRun(input: {
   if (!verifyQualityBenchmarkDataset(dataset)) {
     blockers.add("dataset-digest-mismatch");
   }
+  if (dataset.manifest.datasetSha256 !== APPROVED_QUALITY_BENCHMARK_DATASET_SHA256) {
+    blockers.add("dataset-not-approved");
+  }
   if (run.rubricVersion !== rubric.rubricVersion) {
     blockers.add("rubric-version-mismatch");
   }
   if (!verifyReleaseQualityRubric(rubric)) {
     blockers.add("rubric-digest-mismatch");
+  }
+  if (rubric.sha256 !== APPROVED_QUALITY_RUBRIC_SHA256) {
+    blockers.add("rubric-not-approved");
   }
   if (Object.values(run.provenance).some((value) => value.trim().length === 0)) {
     blockers.add("run-provenance-incomplete");
@@ -116,6 +131,9 @@ export function evaluateQualityBenchmarkRun(input: {
       !dimension ||
       !isFiniteScore(score.value) ||
       score.scorerId.trim().length === 0 ||
+      !Number.isFinite(score.confidence) ||
+      score.confidence < 0 ||
+      score.confidence > 1 ||
       !evidenceExistsInSample(sample, score.evidenceQuote)
     ) {
       blockers.add("score-evidence-invalid");
@@ -162,6 +180,7 @@ export function evaluateQualityBenchmarkRun(input: {
   const blockerList = [...blockers].sort();
   const reportWithoutHash = {
     schemaVersion: 1 as const,
+    runId: run.runId,
     status: blockerList.length === 0 ? ("passed" as const) : ("blocked" as const),
     releaseGate: {
       passed: blockerList.length === 0,
@@ -174,6 +193,9 @@ export function evaluateQualityBenchmarkRun(input: {
       varianceThreshold,
     },
     provenance: run.provenance,
+    scores: run.scores,
+    decisions: run.decisions,
+    continuityEvaluation: run.continuityEvaluation ?? null,
     datasetSha256: run.datasetSha256,
     rubricVersion: run.rubricVersion,
   };
