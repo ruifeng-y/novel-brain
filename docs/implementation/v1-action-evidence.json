@@ -42,7 +42,7 @@
           "api": "/api/v1/auth/password/reset",
           "spec": "apps/web/e2e/parity/auth.spec.ts",
           "test": "recovers a forgotten password from the email link",
-          "assertion": "await page.getByLabel(\"密码\").fill(newPassword)"
+          "assertion": "expect((await resetSession.json()).data.user.displayName).toBe(\"找回密码作者\")"
         },
         {
           "id": "logout-session",
@@ -50,7 +50,7 @@
           "api": "/api/v1/auth/logout",
           "spec": "apps/web/e2e/parity/auth.spec.ts",
           "test": "registers, enters the workspace and logs out",
-          "assertion": "expect(loggedOutSession.status()).toBe(401)"
+          "assertion": "expect(revokedSession.status()).toBe(401)"
         },
         {
           "id": "disabled-account",
