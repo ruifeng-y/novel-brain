@@ -4,7 +4,7 @@ import { createContinuityPlan, generateContinuityFixture } from "@novel-brain/co
 
 import { evaluateQualityBenchmarkRun } from "../src/evaluator";
 import { executeQualityBenchmarkCandidate } from "../src/execute";
-import { createQualityRun, qualityDataset, qualityRubric } from "./helpers";
+import { createQualityRun, qualityDataset, qualityReviewPolicy, qualityRubric } from "./helpers";
 
 describe("quality benchmark execution", () => {
   it("runs the deterministic continuity evaluator instead of trusting supplied scores", () => {
@@ -40,6 +40,7 @@ describe("quality benchmark execution", () => {
       dataset: qualityDataset,
       rubric: qualityRubric,
       run,
+      reviewPolicy: qualityReviewPolicy,
     });
 
     expect(run.continuityEvaluation?.releaseGate.passed).toBe(true);
@@ -83,9 +84,59 @@ describe("quality benchmark execution", () => {
       dataset: qualityDataset,
       rubric: qualityRubric,
       run,
+      reviewPolicy: qualityReviewPolicy,
     });
 
     expect(report.status).toBe("blocked");
     expect(report.releaseGate.blockers).toContain("threshold-failed:p0_fact_loss");
+  });
+
+  it("counts missed non-P0 defects as continuity conflicts", () => {
+    const fixture = generateContinuityFixture({
+      plan: createContinuityPlan({ seed: 20261118, tier: "full" }),
+      sourceCommit: "38a85cb3f45bc9d1a6f8bcf66f5b5d50c16132ca",
+    });
+    const humanRun = createQualityRun({ runId: "candidate-human" });
+    const nonP0DefectIds = new Set(
+      fixture.defects.filter((defect) => defect.severity !== "P0").map((defect) => defect.id),
+    );
+    const run = executeQualityBenchmarkCandidate({
+      dataset: qualityDataset,
+      rubric: qualityRubric,
+      candidate: {
+        schemaVersion: 1,
+        candidateId: "candidate-missing-p1-p2",
+        datasetSha256: qualityDataset.manifest.datasetSha256,
+        rubricVersion: qualityRubric.rubricVersion,
+        provenance: humanRun.provenance,
+        continuityFindings: fixture.defects
+          .filter((defect) => !nonP0DefectIds.has(defect.id))
+          .map((defect) => ({
+            family: defect.family,
+            severity: defect.severity,
+            chapterNumber: defect.chapterNumber,
+            branchId: defect.branchId,
+            entityIds: defect.entityIds,
+            sourceFactId: defect.sourceFactId,
+            versionNodeId: defect.versionNodeId,
+            evidence: defect.evidence,
+          })),
+        humanScores: humanRun.scores.filter((score) => score.scorerType === "human_blind"),
+        decisions: humanRun.decisions,
+      },
+    });
+    const report = evaluateQualityBenchmarkRun({
+      dataset: qualityDataset,
+      rubric: qualityRubric,
+      run,
+      reviewPolicy: qualityReviewPolicy,
+    });
+    const conflictMetric = report.metrics.find(
+      (metric) => metric.id === "continuity_conflicts_per_50k",
+    );
+
+    expect(conflictMetric?.value).toBeGreaterThan(0);
+    expect(report.releaseGate.blockers).toContain("threshold-failed:continuity_conflicts_per_50k");
+    expect(report.releaseGate.blockers).not.toContain("threshold-failed:p0_fact_loss");
   });
 });

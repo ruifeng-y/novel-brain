@@ -41,17 +41,9 @@ export class EvalRepository implements OnModuleDestroy {
     rubric: ReleaseQualityRubric;
     run: QualityBenchmarkRun;
     report: QualityBenchmarkReport;
-  }): Promise<void> {
+  }): Promise<QualityBenchmarkReport> {
     const { userId, dataset, rubric, run, report } = input;
-    await withTenantTransaction(this.db, userId, async (transaction) => {
-      const existing = await transaction
-        .select({ id: evalRuns.id })
-        .from(evalRuns)
-        .where(and(eq(evalRuns.userId, userId), eq(evalRuns.runKey, run.runId)))
-        .limit(1);
-      if (existing.length > 0) {
-        return;
-      }
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       if (dataset.manifest.entries.length > 0) {
         await transaction
           .insert(evalCases)
@@ -72,19 +64,37 @@ export class EvalRepository implements OnModuleDestroy {
           .onConflictDoNothing();
       }
       const evalRunId = uuidv7();
-      await transaction.insert(evalRuns).values({
-        id: evalRunId,
-        userId,
-        runKey: run.runId,
-        datasetSha256: run.datasetSha256,
-        rubricVersion: run.rubricVersion,
-        rubricSha256: rubric.sha256,
-        status: report.status,
-        reportSha256: report.sha256,
-        provenance: run.provenance as unknown as Record<string, unknown>,
-        report: report as unknown as Record<string, unknown>,
-        continuityEvaluation: run.continuityEvaluation as unknown as Record<string, unknown>,
-      });
+      const [inserted] = await transaction
+        .insert(evalRuns)
+        .values({
+          id: evalRunId,
+          userId,
+          runKey: run.runId,
+          datasetSha256: run.datasetSha256,
+          rubricVersion: run.rubricVersion,
+          rubricSha256: rubric.sha256,
+          status: report.status,
+          reportSha256: report.sha256,
+          provenance: run.provenance as unknown as Record<string, unknown>,
+          report: report as unknown as Record<string, unknown>,
+          continuityFindings: run.continuityFindings as unknown as Array<Record<string, unknown>>,
+          continuityEvaluation: run.continuityEvaluation as unknown as Record<string, unknown>,
+        })
+        .onConflictDoNothing({
+          target: [evalRuns.userId, evalRuns.runKey],
+        })
+        .returning({ id: evalRuns.id });
+      if (!inserted) {
+        const [existing] = await transaction
+          .select({ report: evalRuns.report })
+          .from(evalRuns)
+          .where(and(eq(evalRuns.userId, userId), eq(evalRuns.runKey, run.runId)))
+          .limit(1);
+        if (!existing) {
+          throw new Error("EVAL_RUN_PERSISTENCE_CONFLICT");
+        }
+        return existing.report as unknown as QualityBenchmarkReport;
+      }
       if (run.scores.length > 0) {
         await transaction.insert(evalScores).values(
           run.scores.map((score) => ({
@@ -98,9 +108,14 @@ export class EvalRepository implements OnModuleDestroy {
             value: score.value,
             confidence: score.confidence,
             evidenceQuote: score.evidenceQuote,
+            evidenceQuotes: [...(score.evidenceQuotes ?? [])],
+            reviewerAttestationId: score.reviewerAttestationId ?? null,
+            reviewedAt: score.reviewedAt ? new Date(score.reviewedAt) : null,
+            blindPacketSha256: score.blindPacketSha256 ?? null,
           })),
         );
       }
+      return report;
     });
   }
 
@@ -125,6 +140,11 @@ export class EvalRepository implements OnModuleDestroy {
     result: QualityRegressionReport;
   }): Promise<void> {
     const { userId, baselineRunKey, candidateRunKey, result } = input;
+    const p0Baseline = result.p0.baseline;
+    const p0Candidate = result.p0.candidate;
+    if (p0Baseline === null || p0Candidate === null) {
+      throw new Error("EVAL_GATE_P0_METRIC_MISSING");
+    }
     await withTenantTransaction(this.db, userId, async (transaction) => {
       const rows = await transaction
         .select({ id: evalRuns.id, runKey: evalRuns.runKey })
@@ -145,8 +165,8 @@ export class EvalRepository implements OnModuleDestroy {
           rolloutAllowed: result.rolloutAllowed,
           blockers: [...result.blockers],
           changedProvenance: [...result.changedProvenance],
-          p0Baseline: result.p0.baseline,
-          p0Candidate: result.p0.candidate,
+          p0Baseline,
+          p0Candidate,
         })
         .onConflictDoNothing();
     });

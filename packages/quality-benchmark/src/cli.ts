@@ -17,6 +17,7 @@ import { compareQualityBenchmarkRuns, type QualityRegressionReport } from "./reg
 import {
   APPROVED_QUALITY_RUBRIC_SHA256,
   verifyReleaseQualityRubric,
+  type QualityBenchmarkReviewPolicy,
   type ReleaseQualityRubric,
 } from "./rubric";
 
@@ -92,7 +93,13 @@ export async function runQualityBenchmarkCli(
         options.output ??
           path.join(path.dirname(resolvePath(required(options, "run"))), "quality-report.json"),
       );
-      const report = evaluateQualityBenchmarkRun({ dataset, rubric, run });
+      const reviewPolicy = await optionalReviewPolicy(options);
+      const report = evaluateQualityBenchmarkRun({
+        dataset,
+        rubric,
+        run,
+        ...(reviewPolicy ? { reviewPolicy } : {}),
+      });
       await writeJsonArtifact(output, report);
       return { command, outputs: [output], passed: report.status === "passed" };
     }
@@ -107,9 +114,11 @@ export async function runQualityBenchmarkCli(
         options.output ??
           path.join(path.dirname(resolvePath(required(options, "candidate"))), "regression.json"),
       );
+      const reviewPolicy = await optionalReviewPolicy(options);
       const report: QualityRegressionReport = compareQualityBenchmarkRuns({
         baseline,
         candidate,
+        ...(reviewPolicy ? { reviewPolicy } : {}),
       });
       await writeJsonArtifact(output, report);
       return { command, outputs: [output], passed: report.rolloutAllowed };
@@ -147,6 +156,13 @@ function required(options: Record<string, string>, name: string): string {
     throw new Error(`Missing required --${name}`);
   }
   return value;
+}
+
+async function optionalReviewPolicy(
+  options: Record<string, string>,
+): Promise<QualityBenchmarkReviewPolicy | null> {
+  const value = options["review-policy"];
+  return value ? readJsonArtifact<QualityBenchmarkReviewPolicy>(resolvePath(value)) : null;
 }
 
 function resolvePath(value: string): string {

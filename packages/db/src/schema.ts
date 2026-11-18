@@ -23,6 +23,7 @@ import type {
 import {
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -5214,11 +5215,15 @@ export const evalRuns = pgTable(
     reportSha256: text("report_sha256").notNull(),
     provenance: jsonb("provenance").$type<Record<string, unknown>>().notNull(),
     report: jsonb("report").$type<Record<string, unknown>>().notNull(),
+    continuityFindings: jsonb("continuity_findings")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull(),
     continuityEvaluation: jsonb("continuity_evaluation").$type<Record<string, unknown>>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("eval_runs_user_run_key_unique").on(table.userId, table.runKey),
+    uniqueIndex("eval_runs_id_user_unique").on(table.id, table.userId),
     index("eval_runs_user_created_idx").on(table.userId, table.createdAt),
     index("eval_runs_dataset_status_idx").on(table.datasetSha256, table.status),
     check("eval_runs_dataset_hash_check", sql`${table.datasetSha256} ~ '^[a-f0-9]{64}$'`),
@@ -5235,9 +5240,7 @@ export const evalScores = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    runId: uuid("run_id")
-      .notNull()
-      .references(() => evalRuns.id, { onDelete: "cascade" }),
+    runId: uuid("run_id").notNull(),
     sampleId: text("sample_id").notNull(),
     dimension: text("dimension").notNull(),
     scorerType: text("scorer_type").notNull(),
@@ -5245,6 +5248,10 @@ export const evalScores = pgTable(
     value: real("value").notNull(),
     confidence: real("confidence").notNull(),
     evidenceQuote: text("evidence_quote").notNull(),
+    evidenceQuotes: jsonb("evidence_quotes").$type<string[]>().notNull().default([]),
+    reviewerAttestationId: text("reviewer_attestation_id"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    blindPacketSha256: text("blind_packet_sha256"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -5256,6 +5263,12 @@ export const evalScores = pgTable(
       table.scorerId,
     ),
     index("eval_scores_user_run_idx").on(table.userId, table.runId),
+    index("eval_scores_run_attestation_idx").on(table.runId, table.reviewerAttestationId),
+    foreignKey({
+      name: "eval_scores_run_user_fk",
+      columns: [table.runId, table.userId],
+      foreignColumns: [evalRuns.id, evalRuns.userId],
+    }).onDelete("cascade"),
     check(
       "eval_scores_dimension_check",
       sql`${table.dimension} in ('p0_fact_loss', 'knowledge_boundary_violation', 'outline_adherence', 'hook_prose_score', 'continuity_conflicts_per_50k')`,
@@ -5269,6 +5282,10 @@ export const evalScores = pgTable(
       sql`${table.confidence} >= 0 and ${table.confidence} <= 1`,
     ),
     check("eval_scores_evidence_check", sql`length(trim(${table.evidenceQuote})) > 0`),
+    check(
+      "eval_scores_human_attestation_check",
+      sql`${table.scorerType} <> 'human_blind' or (${table.reviewerAttestationId} is not null and length(trim(${table.reviewerAttestationId})) > 0 and ${table.reviewedAt} is not null and ${table.blindPacketSha256} is not null and ${table.blindPacketSha256} ~ '^[a-f0-9]{64}$')`,
+    ),
   ],
 );
 
@@ -5279,12 +5296,8 @@ export const evalGates = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    baselineRunId: uuid("baseline_run_id")
-      .notNull()
-      .references(() => evalRuns.id, { onDelete: "restrict" }),
-    candidateRunId: uuid("candidate_run_id")
-      .notNull()
-      .references(() => evalRuns.id, { onDelete: "restrict" }),
+    baselineRunId: uuid("baseline_run_id").notNull(),
+    candidateRunId: uuid("candidate_run_id").notNull(),
     rolloutAllowed: boolean("rollout_allowed").notNull(),
     blockers: jsonb("blockers").$type<string[]>().notNull().default([]),
     changedProvenance: jsonb("changed_provenance").$type<string[]>().notNull().default([]),
@@ -5301,6 +5314,16 @@ export const evalGates = pgTable(
     index("eval_gates_user_created_idx").on(table.userId, table.createdAt),
     check("eval_gates_run_distinct_check", sql`${table.baselineRunId} <> ${table.candidateRunId}`),
     check("eval_gates_p0_check", sql`${table.p0Baseline} >= 0 and ${table.p0Candidate} >= 0`),
+    foreignKey({
+      name: "eval_gates_baseline_run_user_fk",
+      columns: [table.baselineRunId, table.userId],
+      foreignColumns: [evalRuns.id, evalRuns.userId],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "eval_gates_candidate_run_user_fk",
+      columns: [table.candidateRunId, table.userId],
+      foreignColumns: [evalRuns.id, evalRuns.userId],
+    }).onDelete("restrict"),
   ],
 );
 

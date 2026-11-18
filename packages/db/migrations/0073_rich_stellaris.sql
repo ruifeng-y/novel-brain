@@ -1,0 +1,3 @@
+ALTER TABLE "eval_scores" DROP CONSTRAINT "eval_scores_human_attestation_check";--> statement-breakpoint
+ALTER TABLE "eval_scores" ADD COLUMN "blind_packet_sha256" text;--> statement-breakpoint
+ALTER TABLE "eval_scores" ADD CONSTRAINT "eval_scores_human_attestation_check" CHECK ("eval_scores"."scorer_type" <> 'human_blind' or ("eval_scores"."reviewer_attestation_id" is not null and length(trim("eval_scores"."reviewer_attestation_id")) > 0 and "eval_scores"."reviewed_at" is not null and "eval_scores"."blind_packet_sha256" is not null and "eval_scores"."blind_packet_sha256" ~ '^[a-f0-9]{64}$'));

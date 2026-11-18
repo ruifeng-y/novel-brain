@@ -6,7 +6,7 @@ import { createContinuityPlan, generateContinuityFixture } from "@novel-brain/co
 import { describe, expect, it } from "vitest";
 
 import { runQualityBenchmarkCli } from "../src/cli";
-import { createQualityRun } from "./helpers";
+import { createQualityRun, qualityReviewPolicy } from "./helpers";
 
 describe("quality benchmark cli", () => {
   it("writes dataset, rubric, evaluation and regression artifacts", async () => {
@@ -21,6 +21,7 @@ describe("quality benchmark cli", () => {
       const baselineReportPath = path.join(directory, "baseline-report.json");
       const candidateReportPath = path.join(directory, "candidate-report.json");
       const regressionPath = path.join(directory, "regression.json");
+      const reviewPolicyPath = path.join(directory, "review-policy.json");
 
       await runQualityBenchmarkCli(["dataset", "--output", datasetPath]);
       await runQualityBenchmarkCli(["rubric", "--output", rubricPath]);
@@ -87,6 +88,48 @@ describe("quality benchmark cli", () => {
         baselineReportPath,
         "--candidate",
         candidateReportPath,
+        "--output",
+        regressionPath,
+      ]);
+      const blockedReport = JSON.parse(await readFile(candidateReportPath, "utf8")) as {
+        status: string;
+      };
+      const blockedRegression = JSON.parse(await readFile(regressionPath, "utf8")) as {
+        rolloutAllowed: boolean;
+      };
+      expect(blockedReport.status).toBe("blocked");
+      expect(blockedRegression.rolloutAllowed).toBe(false);
+      await writeFile(
+        reviewPolicyPath,
+        `${JSON.stringify(qualityReviewPolicy, null, 2)}\n`,
+        "utf8",
+      );
+      for (const [runPath, reportPath] of [
+        [baselineRunPath, baselineReportPath],
+        [candidateRunPath, candidateReportPath],
+      ] as const) {
+        await runQualityBenchmarkCli([
+          "evaluate",
+          "--dataset",
+          datasetPath,
+          "--rubric",
+          rubricPath,
+          "--run",
+          runPath,
+          "--review-policy",
+          reviewPolicyPath,
+          "--output",
+          reportPath,
+        ]);
+      }
+      await runQualityBenchmarkCli([
+        "regress",
+        "--baseline",
+        baselineReportPath,
+        "--candidate",
+        candidateReportPath,
+        "--review-policy",
+        reviewPolicyPath,
         "--output",
         regressionPath,
       ]);

@@ -1,4 +1,8 @@
-import { createContinuityPlan, generateContinuityFixture } from "@novel-brain/continuity-benchmark";
+import {
+  createContinuityPlan,
+  generateContinuityFixture,
+  sha256Json,
+} from "@novel-brain/continuity-benchmark";
 
 import { createApprovedQualityBenchmarkDataset } from "../src/dataset";
 import type { QualityBenchmarkRun, QualityMetricScore } from "../src/evaluator";
@@ -7,6 +11,16 @@ import { createReleaseQualityRubric } from "../src/rubric";
 
 export const qualityDataset = createApprovedQualityBenchmarkDataset();
 export const qualityRubric = createReleaseQualityRubric();
+export const qualityReviewPolicy = {
+  interRaterVarianceThreshold: 0.1,
+  owner: "release-owner",
+  rationale: "contract-test-only policy",
+  decidedAt: "2026-11-18T00:00:00.000Z",
+} as const;
+const qualityBlindPacketSha256 = sha256Json({
+  datasetSha256: qualityDataset.manifest.datasetSha256,
+  rubricSha256: qualityRubric.sha256,
+});
 const continuityFixture = generateContinuityFixture({
   plan: createContinuityPlan({
     seed: qualityDataset.manifest.seed,
@@ -40,11 +54,44 @@ export function createQualityRun(input: {
   const hookProse = input.hookProse ?? 4.5;
   const humanScores: QualityMetricScore[] = samples.flatMap((sample) => {
     const evidenceQuote = sample.text.slice(0, Math.min(16, sample.text.length));
+    const evidenceQuotes = sample.requiredBeats;
     return [
-      score(sample.id, "outline_adherence", "human_blind", "reviewer-a", outline, evidenceQuote),
-      score(sample.id, "outline_adherence", "human_blind", "reviewer-b", outline, evidenceQuote),
-      score(sample.id, "hook_prose_score", "human_blind", "reviewer-a", hookProse, evidenceQuote),
-      score(sample.id, "hook_prose_score", "human_blind", "reviewer-b", hookProse, evidenceQuote),
+      score(
+        sample.id,
+        "outline_adherence",
+        "human_blind",
+        "reviewer-a",
+        outline,
+        evidenceQuote,
+        evidenceQuotes,
+      ),
+      score(
+        sample.id,
+        "outline_adherence",
+        "human_blind",
+        "reviewer-b",
+        outline,
+        evidenceQuote,
+        evidenceQuotes,
+      ),
+      score(
+        sample.id,
+        "hook_prose_score",
+        "human_blind",
+        "reviewer-a",
+        hookProse,
+        evidenceQuote,
+        evidenceQuotes,
+      ),
+      score(
+        sample.id,
+        "hook_prose_score",
+        "human_blind",
+        "reviewer-b",
+        hookProse,
+        evidenceQuote,
+        evidenceQuotes,
+      ),
     ];
   });
   const missingP0Ids = new Set(
@@ -93,6 +140,7 @@ function score(
   scorerId: string,
   value: number,
   evidenceQuote: string,
+  evidenceQuotes: readonly string[],
 ): QualityMetricScore {
   return {
     sampleId,
@@ -101,6 +149,14 @@ function score(
     scorerId,
     value,
     evidenceQuote,
+    evidenceQuotes,
     confidence: 0.9,
+    ...(scorerType === "human_blind"
+      ? {
+          reviewerAttestationId: `attestation:${scorerId}`,
+          reviewedAt: "2026-11-18T00:00:00.000Z",
+          blindPacketSha256: qualityBlindPacketSha256,
+        }
+      : {}),
   };
 }

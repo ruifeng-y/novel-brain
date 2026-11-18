@@ -9,7 +9,7 @@ import {
 export const QUALITY_BENCHMARK_GENERATOR_VERSION = "quality-benchmark-v1" as const;
 export const RELEASE_QUALITY_RUBRIC_VERSION = "adr-0022-v1" as const;
 export const APPROVED_QUALITY_BENCHMARK_DATASET_SHA256 =
-  "c6c22e8922df49a9dbff52321e09ae463163e99726db5530eb08cf5f8f7d76ef" as const;
+  "90c8c8c44540ae99246e243ac16c1158d7cee3485ac4b5c1a901b3b7164e753b" as const;
 export const APPROVED_QUALITY_BENCHMARK_INPUT = {
   seed: 20261118,
   sourceCommit: "38a85cb3f45bc9d1a6f8bcf66f5b5d50c16132ca",
@@ -37,6 +37,7 @@ export interface QualityChapterSample {
   sourceVersion: string;
   sourceHash: string;
   knownIssues: readonly QualityKnownIssue[];
+  requiredBeats: readonly string[];
 }
 
 export interface QualityAdversarialCase {
@@ -49,6 +50,7 @@ export interface QualityAdversarialCase {
   sourceVersion: string;
   sourceHash: string;
   knownIssues: readonly QualityKnownIssue[];
+  requiredBeats: readonly string[];
   family: string;
   chapterNumber: number;
   branchId: string;
@@ -64,6 +66,7 @@ export interface QualityDatasetManifestEntry {
   sourceVersion: string;
   sourceHash: string;
   knownIssues: readonly QualityKnownIssue[];
+  requiredBeats: readonly string[];
 }
 
 export interface QualityBenchmarkManifest {
@@ -169,7 +172,11 @@ function createChapterSamples(seed: number, sourceCommit: string): QualityChapte
   return QUALITY_BENCHMARK_GENRES.flatMap((genre, genreIndex) =>
     Array.from({ length: 60 }, (_, index) => {
       const difficulty = (["easy", "medium", "hard"] as const)[index % 3]!;
-      const text = createChapterText(seed ^ Math.imul(genreIndex + 1, 0x9e3779b1), genre, index);
+      const { text, requiredBeats } = createChapterSample(
+        seed ^ Math.imul(genreIndex + 1, 0x9e3779b1),
+        genre,
+        index,
+      );
       const sourceVersion = "quality-chapter-sample-v1";
       const sourceHash = sha256Json({
         sourceCommit,
@@ -189,12 +196,17 @@ function createChapterSamples(seed: number, sourceCommit: string): QualityChapte
         sourceVersion,
         sourceHash,
         knownIssues: knownIssuesForDifficulty(difficulty, index),
+        requiredBeats,
       };
     }),
   );
 }
 
-function createChapterText(seed: number, genre: QualityBenchmarkGenre, index: number): string {
+function createChapterSample(
+  seed: number,
+  genre: QualityBenchmarkGenre,
+  index: number,
+): { text: string; requiredBeats: readonly string[] } {
   const random = mulberry32(seed);
   const sceneByGenre: Record<QualityBenchmarkGenre, readonly string[]> = {
     仙侠: [
@@ -218,7 +230,10 @@ function createChapterText(seed: number, genre: QualityBenchmarkGenre, index: nu
   while (paragraphs.join("").length < 180) {
     paragraphs.push(phrases[Math.floor(random() * phrases.length)]!);
   }
-  return paragraphs.join("");
+  return {
+    text: paragraphs.join(""),
+    requiredBeats: [phrases[index % phrases.length]!, phrases[(index + 1) % phrases.length]!],
+  };
 }
 
 function knownIssuesForDifficulty(
@@ -279,6 +294,7 @@ function toAdversarialCase(
         description: defect.description,
       },
     ],
+    requiredBeats: [defect.evidence],
     family: defect.family,
     chapterNumber: defect.chapterNumber,
     branchId: defect.branchId,
@@ -298,6 +314,7 @@ function toManifestEntry(
     sourceVersion: sample.sourceVersion,
     sourceHash: sample.sourceHash,
     knownIssues: sample.knownIssues,
+    requiredBeats: sample.requiredBeats,
   };
 }
 

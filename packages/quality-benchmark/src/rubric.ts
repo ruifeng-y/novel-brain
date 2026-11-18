@@ -3,7 +3,7 @@ import { sha256Json } from "@novel-brain/continuity-benchmark";
 import { RELEASE_QUALITY_RUBRIC_VERSION } from "./dataset";
 
 export const APPROVED_QUALITY_RUBRIC_SHA256 =
-  "4a3bd567da67c0340a3efa07c78e0efc50190793ba7f22cdade3e72bf6bb7e35" as const;
+  "247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b" as const;
 
 export type QualityBenchmarkDimensionId =
   | "p0_fact_loss"
@@ -44,7 +44,15 @@ export interface ReleaseQualityRubric {
   sourceAdr: "docs/adr/0022-quality-measurement-and-release-gate.md";
   dimensions: readonly QualityDimensionDefinition[];
   decisionRequired: readonly ["interRaterVarianceThreshold"];
+  reviewPolicy: null;
   sha256: string;
+}
+
+export interface QualityBenchmarkReviewPolicy {
+  interRaterVarianceThreshold: number;
+  owner: string;
+  rationale: string;
+  decidedAt: string;
 }
 
 export function createReleaseQualityRubric(): ReleaseQualityRubric {
@@ -97,7 +105,7 @@ export function createReleaseQualityRubric(): ReleaseQualityRubric {
         scoreRange: { min: 0, max: 1 },
         evidenceRequirements: [
           "每个必需节拍需要实际出现证据",
-          "人工评分必须记录 reviewer、confidence 和 adjudication",
+          "人工评分必须记录 reviewer、confidence；超过 approved variance threshold 时保持 blocked",
         ],
         scorerType: "human_blind",
         variance: {
@@ -142,6 +150,7 @@ export function createReleaseQualityRubric(): ReleaseQualityRubric {
       },
     ],
     decisionRequired: ["interRaterVarianceThreshold"],
+    reviewPolicy: null,
   };
   return {
     ...rubricWithoutHash,

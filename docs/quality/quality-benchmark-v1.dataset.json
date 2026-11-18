@@ -10,7 +10,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "8585e5f68b25c278552860c6a084318cf6f2f59822be607fd8142402c978aa06",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:002",
@@ -27,6 +31,10 @@
           "severity": "P2",
           "description": "medium sample 2 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -44,6 +52,10 @@
           "severity": "P1",
           "description": "hard sample 3 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -55,7 +67,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "31e42e6d59c4e03ad9b60c6db71d3e0d9151ffddefc73a46313ead71db24105b",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:005",
@@ -72,6 +88,10 @@
           "severity": "P2",
           "description": "medium sample 5 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -89,6 +109,10 @@
           "severity": "P1",
           "description": "hard sample 6 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -100,7 +124,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "9a85a9156602dfc140c435a72c9a12a51db41f84c0bd497b645c932be1375849",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:008",
@@ -117,6 +145,10 @@
           "severity": "P2",
           "description": "medium sample 8 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -134,6 +166,10 @@
           "severity": "P1",
           "description": "hard sample 9 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -145,7 +181,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "afd75cac43dad368eb45313c8d65507c54c8ad72efbceb5ffd18cc64f9b31c41",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:011",
@@ -162,6 +202,10 @@
           "severity": "P2",
           "description": "medium sample 11 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -179,6 +223,10 @@
           "severity": "P1",
           "description": "hard sample 12 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -190,7 +238,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "5bb64187bc08ceed0ef3a5fa757de0763cba20be957d6858c0dcbea706d1521f",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:014",
@@ -207,6 +259,10 @@
           "severity": "P2",
           "description": "medium sample 14 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -224,6 +280,10 @@
           "severity": "P1",
           "description": "hard sample 15 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -235,7 +295,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "a4116036da6e4cf0a85b5fb17c54b1aa150f8de02d52e8d4cc3db59eb60b08b2",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:017",
@@ -252,6 +316,10 @@
           "severity": "P2",
           "description": "medium sample 17 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -269,6 +337,10 @@
           "severity": "P1",
           "description": "hard sample 18 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -280,7 +352,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "10bbff3e946577456858b3f00935eece86584911ba53223564d50f805961926f",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:020",
@@ -297,6 +373,10 @@
           "severity": "P2",
           "description": "medium sample 20 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -314,6 +394,10 @@
           "severity": "P1",
           "description": "hard sample 21 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -325,7 +409,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "7b720221a0f0c97fe7290b533f9cdb764bc8598e5f0772231d7027dc692ef559",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:023",
@@ -342,6 +430,10 @@
           "severity": "P2",
           "description": "medium sample 23 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -359,6 +451,10 @@
           "severity": "P1",
           "description": "hard sample 24 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -370,7 +466,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "469f5e1676a211f32bffbafa3c2935014c69f687083e893b7e3ca27f3c35ee78",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:026",
@@ -387,6 +487,10 @@
           "severity": "P2",
           "description": "medium sample 26 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -404,6 +508,10 @@
           "severity": "P1",
           "description": "hard sample 27 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -415,7 +523,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "cc61e2f549fc9cba470ab74a1434d2222382ddf62e66f8bb3cdf576ecd282854",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:029",
@@ -432,6 +544,10 @@
           "severity": "P2",
           "description": "medium sample 29 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -449,6 +565,10 @@
           "severity": "P1",
           "description": "hard sample 30 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -460,7 +580,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "d2e7c289b4d3300dc953a78e6e1aecd3582839afa211c62b8c4740622baab6cb",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:032",
@@ -477,6 +601,10 @@
           "severity": "P2",
           "description": "medium sample 32 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -494,6 +622,10 @@
           "severity": "P1",
           "description": "hard sample 33 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -505,7 +637,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "a6ce324fc189ee2ec6134c6e9fc9b124a1c00f355ccee2cb4e9ca9d249325c7f",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:035",
@@ -522,6 +658,10 @@
           "severity": "P2",
           "description": "medium sample 35 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -539,6 +679,10 @@
           "severity": "P1",
           "description": "hard sample 36 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -550,7 +694,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "2f841a6ee2ecbe9f16b20c0a487fa388fd6e2e4548620ad05d67a740b15dabda",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:038",
@@ -567,6 +715,10 @@
           "severity": "P2",
           "description": "medium sample 38 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -584,6 +736,10 @@
           "severity": "P1",
           "description": "hard sample 39 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -595,7 +751,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "ca81aeb78a4433424e56cc390c6e491200eaf05d6d6bbf7b74d0f9e534b9b812",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:041",
@@ -612,6 +772,10 @@
           "severity": "P2",
           "description": "medium sample 41 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -629,6 +793,10 @@
           "severity": "P1",
           "description": "hard sample 42 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -640,7 +808,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "fd3b23c82a013f5b129dfc109186f3b7b79e58d65ded845613c73679fc54f693",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:044",
@@ -657,6 +829,10 @@
           "severity": "P2",
           "description": "medium sample 44 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -674,6 +850,10 @@
           "severity": "P1",
           "description": "hard sample 45 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -685,7 +865,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "9370b4c12e1baccc9a4628ace2746af4d5cda3b261dffa9252e59165e6281608",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:047",
@@ -702,6 +886,10 @@
           "severity": "P2",
           "description": "medium sample 47 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -719,6 +907,10 @@
           "severity": "P1",
           "description": "hard sample 48 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -730,7 +922,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "5dd56780bf6b2220a01fb47c42a2a051dc6f189baa5ee51961f0039a184fc28c",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:050",
@@ -747,6 +943,10 @@
           "severity": "P2",
           "description": "medium sample 50 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -764,6 +964,10 @@
           "severity": "P1",
           "description": "hard sample 51 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -775,7 +979,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "93c67f15b87fba4d2ae270f5b3a657773a365b4c35ebf27d84eb1333f2d2b6b8",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:053",
@@ -792,6 +1000,10 @@
           "severity": "P2",
           "description": "medium sample 53 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -809,6 +1021,10 @@
           "severity": "P1",
           "description": "hard sample 54 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -820,7 +1036,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "5cdc2c45f1343e9996c4e188cfdf86916d7b08a2ad62139e1902b5e12af06ca2",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:056",
@@ -837,6 +1057,10 @@
           "severity": "P2",
           "description": "medium sample 56 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -854,6 +1078,10 @@
           "severity": "P1",
           "description": "hard sample 57 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -865,7 +1093,11 @@
       "text": "山门钟声响过三遍，沈砚仍没有等到师兄的回信。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。山门钟声响过三遍，沈砚仍没有等到师兄的回信。山门钟声响过三遍，沈砚仍没有等到师兄的回信。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "6c55d709c315661e18f8143224821fbc09ff06ae5e22692f2d347623a827ad5a",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+      ]
     },
     {
       "id": "chapter:仙侠:059",
@@ -882,6 +1114,10 @@
           "severity": "P2",
           "description": "medium sample 59 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
       ]
     },
     {
@@ -899,6 +1135,10 @@
           "severity": "P1",
           "description": "hard sample 60 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+        "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
       ]
     },
     {
@@ -910,7 +1150,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "bc62a31966b1023161999435a95eb76d1315ef8c0f82ddc26196b11ca3c5c880",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:002",
@@ -927,6 +1171,10 @@
           "severity": "P2",
           "description": "medium sample 2 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -944,6 +1192,10 @@
           "severity": "P1",
           "description": "hard sample 3 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -955,7 +1207,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "3ceb38db1992c69150d8d13e7ca0592575a731352d457d5bf52955e36b75cfc3",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:005",
@@ -972,6 +1228,10 @@
           "severity": "P2",
           "description": "medium sample 5 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -989,6 +1249,10 @@
           "severity": "P1",
           "description": "hard sample 6 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1000,7 +1264,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "f6b3bf0fe0588118719c1b4fd465d7bbaf859aef3aa53afed91b2792e8922154",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:008",
@@ -1017,6 +1285,10 @@
           "severity": "P2",
           "description": "medium sample 8 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1034,6 +1306,10 @@
           "severity": "P1",
           "description": "hard sample 9 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1045,7 +1321,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "9284cc2eb4a5d5c347ea2dd5702f9c502a68f4ab943861f75a384c95fac0f314",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:011",
@@ -1062,6 +1342,10 @@
           "severity": "P2",
           "description": "medium sample 11 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1079,6 +1363,10 @@
           "severity": "P1",
           "description": "hard sample 12 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1090,7 +1378,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "49f13cc6a8fac32cdd4f42b421d23e3b6e6c4c104b4a666c5a94e1dfc1af4472",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:014",
@@ -1107,6 +1399,10 @@
           "severity": "P2",
           "description": "medium sample 14 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1124,6 +1420,10 @@
           "severity": "P1",
           "description": "hard sample 15 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1135,7 +1435,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "784c155b5dd068e1899b03baa8b71c645a74237d9a079b4446b4ab804f5d4e50",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:017",
@@ -1152,6 +1456,10 @@
           "severity": "P2",
           "description": "medium sample 17 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1169,6 +1477,10 @@
           "severity": "P1",
           "description": "hard sample 18 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1180,7 +1492,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "dd8bc4b3e8e68fcf3b7b81bd4321b2d641a80e69148975eb6197d423ee921d89",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:020",
@@ -1197,6 +1513,10 @@
           "severity": "P2",
           "description": "medium sample 20 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1214,6 +1534,10 @@
           "severity": "P1",
           "description": "hard sample 21 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1225,7 +1549,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "67b6b62c3d38f2c3734fd57b2b932b5fcaba4e3f30157f96a823fe8542044afb",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:023",
@@ -1242,6 +1570,10 @@
           "severity": "P2",
           "description": "medium sample 23 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1259,6 +1591,10 @@
           "severity": "P1",
           "description": "hard sample 24 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1270,7 +1606,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "0e2a84f39ed319a4b68122da8db2ca31d909cfcea857b5e6e10deb6773ddf25a",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:026",
@@ -1287,6 +1627,10 @@
           "severity": "P2",
           "description": "medium sample 26 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1304,6 +1648,10 @@
           "severity": "P1",
           "description": "hard sample 27 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1315,7 +1663,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "d20a40fc322c6bda044f6b5a645fa69a2b1a02d385fcac91ffc7530ad0819919",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:029",
@@ -1332,6 +1684,10 @@
           "severity": "P2",
           "description": "medium sample 29 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1349,6 +1705,10 @@
           "severity": "P1",
           "description": "hard sample 30 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1360,7 +1720,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "0df7e9d029caa7aa24a0865ab319583850e7047008b7cc2af6bdc1dbc7e59da8",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:032",
@@ -1377,6 +1741,10 @@
           "severity": "P2",
           "description": "medium sample 32 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1394,6 +1762,10 @@
           "severity": "P1",
           "description": "hard sample 33 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1405,7 +1777,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "421d9dc56d6d13433bb6a660564291cef25f1000d6003a8abec7a32d918d4abc",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:035",
@@ -1422,6 +1798,10 @@
           "severity": "P2",
           "description": "medium sample 35 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1439,6 +1819,10 @@
           "severity": "P1",
           "description": "hard sample 36 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1450,7 +1834,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "b239b522ba5959efe1317838416d91aede46f6d6f575b552defd5ec9608f7942",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:038",
@@ -1467,6 +1855,10 @@
           "severity": "P2",
           "description": "medium sample 38 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1484,6 +1876,10 @@
           "severity": "P1",
           "description": "hard sample 39 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1495,7 +1891,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "528830ff97d918565c0e6a9f60ed5cdd42c72f3c110be29106dd08b421203fd8",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:041",
@@ -1512,6 +1912,10 @@
           "severity": "P2",
           "description": "medium sample 41 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1529,6 +1933,10 @@
           "severity": "P1",
           "description": "hard sample 42 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1540,7 +1948,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "365dcec9e0ab90f840f6eccd0032bdbef333ca41f09823255aabc0a0ce2f91d6",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:044",
@@ -1557,6 +1969,10 @@
           "severity": "P2",
           "description": "medium sample 44 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1574,6 +1990,10 @@
           "severity": "P1",
           "description": "hard sample 45 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1585,7 +2005,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "deee5dee85e7bec9dc08d77a2f70e4a1ed1aeeb5cc773e622b1835a68654d2ae",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:047",
@@ -1602,6 +2026,10 @@
           "severity": "P2",
           "description": "medium sample 47 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1619,6 +2047,10 @@
           "severity": "P1",
           "description": "hard sample 48 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1630,7 +2062,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "d8da6bf49736d09e06272b871e309f4852c0571c039c002f37024a6235e5642a",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:050",
@@ -1647,6 +2083,10 @@
           "severity": "P2",
           "description": "medium sample 50 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1664,6 +2104,10 @@
           "severity": "P1",
           "description": "hard sample 51 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1675,7 +2119,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "5154a5a72e167d0d53d2f8ff21a5ee48df1a35a05f30c70d4103a92008d8cc6d",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:053",
@@ -1692,6 +2140,10 @@
           "severity": "P2",
           "description": "medium sample 53 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1709,6 +2161,10 @@
           "severity": "P1",
           "description": "hard sample 54 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1720,7 +2176,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "5fec771f5c050f68ba8e7e300c3200990ac387af491e9cb1645437b2bc086297",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:056",
@@ -1737,6 +2197,10 @@
           "severity": "P2",
           "description": "medium sample 56 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1754,6 +2218,10 @@
           "severity": "P1",
           "description": "hard sample 57 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1765,7 +2233,11 @@
       "text": "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。封地的粮册与官仓记录对不上，主簿却没有当场声张。城门将要落锁时，一名信使带着没有火漆的密函抵达。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。驿马在雨后泥道上减速，军报比约定的时刻晚了半日。城门将要落锁时，一名信使带着没有火漆的密函抵达。城门将要落锁时，一名信使带着没有火漆的密函抵达。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "e01e9aa4fcaf28415463a3f895854fc81725f08d2831f8836207dbdc2643ae28",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+      ]
     },
     {
       "id": "chapter:历史:059",
@@ -1782,6 +2254,10 @@
           "severity": "P2",
           "description": "medium sample 59 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
       ]
     },
     {
@@ -1799,6 +2275,10 @@
           "severity": "P1",
           "description": "hard sample 60 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+        "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
       ]
     },
     {
@@ -1810,7 +2290,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "23d0e2bbfb37932e038fb0fd3279d47de94ce3b3306ad051e79aae7e932f9591",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:002",
@@ -1827,6 +2311,10 @@
           "severity": "P2",
           "description": "medium sample 2 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -1844,6 +2332,10 @@
           "severity": "P1",
           "description": "hard sample 3 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -1855,7 +2347,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "02c8ee0f6437cc5a770436acccefb5d961434e11b55c3842eae43299959f36ae",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:005",
@@ -1872,6 +2368,10 @@
           "severity": "P2",
           "description": "medium sample 5 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -1889,6 +2389,10 @@
           "severity": "P1",
           "description": "hard sample 6 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -1900,7 +2404,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "c81851da493a05d405a36d4a19c95a2a210343c80da7f40d4c1d9eca006a35d5",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:008",
@@ -1917,6 +2425,10 @@
           "severity": "P2",
           "description": "medium sample 8 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -1934,6 +2446,10 @@
           "severity": "P1",
           "description": "hard sample 9 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -1945,7 +2461,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "a7bb4e0afd1c4354fd62eb55ab5e8932c235eed16b24fbd15b029fa52b58ba45",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:011",
@@ -1962,6 +2482,10 @@
           "severity": "P2",
           "description": "medium sample 11 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -1979,6 +2503,10 @@
           "severity": "P1",
           "description": "hard sample 12 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -1990,7 +2518,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "77c75d53a3c2f0024b5ad8b6eea59fe77d6cef13998f7c23b440fb40fa31b809",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:014",
@@ -2007,6 +2539,10 @@
           "severity": "P2",
           "description": "medium sample 14 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2024,6 +2560,10 @@
           "severity": "P1",
           "description": "hard sample 15 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2035,7 +2575,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "f021929099d5aa963bf6c90430b85de6be96ac1c7a000a39079cf8c24bfd2e80",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:017",
@@ -2052,6 +2596,10 @@
           "severity": "P2",
           "description": "medium sample 17 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2069,6 +2617,10 @@
           "severity": "P1",
           "description": "hard sample 18 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2080,7 +2632,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "856dd1ecb4efd5aa8e3477377a2fc83b91aaf8813b2b2a6dc550a7ae2e0a326d",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:020",
@@ -2097,6 +2653,10 @@
           "severity": "P2",
           "description": "medium sample 20 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2114,6 +2674,10 @@
           "severity": "P1",
           "description": "hard sample 21 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2125,7 +2689,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "67c448c92d5957843660a92efb363075c1662f7e44f1d9dd5cd20cb11e16d091",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:023",
@@ -2142,6 +2710,10 @@
           "severity": "P2",
           "description": "medium sample 23 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2159,6 +2731,10 @@
           "severity": "P1",
           "description": "hard sample 24 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2170,7 +2746,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "d93bffc74eb3e9afb3a5cc63d3099ccc1b46ce61d43e7d29815e0d41220fe9c2",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:026",
@@ -2187,6 +2767,10 @@
           "severity": "P2",
           "description": "medium sample 26 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2204,6 +2788,10 @@
           "severity": "P1",
           "description": "hard sample 27 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2215,7 +2803,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "832d941b77aee0c9a76a704d21fa7a45574589668aafa650c65b33d32eca974d",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:029",
@@ -2232,6 +2824,10 @@
           "severity": "P2",
           "description": "medium sample 29 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2249,6 +2845,10 @@
           "severity": "P1",
           "description": "hard sample 30 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2260,7 +2860,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "2c7f0e74f5a3f81434556981fefad16ff632c97e5168bf9c98e5ef90de931096",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:032",
@@ -2277,6 +2881,10 @@
           "severity": "P2",
           "description": "medium sample 32 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2294,6 +2902,10 @@
           "severity": "P1",
           "description": "hard sample 33 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2305,7 +2917,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "ff4dd0078176852d1bc81a33caba001867cf581f4e519d6c227ed10da064e9e0",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:035",
@@ -2322,6 +2938,10 @@
           "severity": "P2",
           "description": "medium sample 35 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2339,6 +2959,10 @@
           "severity": "P1",
           "description": "hard sample 36 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2350,7 +2974,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "bdcf2933d7784fe17d0eb4852d50ca35cc50f488e769030214ac74b1b373ea38",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:038",
@@ -2367,6 +2995,10 @@
           "severity": "P2",
           "description": "medium sample 38 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2384,6 +3016,10 @@
           "severity": "P1",
           "description": "hard sample 39 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2395,7 +3031,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "49399caa5323e06be4debe0b4974e81f40694e81681ba59a06a9719b80231adc",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:041",
@@ -2412,6 +3052,10 @@
           "severity": "P2",
           "description": "medium sample 41 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2429,6 +3073,10 @@
           "severity": "P1",
           "description": "hard sample 42 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2440,7 +3088,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "9712825b4ee8e60fc361cdea370e6d696eab873eea10a601c1cbf5bf3c781a4f",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:044",
@@ -2457,6 +3109,10 @@
           "severity": "P2",
           "description": "medium sample 44 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2474,6 +3130,10 @@
           "severity": "P1",
           "description": "hard sample 45 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2485,7 +3145,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "5f912033a49917af23f41bf96533232b0990af3a16f38c6bc1994abe9fe272ae",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:047",
@@ -2502,6 +3166,10 @@
           "severity": "P2",
           "description": "medium sample 47 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2519,6 +3187,10 @@
           "severity": "P1",
           "description": "hard sample 48 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2530,7 +3202,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "5fcf53c91e899b1f1d8f511ac1f08f0a106b28853f04fde1db571c43b0591323",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:050",
@@ -2547,6 +3223,10 @@
           "severity": "P2",
           "description": "medium sample 50 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2564,6 +3244,10 @@
           "severity": "P1",
           "description": "hard sample 51 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2575,7 +3259,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "89a11e9d841596d1b165359dc846bba98392a556c2e1d2b5d9f5db784cea5314",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:053",
@@ -2592,6 +3280,10 @@
           "severity": "P2",
           "description": "medium sample 53 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2609,6 +3301,10 @@
           "severity": "P1",
           "description": "hard sample 54 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2620,7 +3316,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "8f11591b36d7457fcb21c09d5bdfde0d03ff1e8750f144dc4ab8be916ee10a13",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:056",
@@ -2637,6 +3337,10 @@
           "severity": "P2",
           "description": "medium sample 56 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2654,6 +3358,10 @@
           "severity": "P1",
           "description": "hard sample 57 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     },
     {
@@ -2665,7 +3373,11 @@
       "text": "会议室的投影停在最后一页，持股比例与公开资料不一致。调查组刚结束访谈，楼下的人却已经知道了问话内容。旧手机里留着一段录音，时间戳早于公司与项目立项。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。会议室的投影停在最后一页，持股比例与公开资料不一致。旧手机里留着一段录音，时间戳早于公司与项目立项。旧手机里留着一段录音，时间戳早于公司与项目立项。",
       "sourceVersion": "quality-chapter-sample-v1",
       "sourceHash": "f120fa6b49b390b3c9d8e05fc3eafada35fddea982c112da295b032e395d6f64",
-      "knownIssues": []
+      "knownIssues": [],
+      "requiredBeats": [
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+      ]
     },
     {
       "id": "chapter:都市:059",
@@ -2682,6 +3394,10 @@
           "severity": "P2",
           "description": "medium sample 59 ends without a decisive hook"
         }
+      ],
+      "requiredBeats": [
+        "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。"
       ]
     },
     {
@@ -2699,6 +3415,10 @@
           "severity": "P1",
           "description": "hard sample 60 contains a motivation discontinuity"
         }
+      ],
+      "requiredBeats": [
+        "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+        "会议室的投影停在最后一页，持股比例与公开资料不一致。"
       ]
     }
   ],
@@ -2718,6 +3438,9 @@
           "severity": "P0",
           "description": "knowledge_boundary seeded defect at chapter 140"
         }
+      ],
+      "requiredBeats": [
+        "沈砚在顾青尚不知情时，当众说出了只有作者真相才知道的身世秘密。 与已确认事实“身世：真实身世被宗门封存”冲突。"
       ],
       "family": "knowledge_boundary",
       "chapterNumber": 140,
@@ -2741,6 +3464,9 @@
           "description": "knowledge_boundary seeded defect at chapter 280"
         }
       ],
+      "requiredBeats": [
+        "闻雪在没有任何见证或调查事件之前，准确说出了沈砚被封存的身世。 与已确认事实“身世：真实身世被宗门封存”冲突。"
+      ],
       "family": "knowledge_boundary",
       "chapterNumber": 280,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -2762,6 +3488,9 @@
           "severity": "P0",
           "description": "knowledge_boundary seeded defect at chapter 420"
         }
+      ],
+      "requiredBeats": [
+        "顾青把另一条平行版本里的未来真相，直接当成当前时间线已知事实使用。 与已确认事实“身世：真实身世被宗门封存”冲突。"
       ],
       "family": "knowledge_boundary",
       "chapterNumber": 420,
@@ -2785,6 +3514,9 @@
           "description": "body_continuity seeded defect at chapter 560"
         }
       ],
+      "requiredBeats": [
+        "左臂骨折尚未痊愈，沈砚却以双手结出完整剑印。 与已确认事实“身体：左臂骨折尚未痊愈”冲突。"
+      ],
       "family": "body_continuity",
       "chapterNumber": 560,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -2806,6 +3538,9 @@
           "severity": "P0",
           "description": "body_continuity seeded defect at chapter 700"
         }
+      ],
+      "requiredBeats": [
+        "伤口没有治疗事件，失去的左手却突然重新握住长剑。 与已确认事实“身体：左臂骨折尚未痊愈”冲突。"
       ],
       "family": "body_continuity",
       "chapterNumber": 700,
@@ -2829,6 +3564,9 @@
           "description": "body_continuity seeded defect at chapter 840"
         }
       ],
+      "requiredBeats": [
+        "返魂代价已经耗尽，沈砚仍无来源地恢复了全部能力。 与已确认事实“身体：左臂骨折尚未痊愈”冲突。"
+      ],
       "family": "body_continuity",
       "chapterNumber": 840,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -2850,6 +3588,9 @@
           "severity": "P0",
           "description": "identity_transition seeded defect at chapter 980"
         }
+      ],
+      "requiredBeats": [
+        "裴照没有经历身份转移事件，却被旁人直接认定为同一灵魂。 与已确认事实“身份：灵魂转移至新身体”冲突。"
       ],
       "family": "identity_transition",
       "chapterNumber": 980,
@@ -2873,6 +3614,9 @@
           "description": "identity_transition seeded defect at chapter 1120"
         }
       ],
+      "requiredBeats": [
+        "新身体中的角色未经夺舍或转世规则，自动继承了全部本体记忆。 与已确认事实“身份：灵魂转移至新身体”冲突。"
+      ],
       "family": "identity_transition",
       "chapterNumber": 1120,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -2894,6 +3638,9 @@
           "severity": "P0",
           "description": "identity_transition seeded defect at chapter 1260"
         }
+      ],
+      "requiredBeats": [
+        "独立分身被写成共享本体实时记忆，绕过了分身限制。 与已确认事实“身份：灵魂转移至新身体”冲突。"
       ],
       "family": "identity_transition",
       "chapterNumber": 1260,
@@ -2917,6 +3664,9 @@
           "description": "inventory_rights seeded defect at chapter 1400"
         }
       ],
+      "requiredBeats": [
+        "忘川书仍由沈砚保管，顾青却无需借用便可任意支配。 与已确认事实“所有权：忘川书由沈砚保管”冲突。"
+      ],
       "family": "inventory_rights",
       "chapterNumber": 1400,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -2938,6 +3688,9 @@
           "severity": "P1",
           "description": "inventory_rights seeded defect at chapter 1540"
         }
+      ],
+      "requiredBeats": [
+        "照骨镜已经交给宗门封存，闻雪却从私人仓库直接取出。 与已确认事实“所有权：忘川书由沈砚保管”冲突。"
       ],
       "family": "inventory_rights",
       "chapterNumber": 1540,
@@ -2961,6 +3714,9 @@
           "description": "inventory_rights seeded defect at chapter 1680"
         }
       ],
+      "requiredBeats": [
+        "归墟令的使用权没有转移事件，却被另一角色当作自己的信物。 与已确认事实“所有权：忘川书由沈砚保管”冲突。"
+      ],
       "family": "inventory_rights",
       "chapterNumber": 1680,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -2982,6 +3738,9 @@
           "severity": "P1",
           "description": "travel_time seeded defect at chapter 1820"
         }
+      ],
+      "requiredBeats": [
+        "北境关比旧城晚三十日，沈砚却在同一日抵达两地。 与已确认事实“时间：北境关比旧城晚三十日”冲突。"
       ],
       "family": "travel_time",
       "chapterNumber": 1820,
@@ -3005,6 +3764,9 @@
           "description": "travel_time seeded defect at chapter 1960"
         }
       ],
+      "requiredBeats": [
+        "路线需要十二小时，角色却在下一幕开始前徒步往返。 与已确认事实“时间：北境关比旧城晚三十日”冲突。"
+      ],
       "family": "travel_time",
       "chapterNumber": 1960,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -3026,6 +3788,9 @@
           "severity": "P1",
           "description": "travel_time seeded defect at chapter 2100"
         }
+      ],
+      "requiredBeats": [
+        "消息尚未送达，对岸人物却已经知道刚发生的秘密。 与已确认事实“时间：北境关比旧城晚三十日”冲突。"
       ],
       "family": "travel_time",
       "chapterNumber": 2100,
@@ -3049,6 +3814,9 @@
           "description": "foreshadow_payoff seeded defect at chapter 2240"
         }
       ],
+      "requiredBeats": [
+        "照骨镜尚未发生真名揭示，铜镜却已显示最终答案。 与已确认事实“预言：照骨镜会指向真名”冲突。"
+      ],
       "family": "foreshadow_payoff",
       "chapterNumber": 2240,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -3070,6 +3838,9 @@
           "severity": "P1",
           "description": "foreshadow_payoff seeded defect at chapter 2380"
         }
+      ],
+      "requiredBeats": [
+        "归墟令的双主伏笔没有回收事件，却被人物当作早已解释。 与已确认事实“预言：照骨镜会指向真名”冲突。"
       ],
       "family": "foreshadow_payoff",
       "chapterNumber": 2380,
@@ -3093,6 +3864,9 @@
           "description": "foreshadow_payoff seeded defect at chapter 2520"
         }
       ],
+      "requiredBeats": [
+        "假死旧信未到计划回收窗口，秘密已经被完整复述。 与已确认事实“预言：照骨镜会指向真名”冲突。"
+      ],
       "family": "foreshadow_payoff",
       "chapterNumber": 2520,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -3114,6 +3888,9 @@
           "severity": "P2",
           "description": "motivation_drift seeded defect at chapter 2660"
         }
+      ],
+      "requiredBeats": [
+        "顾青刚决定保护旧城证人，下一幕却主动把证人交给敌人。 与已确认事实“目标：必须保护旧城证人”冲突。"
       ],
       "family": "motivation_drift",
       "chapterNumber": 2660,
@@ -3137,6 +3914,9 @@
           "description": "motivation_drift seeded defect at chapter 2800"
         }
       ],
+      "requiredBeats": [
+        "角色没有经历新证据，却从誓死守护突然转为放弃目标。 与已确认事实“目标：必须保护旧城证人”冲突。"
+      ],
       "family": "motivation_drift",
       "chapterNumber": 2800,
       "branchId": "5b4dac52-5fe7-75cd-84d9-3bcdab55d0bd",
@@ -3158,6 +3938,9 @@
           "severity": "P2",
           "description": "motivation_drift seeded defect at chapter 2940"
         }
+      ],
+      "requiredBeats": [
+        "长期恐惧被无铺垫地抹去，行动理由与前文决定相反。 与已确认事实“目标：必须保护旧城证人”冲突。"
       ],
       "family": "motivation_drift",
       "chapterNumber": 2940,
@@ -3181,6 +3964,9 @@
           "description": "branch_divergence seeded defect at chapter 300"
         }
       ],
+      "requiredBeats": [
+        "早期分支中的未来事实被直接带入另一条未发生该事件的时间线。 与已确认事实“分支正史：仅 early-divergence 分支存在的连续性事实”冲突。"
+      ],
       "family": "branch_divergence",
       "chapterNumber": 300,
       "branchId": "97c3691c-e2ec-7f53-9404-d8d5df32a621",
@@ -3203,6 +3989,9 @@
           "description": "branch_divergence seeded defect at chapter 1750"
         }
       ],
+      "requiredBeats": [
+        "中期分支已经死亡的角色，在另一分支的后续章节里直接出现。 与已确认事实“分支正史：仅 middle-divergence 分支存在的连续性事实”冲突。"
+      ],
       "family": "branch_divergence",
       "chapterNumber": 1750,
       "branchId": "0fbf8cf3-6d9c-712f-b935-1bc23445ac39",
@@ -3224,6 +4013,9 @@
           "severity": "P0",
           "description": "branch_divergence seeded defect at chapter 3200"
         }
+      ],
+      "requiredBeats": [
+        "晚期分支独有的夺舍结果污染了共同祖先章节的摘要。 与已确认事实“分支正史：仅 late-divergence 分支存在的连续性事实”冲突。"
       ],
       "family": "branch_divergence",
       "chapterNumber": 3200,
@@ -3257,7 +4049,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "8585e5f68b25c278552860c6a084318cf6f2f59822be607fd8142402c978aa06",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:002",
@@ -3272,6 +4068,10 @@
             "severity": "P2",
             "description": "medium sample 2 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3287,6 +4087,10 @@
             "severity": "P1",
             "description": "hard sample 3 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3296,7 +4100,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "31e42e6d59c4e03ad9b60c6db71d3e0d9151ffddefc73a46313ead71db24105b",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:005",
@@ -3311,6 +4119,10 @@
             "severity": "P2",
             "description": "medium sample 5 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3326,6 +4138,10 @@
             "severity": "P1",
             "description": "hard sample 6 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3335,7 +4151,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "9a85a9156602dfc140c435a72c9a12a51db41f84c0bd497b645c932be1375849",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:008",
@@ -3350,6 +4170,10 @@
             "severity": "P2",
             "description": "medium sample 8 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3365,6 +4189,10 @@
             "severity": "P1",
             "description": "hard sample 9 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3374,7 +4202,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "afd75cac43dad368eb45313c8d65507c54c8ad72efbceb5ffd18cc64f9b31c41",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:011",
@@ -3389,6 +4221,10 @@
             "severity": "P2",
             "description": "medium sample 11 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3404,6 +4240,10 @@
             "severity": "P1",
             "description": "hard sample 12 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3413,7 +4253,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "5bb64187bc08ceed0ef3a5fa757de0763cba20be957d6858c0dcbea706d1521f",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:014",
@@ -3428,6 +4272,10 @@
             "severity": "P2",
             "description": "medium sample 14 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3443,6 +4291,10 @@
             "severity": "P1",
             "description": "hard sample 15 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3452,7 +4304,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "a4116036da6e4cf0a85b5fb17c54b1aa150f8de02d52e8d4cc3db59eb60b08b2",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:017",
@@ -3467,6 +4323,10 @@
             "severity": "P2",
             "description": "medium sample 17 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3482,6 +4342,10 @@
             "severity": "P1",
             "description": "hard sample 18 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3491,7 +4355,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "10bbff3e946577456858b3f00935eece86584911ba53223564d50f805961926f",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:020",
@@ -3506,6 +4374,10 @@
             "severity": "P2",
             "description": "medium sample 20 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3521,6 +4393,10 @@
             "severity": "P1",
             "description": "hard sample 21 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3530,7 +4406,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "7b720221a0f0c97fe7290b533f9cdb764bc8598e5f0772231d7027dc692ef559",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:023",
@@ -3545,6 +4425,10 @@
             "severity": "P2",
             "description": "medium sample 23 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3560,6 +4444,10 @@
             "severity": "P1",
             "description": "hard sample 24 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3569,7 +4457,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "469f5e1676a211f32bffbafa3c2935014c69f687083e893b7e3ca27f3c35ee78",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:026",
@@ -3584,6 +4476,10 @@
             "severity": "P2",
             "description": "medium sample 26 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3599,6 +4495,10 @@
             "severity": "P1",
             "description": "hard sample 27 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3608,7 +4508,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "cc61e2f549fc9cba470ab74a1434d2222382ddf62e66f8bb3cdf576ecd282854",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:029",
@@ -3623,6 +4527,10 @@
             "severity": "P2",
             "description": "medium sample 29 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3638,6 +4546,10 @@
             "severity": "P1",
             "description": "hard sample 30 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3647,7 +4559,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "d2e7c289b4d3300dc953a78e6e1aecd3582839afa211c62b8c4740622baab6cb",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:032",
@@ -3662,6 +4578,10 @@
             "severity": "P2",
             "description": "medium sample 32 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3677,6 +4597,10 @@
             "severity": "P1",
             "description": "hard sample 33 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3686,7 +4610,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "a6ce324fc189ee2ec6134c6e9fc9b124a1c00f355ccee2cb4e9ca9d249325c7f",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:035",
@@ -3701,6 +4629,10 @@
             "severity": "P2",
             "description": "medium sample 35 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3716,6 +4648,10 @@
             "severity": "P1",
             "description": "hard sample 36 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3725,7 +4661,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "2f841a6ee2ecbe9f16b20c0a487fa388fd6e2e4548620ad05d67a740b15dabda",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:038",
@@ -3740,6 +4680,10 @@
             "severity": "P2",
             "description": "medium sample 38 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3755,6 +4699,10 @@
             "severity": "P1",
             "description": "hard sample 39 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3764,7 +4712,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "ca81aeb78a4433424e56cc390c6e491200eaf05d6d6bbf7b74d0f9e534b9b812",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:041",
@@ -3779,6 +4731,10 @@
             "severity": "P2",
             "description": "medium sample 41 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3794,6 +4750,10 @@
             "severity": "P1",
             "description": "hard sample 42 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3803,7 +4763,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "fd3b23c82a013f5b129dfc109186f3b7b79e58d65ded845613c73679fc54f693",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:044",
@@ -3818,6 +4782,10 @@
             "severity": "P2",
             "description": "medium sample 44 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3833,6 +4801,10 @@
             "severity": "P1",
             "description": "hard sample 45 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3842,7 +4814,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "9370b4c12e1baccc9a4628ace2746af4d5cda3b261dffa9252e59165e6281608",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:047",
@@ -3857,6 +4833,10 @@
             "severity": "P2",
             "description": "medium sample 47 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3872,6 +4852,10 @@
             "severity": "P1",
             "description": "hard sample 48 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3881,7 +4865,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "5dd56780bf6b2220a01fb47c42a2a051dc6f189baa5ee51961f0039a184fc28c",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:050",
@@ -3896,6 +4884,10 @@
             "severity": "P2",
             "description": "medium sample 50 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3911,6 +4903,10 @@
             "severity": "P1",
             "description": "hard sample 51 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3920,7 +4916,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "93c67f15b87fba4d2ae270f5b3a657773a365b4c35ebf27d84eb1333f2d2b6b8",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:053",
@@ -3935,6 +4935,10 @@
             "severity": "P2",
             "description": "medium sample 53 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3950,6 +4954,10 @@
             "severity": "P1",
             "description": "hard sample 54 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3959,7 +4967,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "5cdc2c45f1343e9996c4e188cfdf86916d7b08a2ad62139e1902b5e12af06ca2",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:056",
@@ -3974,6 +4986,10 @@
             "severity": "P2",
             "description": "medium sample 56 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -3989,6 +5005,10 @@
             "severity": "P1",
             "description": "hard sample 57 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -3998,7 +5018,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "6c55d709c315661e18f8143224821fbc09ff06ae5e22692f2d347623a827ad5a",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。",
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。"
+        ]
       },
       {
         "id": "chapter:仙侠:059",
@@ -4013,6 +5037,10 @@
             "severity": "P2",
             "description": "medium sample 59 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "剑阵在雨后显出暗纹，守山弟子却发现少了一枚阵眼。",
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。"
         ]
       },
       {
@@ -4028,6 +5056,10 @@
             "severity": "P1",
             "description": "hard sample 60 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "藏经阁的灯忽明忽暗，旧卷上多出一行陌生批注。",
+          "山门钟声响过三遍，沈砚仍没有等到师兄的回信。"
         ]
       },
       {
@@ -4037,7 +5069,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "bc62a31966b1023161999435a95eb76d1315ef8c0f82ddc26196b11ca3c5c880",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:002",
@@ -4052,6 +5088,10 @@
             "severity": "P2",
             "description": "medium sample 2 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4067,6 +5107,10 @@
             "severity": "P1",
             "description": "hard sample 3 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4076,7 +5120,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "3ceb38db1992c69150d8d13e7ca0592575a731352d457d5bf52955e36b75cfc3",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:005",
@@ -4091,6 +5139,10 @@
             "severity": "P2",
             "description": "medium sample 5 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4106,6 +5158,10 @@
             "severity": "P1",
             "description": "hard sample 6 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4115,7 +5171,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "f6b3bf0fe0588118719c1b4fd465d7bbaf859aef3aa53afed91b2792e8922154",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:008",
@@ -4130,6 +5190,10 @@
             "severity": "P2",
             "description": "medium sample 8 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4145,6 +5209,10 @@
             "severity": "P1",
             "description": "hard sample 9 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4154,7 +5222,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "9284cc2eb4a5d5c347ea2dd5702f9c502a68f4ab943861f75a384c95fac0f314",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:011",
@@ -4169,6 +5241,10 @@
             "severity": "P2",
             "description": "medium sample 11 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4184,6 +5260,10 @@
             "severity": "P1",
             "description": "hard sample 12 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4193,7 +5273,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "49f13cc6a8fac32cdd4f42b421d23e3b6e6c4c104b4a666c5a94e1dfc1af4472",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:014",
@@ -4208,6 +5292,10 @@
             "severity": "P2",
             "description": "medium sample 14 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4223,6 +5311,10 @@
             "severity": "P1",
             "description": "hard sample 15 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4232,7 +5324,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "784c155b5dd068e1899b03baa8b71c645a74237d9a079b4446b4ab804f5d4e50",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:017",
@@ -4247,6 +5343,10 @@
             "severity": "P2",
             "description": "medium sample 17 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4262,6 +5362,10 @@
             "severity": "P1",
             "description": "hard sample 18 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4271,7 +5375,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "dd8bc4b3e8e68fcf3b7b81bd4321b2d641a80e69148975eb6197d423ee921d89",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:020",
@@ -4286,6 +5394,10 @@
             "severity": "P2",
             "description": "medium sample 20 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4301,6 +5413,10 @@
             "severity": "P1",
             "description": "hard sample 21 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4310,7 +5426,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "67b6b62c3d38f2c3734fd57b2b932b5fcaba4e3f30157f96a823fe8542044afb",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:023",
@@ -4325,6 +5445,10 @@
             "severity": "P2",
             "description": "medium sample 23 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4340,6 +5464,10 @@
             "severity": "P1",
             "description": "hard sample 24 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4349,7 +5477,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "0e2a84f39ed319a4b68122da8db2ca31d909cfcea857b5e6e10deb6773ddf25a",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:026",
@@ -4364,6 +5496,10 @@
             "severity": "P2",
             "description": "medium sample 26 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4379,6 +5515,10 @@
             "severity": "P1",
             "description": "hard sample 27 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4388,7 +5528,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "d20a40fc322c6bda044f6b5a645fa69a2b1a02d385fcac91ffc7530ad0819919",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:029",
@@ -4403,6 +5547,10 @@
             "severity": "P2",
             "description": "medium sample 29 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4418,6 +5566,10 @@
             "severity": "P1",
             "description": "hard sample 30 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4427,7 +5579,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "0df7e9d029caa7aa24a0865ab319583850e7047008b7cc2af6bdc1dbc7e59da8",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:032",
@@ -4442,6 +5598,10 @@
             "severity": "P2",
             "description": "medium sample 32 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4457,6 +5617,10 @@
             "severity": "P1",
             "description": "hard sample 33 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4466,7 +5630,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "421d9dc56d6d13433bb6a660564291cef25f1000d6003a8abec7a32d918d4abc",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:035",
@@ -4481,6 +5649,10 @@
             "severity": "P2",
             "description": "medium sample 35 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4496,6 +5668,10 @@
             "severity": "P1",
             "description": "hard sample 36 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4505,7 +5681,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "b239b522ba5959efe1317838416d91aede46f6d6f575b552defd5ec9608f7942",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:038",
@@ -4520,6 +5700,10 @@
             "severity": "P2",
             "description": "medium sample 38 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4535,6 +5719,10 @@
             "severity": "P1",
             "description": "hard sample 39 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4544,7 +5732,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "528830ff97d918565c0e6a9f60ed5cdd42c72f3c110be29106dd08b421203fd8",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:041",
@@ -4559,6 +5751,10 @@
             "severity": "P2",
             "description": "medium sample 41 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4574,6 +5770,10 @@
             "severity": "P1",
             "description": "hard sample 42 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4583,7 +5783,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "365dcec9e0ab90f840f6eccd0032bdbef333ca41f09823255aabc0a0ce2f91d6",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:044",
@@ -4598,6 +5802,10 @@
             "severity": "P2",
             "description": "medium sample 44 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4613,6 +5821,10 @@
             "severity": "P1",
             "description": "hard sample 45 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4622,7 +5834,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "deee5dee85e7bec9dc08d77a2f70e4a1ed1aeeb5cc773e622b1835a68654d2ae",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:047",
@@ -4637,6 +5853,10 @@
             "severity": "P2",
             "description": "medium sample 47 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4652,6 +5872,10 @@
             "severity": "P1",
             "description": "hard sample 48 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4661,7 +5885,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "d8da6bf49736d09e06272b871e309f4852c0571c039c002f37024a6235e5642a",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:050",
@@ -4676,6 +5904,10 @@
             "severity": "P2",
             "description": "medium sample 50 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4691,6 +5923,10 @@
             "severity": "P1",
             "description": "hard sample 51 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4700,7 +5936,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "5154a5a72e167d0d53d2f8ff21a5ee48df1a35a05f30c70d4103a92008d8cc6d",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:053",
@@ -4715,6 +5955,10 @@
             "severity": "P2",
             "description": "medium sample 53 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4730,6 +5974,10 @@
             "severity": "P1",
             "description": "hard sample 54 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4739,7 +5987,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "5fec771f5c050f68ba8e7e300c3200990ac387af491e9cb1645437b2bc086297",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:056",
@@ -4754,6 +6006,10 @@
             "severity": "P2",
             "description": "medium sample 56 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4769,6 +6025,10 @@
             "severity": "P1",
             "description": "hard sample 57 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4778,7 +6038,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "e01e9aa4fcaf28415463a3f895854fc81725f08d2831f8836207dbdc2643ae28",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。",
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。"
+        ]
       },
       {
         "id": "chapter:历史:059",
@@ -4793,6 +6057,10 @@
             "severity": "P2",
             "description": "medium sample 59 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "封地的粮册与官仓记录对不上，主簿却没有当场声张。",
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。"
         ]
       },
       {
@@ -4808,6 +6076,10 @@
             "severity": "P1",
             "description": "hard sample 60 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "城门将要落锁时，一名信使带着没有火漆的密函抵达。",
+          "驿马在雨后泥道上减速，军报比约定的时刻晚了半日。"
         ]
       },
       {
@@ -4817,7 +6089,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "23d0e2bbfb37932e038fb0fd3279d47de94ce3b3306ad051e79aae7e932f9591",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:002",
@@ -4832,6 +6108,10 @@
             "severity": "P2",
             "description": "medium sample 2 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -4847,6 +6127,10 @@
             "severity": "P1",
             "description": "hard sample 3 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -4856,7 +6140,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "02c8ee0f6437cc5a770436acccefb5d961434e11b55c3842eae43299959f36ae",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:005",
@@ -4871,6 +6159,10 @@
             "severity": "P2",
             "description": "medium sample 5 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -4886,6 +6178,10 @@
             "severity": "P1",
             "description": "hard sample 6 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -4895,7 +6191,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "c81851da493a05d405a36d4a19c95a2a210343c80da7f40d4c1d9eca006a35d5",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:008",
@@ -4910,6 +6210,10 @@
             "severity": "P2",
             "description": "medium sample 8 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -4925,6 +6229,10 @@
             "severity": "P1",
             "description": "hard sample 9 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -4934,7 +6242,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "a7bb4e0afd1c4354fd62eb55ab5e8932c235eed16b24fbd15b029fa52b58ba45",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:011",
@@ -4949,6 +6261,10 @@
             "severity": "P2",
             "description": "medium sample 11 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -4964,6 +6280,10 @@
             "severity": "P1",
             "description": "hard sample 12 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -4973,7 +6293,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "77c75d53a3c2f0024b5ad8b6eea59fe77d6cef13998f7c23b440fb40fa31b809",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:014",
@@ -4988,6 +6312,10 @@
             "severity": "P2",
             "description": "medium sample 14 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5003,6 +6331,10 @@
             "severity": "P1",
             "description": "hard sample 15 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5012,7 +6344,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "f021929099d5aa963bf6c90430b85de6be96ac1c7a000a39079cf8c24bfd2e80",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:017",
@@ -5027,6 +6363,10 @@
             "severity": "P2",
             "description": "medium sample 17 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5042,6 +6382,10 @@
             "severity": "P1",
             "description": "hard sample 18 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5051,7 +6395,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "856dd1ecb4efd5aa8e3477377a2fc83b91aaf8813b2b2a6dc550a7ae2e0a326d",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:020",
@@ -5066,6 +6414,10 @@
             "severity": "P2",
             "description": "medium sample 20 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5081,6 +6433,10 @@
             "severity": "P1",
             "description": "hard sample 21 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5090,7 +6446,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "67c448c92d5957843660a92efb363075c1662f7e44f1d9dd5cd20cb11e16d091",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:023",
@@ -5105,6 +6465,10 @@
             "severity": "P2",
             "description": "medium sample 23 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5120,6 +6484,10 @@
             "severity": "P1",
             "description": "hard sample 24 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5129,7 +6497,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "d93bffc74eb3e9afb3a5cc63d3099ccc1b46ce61d43e7d29815e0d41220fe9c2",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:026",
@@ -5144,6 +6516,10 @@
             "severity": "P2",
             "description": "medium sample 26 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5159,6 +6535,10 @@
             "severity": "P1",
             "description": "hard sample 27 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5168,7 +6548,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "832d941b77aee0c9a76a704d21fa7a45574589668aafa650c65b33d32eca974d",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:029",
@@ -5183,6 +6567,10 @@
             "severity": "P2",
             "description": "medium sample 29 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5198,6 +6586,10 @@
             "severity": "P1",
             "description": "hard sample 30 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5207,7 +6599,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "2c7f0e74f5a3f81434556981fefad16ff632c97e5168bf9c98e5ef90de931096",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:032",
@@ -5222,6 +6618,10 @@
             "severity": "P2",
             "description": "medium sample 32 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5237,6 +6637,10 @@
             "severity": "P1",
             "description": "hard sample 33 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5246,7 +6650,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "ff4dd0078176852d1bc81a33caba001867cf581f4e519d6c227ed10da064e9e0",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:035",
@@ -5261,6 +6669,10 @@
             "severity": "P2",
             "description": "medium sample 35 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5276,6 +6688,10 @@
             "severity": "P1",
             "description": "hard sample 36 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5285,7 +6701,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "bdcf2933d7784fe17d0eb4852d50ca35cc50f488e769030214ac74b1b373ea38",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:038",
@@ -5300,6 +6720,10 @@
             "severity": "P2",
             "description": "medium sample 38 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5315,6 +6739,10 @@
             "severity": "P1",
             "description": "hard sample 39 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5324,7 +6752,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "49399caa5323e06be4debe0b4974e81f40694e81681ba59a06a9719b80231adc",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:041",
@@ -5339,6 +6771,10 @@
             "severity": "P2",
             "description": "medium sample 41 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5354,6 +6790,10 @@
             "severity": "P1",
             "description": "hard sample 42 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5363,7 +6803,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "9712825b4ee8e60fc361cdea370e6d696eab873eea10a601c1cbf5bf3c781a4f",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:044",
@@ -5378,6 +6822,10 @@
             "severity": "P2",
             "description": "medium sample 44 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5393,6 +6841,10 @@
             "severity": "P1",
             "description": "hard sample 45 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5402,7 +6854,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "5f912033a49917af23f41bf96533232b0990af3a16f38c6bc1994abe9fe272ae",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:047",
@@ -5417,6 +6873,10 @@
             "severity": "P2",
             "description": "medium sample 47 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5432,6 +6892,10 @@
             "severity": "P1",
             "description": "hard sample 48 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5441,7 +6905,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "5fcf53c91e899b1f1d8f511ac1f08f0a106b28853f04fde1db571c43b0591323",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:050",
@@ -5456,6 +6924,10 @@
             "severity": "P2",
             "description": "medium sample 50 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5471,6 +6943,10 @@
             "severity": "P1",
             "description": "hard sample 51 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5480,7 +6956,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "89a11e9d841596d1b165359dc846bba98392a556c2e1d2b5d9f5db784cea5314",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:053",
@@ -5495,6 +6975,10 @@
             "severity": "P2",
             "description": "medium sample 53 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5510,6 +6994,10 @@
             "severity": "P1",
             "description": "hard sample 54 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5519,7 +7007,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "8f11591b36d7457fcb21c09d5bdfde0d03ff1e8750f144dc4ab8be916ee10a13",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:056",
@@ -5534,6 +7026,10 @@
             "severity": "P2",
             "description": "medium sample 56 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5549,6 +7045,10 @@
             "severity": "P1",
             "description": "hard sample 57 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5558,7 +7058,11 @@
         "difficulty": "easy",
         "sourceVersion": "quality-chapter-sample-v1",
         "sourceHash": "f120fa6b49b390b3c9d8e05fc3eafada35fddea982c112da295b032e395d6f64",
-        "knownIssues": []
+        "knownIssues": [],
+        "requiredBeats": [
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。",
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。"
+        ]
       },
       {
         "id": "chapter:都市:059",
@@ -5573,6 +7077,10 @@
             "severity": "P2",
             "description": "medium sample 59 ends without a decisive hook"
           }
+        ],
+        "requiredBeats": [
+          "调查组刚结束访谈，楼下的人却已经知道了问话内容。",
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。"
         ]
       },
       {
@@ -5588,6 +7096,10 @@
             "severity": "P1",
             "description": "hard sample 60 contains a motivation discontinuity"
           }
+        ],
+        "requiredBeats": [
+          "旧手机里留着一段录音，时间戳早于公司与项目立项。",
+          "会议室的投影停在最后一页，持股比例与公开资料不一致。"
         ]
       },
       {
@@ -5603,6 +7115,9 @@
             "severity": "P0",
             "description": "knowledge_boundary seeded defect at chapter 140"
           }
+        ],
+        "requiredBeats": [
+          "沈砚在顾青尚不知情时，当众说出了只有作者真相才知道的身世秘密。 与已确认事实“身世：真实身世被宗门封存”冲突。"
         ]
       },
       {
@@ -5618,6 +7133,9 @@
             "severity": "P0",
             "description": "knowledge_boundary seeded defect at chapter 280"
           }
+        ],
+        "requiredBeats": [
+          "闻雪在没有任何见证或调查事件之前，准确说出了沈砚被封存的身世。 与已确认事实“身世：真实身世被宗门封存”冲突。"
         ]
       },
       {
@@ -5633,6 +7151,9 @@
             "severity": "P0",
             "description": "knowledge_boundary seeded defect at chapter 420"
           }
+        ],
+        "requiredBeats": [
+          "顾青把另一条平行版本里的未来真相，直接当成当前时间线已知事实使用。 与已确认事实“身世：真实身世被宗门封存”冲突。"
         ]
       },
       {
@@ -5648,6 +7169,9 @@
             "severity": "P0",
             "description": "body_continuity seeded defect at chapter 560"
           }
+        ],
+        "requiredBeats": [
+          "左臂骨折尚未痊愈，沈砚却以双手结出完整剑印。 与已确认事实“身体：左臂骨折尚未痊愈”冲突。"
         ]
       },
       {
@@ -5663,6 +7187,9 @@
             "severity": "P0",
             "description": "body_continuity seeded defect at chapter 700"
           }
+        ],
+        "requiredBeats": [
+          "伤口没有治疗事件，失去的左手却突然重新握住长剑。 与已确认事实“身体：左臂骨折尚未痊愈”冲突。"
         ]
       },
       {
@@ -5678,6 +7205,9 @@
             "severity": "P0",
             "description": "body_continuity seeded defect at chapter 840"
           }
+        ],
+        "requiredBeats": [
+          "返魂代价已经耗尽，沈砚仍无来源地恢复了全部能力。 与已确认事实“身体：左臂骨折尚未痊愈”冲突。"
         ]
       },
       {
@@ -5693,6 +7223,9 @@
             "severity": "P0",
             "description": "identity_transition seeded defect at chapter 980"
           }
+        ],
+        "requiredBeats": [
+          "裴照没有经历身份转移事件，却被旁人直接认定为同一灵魂。 与已确认事实“身份：灵魂转移至新身体”冲突。"
         ]
       },
       {
@@ -5708,6 +7241,9 @@
             "severity": "P0",
             "description": "identity_transition seeded defect at chapter 1120"
           }
+        ],
+        "requiredBeats": [
+          "新身体中的角色未经夺舍或转世规则，自动继承了全部本体记忆。 与已确认事实“身份：灵魂转移至新身体”冲突。"
         ]
       },
       {
@@ -5723,6 +7259,9 @@
             "severity": "P0",
             "description": "identity_transition seeded defect at chapter 1260"
           }
+        ],
+        "requiredBeats": [
+          "独立分身被写成共享本体实时记忆，绕过了分身限制。 与已确认事实“身份：灵魂转移至新身体”冲突。"
         ]
       },
       {
@@ -5738,6 +7277,9 @@
             "severity": "P1",
             "description": "inventory_rights seeded defect at chapter 1400"
           }
+        ],
+        "requiredBeats": [
+          "忘川书仍由沈砚保管，顾青却无需借用便可任意支配。 与已确认事实“所有权：忘川书由沈砚保管”冲突。"
         ]
       },
       {
@@ -5753,6 +7295,9 @@
             "severity": "P1",
             "description": "inventory_rights seeded defect at chapter 1540"
           }
+        ],
+        "requiredBeats": [
+          "照骨镜已经交给宗门封存，闻雪却从私人仓库直接取出。 与已确认事实“所有权：忘川书由沈砚保管”冲突。"
         ]
       },
       {
@@ -5768,6 +7313,9 @@
             "severity": "P1",
             "description": "inventory_rights seeded defect at chapter 1680"
           }
+        ],
+        "requiredBeats": [
+          "归墟令的使用权没有转移事件，却被另一角色当作自己的信物。 与已确认事实“所有权：忘川书由沈砚保管”冲突。"
         ]
       },
       {
@@ -5783,6 +7331,9 @@
             "severity": "P1",
             "description": "travel_time seeded defect at chapter 1820"
           }
+        ],
+        "requiredBeats": [
+          "北境关比旧城晚三十日，沈砚却在同一日抵达两地。 与已确认事实“时间：北境关比旧城晚三十日”冲突。"
         ]
       },
       {
@@ -5798,6 +7349,9 @@
             "severity": "P1",
             "description": "travel_time seeded defect at chapter 1960"
           }
+        ],
+        "requiredBeats": [
+          "路线需要十二小时，角色却在下一幕开始前徒步往返。 与已确认事实“时间：北境关比旧城晚三十日”冲突。"
         ]
       },
       {
@@ -5813,6 +7367,9 @@
             "severity": "P1",
             "description": "travel_time seeded defect at chapter 2100"
           }
+        ],
+        "requiredBeats": [
+          "消息尚未送达，对岸人物却已经知道刚发生的秘密。 与已确认事实“时间：北境关比旧城晚三十日”冲突。"
         ]
       },
       {
@@ -5828,6 +7385,9 @@
             "severity": "P1",
             "description": "foreshadow_payoff seeded defect at chapter 2240"
           }
+        ],
+        "requiredBeats": [
+          "照骨镜尚未发生真名揭示，铜镜却已显示最终答案。 与已确认事实“预言：照骨镜会指向真名”冲突。"
         ]
       },
       {
@@ -5843,6 +7403,9 @@
             "severity": "P1",
             "description": "foreshadow_payoff seeded defect at chapter 2380"
           }
+        ],
+        "requiredBeats": [
+          "归墟令的双主伏笔没有回收事件，却被人物当作早已解释。 与已确认事实“预言：照骨镜会指向真名”冲突。"
         ]
       },
       {
@@ -5858,6 +7421,9 @@
             "severity": "P1",
             "description": "foreshadow_payoff seeded defect at chapter 2520"
           }
+        ],
+        "requiredBeats": [
+          "假死旧信未到计划回收窗口，秘密已经被完整复述。 与已确认事实“预言：照骨镜会指向真名”冲突。"
         ]
       },
       {
@@ -5873,6 +7439,9 @@
             "severity": "P2",
             "description": "motivation_drift seeded defect at chapter 2660"
           }
+        ],
+        "requiredBeats": [
+          "顾青刚决定保护旧城证人，下一幕却主动把证人交给敌人。 与已确认事实“目标：必须保护旧城证人”冲突。"
         ]
       },
       {
@@ -5888,6 +7457,9 @@
             "severity": "P2",
             "description": "motivation_drift seeded defect at chapter 2800"
           }
+        ],
+        "requiredBeats": [
+          "角色没有经历新证据，却从誓死守护突然转为放弃目标。 与已确认事实“目标：必须保护旧城证人”冲突。"
         ]
       },
       {
@@ -5903,6 +7475,9 @@
             "severity": "P2",
             "description": "motivation_drift seeded defect at chapter 2940"
           }
+        ],
+        "requiredBeats": [
+          "长期恐惧被无铺垫地抹去，行动理由与前文决定相反。 与已确认事实“目标：必须保护旧城证人”冲突。"
         ]
       },
       {
@@ -5918,6 +7493,9 @@
             "severity": "P0",
             "description": "branch_divergence seeded defect at chapter 300"
           }
+        ],
+        "requiredBeats": [
+          "早期分支中的未来事实被直接带入另一条未发生该事件的时间线。 与已确认事实“分支正史：仅 early-divergence 分支存在的连续性事实”冲突。"
         ]
       },
       {
@@ -5933,6 +7511,9 @@
             "severity": "P0",
             "description": "branch_divergence seeded defect at chapter 1750"
           }
+        ],
+        "requiredBeats": [
+          "中期分支已经死亡的角色，在另一分支的后续章节里直接出现。 与已确认事实“分支正史：仅 middle-divergence 分支存在的连续性事实”冲突。"
         ]
       },
       {
@@ -5948,12 +7529,15 @@
             "severity": "P0",
             "description": "branch_divergence seeded defect at chapter 3200"
           }
+        ],
+        "requiredBeats": [
+          "晚期分支独有的夺舍结果污染了共同祖先章节的摘要。 与已确认事实“分支正史：仅 late-divergence 分支存在的连续性事实”冲突。"
         ]
       }
     ],
     "decisionRequired": [
       "interRaterVarianceThreshold"
     ],
-    "datasetSha256": "c6c22e8922df49a9dbff52321e09ae463163e99726db5530eb08cf5f8f7d76ef"
+    "datasetSha256": "90c8c8c44540ae99246e243ac16c1158d7cee3485ac4b5c1a901b3b7164e753b"
   }
 }

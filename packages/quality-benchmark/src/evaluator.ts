@@ -1,7 +1,11 @@
 import { sha256Json } from "@novel-brain/continuity-benchmark";
 import {
+  evaluateContinuityFindings,
+  generateContinuityFixture,
+  createContinuityPlan,
   verifyContinuityEvaluation,
   type ContinuityEvaluation,
+  type ContinuityFinding,
 } from "@novel-brain/continuity-benchmark";
 
 import type {
@@ -9,15 +13,17 @@ import type {
   QualityBenchmarkDataset,
   QualityChapterSample,
 } from "./dataset";
-import { verifyQualityBenchmarkDataset } from "./dataset";
+import { createApprovedQualityBenchmarkDataset, verifyQualityBenchmarkDataset } from "./dataset";
 import { APPROVED_QUALITY_BENCHMARK_DATASET_SHA256 } from "./dataset";
+import { createDeterministicQualityScores } from "./deterministic-scores";
 import type {
   QualityBenchmarkDimensionId,
+  QualityBenchmarkReviewPolicy,
   QualityDimensionDefinition,
   QualityScorerType,
   ReleaseQualityRubric,
 } from "./rubric";
-import { verifyReleaseQualityRubric } from "./rubric";
+import { createReleaseQualityRubric, verifyReleaseQualityRubric } from "./rubric";
 import { APPROVED_QUALITY_RUBRIC_SHA256 } from "./rubric";
 
 export interface QualityMetricScore {
@@ -27,7 +33,11 @@ export interface QualityMetricScore {
   scorerId: string;
   value: number;
   evidenceQuote: string;
+  evidenceQuotes?: readonly string[];
   confidence: number;
+  reviewerAttestationId?: string;
+  reviewedAt?: string;
+  blindPacketSha256?: string;
 }
 
 export interface QualityBenchmarkDecision {
@@ -53,6 +63,7 @@ export interface QualityBenchmarkRun {
   };
   scores: readonly QualityMetricScore[];
   decisions: readonly QualityBenchmarkDecision[];
+  continuityFindings: readonly ContinuityFinding[];
   continuityEvaluation: ContinuityEvaluation;
 }
 
@@ -76,14 +87,18 @@ export interface QualityBenchmarkReport {
   metrics: readonly QualityMetricResult[];
   humanReview: {
     reviewerCount: number;
+    attestationCount: number;
     maxVariance: number;
     varianceThreshold: number | null;
+    reviewPolicySha256: string | null;
   };
   provenance: QualityBenchmarkRun["provenance"];
   scores: readonly QualityMetricScore[];
   decisions: readonly QualityBenchmarkDecision[];
+  continuityFindings: readonly ContinuityFinding[];
   continuityEvaluation: ContinuityEvaluation | null;
   datasetSha256: string;
+  rubricSha256: string;
   rubricVersion: string;
   sha256: string;
 }
@@ -94,6 +109,7 @@ export function evaluateQualityBenchmarkRun(input: {
   dataset: QualityBenchmarkDataset;
   rubric: ReleaseQualityRubric;
   run: QualityBenchmarkRun;
+  reviewPolicy?: QualityBenchmarkReviewPolicy | null;
 }): QualityBenchmarkReport {
   const { dataset, rubric, run } = input;
   const blockers = new Set<string>();
@@ -121,20 +137,62 @@ export function evaluateQualityBenchmarkRun(input: {
   if (Object.values(run.provenance).some((value) => value.trim().length === 0)) {
     blockers.add("run-provenance-incomplete");
   }
-  const continuityEvaluation =
-    run.continuityEvaluation && verifyContinuityEvaluation(run.continuityEvaluation)
-      ? run.continuityEvaluation
-      : null;
-  if (!continuityEvaluation) {
+  let continuityEvaluation: ContinuityEvaluation | null = null;
+  try {
+    if (!Array.isArray(run.continuityFindings)) {
+      throw new Error("CONTINUITY_FINDINGS_INVALID");
+    }
+    const fixture = generateContinuityFixture({
+      plan: createContinuityPlan({
+        seed: dataset.manifest.seed,
+        tier: dataset.manifest.continuityTier,
+      }),
+      sourceCommit: dataset.manifest.sourceCommit,
+    });
+    if (fixture.digest.sha256 !== dataset.manifest.continuityFixtureSha256) {
+      blockers.add("continuity-evaluation-fixture-mismatch");
+    }
+    continuityEvaluation = evaluateContinuityFindings({
+      fixture,
+      findings: run.continuityFindings,
+    });
+    if (
+      !run.continuityEvaluation ||
+      !verifyContinuityEvaluation(run.continuityEvaluation) ||
+      run.continuityEvaluation.sha256 !== continuityEvaluation.sha256
+    ) {
+      blockers.add("continuity-evaluation-invalid");
+    }
+  } catch {
     blockers.add("continuity-evaluation-invalid");
-  } else if (continuityEvaluation.fixtureSha256 !== dataset.manifest.continuityFixtureSha256) {
-    blockers.add("continuity-evaluation-fixture-mismatch");
   }
 
   const scoresByDimension = new Map<QualityBenchmarkDimensionId, QualityMetricScore[]>();
   const dimensionById = new Map(rubric.dimensions.map((dimension) => [dimension.id, dimension]));
   const scoreKeys = new Set<string>();
+  const attestationByReviewer = new Map<string, string>();
+  const reviewedAtByReviewer = new Map<string, string>();
+  const reviewerByAttestation = new Map<string, string>();
+  const validatedScores: QualityMetricScore[] = [];
+  const deterministicScores = continuityEvaluation
+    ? createDeterministicQualityScores(dataset, continuityEvaluation)
+    : [];
+  for (const score of deterministicScores) {
+    scoreKeys.add(`${score.sampleId}:${score.dimension}:${score.scorerType}:${score.scorerId}`);
+    scoresByDimension.set(score.dimension, [
+      ...(scoresByDimension.get(score.dimension) ?? []),
+      score,
+    ]);
+    validatedScores.push(score);
+  }
+  const blindPacketSha256 = sha256Json({
+    datasetSha256: dataset.manifest.datasetSha256,
+    rubricSha256: rubric.sha256,
+  });
   for (const score of run.scores) {
+    if (score.scorerType === "deterministic") {
+      continue;
+    }
     const sample = sampleById.get(score.sampleId);
     const dimension = dimensionById.get(score.dimension);
     const scoreKey = `${score.sampleId}:${score.dimension}:${score.scorerType}:${score.scorerId}`;
@@ -146,10 +204,28 @@ export function evaluateQualityBenchmarkRun(input: {
       !Number.isFinite(score.confidence) ||
       score.confidence < 0 ||
       score.confidence > 1 ||
-      !evidenceExistsInSample(sample, score.evidenceQuote)
+      !scoreEvidenceMatchesSample(sample, score)
     ) {
       blockers.add("score-evidence-invalid");
       continue;
+    }
+    if (score.scorerType === "human_blind") {
+      const attestationId = score.reviewerAttestationId?.trim();
+      if (
+        !attestationId ||
+        !score.reviewedAt ||
+        !Number.isFinite(Date.parse(score.reviewedAt)) ||
+        score.blindPacketSha256 !== blindPacketSha256 ||
+        (attestationByReviewer.get(score.scorerId) ?? attestationId) !== attestationId ||
+        (reviewedAtByReviewer.get(score.scorerId) ?? score.reviewedAt) !== score.reviewedAt ||
+        (reviewerByAttestation.get(attestationId) ?? score.scorerId) !== score.scorerId
+      ) {
+        blockers.add("human-attestation-invalid");
+        continue;
+      }
+      attestationByReviewer.set(score.scorerId, attestationId);
+      reviewedAtByReviewer.set(score.scorerId, score.reviewedAt);
+      reviewerByAttestation.set(attestationId, score.scorerId);
     }
     if (scoreKeys.has(scoreKey)) {
       blockers.add("duplicate-score");
@@ -164,6 +240,7 @@ export function evaluateQualityBenchmarkRun(input: {
       ...(scoresByDimension.get(score.dimension) ?? []),
       score,
     ]);
+    validatedScores.push(score);
   }
 
   const metrics = rubric.dimensions.map((dimension) => {
@@ -180,9 +257,12 @@ export function evaluateQualityBenchmarkRun(input: {
     return result;
   });
 
-  const humanScores = run.scores.filter((score) => score.scorerType === "human_blind");
+  const humanScores = validatedScores.filter((score) => score.scorerType === "human_blind");
   const reviewerCount = new Set(humanScores.map((score) => score.scorerId)).size;
-  const varianceThreshold = approvedVarianceThreshold(run.decisions);
+  const attestationCount = new Set(humanScores.map((score) => score.reviewerAttestationId)).size;
+  const reviewPolicy = validReviewPolicy(input.reviewPolicy) ? input.reviewPolicy : null;
+  const varianceThreshold = reviewPolicy?.interRaterVarianceThreshold ?? null;
+  const reviewPolicySha256 = reviewPolicy ? sha256Json(reviewPolicy) : null;
   const maxVariance = computeMaxVariance(humanScores);
   if (varianceThreshold === null) {
     blockers.add("decision-required:interRaterVarianceThreshold");
@@ -191,6 +271,10 @@ export function evaluateQualityBenchmarkRun(input: {
   }
 
   const blockerList = [...blockers].sort();
+  const reportedScores = [
+    ...deterministicScores,
+    ...run.scores.filter((score) => score.scorerType !== "deterministic"),
+  ];
   const reportWithoutHash = {
     schemaVersion: 1 as const,
     runId: run.runId,
@@ -202,14 +286,18 @@ export function evaluateQualityBenchmarkRun(input: {
     metrics,
     humanReview: {
       reviewerCount,
+      attestationCount,
       maxVariance,
       varianceThreshold,
+      reviewPolicySha256,
     },
     provenance: run.provenance,
-    scores: run.scores,
+    scores: reportedScores,
     decisions: run.decisions,
+    continuityFindings: run.continuityFindings,
     continuityEvaluation,
     datasetSha256: run.datasetSha256,
+    rubricSha256: rubric.sha256,
     rubricVersion: run.rubricVersion,
   };
   return {
@@ -218,9 +306,65 @@ export function evaluateQualityBenchmarkRun(input: {
   };
 }
 
-export function verifyQualityBenchmarkReport(report: QualityBenchmarkReport): boolean {
+export function verifyQualityBenchmarkReport(
+  report: QualityBenchmarkReport,
+  reviewPolicy?: QualityBenchmarkReviewPolicy | null,
+): boolean {
+  if (
+    !report ||
+    !Array.isArray(report.metrics) ||
+    !Array.isArray(report.scores) ||
+    !Array.isArray(report.continuityFindings) ||
+    !report.releaseGate ||
+    !Array.isArray(report.releaseGate.blockers) ||
+    !report.humanReview
+  ) {
+    return false;
+  }
   const { sha256, ...reportWithoutHash } = report;
-  return sha256 === sha256Json(reportWithoutHash);
+  const metricIds = report.metrics.map((metric) => metric.id);
+  const expectedMetricIds = [
+    "p0_fact_loss",
+    "knowledge_boundary_violation",
+    "outline_adherence",
+    "hook_prose_score",
+    "continuity_conflicts_per_50k",
+  ] as const;
+  const structurallyValid =
+    report.schemaVersion === 1 &&
+    report.datasetSha256 === APPROVED_QUALITY_BENCHMARK_DATASET_SHA256 &&
+    report.rubricVersion === "adr-0022-v1" &&
+    report.rubricSha256 === APPROVED_QUALITY_RUBRIC_SHA256 &&
+    expectedMetricIds.every((id) => metricIds.includes(id)) &&
+    new Set(metricIds).size === expectedMetricIds.length &&
+    metricIds.length === expectedMetricIds.length &&
+    report.status === (report.releaseGate.passed ? "passed" : "blocked") &&
+    report.releaseGate.passed === (report.releaseGate.blockers.length === 0) &&
+    sha256 === sha256Json(reportWithoutHash);
+  if (!structurallyValid) {
+    return false;
+  }
+  try {
+    const regenerated = evaluateQualityBenchmarkRun({
+      dataset: createApprovedQualityBenchmarkDataset(),
+      rubric: createReleaseQualityRubric(),
+      run: {
+        schemaVersion: 1,
+        runId: report.runId,
+        datasetSha256: report.datasetSha256,
+        rubricVersion: report.rubricVersion,
+        provenance: report.provenance,
+        scores: report.scores,
+        decisions: report.decisions,
+        continuityFindings: report.continuityFindings,
+        continuityEvaluation: report.continuityEvaluation as ContinuityEvaluation,
+      },
+      ...(reviewPolicy ? { reviewPolicy } : {}),
+    });
+    return regenerated.sha256 === report.sha256;
+  } catch {
+    return false;
+  }
 }
 
 function measureDimension(input: {
@@ -285,7 +429,9 @@ function measureValue(
       (sum, sample) => sum + sample.text.length,
       0,
     );
-    const totalConflicts = continuityEvaluation?.unexpectedFindings.length ?? 0;
+    const totalConflicts = continuityEvaluation
+      ? continuityEvaluation.missingFindings.length + continuityEvaluation.unexpectedFindings.length
+      : 0;
     return totalCharacters === 0 ? 0 : (totalConflicts / totalCharacters) * 50_000;
   }
   const relevant = scores.filter((score) => score.scorerType === dimension.scorerType);
@@ -295,18 +441,21 @@ function measureValue(
   return relevant.reduce((sum, score) => sum + score.value, 0) / relevant.length;
 }
 
-function approvedVarianceThreshold(decisions: readonly QualityBenchmarkDecision[]): number | null {
-  const decision = decisions.find(
-    (candidate) =>
-      candidate.id === "interRaterVarianceThreshold" &&
-      candidate.approved &&
-      candidate.owner.trim().length > 0 &&
-      candidate.rationale.trim().length > 0 &&
-      candidate.decidedAt.trim().length > 0 &&
-      Number.isFinite(candidate.approvedValue) &&
-      candidate.approvedValue >= 0,
+function validReviewPolicy(
+  policy: QualityBenchmarkReviewPolicy | null | undefined,
+): policy is QualityBenchmarkReviewPolicy {
+  return Boolean(
+    policy &&
+    typeof policy.owner === "string" &&
+    policy.owner.trim() &&
+    typeof policy.rationale === "string" &&
+    policy.rationale.trim() &&
+    typeof policy.decidedAt === "string" &&
+    policy.decidedAt.trim() &&
+    Number.isFinite(Date.parse(policy.decidedAt)) &&
+    Number.isFinite(policy.interRaterVarianceThreshold) &&
+    policy.interRaterVarianceThreshold >= 0,
   );
-  return decision?.approvedValue ?? null;
 }
 
 function computeMaxVariance(scores: readonly QualityMetricScore[]): number {
@@ -328,9 +477,24 @@ function computeMaxVariance(scores: readonly QualityMetricScore[]): number {
   return maximum;
 }
 
-function evidenceExistsInSample(sample: BenchmarkSample, evidenceQuote: string): boolean {
-  const normalizedEvidence = normalizeText(evidenceQuote);
-  return normalizedEvidence.length > 0 && normalizeText(sample.text).includes(normalizedEvidence);
+function scoreEvidenceMatchesSample(sample: BenchmarkSample, score: QualityMetricScore): boolean {
+  const evidenceQuotes =
+    score.evidenceQuotes && score.evidenceQuotes.length > 0
+      ? score.evidenceQuotes
+      : [score.evidenceQuote];
+  if (
+    evidenceQuotes.some((quote) => {
+      const normalized = normalizeText(quote);
+      return normalized.length === 0 || !normalizeText(sample.text).includes(normalized);
+    })
+  ) {
+    return false;
+  }
+  if (score.dimension !== "outline_adherence") {
+    return true;
+  }
+  const normalizedBeatEvidence = normalizeText(evidenceQuotes.join(" "));
+  return sample.requiredBeats.every((beat) => normalizedBeatEvidence.includes(normalizeText(beat)));
 }
 
 function normalizeText(value: string): string {

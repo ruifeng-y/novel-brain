@@ -491,6 +491,34 @@
       "when": 1794988118894,
       "tag": "0069_broken_triton",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1794989502486,
+      "tag": "0070_military_mindworm",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794990689597,
+      "tag": "0071_old_sinister_six",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794991013630,
+      "tag": "0072_chunky_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794991172507,
+      "tag": "0073_rich_stellaris",
+      "breakpoints": true
     }
   ]
 }

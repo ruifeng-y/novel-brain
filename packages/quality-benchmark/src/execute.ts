@@ -6,7 +6,8 @@ import {
   type ContinuityFinding,
 } from "@novel-brain/continuity-benchmark";
 
-import type { QualityAdversarialCase, QualityBenchmarkDataset } from "./dataset";
+import type { QualityBenchmarkDataset } from "./dataset";
+import { createDeterministicQualityScores } from "./deterministic-scores";
 import type {
   QualityBenchmarkDecision,
   QualityBenchmarkRun,
@@ -51,35 +52,7 @@ export function executeQualityBenchmarkCandidate(input: {
     fixture,
     findings: candidate.continuityFindings,
   });
-  const missingDefects = new Map(
-    continuityEvaluation.missingFindings.map((defect) => [defect.id, defect]),
-  );
-  const samples = [...dataset.chapterSamples, ...dataset.adversarialCases];
-  const deterministicScores = samples.flatMap((sample, sampleIndex) => {
-    const evidenceQuote = sample.text.slice(0, Math.min(16, sample.text.length));
-    const defectId = sample.kind === "long_horizon_case" ? adversarialDefectId(sample) : null;
-    const missingDefect = defectId ? missingDefects.get(defectId) : undefined;
-    return [
-      deterministicScore(
-        sample.id,
-        "p0_fact_loss",
-        missingDefect?.severity === "P0" ? 1 : 0,
-        evidenceQuote,
-      ),
-      deterministicScore(
-        sample.id,
-        "knowledge_boundary_violation",
-        missingDefect?.family === "knowledge_boundary" ? 1 : 0,
-        evidenceQuote,
-      ),
-      deterministicScore(
-        sample.id,
-        "continuity_conflicts_per_50k",
-        sampleIndex === 0 ? continuityEvaluation.unexpectedFindings.length : 0,
-        evidenceQuote,
-      ),
-    ];
-  });
+  const deterministicScores = createDeterministicQualityScores(dataset, continuityEvaluation);
 
   return {
     schemaVersion: 1,
@@ -89,27 +62,7 @@ export function executeQualityBenchmarkCandidate(input: {
     provenance: candidate.provenance,
     scores: [...deterministicScores, ...candidate.humanScores],
     decisions: candidate.decisions,
+    continuityFindings: candidate.continuityFindings,
     continuityEvaluation,
-  };
-}
-
-function adversarialDefectId(sample: QualityAdversarialCase): string {
-  return sample.id.replace(/^long-horizon:/u, "");
-}
-
-function deterministicScore(
-  sampleId: string,
-  dimension: QualityMetricScore["dimension"],
-  value: number,
-  evidenceQuote: string,
-): QualityMetricScore {
-  return {
-    sampleId,
-    dimension,
-    scorerType: "deterministic",
-    scorerId: "continuity-benchmark",
-    value,
-    evidenceQuote,
-    confidence: 1,
   };
 }
