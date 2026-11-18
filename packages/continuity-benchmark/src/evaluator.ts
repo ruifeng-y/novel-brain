@@ -71,7 +71,7 @@ export function evaluateContinuityFindings(input: {
 
   for (const defect of fixture.defects) {
     const findingIndex = findings.findIndex(
-      (finding, index) => !usedFindings.has(index) && matchesDefect(finding, defect),
+      (finding, index) => !usedFindings.has(index) && matchesDefect(fixture, finding, defect),
     );
     if (findingIndex >= 0) {
       usedFindings.add(findingIndex);
@@ -146,14 +146,34 @@ export function verifyContinuityEvaluation(evaluation: ContinuityEvaluation): bo
   return recordedSha256 === sha256Json(evaluationWithoutHash);
 }
 
-function matchesDefect(finding: ContinuityFinding, defect: ContinuityDefect): boolean {
+function matchesDefect(
+  fixture: ContinuityFixture,
+  finding: ContinuityFinding,
+  defect: ContinuityDefect,
+): boolean {
   return (
     matchesLocator(finding, defect) &&
     finding.severity === defect.severity &&
     finding.sourceFactId === defect.sourceFactId &&
     finding.versionNodeId === defect.versionNodeId &&
-    finding.evidence.trim().length > 0
+    isEvidenceInChapter(fixture, finding)
   );
+}
+
+function isEvidenceInChapter(fixture: ContinuityFixture, finding: ContinuityFinding): boolean {
+  const chapter =
+    finding.branchId === fixture.branches[0]?.id
+      ? fixture.chapters.find((candidate) => candidate.number === finding.chapterNumber)
+      : fixture.branchChapters.find(
+          (candidate) =>
+            candidate.branchId === finding.branchId &&
+            candidate.chapterNumber === finding.chapterNumber,
+        );
+  if (!chapter) {
+    return false;
+  }
+  const evidence = normalizeEvidence(finding.evidence);
+  return evidence.length > 0 && normalizeEvidence(chapter.content).includes(evidence);
 }
 
 function matchesControl(finding: ContinuityFinding, control: ContinuityControl): boolean {
@@ -257,4 +277,8 @@ function volumePosition(fixture: ContinuityFixture, chapterNumber: number): Volu
 
 function intersects(left: readonly string[], right: readonly string[]): boolean {
   return left.some((value) => right.includes(value));
+}
+
+function normalizeEvidence(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
 }

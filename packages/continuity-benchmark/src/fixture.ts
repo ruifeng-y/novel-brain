@@ -277,6 +277,8 @@ export interface GenreContinuityScenario {
   primaryFamily: ContinuityScenarioFamily;
   rule: string;
   exampleContradiction: string;
+  chapterSample: string;
+  defectSample: string;
 }
 
 export interface PowerRealm {
@@ -370,6 +372,15 @@ export interface CharacterPowerState {
   versionNodeId: string;
 }
 
+export interface LifespanWorldCase {
+  id: string;
+  genre: GenrePack["name"];
+  mode: "realm_bound" | "age_only";
+  rule: string;
+  characterAge: number;
+  lifespanYears: number;
+}
+
 export interface ContinuityEvent {
   id: string;
   branchId: string;
@@ -447,6 +458,7 @@ export interface ContinuityFixture {
   styleSamples: readonly StyleSample[];
   characterArcs: readonly CharacterArc[];
   characterPowerStates: readonly CharacterPowerState[];
+  lifespanWorldCases: readonly LifespanWorldCase[];
   eventManifest: readonly ContinuityEvent[];
   defects: readonly ContinuityDefect[];
   controls: readonly ContinuityControl[];
@@ -527,13 +539,7 @@ export function generateContinuityFixture(input: {
   const facts = createFacts(plan, chapters, characterIds, itemIds, branches);
   const knowledgeStates = createKnowledgeStates(plan, chapters, characterIds, facts, branches);
   const stateTransitions = createStateTransitions(plan, chapters, characterIds, facts, branches);
-  const identityTransitions = createIdentityTransitions(
-    plan,
-    chapters,
-    characterIds,
-    facts,
-    branches,
-  );
+  const identityTransitions = createIdentityTransitions(plan, chapters, characterIds, branches);
   const items = createItems(plan, chapters, characterIds, locationIds, itemIds, branches);
   const itemRightsTransitions = createItemRightsTransitions(plan, chapters, items, branches[0]!.id);
   const timeline = createTimeline(plan, chapters, characterIds, locationIds, branches);
@@ -550,6 +556,7 @@ export function generateContinuityFixture(input: {
     characterIds,
     branches[0]!.id,
   );
+  const lifespanWorldCases = createLifespanWorldCases(plan);
   const defects = createDefects(plan, chapters, branchChapters, facts, branches, characterIds);
   applyDefectEvidence(chapters, branchChapters, defects);
   const controls = createControls(plan, chapters, branches, characterIds);
@@ -594,6 +601,7 @@ export function generateContinuityFixture(input: {
     styleSamples,
     characterArcs,
     characterPowerStates,
+    lifespanWorldCases,
     eventManifest,
     defects,
     controls,
@@ -768,6 +776,8 @@ function createGenreScenarios(plan: ContinuityPlan): GenreContinuityScenario[] {
       primaryFamily: "body_continuity",
       rule: "伤势、境界与返魂代价必须由事件更新",
       exampleContradiction: "返魂次数耗尽后无代价恢复完整身体",
+      chapterSample: "沈砚在返魂阵前确认左臂骨折尚未痊愈，只能以单手结印。",
+      defectSample: "返魂次数耗尽后，沈砚无来源地恢复完整身体与全部境界。",
     },
     {
       id: uuid(plan.seed, "genre-scenario:history"),
@@ -776,6 +786,8 @@ function createGenreScenarios(plan: ContinuityPlan): GenreContinuityScenario[] {
       primaryFamily: "travel_time",
       rule: "军报、驿马与官职继承必须按纪年顺序",
       exampleContradiction: "未到驿传时限的军报提前改变京城决策",
+      chapterSample: "驿马昼夜兼程，军报仍需三日后才能抵达京城。",
+      defectSample: "军报尚未离开边关，京城却已经依据它作出决策。",
     },
     {
       id: uuid(plan.seed, "genre-scenario:urban"),
@@ -784,6 +796,8 @@ function createGenreScenarios(plan: ContinuityPlan): GenreContinuityScenario[] {
       primaryFamily: "knowledge_boundary",
       rule: "资金、股权与身份披露必须来源于可观察事件",
       exampleContradiction: "角色在未收到调查结果前准确说出隐藏股权",
+      chapterSample: "董事会只看到公开持股表，隐藏股权仍由调查组核对。",
+      defectSample: "调查尚未开始，角色却准确说出隐藏股权比例。",
     },
   ];
 }
@@ -1529,11 +1543,31 @@ function createCharacterPowerStates(
   });
 }
 
+function createLifespanWorldCases(plan: ContinuityPlan): LifespanWorldCase[] {
+  return [
+    {
+      id: uuid(plan.seed, "lifespan-world:realm-bound"),
+      genre: "仙侠",
+      mode: "realm_bound",
+      rule: "寿命上限由境界决定；年龄增长不会超过当前境界上限。",
+      characterAge: 81,
+      lifespanYears: 300,
+    },
+    {
+      id: uuid(plan.seed, "lifespan-world:age-only"),
+      genre: "历史",
+      mode: "age_only",
+      rule: "普通历史世界只按年龄计算寿命，官职与能力不延长寿命。",
+      characterAge: 81,
+      lifespanYears: 85,
+    },
+  ];
+}
+
 function createIdentityTransitions(
   plan: ContinuityPlan,
   chapters: readonly ContinuityChapter[],
   characterIds: readonly string[],
-  facts: readonly ContinuityFact[],
   branches: readonly ContinuityBranch[],
 ): IdentityTransition[] {
   const definitions: ReadonlyArray<{
@@ -1629,7 +1663,6 @@ function createIdentityTransitions(
   ];
   return definitions.map((definition) => {
     const chapter = chapterAtReference(plan, chapters, definition.position);
-    const sourceFact = facts.find((fact) => fact.branchId === branches[0]!.id)!;
     return {
       id: uuid(plan.seed, `identity-transition:${definition.kind}`),
       branchId: branches[0]!.id,
@@ -1640,7 +1673,7 @@ function createIdentityTransitions(
       memoryRetention: definition.memoryRetention,
       limits: definition.limits,
       chapterNumber: chapter.number,
-      sourceEventId: sourceFact.sourceEventId,
+      sourceEventId: uuid(plan.seed, `identity-transition-event:${definition.kind}`),
       versionNodeId: chapter.versionNodeId,
     };
   });

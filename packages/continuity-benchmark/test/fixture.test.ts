@@ -133,6 +133,12 @@ describe("continuity fixture", () => {
       "历史",
       "都市",
     ]);
+    expect(fixture.genreScenarios.map((scenario) => scenario.chapterSample)).toEqual(
+      expect.arrayContaining([expect.stringContaining("驿马"), expect.stringContaining("股权")]),
+    );
+    expect(fixture.genreScenarios.map((scenario) => scenario.defectSample)).toEqual(
+      expect.arrayContaining([expect.stringContaining("军报"), expect.stringContaining("调查")]),
+    );
     expect(fixture.powerSystem.realms.length).toBeGreaterThanOrEqual(3);
     expect(fixture.powerSystem.lifespanPolicy).toContain("境界");
     expect(fixture.specialMechanisms).toHaveLength(2);
@@ -147,6 +153,9 @@ describe("continuity fixture", () => {
       const realm = fixture.powerSystem.realms.find((candidate) => candidate.name === state.realm)!;
       expect(state.ageYears + state.remainingLifespanYears).toBe(realm.lifespanYears);
     }
+    expect(new Set(fixture.lifespanWorldCases.map((entry) => entry.mode))).toEqual(
+      new Set(["realm_bound", "age_only"]),
+    );
     expect(fixture.itemRightsTransitions.map((transition) => transition.action)).toEqual(
       expect.arrayContaining([
         "transfer",
@@ -166,6 +175,9 @@ describe("continuity fixture", () => {
     for (const eventId of fixture.facts.map((fact) => fact.sourceEventId)) {
       expect(fixture.eventManifest.some((event) => event.id === eventId)).toBe(true);
     }
+    expect(
+      new Set(fixture.identityTransitions.map((transition) => transition.sourceEventId)).size,
+    ).toBe(fixture.identityTransitions.length);
     for (const item of fixture.items) {
       const transitions = fixture.itemRightsTransitions
         .filter((transition) => transition.itemId === item.id)

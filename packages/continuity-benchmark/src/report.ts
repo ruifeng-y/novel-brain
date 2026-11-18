@@ -96,6 +96,7 @@ export interface ContinuityBenchmarkReport {
     adjudicatedDisagreements: number;
     p0OracleMisses: number;
     controlFalsePositives: number;
+    incompleteContextMisses: number;
   };
   narrativeEvidence: ContinuityNarrativeEvidence | null;
   decisions: readonly ContinuityBenchmarkDecision[];
@@ -224,6 +225,9 @@ export function buildContinuityBenchmarkReport(input: {
     if (reviewAssessment.controlFalsePositives > 0) {
       blockers.add("blind-review-control-false-positive");
     }
+    if (reviewAssessment.incompleteContextMisses > 0) {
+      blockers.add("blind-review-incomplete-context-miss");
+    }
   }
 
   const blockerList = [...blockers].sort();
@@ -256,6 +260,7 @@ export function buildContinuityBenchmarkReport(input: {
       adjudicatedDisagreements: reviewAssessment?.adjudicatedDisagreements ?? 0,
       p0OracleMisses: reviewAssessment?.p0OracleMisses ?? 0,
       controlFalsePositives: reviewAssessment?.controlFalsePositives ?? 0,
+      incompleteContextMisses: reviewAssessment?.incompleteContextMisses ?? 0,
     },
     narrativeEvidence: input.narrativeEvidence ?? null,
     decisions: input.decisions,
@@ -294,6 +299,7 @@ function assessReviewEvidence(input: {
   adjudicatedDisagreements: number;
   p0OracleMisses: number;
   controlFalsePositives: number;
+  incompleteContextMisses: number;
 } {
   const blockers = new Set<string>();
   if (input.evidence.schemaVersion !== 1) {
@@ -370,23 +376,31 @@ function assessReviewEvidence(input: {
     validAdjudications.map((adjudication) => adjudication.reviewId),
   );
   const p0OracleMisses = input.oracle.items.filter((oracleItem) => {
-    if (!oracleItem.expectedSeverities.includes("P0")) {
+    if (
+      oracleItem.expectedDisposition !== "defect" ||
+      !oracleItem.expectedSeverities.includes("P0")
+    ) {
       return false;
     }
-    const scores = scoresByReviewId.get(oracleItem.reviewId) ?? [];
-    const adjudication = validAdjudications.find(
-      (candidate) => candidate.reviewId === oracleItem.reviewId,
-    );
     return (
-      !scores.some((score) => score.disposition === "defect") && adjudication?.decision !== "defect"
+      finalDispositionFor(oracleItem.reviewId, scoresByReviewId, validAdjudications) !== "defect"
     );
   }).length;
   const controlFalsePositives = input.oracle.items.filter((oracleItem) => {
     if (oracleItem.expectedDisposition !== "no_defect") {
       return false;
     }
-    const scores = scoresByReviewId.get(oracleItem.reviewId) ?? [];
-    return scores.length > 0 && scores.every((score) => score.disposition === "defect");
+    return (
+      finalDispositionFor(oracleItem.reviewId, scoresByReviewId, validAdjudications) !== "no_defect"
+    );
+  }).length;
+  const incompleteContextMisses = input.oracle.items.filter((oracleItem) => {
+    if (oracleItem.expectedDisposition !== "escalate") {
+      return false;
+    }
+    return (
+      finalDispositionFor(oracleItem.reviewId, scoresByReviewId, validAdjudications) !== "escalate"
+    );
   }).length;
   for (const stratum of reviewStrata) {
     const stratumReviewIds = input.packet.items
@@ -411,7 +425,23 @@ function assessReviewEvidence(input: {
     adjudicatedDisagreements: adjudicatedReviewIds.size,
     p0OracleMisses,
     controlFalsePositives,
+    incompleteContextMisses,
   };
+}
+
+function finalDispositionFor(
+  reviewId: string,
+  scoresByReviewId: ReadonlyMap<string, ContinuityReviewItemScore[]>,
+  adjudications: readonly ContinuityReviewAdjudication[],
+): ContinuityReviewDisposition | null {
+  const adjudication = adjudications.find((candidate) => candidate.reviewId === reviewId);
+  if (adjudication) {
+    return adjudication.decision;
+  }
+  const dispositions = [
+    ...new Set((scoresByReviewId.get(reviewId) ?? []).map((score) => score.disposition)),
+  ];
+  return dispositions.length === 1 ? dispositions[0]! : null;
 }
 
 function isValidReviewItemScore(score: ContinuityReviewItemScore): boolean {

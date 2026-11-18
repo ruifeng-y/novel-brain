@@ -203,8 +203,7 @@ export function buildContinuityBlindReviewPacket(input: {
           ) &&
           state.validFromChapter <= inputItem.chapterNumber &&
           (state.validToChapter === null || state.validToChapter >= inputItem.chapterNumber) &&
-          (state.allowedDisclosureFromChapter === null ||
-            state.allowedDisclosureFromChapter <= inputItem.chapterNumber),
+          isKnowledgeStateDisclosable(fixture, state, inputItem.chapterNumber),
       )
       .map(toReviewKnowledgeState);
     packetItems.push({
@@ -340,6 +339,21 @@ export function verifyBlindReviewOracle(oracle: BlindReviewOracle): boolean {
   return oracleSha256 === sha256(oracleWithoutHash);
 }
 
+function isKnowledgeStateDisclosable(
+  fixture: ContinuityFixture,
+  state: CharacterKnowledgeState,
+  chapterNumber: number,
+): boolean {
+  if (state.allowedDisclosureFromChapter !== null) {
+    return state.allowedDisclosureFromChapter <= chapterNumber;
+  }
+  if (state.state === "unknown") {
+    return true;
+  }
+  const fact = fixture.facts.find((candidate) => candidate.id === state.objectiveFactId);
+  return fact?.visibility === "public";
+}
+
 function isVisibleAtChapter(
   fixture: ContinuityFixture,
   fact: ContinuityFact,
@@ -365,7 +379,8 @@ function isVisibleAtChapter(
       state.objectiveFactId === fact.id &&
       state.state !== "unknown" &&
       state.validFromChapter <= chapterNumber &&
-      (state.validToChapter === null || state.validToChapter >= chapterNumber),
+      (state.validToChapter === null || state.validToChapter >= chapterNumber) &&
+      isKnowledgeStateDisclosable(fixture, state, chapterNumber),
   );
 }
 

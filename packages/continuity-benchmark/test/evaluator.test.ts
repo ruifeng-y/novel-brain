@@ -120,9 +120,13 @@ describe("continuity evaluator", () => {
 
   it("accepts an independent evidence quote when structured locators match", () => {
     const findings = perfectFindings();
+    const target = findings[0]!;
+    const chapter = fixture.chapters.find(
+      (candidate) => candidate.number === target.chapterNumber,
+    )!;
     findings[0] = {
-      ...findings[0]!,
-      evidence: "独立评审引用：该段与已确认正史冲突。",
+      ...target,
+      evidence: chapter.content.slice(0, 24),
     };
 
     const result = evaluateContinuityFindings({ fixture, findings });
@@ -130,5 +134,19 @@ describe("continuity evaluator", () => {
     expect(result.summary.truePositives).toBe(fixture.defects.length);
     expect(result.summary.falsePositives).toBe(0);
     expect(result.summary.falseNegatives).toBe(0);
+  });
+
+  it("rejects an evidence string that does not appear in the cited chapter", () => {
+    const findings = perfectFindings();
+    findings[0] = {
+      ...findings[0]!,
+      evidence: "完全无关且章节中不存在的引用",
+    };
+
+    const result = evaluateContinuityFindings({ fixture, findings });
+
+    expect(result.summary.truePositives).toBe(fixture.defects.length - 1);
+    expect(result.summary.falsePositives).toBe(1);
+    expect(result.summary.falseNegatives).toBe(1);
   });
 });

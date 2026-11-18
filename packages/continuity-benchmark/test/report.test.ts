@@ -173,6 +173,26 @@ describe("continuity benchmark report", () => {
     expect(report.blockers).toContain("blind-review-adjudication-missing");
   });
 
+  it("uses the adjudicated disposition for P0 calibration", () => {
+    const evidence = completeReviewEvidence(packet, { disagreementCount: 1 });
+    evidence.adjudications[0]!.decision = "no_defect";
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: evidence,
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.blockers).toContain("blind-review-oracle-p0-miss");
+  });
+
   it("blocks unanimous no-defect reviews when the oracle contains P0 defects", () => {
     const report = buildContinuityBenchmarkReport({
       fixture,
@@ -208,7 +228,12 @@ describe("continuity benchmark report", () => {
     });
 
     expect(report.status).toBe("blocked");
-    expect(report.blockers).toContain("blind-review-control-false-positive");
+    expect(report.blockers).toEqual(
+      expect.arrayContaining([
+        "blind-review-control-false-positive",
+        "blind-review-incomplete-context-miss",
+      ]),
+    );
   });
 
   it("blocks fixture content that no longer matches its recorded digest", () => {
