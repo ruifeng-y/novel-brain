@@ -1,0 +1,54 @@
+# V1 固定质量基准 Registry 与回归门禁
+
+> Owner: M3 #103 / #139
+> Status: implementation baseline; release claims require real human evidence and approved variance threshold.
+
+## Dataset
+
+- 180 synthetic chapter samples，仙侠/历史/都市各 60。
+- Easy/medium/hard 三档难度各占三分之一。
+- 24 个 long-horizon adversarial cases 来自 #138 pinned fixture。
+- Manifest pins sample id, source version/hash, genre, difficulty, known issues, fixture hash and dataset SHA-256.
+- Each sample pins the required outline beats used to validate blind-review evidence.
+
+The complete frozen dataset is `docs/quality/quality-benchmark-v1.dataset.json`; its manifest is `docs/quality/quality-benchmark-v1.manifest.json`.
+
+## Rubric
+
+| Dimension | Initial approved threshold | Scorer |
+| --- | --- | --- |
+| P0 fact loss | exactly 0 | deterministic |
+| Knowledge-boundary violation | exactly 0 | deterministic |
+| Outline adherence | at least 0.9 | human blind |
+| Hook/prose | at least 4/5 | human blind |
+| Continuity conflicts | at most 1 per 50,000 characters | deterministic |
+
+`docs/quality/quality-benchmark-v1.rubric.json` is the frozen rubric snapshot. A changed threshold requires a new approved decision/ADR and a new rubric version.
+The rubric intentionally contains `reviewPolicy: null`; an inter-rater variance threshold is supplied only by the trusted evaluation boundary and is never inferred from candidate-reported decisions.
+
+## Run and gate
+
+- A run records code/model/prompt/context/agent versions, every sample score, scorer id/type, confidence, evidence quotes, reviewer attestation, review timestamp, blind-packet hash, decisions and continuity evaluation.
+- Human-required dimensions accept only `human_blind` scores. Model-assisted scores never satisfy the gate.
+- Each human score must reference a consistent reviewer attestation, review timestamp and the frozen blind-packet hash. This records the review contract; it does not prove that a real person performed the review.
+- The deterministic P0, knowledge and continuity metrics are recomputed from the pinned #138 fixture and the raw continuity findings retained in the run, not copied from caller-provided aggregate values.
+- Continuity conflicts include both missed ground-truth defects and unexpected findings.
+- Baseline and candidate reports must contain the five approved metrics exactly once, embed the approved dataset/rubric digests, and be reproducible from their embedded scores, raw continuity findings and fixture.
+- Baseline and candidate runs must share dataset and rubric hashes.
+- The inter-rater variance policy is supplied separately by the trusted evaluation boundary; a threshold embedded inside a candidate or report never satisfies the decision gate.
+- Candidate release failure, invalid or non-reproducible report, missing metric, identical baseline/candidate report, dataset/rubric mismatch or P0 regression blocks rollout.
+- The persisted run key binds the complete candidate artifact, including provenance, scores, decisions and continuity findings. Reusing a `candidateId` with changed prompt/context/agent versions creates a distinct run.
+
+## Persistence and module boundary
+
+- Internal Nest `EvalModule` exposes `EvalService.run` and `EvalService.gate` for release orchestration.
+- `eval_cases` stores frozen case metadata; `eval_runs`, `eval_scores` and `eval_gates` store tenant-scoped run evidence and rollout decisions. `eval_scores` also persists evidence quotes, reviewer attestation, review time and blind-packet hash for human scores.
+- `eval_runs` retains raw continuity findings alongside the recomputable continuity evaluation for later audit.
+- The three tenant tables force RLS. The curated `eval_cases` table is global and immutable for a dataset hash.
+- Run/score/gate child rows use composite tenant foreign keys so they cannot reference another tenant's run even if RLS is bypassed during FK checks.
+- The persistence integration test switches to a `NOSUPERUSER NOBYPASSRLS` role before asserting fail-closed tenant reads.
+- This ticket does not add an unapproved external HTTP/UI contract; #140 can consume the service for provider smoke, canary and rollback.
+
+## Release boundary
+
+File-backed registry and CLI evidence prove benchmark implementation and gate mechanics. They do not prove that actual human blind review occurred. Real review records and the approved inter-rater variance threshold remain mandatory before a V1 release claim.

@@ -1,0 +1,4 @@
+ALTER TABLE "eval_scores" ADD COLUMN "reviewer_attestation_id" text;--> statement-breakpoint
+ALTER TABLE "eval_scores" ADD COLUMN "reviewed_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "eval_scores_run_attestation_idx" ON "eval_scores" USING btree ("run_id","reviewer_attestation_id");--> statement-breakpoint
+ALTER TABLE "eval_scores" ADD CONSTRAINT "eval_scores_human_attestation_check" CHECK ("eval_scores"."scorer_type" <> 'human_blind' or ("eval_scores"."reviewer_attestation_id" is not null and length(trim("eval_scores"."reviewer_attestation_id")) > 0 and "eval_scores"."reviewed_at" is not null));

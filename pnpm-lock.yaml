@@ -241,6 +241,9 @@ importers:
       '@novel-brain/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@novel-brain/continuity-benchmark':
+        specifier: workspace:*
+        version: link:../../packages/continuity-benchmark
       '@novel-brain/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -253,6 +256,9 @@ importers:
       '@novel-brain/golden-three':
         specifier: workspace:*
         version: link:../golden-three
+      '@novel-brain/quality-benchmark':
+        specifier: workspace:*
+        version: link:../../packages/quality-benchmark
       '@novel-brain/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -416,6 +422,8 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
 
+  packages/continuity-benchmark: {}
+
   packages/contracts:
     dependencies:
       zod:
@@ -449,6 +457,12 @@ importers:
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11
+
+  packages/quality-benchmark:
+    dependencies:
+      '@novel-brain/continuity-benchmark':
+        specifier: workspace:*
+        version: link:../continuity-benchmark
 
   packages/storage:
     dependencies:

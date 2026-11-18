@@ -9,6 +9,7 @@ import { CanonModule } from "./canon/canon.module";
 import { ChaptersModule } from "./chapters/chapters.module";
 import { ChangesModule } from "./changes/changes.module";
 import { CharactersModule } from "./characters/characters.module";
+import { EvalModule } from "./eval/eval.module";
 import { FactsModule } from "./facts/facts.module";
 import { GenerationModule } from "./generation/generation.module";
 import { GoldenThreeModule } from "./golden-three/golden-three.module";
@@ -47,6 +48,7 @@ import { WorkExportModule } from "./exports/work-export.module";
     ChaptersModule,
     ChangesModule,
     CharactersModule,
+    EvalModule,
     FactsModule,
     GenerationModule,
     GoldenThreeModule,

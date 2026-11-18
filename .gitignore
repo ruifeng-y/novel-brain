@@ -10,6 +10,7 @@ artifacts/capacity/backups/
 artifacts/capacity/runtime/
 artifacts/capacity/runtime-compose/
 artifacts/capacity/compose-smoke/
+artifacts/quality/benchmark/
 artifacts/quality/continuity/
 artifacts/ui/candidates/
 .env

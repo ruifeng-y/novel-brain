@@ -92,7 +92,7 @@
 | QUALITY-003 | 事实确认/驳回/修改 | V1 | mapped | #77 | #78 | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Facts/Proposals; 逐条确认 | M0 |
 | QUALITY-004 | 审核队列/批准/驳回/批量 | V1 | mapped | #149 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Review; 批量低风险 | M2 |
 | QUALITY-005 | 黄金三章/卷末验收 | V1 | mapped | #90 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Gates; 作者签收 | M1 |
-| QUALITY-006 | 固定基准集/回归门禁 | V1 | mapped | #139 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Eval; 三题材 + 长线 | M3 |
+| QUALITY-006 | 固定基准集/回归门禁 | V1 | implemented | #139 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | frozen 180+24 cases; EvalModule persistence; CLI non-zero P0 regression gate | M3 |
 | QUALITY-007 | 作者反馈记录 | V1 | mapped | #118 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Feedback; 接受/拒绝/改写 | M1 |
 | QUALITY-008 | 人物声线/风格漂移检查 | V1 | mapped | #119 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Style/Characters; 卷级检查 | M1 |
 | QUALITY-009 | 真实读者反馈 | 后续 | deferred | — | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | ReaderFeedback; 后续 | Post-V1 |
@@ -133,8 +133,8 @@
 | OPS-001 | 健康检查/局域网与云部署 | V1 | mapped | #135 | #67 | Backend design §§11–13; ADR 0023 | Ops/Deploy; 部署 smoke | M3 |
 | OPS-002 | 备份/恢复演练 | V1 | mapped | #136 | — | Backend design §§11–13; ADR 0023 | Ops/Backup; RPO/RTO | M3 |
 | OPS-003 | 监控/日志/成本告警 | V1 | mapped | #135 | — | Backend design §§11–13; ADR 0023 | Observability; 告警演练 | M3 |
-| EVAL-001 | 三题材 + 长线基准集 | V1 | mapped | #139 | #79 | M3 Spec #82; EvalModule; ADR 0022 | Eval; 固定数据集 | M3 |
-| EVAL-002 | 评分 rubric/阈值/回归 | V1 | mapped | #139 | — | M3 Spec #82; EvalModule; ADR 0022 | Eval; 发布门禁 | M3 |
+| EVAL-001 | 三题材 + 长线基准集 | V1 | implemented | #139 | #79 | M3 Spec #82; EvalModule; ADR 0022 | 180 chapter + 24 #138 cases; eval_cases/eval_runs frozen hashes | M3 |
+| EVAL-002 | 评分 rubric/阈值/回归 | V1 | implemented | #139 | — | M3 Spec #82; EvalModule; ADR 0022 | ADR rubric、eval_scores、eval_gates、P0 regression gate | M3 |
 | EVAL-003 | 真实 DeepSeek smoke | V1 | mapped | #140 | #79 | M3 Spec #82; EvalModule; ADR 0022 | Eval/AI; 连接与质量 | M3 |
 | EVAL-004 | Prompt/模型灰度与回滚 | V1 | mapped | #140 | — | M3 Spec #82; EvalModule; ADR 0022 | Eval/Agents; 版本治理 | M3 |
 | PERF-001 | 1000 万字容量/性能/恢复基准 | V1 | mapped | #137 | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 确定性 10M fixture；p50/p95/p99、吞吐/错误/资源/存储/成本；容量与恢复压测 | M3 |
