@@ -52,9 +52,8 @@ test("publishes static legal documents without work context at four viewports", 
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
-    await expect(page).toHaveScreenshot(
-      ["legal", `legal-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["legal", `legal-${width}.png`], productionScreenshotOptions);
   }
 });

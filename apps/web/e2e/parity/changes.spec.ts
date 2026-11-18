@@ -24,10 +24,9 @@ for (const width of viewportWidths) {
     await expectNoOverflow(page);
     await expectAuthorFacingLanguage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["changes", `changes-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["changes", `changes-${width}.png`], productionScreenshotOptions);
   });
 }
 

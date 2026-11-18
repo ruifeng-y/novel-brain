@@ -156,7 +156,7 @@ test("checks every M0 parity page at all signed-off viewports and author languag
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(1);
-    await expect(page).toHaveScreenshot(["auth", `auth-${width}.png`], screenshotOptions);
+    await expect.soft(page).toHaveScreenshot(["auth", `auth-${width}.png`], screenshotOptions);
   }
   await context.addCookies([
     {
@@ -242,10 +242,12 @@ test("checks every M0 parity page at all signed-off viewports and author languag
       );
       expect(overflow).toBeLessThanOrEqual(1);
       if (pageContract.signedGolden) {
-        await expect(page).toHaveScreenshot(
-          [pageContract.id, `${pageContract.id}-${width}.png`],
-          screenshotOptions,
-        );
+        await expect
+          .soft(page)
+          .toHaveScreenshot(
+            [pageContract.id, `${pageContract.id}-${width}.png`],
+            screenshotOptions,
+          );
       } else {
         await testInfo.attach(`${pageContract.id}-m1-pending-${width}`, {
           body: await page.screenshot(screenshotOptions),

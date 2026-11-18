@@ -673,9 +673,8 @@ test("keeps the batch review workspace within four viewports", async ({
       body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
       contentType: "image/png",
     });
-    await expect(page).toHaveScreenshot(
-      ["batch", `batch-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["batch", `batch-${width}.png`], productionScreenshotOptions);
   }
 });

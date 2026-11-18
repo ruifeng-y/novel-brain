@@ -130,10 +130,12 @@ test("overview handles error and four viewports", async ({ page, context }) => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await expect(page).toHaveScreenshot(
-      ["work-overview", `work-overview-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(
+        ["work-overview", `work-overview-${width}.png`],
+        productionScreenshotOptions,
+      );
   }
 });
 
@@ -424,10 +426,12 @@ test("shows current branch, recent changes and long content at four viewports", 
     );
     expect(overflow).toBeLessThanOrEqual(0);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["work-overview", `work-overview-long-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(
+        ["work-overview", `work-overview-long-${width}.png`],
+        productionScreenshotOptions,
+      );
   }
 });
 

@@ -245,10 +245,9 @@ test("renders a long ledger at four viewports and opens the outline ledger", asy
     await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["foreshadows", `foreshadows-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["foreshadows", `foreshadows-${width}.png`], productionScreenshotOptions);
   }
 
   await page.setViewportSize({ width: 1440, height: 900 });

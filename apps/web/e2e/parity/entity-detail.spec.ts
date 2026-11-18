@@ -801,10 +801,12 @@ test("loads the dedicated character profile, relationships, state history and he
     });
     await expectNoOverflow(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["entity-detail", `entity-detail-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(
+        ["entity-detail", `entity-detail-${width}.png`],
+        productionScreenshotOptions,
+      );
     await capture(page, testInfo, `entity-detail-profile-${width}`);
   }
 });

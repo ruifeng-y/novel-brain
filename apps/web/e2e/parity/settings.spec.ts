@@ -600,10 +600,9 @@ test("holds a long settings list at all four viewports", async ({ page, context 
     await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["settings", `settings-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["settings", `settings-${width}.png`], productionScreenshotOptions);
   }
 });
 

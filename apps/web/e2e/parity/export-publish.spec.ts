@@ -197,10 +197,12 @@ test("runs export, publish check and reader preview, then covers four viewports"
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
-      await expect(page).toHaveScreenshot(
-        ["export-publish", `export-publish-${width}.png`],
-        productionScreenshotOptions,
-      );
+      await expect
+        .soft(page)
+        .toHaveScreenshot(
+          ["export-publish", `export-publish-${width}.png`],
+          productionScreenshotOptions,
+        );
     }
     await unfreezeTimestamps();
 

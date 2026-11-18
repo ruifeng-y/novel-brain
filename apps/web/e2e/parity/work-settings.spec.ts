@@ -216,9 +216,11 @@ test("shows loading, permission and error states and holds four viewports", asyn
       body: await page.screenshot({ animations: "disabled", caret: "hide" }),
       contentType: "image/png",
     });
-    await expect(page).toHaveScreenshot(
-      ["work-settings", `work-settings-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(
+        ["work-settings", `work-settings-${width}.png`],
+        productionScreenshotOptions,
+      );
   }
 });
