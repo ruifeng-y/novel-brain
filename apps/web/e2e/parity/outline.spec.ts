@@ -392,10 +392,9 @@ test("renders empty, tree, board and tension states at four viewports", async ({
     await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["outline", `outline-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["outline", `outline-${width}.png`], productionScreenshotOptions);
   }
 
   await expectAuthorFacingLanguage(page);

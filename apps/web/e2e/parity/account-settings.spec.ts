@@ -180,10 +180,12 @@ test("invalid and expired model keys stay masked and recoverable", async ({
     );
     expect(overflow).toBeLessThanOrEqual(0);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["account-settings", `account-settings-key-error-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(
+        ["account-settings", `account-settings-key-error-${width}.png`],
+        productionScreenshotOptions,
+      );
   }
 
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -634,10 +636,12 @@ test("account settings holds at all four viewports", async ({ page, context, req
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await expect(page).toHaveScreenshot(
-      ["account-settings", `account-settings-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(
+        ["account-settings", `account-settings-${width}.png`],
+        productionScreenshotOptions,
+      );
   }
 });
 

@@ -282,10 +282,9 @@ test("renders loading, error, partial and long states across four viewports", as
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await expect(page).toHaveScreenshot(
-      ["bible", `bible-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["bible", `bible-${width}.png`], productionScreenshotOptions);
   }
 });
 

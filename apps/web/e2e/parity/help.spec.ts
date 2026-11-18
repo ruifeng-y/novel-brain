@@ -38,6 +38,8 @@ test("opens without work context and covers empty search at four viewports", asy
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
-    await expect(page).toHaveScreenshot(["help", `help-${width}.png`], productionScreenshotOptions);
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["help", `help-${width}.png`], productionScreenshotOptions);
   }
 });

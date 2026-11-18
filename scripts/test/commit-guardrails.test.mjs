@@ -75,6 +75,15 @@ test("allows recognized technical words in Chinese prose", () => {
   );
 });
 
+test("accepts common project identifiers in a Chinese-majority body", () => {
+  assert.deepEqual(
+    validateCommitMessages([
+      "test(ui): 固化 M1-142 Linux 视觉基线\n\n作者确认 #142 的 work-settings 四档生产布局，并确认 Linux/Chromium 390px actual 作为正式 Golden。同步替换 dashboard 与 work-settings 的 390px 基线，记录 parity 状态和签收证据。",
+    ]),
+    [],
+  );
+});
+
 test("allows PascalCase and camelCase project identifiers", () => {
   assert.deepEqual(
     validateCommitSubjects([

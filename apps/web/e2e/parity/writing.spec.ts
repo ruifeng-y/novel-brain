@@ -283,10 +283,9 @@ test("shows empty and error states and keeps the editor usable at four viewports
     expect(overflow).toBeLessThanOrEqual(0);
     await expectNoPrototypeOnlyLeakage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["writing", `writing-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await expect
+      .soft(page)
+      .toHaveScreenshot(["writing", `writing-${width}.png`], productionScreenshotOptions);
   }
 });
 
