@@ -1,13 +1,16 @@
-import type { ContinuityControl, ContinuityDefect, ContinuityFixture } from "./fixture";
-import type { ContinuityScenarioFamily, ContinuitySeverity } from "./plan";
-import { volumePositionFor, type VolumePosition } from "./strata";
+import { createHash } from "node:crypto";
 
-export interface ContinuityFinding {
-  family: ContinuityScenarioFamily;
+import type {
+  ContinuityControl,
+  ContinuityDefect,
+  ContinuityFixture,
+  ContinuityLocator,
+} from "./fixture";
+import type { ContinuitySeverity } from "./plan";
+import { volumeNumberForChapter, volumePositionFor, type VolumePosition } from "./strata";
+
+export interface ContinuityFinding extends ContinuityLocator {
   severity: ContinuitySeverity;
-  chapterNumber: number;
-  branchId: string;
-  entityIds: readonly string[];
   sourceFactId: string;
   versionNodeId: string;
   evidence: string;
@@ -30,6 +33,9 @@ export interface ContinuityMetricGroup {
 }
 
 export interface ContinuityEvaluation {
+  fixtureSha256: string;
+  findingsSha256: string;
+  sha256: string;
   summary: ContinuityMetrics;
   byFamily: readonly ContinuityMetricGroup[];
   bySeverity: readonly ContinuityMetricGroup[];
@@ -110,7 +116,9 @@ export function evaluateContinuityFindings(input: {
     blockers.push("knowledge-boundary-leak");
   }
 
-  return {
+  const evaluationWithoutHash = {
+    fixtureSha256: fixture.digest.sha256,
+    findingsSha256: sha256(findings),
     summary,
     byFamily: groupMetrics(classified, (entry) => entry.key),
     bySeverity: groupMetrics(
@@ -128,6 +136,15 @@ export function evaluateContinuityFindings(input: {
       knowledgeBoundaryFalseNegatives,
     },
   };
+  return {
+    ...evaluationWithoutHash,
+    sha256: sha256(evaluationWithoutHash),
+  };
+}
+
+export function verifyContinuityEvaluation(evaluation: ContinuityEvaluation): boolean {
+  const { sha256: recordedSha256, ...evaluationWithoutHash } = evaluation;
+  return recordedSha256 === sha256(evaluationWithoutHash);
 }
 
 function matchesDefect(finding: ContinuityFinding, defect: ContinuityDefect): boolean {
@@ -144,13 +161,7 @@ function matchesControl(finding: ContinuityFinding, control: ContinuityControl):
   return matchesLocator(finding, control);
 }
 
-function matchesLocator(
-  finding: ContinuityFinding,
-  expected: Pick<
-    ContinuityDefect | ContinuityControl,
-    "family" | "branchId" | "chapterNumber" | "entityIds"
-  >,
-): boolean {
+function matchesLocator(finding: ContinuityFinding, expected: ContinuityLocator): boolean {
   return (
     finding.family === expected.family &&
     finding.branchId === expected.branchId &&
@@ -239,7 +250,10 @@ function ratio(numerator: number, denominator: number): number {
 }
 
 function volumePosition(fixture: ContinuityFixture, chapterNumber: number): VolumePosition {
-  return volumePositionFor(fixture.plan.chapterCount, chapterNumber);
+  return volumePositionFor(
+    fixture.plan.volumeCount,
+    volumeNumberForChapter(fixture.plan.chaptersPerVolume, chapterNumber),
+  );
 }
 
 function intersects(left: readonly string[], right: readonly string[]): boolean {
@@ -248,4 +262,8 @@ function intersects(left: readonly string[], right: readonly string[]): boolean 
 
 function normalizeEvidence(value: string): string {
   return value.replace(/\s+/gu, " ").trim();
+}
+
+function sha256(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }

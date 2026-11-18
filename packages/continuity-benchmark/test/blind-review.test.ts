@@ -98,4 +98,30 @@ describe("continuity blind review packet", () => {
       }
     }
   });
+
+  it("only exposes approved canon and knowledge that is disclosable at the sample chapter", () => {
+    const { packet } = buildContinuityBlindReviewPacket({
+      fixture,
+      samplesPerStratum: 3,
+    });
+
+    for (const item of packet.items) {
+      for (const fact of item.povContext.approvedFacts) {
+        const source = fixture.facts.find((candidate) => candidate.id === fact.id)!;
+        expect(source.objectiveCanon).toBe(true);
+        expect(["confirmed", "locked"]).toContain(source.decisionState);
+      }
+      for (const state of item.povContext.knownStates) {
+        const source = fixture.knowledgeStates.find(
+          (candidate) =>
+            candidate.objectiveFactId === state.objectiveFactId &&
+            candidate.claimedContent === state.claimedContent,
+        )!;
+        expect(
+          source.allowedDisclosureFromChapter === null ||
+            source.allowedDisclosureFromChapter <= item.chapterNumber,
+        ).toBe(true);
+      }
+    }
+  });
 });

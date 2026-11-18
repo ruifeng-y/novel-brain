@@ -1,6 +1,12 @@
-import type { BlindReviewOracle, BlindReviewPacket } from "./blind-review";
-import type { ContinuityEvaluation } from "./evaluator";
-import type { ContinuityFixture } from "./fixture";
+import {
+  verifyBlindReviewOracle,
+  verifyBlindReviewPacket,
+  type BlindReviewOracle,
+  type BlindReviewPacket,
+} from "./blind-review";
+import { verifyContinuityEvaluation, type ContinuityEvaluation } from "./evaluator";
+import { verifyContinuityFixtureDigest, type ContinuityFixture } from "./fixture";
+import { reviewStrata } from "./strata";
 
 export type ContinuityReviewDisposition = "defect" | "no_defect" | "escalate";
 
@@ -88,6 +94,7 @@ export interface ContinuityBenchmarkReport {
     reviewerCount: number;
     interRaterAgreement: number | null;
     adjudicatedDisagreements: number;
+    p0OracleMisses: number;
   };
   narrativeEvidence: ContinuityNarrativeEvidence | null;
   decisions: readonly ContinuityBenchmarkDecision[];
@@ -107,16 +114,31 @@ export function buildContinuityBenchmarkReport(input: {
   if (!input.fixture.plan.certificationEligible) {
     blockers.add("fixture-not-certification-eligible");
   }
+  if (!verifyContinuityFixtureDigest(input.fixture)) {
+    blockers.add("fixture-digest-mismatch");
+  }
+  if (!verifyContinuityEvaluation(input.evaluation)) {
+    blockers.add("evaluation-digest-mismatch");
+  }
+  if (input.evaluation.fixtureSha256 !== input.fixture.digest.sha256) {
+    blockers.add("evaluation-fixture-mismatch");
+  }
   for (const blocker of input.evaluation.releaseGate.blockers) {
     blockers.add(`evaluation-gate-failed:${blocker}`);
   }
   if (input.blindReviewPacket.fixtureSha256 !== input.fixture.digest.sha256) {
     blockers.add("blind-review-packet-fixture-mismatch");
   }
+  if (!verifyBlindReviewPacket(input.blindReviewPacket)) {
+    blockers.add("blind-review-packet-digest-mismatch");
+  }
   if (input.blindReviewOracle.fixtureSha256 !== input.fixture.digest.sha256) {
     blockers.add("blind-review-oracle-fixture-mismatch");
   }
-  for (const stratum of ["early", "middle", "late"] as const) {
+  if (!verifyBlindReviewOracle(input.blindReviewOracle)) {
+    blockers.add("blind-review-oracle-digest-mismatch");
+  }
+  for (const stratum of reviewStrata) {
     if (!input.blindReviewPacket.items.some((item) => item.stratum === stratum)) {
       blockers.add(`blind-review-stratum-missing:${stratum}`);
     }
@@ -163,6 +185,7 @@ export function buildContinuityBenchmarkReport(input: {
     ? assessReviewEvidence({
         evidence: input.reviewEvidence,
         packet: input.blindReviewPacket,
+        oracle: input.blindReviewOracle,
       })
     : null;
   if (!input.reviewEvidence || !reviewAssessment) {
@@ -194,6 +217,9 @@ export function buildContinuityBenchmarkReport(input: {
     if (reviewAssessment.adjudicatedDisagreements < reviewAssessment.disagreementCount) {
       blockers.add("blind-review-adjudication-missing");
     }
+    if (reviewAssessment.p0OracleMisses > 0) {
+      blockers.add("blind-review-oracle-p0-miss");
+    }
   }
 
   const blockerList = [...blockers].sort();
@@ -224,6 +250,7 @@ export function buildContinuityBenchmarkReport(input: {
       reviewerCount: reviewAssessment?.reviewerIds.length ?? 0,
       interRaterAgreement: reviewAssessment?.interRaterAgreement ?? null,
       adjudicatedDisagreements: reviewAssessment?.adjudicatedDisagreements ?? 0,
+      p0OracleMisses: reviewAssessment?.p0OracleMisses ?? 0,
     },
     narrativeEvidence: input.narrativeEvidence ?? null,
     decisions: input.decisions,
@@ -252,6 +279,7 @@ function isApprovedDecision(decision: ContinuityBenchmarkDecision): boolean {
 function assessReviewEvidence(input: {
   evidence: ContinuityReviewEvidence;
   packet: BlindReviewPacket;
+  oracle: BlindReviewOracle;
 }): {
   blockers: readonly string[];
   reviewerIds: readonly string[];
@@ -259,6 +287,7 @@ function assessReviewEvidence(input: {
   interRaterAgreement: number;
   disagreementCount: number;
   adjudicatedDisagreements: number;
+  p0OracleMisses: number;
 } {
   const blockers = new Set<string>();
   if (input.evidence.schemaVersion !== 1) {
@@ -334,7 +363,19 @@ function assessReviewEvidence(input: {
   const adjudicatedReviewIds = new Set(
     validAdjudications.map((adjudication) => adjudication.reviewId),
   );
-  for (const stratum of ["early", "middle", "late"] as const) {
+  const p0OracleMisses = input.oracle.items.filter((oracleItem) => {
+    if (!oracleItem.expectedSeverities.includes("P0")) {
+      return false;
+    }
+    const scores = scoresByReviewId.get(oracleItem.reviewId) ?? [];
+    const adjudication = validAdjudications.find(
+      (candidate) => candidate.reviewId === oracleItem.reviewId,
+    );
+    return (
+      !scores.some((score) => score.disposition === "defect") && adjudication?.decision !== "defect"
+    );
+  }).length;
+  for (const stratum of reviewStrata) {
     const stratumReviewIds = input.packet.items
       .filter((item) => item.stratum === stratum)
       .map((item) => item.reviewId);
@@ -355,6 +396,7 @@ function assessReviewEvidence(input: {
     interRaterAgreement: reviewedItemCount === 0 ? 0 : agreedItemCount / input.packet.items.length,
     disagreementCount,
     adjudicatedDisagreements: adjudicatedReviewIds.size,
+    p0OracleMisses,
   };
 }
 

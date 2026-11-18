@@ -33,6 +33,17 @@ describe("continuity fixture", () => {
     const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
 
     expect(fixture.facts.some((fact) => fact.visibility === "hidden")).toBe(true);
+    expect(fixture.facts.map((fact) => fact.decisionState)).toEqual(
+      expect.arrayContaining(["proposed", "confirmed", "locked", "superseded"]),
+    );
+    expect(fixture.facts.every((fact) => typeof fact.objectiveCanon === "boolean")).toBe(true);
+    expect(
+      fixture.knowledgeStates.every(
+        (state) =>
+          typeof state.allowedDisclosureFromChapter === "number" ||
+          state.allowedDisclosureFromChapter === null,
+      ),
+    ).toBe(true);
     expect(new Set(fixture.knowledgeStates.map((state) => state.state))).toEqual(
       new Set(["knowledge", "belief", "suspicion", "misbelief", "unknown"]),
     );
@@ -102,9 +113,32 @@ describe("continuity fixture", () => {
     expect(fixture.storyBible.title).toBe("忘川旧梦");
     expect(fixture.storyBible.worldRules.length).toBeGreaterThan(0);
     expect(fixture.genrePack.name).toBe("仙侠");
+    expect(fixture.genrePacks.map((genre) => genre.name)).toEqual(["仙侠", "历史", "都市"]);
     expect(fixture.powerSystem.realms.length).toBeGreaterThanOrEqual(3);
     expect(fixture.powerSystem.lifespanPolicy).toContain("境界");
     expect(fixture.specialMechanisms).toHaveLength(2);
+    expect(fixture.characterPowerStates.length).toBeGreaterThanOrEqual(4);
+    expect(fixture.characterPowerStates.every((state) => state.ageYears > 0)).toBe(true);
+    expect(
+      fixture.characterPowerStates.some(
+        (state) => state.remainingLifespanYears !== state.previousLifespanYears,
+      ),
+    ).toBe(true);
+    expect(fixture.itemRightsTransitions.map((transition) => transition.action)).toEqual(
+      expect.arrayContaining([
+        "transfer",
+        "theft",
+        "loan",
+        "consumption",
+        "destruction",
+        "disposal",
+      ]),
+    );
+    expect(new Set(fixture.mapNodes.map((node) => node.scale))).toEqual(
+      new Set(["world", "realm", "region", "city"]),
+    );
+    expect(fixture.timeline.some((event) => event.simultaneousGroup !== null)).toBe(true);
+    expect(fixture.timeline.some((event) => event.isTimeSkip)).toBe(true);
     expect(new Set(fixture.outlineNodes.map((node) => node.level))).toEqual(
       new Set(["book", "volume", "act", "chapter", "scene"]),
     );
@@ -134,14 +168,44 @@ describe("continuity fixture", () => {
       fixture.stateTransitions,
       fixture.identityTransitions,
       fixture.items,
+      fixture.itemRightsTransitions,
       fixture.timeline,
+      fixture.mapNodes,
       fixture.relationships,
       fixture.plotThreads,
       fixture.foreshadows,
       fixture.styleSamples,
       fixture.characterArcs,
+      fixture.characterPowerStates,
+      fixture.branchChapters,
     ]) {
       expect(collection.every((entry) => branchIds.has(entry.branchId))).toBe(true);
+    }
+  });
+
+  it("keeps branch facts, chapter snapshots and timeline events after their divergence", () => {
+    const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
+
+    for (const branch of fixture.branches.slice(1)) {
+      const branchFacts = fixture.facts.filter((fact) => fact.branchId === branch.id);
+      expect(branchFacts.length).toBeGreaterThan(0);
+      expect(branchFacts.every((fact) => fact.validFromChapter >= branch.divergenceChapter!)).toBe(
+        true,
+      );
+
+      const branchChapters = fixture.branchChapters.filter(
+        (chapter) => chapter.branchId === branch.id,
+      );
+      expect(branchChapters.length).toBeGreaterThan(0);
+      expect(
+        branchChapters.every((chapter) => chapter.chapterNumber >= branch.divergenceChapter!),
+      ).toBe(true);
+      expect(
+        fixture.timeline.some(
+          (event) =>
+            event.branchId === branch.id && event.chapterNumber >= branch.divergenceChapter!,
+        ),
+      ).toBe(true);
     }
   });
 

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { runContinuityCli } from "../src/cli";
 import type { ContinuityFixture } from "../src/fixture";
+import { findingsFor } from "./helpers";
 
 describe("continuity benchmark cli", () => {
   it("creates reproducible fixture and blind-review artifacts", async () => {
@@ -61,24 +62,7 @@ describe("continuity benchmark cli", () => {
       expect(packet.items).toHaveLength(6);
       expect(oracle.items).toHaveLength(6);
 
-      await writeFile(
-        findingsPath,
-        `${JSON.stringify(
-          fixture.defects.map((defect) => ({
-            family: defect.family,
-            severity: defect.severity,
-            chapterNumber: defect.chapterNumber,
-            branchId: defect.branchId,
-            entityIds: defect.entityIds,
-            sourceFactId: defect.sourceFactId,
-            versionNodeId: defect.versionNodeId,
-            evidence: defect.evidence,
-          })),
-          null,
-          2,
-        )}\n`,
-        "utf8",
-      );
+      await writeFile(findingsPath, `${JSON.stringify(findingsFor(fixture), null, 2)}\n`, "utf8");
       await runContinuityCli([
         "evaluate",
         "--fixture",

@@ -3,21 +3,13 @@ import { describe, expect, it } from "vitest";
 import { evaluateContinuityFindings, type ContinuityFinding } from "../src/evaluator";
 import { generateContinuityFixture } from "../src/fixture";
 import { createContinuityPlan } from "../src/plan";
+import { findingsFor } from "./helpers";
 
 const plan = createContinuityPlan({ seed: 20261118, tier: "smoke" });
 const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
 
 function perfectFindings(): ContinuityFinding[] {
-  return fixture.defects.map((defect) => ({
-    family: defect.family,
-    severity: defect.severity,
-    chapterNumber: defect.chapterNumber,
-    branchId: defect.branchId,
-    entityIds: [...defect.entityIds],
-    sourceFactId: defect.sourceFactId,
-    versionNodeId: defect.versionNodeId,
-    evidence: defect.evidence,
-  }));
+  return findingsFor(fixture);
 }
 
 describe("continuity evaluator", () => {

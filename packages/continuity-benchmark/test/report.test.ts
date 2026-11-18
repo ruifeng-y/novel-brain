@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { buildContinuityBlindReviewPacket } from "../src/blind-review";
-import { evaluateContinuityFindings, type ContinuityFinding } from "../src/evaluator";
+import { evaluateContinuityFindings } from "../src/evaluator";
 import { generateContinuityFixture } from "../src/fixture";
 import { createContinuityPlan } from "../src/plan";
 import { buildContinuityBenchmarkReport } from "../src/report";
+import { findingsFor } from "./helpers";
 
 const plan = createContinuityPlan({ seed: 20261118, tier: "minimum" });
 const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
@@ -181,6 +182,92 @@ describe("continuity benchmark report", () => {
     expect(report.blockers).toContain("blind-review-adjudication-missing");
   });
 
+  it("blocks unanimous no-defect reviews when the oracle contains P0 defects", () => {
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(packet, { allNoDefect: true }),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.status).toBe("blocked");
+    expect(report.blockers).toContain("blind-review-oracle-p0-miss");
+  });
+
+  it("blocks fixture content that no longer matches its recorded digest", () => {
+    const tamperedFixture = structuredClone(fixture);
+    tamperedFixture.chapters[0]!.content += "tampered";
+    const report = buildContinuityBenchmarkReport({
+      fixture: tamperedFixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(packet),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.blockers).toContain("fixture-digest-mismatch");
+  });
+
+  it("blocks evaluation content that no longer matches its recorded digest", () => {
+    const tamperedEvaluation = structuredClone(evaluation);
+    tamperedEvaluation.summary.truePositives = 0;
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation: tamperedEvaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(packet),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.blockers).toContain("evaluation-digest-mismatch");
+  });
+
+  it("blocks tampered blind-review packet or oracle artifacts", () => {
+    const tamperedPacket = structuredClone(packet);
+    tamperedPacket.items[0]!.candidateText += "tampered";
+    const tamperedOracle = structuredClone(oracle);
+    tamperedOracle.items[0]!.expectedDefectIds.push("tampered");
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: tamperedPacket,
+      blindReviewOracle: tamperedOracle,
+      reviewEvidence: completeReviewEvidence(tamperedPacket),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.blockers).toEqual(
+      expect.arrayContaining([
+        "blind-review-packet-digest-mismatch",
+        "blind-review-oracle-digest-mismatch",
+      ]),
+    );
+  });
+
   it("keeps P0 misses and low reviewer agreement blocking", () => {
     const missed = evaluateContinuityFindings({
       fixture,
@@ -211,7 +298,7 @@ describe("continuity benchmark report", () => {
 
 function completeReviewEvidence(
   reviewPacket: typeof packet,
-  options: { disagreementCount?: number } = {},
+  options: { disagreementCount?: number; allNoDefect?: boolean } = {},
 ) {
   const disagreementCount = options.disagreementCount ?? 0;
   return {
@@ -237,7 +324,11 @@ function completeReviewEvidence(
       ["reviewer-a", "reviewer-b"].map((reviewerId, reviewerIndex) => ({
         reviewId: item.reviewId,
         reviewerId,
-        disposition: itemIndex < disagreementCount && reviewerIndex === 1 ? "no_defect" : "defect",
+        disposition: options.allNoDefect
+          ? "no_defect"
+          : itemIndex < disagreementCount && reviewerIndex === 1
+            ? "no_defect"
+            : "defect",
         rubricScores: {
           factualContinuity: 5,
           knowledgeBoundary: 5,
@@ -279,17 +370,4 @@ function approvedDecisions() {
       decidedAt: "2026-11-18T00:00:00.000Z",
     },
   ];
-}
-
-function findingsFor(value: typeof fixture): ContinuityFinding[] {
-  return value.defects.map((defect) => ({
-    family: defect.family,
-    severity: defect.severity,
-    chapterNumber: defect.chapterNumber,
-    branchId: defect.branchId,
-    entityIds: [...defect.entityIds],
-    sourceFactId: defect.sourceFactId,
-    versionNodeId: defect.versionNodeId,
-    evidence: defect.evidence,
-  }));
 }

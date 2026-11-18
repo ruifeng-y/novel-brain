@@ -1,7 +1,13 @@
 export type VolumePosition = "early" | "middle" | "late";
 
-export function volumePositionFor(chapterCount: number, chapterNumber: number): VolumePosition {
-  const ratio = chapterNumber / chapterCount;
+export const reviewStrata = ["early", "middle", "late"] as const;
+
+export function volumeNumberForChapter(chaptersPerVolume: number, chapterNumber: number): number {
+  return Math.ceil(chapterNumber / chaptersPerVolume);
+}
+
+export function volumePositionFor(volumeCount: number, volumeNumber: number): VolumePosition {
+  const ratio = volumeNumber / volumeCount;
   if (ratio <= 1 / 3) {
     return "early";
   }

@@ -10,6 +10,7 @@ import {
 
 export type KnowledgeStateKind = "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
 export type ControlMode = "clean" | "false_alarm" | "incomplete_context";
+export type FactDecisionState = "proposed" | "confirmed" | "locked" | "superseded";
 
 export interface ContinuityEntity {
   id: string;
@@ -60,6 +61,17 @@ export interface ContinuityBranch {
   chapterCount: number;
 }
 
+export interface BranchChapterSnapshot {
+  id: string;
+  branchId: string;
+  chapterNumber: number;
+  volumeNumber: number;
+  title: string;
+  summary: string;
+  content: string;
+  versionNodeId: string;
+}
+
 export interface ContinuityFact {
   id: string;
   branchId: string;
@@ -69,6 +81,9 @@ export interface ContinuityFact {
   validFromChapter: number;
   validToChapter: number | null;
   visibility: "public" | "hidden";
+  objectiveCanon: boolean;
+  decisionState: FactDecisionState;
+  allowedDisclosureFromChapter: number | null;
   sourceChapterId: string;
   sourceEventId: string;
   versionNodeId: string;
@@ -83,6 +98,8 @@ export interface CharacterKnowledgeState {
   claimedContent: string | null;
   validFromChapter: number;
   validToChapter: number | null;
+  decisionState: FactDecisionState;
+  allowedDisclosureFromChapter: number | null;
   sourceChapterId: string;
   versionNodeId: string;
 }
@@ -116,12 +133,39 @@ export interface ContinuityItem {
   versionNodeId: string;
 }
 
+export type ItemRightsAction =
+  | "transfer"
+  | "theft"
+  | "loan"
+  | "inheritance"
+  | "consumption"
+  | "destruction"
+  | "crafting"
+  | "recovery"
+  | "disposal";
+
+export interface ItemRightsTransition {
+  id: string;
+  branchId: string;
+  itemId: string;
+  action: ItemRightsAction;
+  fromRights: ItemRights | null;
+  toRights: ItemRights | null;
+  chapterNumber: number;
+  sourceEventId: string;
+  versionNodeId: string;
+}
+
 export interface TimelineEvent {
   id: string;
   branchId: string;
   chapterNumber: number;
   storyTimeLabel: string;
+  storyTimeStartLabel: string;
+  storyTimeEndLabel: string;
   storySortKey: number;
+  simultaneousGroup: string | null;
+  isTimeSkip: boolean;
   locationId: string;
   participants: readonly string[];
 }
@@ -132,6 +176,14 @@ export interface MapRoute {
   toLocationId: string;
   travelMinutes: number;
   bidirectional: boolean;
+}
+
+export interface MapNode {
+  id: string;
+  branchId: string;
+  parentId: string | null;
+  scale: "world" | "realm" | "region" | "city";
+  name: string;
 }
 
 export interface PlotThread {
@@ -166,26 +218,25 @@ export interface StyleSample {
   sampleText: string;
 }
 
-export interface ContinuityDefect {
-  id: string;
+export interface ContinuityLocator {
   family: ContinuityScenarioFamily;
-  severity: ContinuitySeverity;
   chapterNumber: number;
   branchId: string;
   entityIds: readonly string[];
+}
+
+export interface ContinuityDefect extends ContinuityLocator {
+  id: string;
+  severity: ContinuitySeverity;
   sourceFactId: string;
   versionNodeId: string;
   description: string;
   evidence: string;
 }
 
-export interface ContinuityControl {
+export interface ContinuityControl extends ContinuityLocator {
   id: string;
-  family: ContinuityScenarioFamily;
   mode: ControlMode;
-  chapterNumber: number;
-  branchId: string;
-  entityIds: readonly string[];
   reason: string;
 }
 
@@ -209,7 +260,7 @@ export interface StoryBible {
 
 export interface GenrePack {
   id: string;
-  name: "仙侠";
+  name: "仙侠" | "历史" | "都市";
   version: string;
   requiredEntityKinds: readonly ContinuityEntity["kind"][];
   continuityRules: readonly string[];
@@ -292,6 +343,20 @@ export interface CharacterArc {
   turningPoints: readonly string[];
 }
 
+export interface CharacterPowerState {
+  id: string;
+  branchId: string;
+  characterId: string;
+  realm: string;
+  ageYears: number;
+  remainingLifespanYears: number;
+  previousLifespanYears: number;
+  transition: "baseline" | "breakthrough" | "lifespan_decay" | "resurrection_penalty";
+  chapterNumber: number;
+  sourceEventId: string;
+  versionNodeId: string;
+}
+
 export type AgentWorkflowStage =
   | "detect"
   | "cite_evidence"
@@ -335,6 +400,7 @@ export interface ContinuityFixture {
   plan: ContinuityPlan;
   storyBible: StoryBible;
   genrePack: GenrePack;
+  genrePacks: readonly GenrePack[];
   powerSystem: PowerSystem;
   specialMechanisms: readonly SpecialMechanism[];
   entities: readonly ContinuityEntity[];
@@ -342,18 +408,22 @@ export interface ContinuityFixture {
   chapters: readonly ContinuityChapter[];
   volumes: readonly ContinuityVolume[];
   branches: readonly ContinuityBranch[];
+  branchChapters: readonly BranchChapterSnapshot[];
   outlineNodes: readonly OutlineNode[];
   facts: readonly ContinuityFact[];
   knowledgeStates: readonly CharacterKnowledgeState[];
   stateTransitions: readonly StateTransition[];
   identityTransitions: readonly IdentityTransition[];
   items: readonly ContinuityItem[];
+  itemRightsTransitions: readonly ItemRightsTransition[];
   timeline: readonly TimelineEvent[];
+  mapNodes: readonly MapNode[];
   mapRoutes: readonly MapRoute[];
   plotThreads: readonly PlotThread[];
   foreshadows: readonly Foreshadow[];
   styleSamples: readonly StyleSample[];
   characterArcs: readonly CharacterArc[];
+  characterPowerStates: readonly CharacterPowerState[];
   defects: readonly ContinuityDefect[];
   controls: readonly ContinuityControl[];
   agentScenarios: readonly ContinuityAgentScenario[];
@@ -421,7 +491,9 @@ export function generateContinuityFixture(input: {
   const volumes = createVolumes(plan);
   const chapters = createChapters(plan, characterIds, locationIds);
   const branches = createBranches(plan);
-  const genrePack = createGenrePack(plan);
+  const branchChapters = createBranchChapters(plan, chapters, branches);
+  const genrePacks = createGenrePacks(plan);
+  const genrePack = genrePacks[0]!;
   const storyBible = createStoryBible(plan, characterIds[0]!, branches[0]!.id);
   const powerSystem = createPowerSystem(plan, branches[0]!.id);
   const specialMechanisms = createSpecialMechanisms(plan, characterIds, branches[0]!.id);
@@ -437,13 +509,21 @@ export function generateContinuityFixture(input: {
     branches,
   );
   const items = createItems(plan, chapters, characterIds, locationIds, itemIds, branches);
+  const itemRightsTransitions = createItemRightsTransitions(plan, chapters, items, branches[0]!.id);
   const timeline = createTimeline(plan, chapters, characterIds, locationIds, branches);
   const relationships = createRelationships(plan, chapters, characterIds, branches);
+  const mapNodes = createMapNodes(plan, locationIds, branches[0]!.id);
   const mapRoutes = createMapRoutes(plan, locationIds);
   const plotThreads = createPlotThreads(plan, branches[0]!.id);
   const foreshadows = createForeshadows(plan, chapters, facts, branches[0]!.id);
   const styleSamples = createStyleSamples(plan, chapters, characterIds, branches[0]!.id);
   const characterArcs = createCharacterArcs(plan, characterIds, branches[0]!.id);
+  const characterPowerStates = createCharacterPowerStates(
+    plan,
+    chapters,
+    characterIds,
+    branches[0]!.id,
+  );
   const defects = createDefects(plan, chapters, facts, branches, characterIds);
   applyDefectEvidence(chapters, defects);
   const controls = createControls(plan, chapters, branches, characterIds);
@@ -453,6 +533,7 @@ export function generateContinuityFixture(input: {
     plan,
     storyBible,
     genrePack,
+    genrePacks,
     powerSystem,
     specialMechanisms,
     entities,
@@ -460,23 +541,27 @@ export function generateContinuityFixture(input: {
     chapters,
     volumes,
     branches,
+    branchChapters,
     outlineNodes,
     facts,
     knowledgeStates,
     stateTransitions,
     identityTransitions,
     items,
+    itemRightsTransitions,
     timeline,
+    mapNodes,
     mapRoutes,
     plotThreads,
     foreshadows,
     styleSamples,
     characterArcs,
+    characterPowerStates,
     defects,
     controls,
     agentScenarios,
   };
-  const sha256 = createHash("sha256").update(JSON.stringify(fixtureWithoutDigest)).digest("hex");
+  const sha256 = continuityFixtureSha256(fixtureWithoutDigest);
 
   return {
     ...fixtureWithoutDigest,
@@ -492,6 +577,15 @@ export function generateContinuityFixture(input: {
       sha256,
     },
   };
+}
+
+export function verifyContinuityFixtureDigest(fixture: ContinuityFixture): boolean {
+  const { digest, ...fixtureWithoutDigest } = fixture;
+  return digest.sha256 === continuityFixtureSha256(fixtureWithoutDigest);
+}
+
+function continuityFixtureSha256(fixtureWithoutDigest: Omit<ContinuityFixture, "digest">): string {
+  return createHash("sha256").update(JSON.stringify(fixtureWithoutDigest)).digest("hex");
 }
 
 function createVolumes(plan: ContinuityPlan): ContinuityVolume[] {
@@ -550,18 +644,70 @@ function createBranches(plan: ContinuityPlan): ContinuityBranch[] {
   });
 }
 
-function createGenrePack(plan: ContinuityPlan): GenrePack {
-  return {
-    id: uuid(plan.seed, "genre-pack:xianxia"),
-    name: "仙侠",
-    version: "xianxia-v1",
-    requiredEntityKinds: ["character", "faction", "location", "item"],
-    continuityRules: [
-      "境界突破必须有事件、代价与限制",
-      "返魂与夺舍必须记录灵魂承载关系",
-      "独立分身不得默认共享本体记忆",
-    ],
-  };
+function createBranchChapters(
+  plan: ContinuityPlan,
+  chapters: readonly ContinuityChapter[],
+  branches: readonly ContinuityBranch[],
+): BranchChapterSnapshot[] {
+  return branches.slice(1).flatMap((branch) => {
+    const divergenceChapter = branch.divergenceChapter!;
+    const span = plan.chapterCount - divergenceChapter;
+    return [0, 1 / 3, 2 / 3, 1].map((position) => {
+      const chapterNumber = Math.min(
+        plan.chapterCount,
+        divergenceChapter + Math.round(span * position),
+      );
+      const source = chapterByNumber(chapters, chapterNumber);
+      return {
+        id: uuid(plan.seed, `branch-chapter:${branch.name}:${chapterNumber}`),
+        branchId: branch.id,
+        chapterNumber,
+        volumeNumber: source.volumeNumber,
+        title: `${branch.name} · ${source.title}`,
+        summary: `${source.summary} 该摘要与后续状态只属于 ${branch.name} 分支。`,
+        content: `${source.content}\n【分支状态】当前内容仅属于 ${branch.name}。`,
+        versionNodeId: uuid(plan.seed, `version:${branch.name}:${chapterNumber}`),
+      };
+    });
+  });
+}
+
+function createGenrePacks(plan: ContinuityPlan): GenrePack[] {
+  return [
+    {
+      id: uuid(plan.seed, "genre-pack:xianxia"),
+      name: "仙侠",
+      version: "xianxia-v1",
+      requiredEntityKinds: ["character", "faction", "location", "item"],
+      continuityRules: [
+        "境界突破必须有事件、代价与限制",
+        "返魂与夺舍必须记录灵魂承载关系",
+        "独立分身不得默认共享本体记忆",
+      ],
+    },
+    {
+      id: uuid(plan.seed, "genre-pack:history"),
+      name: "历史",
+      version: "history-v1",
+      requiredEntityKinds: ["character", "faction", "location", "item"],
+      continuityRules: [
+        "官职、封地与继承必须按纪年和事件更新",
+        "书信传递延迟必须符合路线与季节",
+        "真实历史人物不得无来源改变身份",
+      ],
+    },
+    {
+      id: uuid(plan.seed, "genre-pack:urban"),
+      name: "都市",
+      version: "urban-v1",
+      requiredEntityKinds: ["character", "faction", "location", "item"],
+      continuityRules: [
+        "通讯、交通和资金流水必须保持时间顺序",
+        "企业职位与持股关系必须分别记录",
+        "身份公开必须来源于可观察披露事件",
+      ],
+    },
+  ];
 }
 
 function createStoryBible(
@@ -774,6 +920,7 @@ function createFacts(
   const mainBranchId = branches[0]!.id;
   const facts = definitions.map(([key, subjectId, relation, object, visibility], index) => {
     const chapter = chapterAtReference(plan, chapters, index / 12);
+    const decisionState = (["confirmed", "locked", "proposed", "superseded"] as const)[index % 4]!;
     return {
       id: uuid(plan.seed, `fact:${key}`),
       branchId: mainBranchId,
@@ -783,13 +930,24 @@ function createFacts(
       validFromChapter: chapter.number,
       validToChapter: key === "limb" ? chapter.number + 20 : null,
       visibility,
+      objectiveCanon: decisionState === "confirmed" || decisionState === "locked",
+      decisionState,
+      allowedDisclosureFromChapter:
+        visibility === "hidden"
+          ? chapterNumberAt(plan, Math.min(0.95, chapter.number / plan.chapterCount + 0.25))
+          : null,
       sourceChapterId: chapter.id,
       sourceEventId: uuid(plan.seed, `fact-event:${key}`),
       versionNodeId: chapter.versionNodeId,
     };
   });
   const branchFacts = branches.slice(1).map((branch, index) => {
-    const chapter = chapterAtReference(plan, chapters, 0.12 + index * 0.26);
+    const divergenceChapter = branch.divergenceChapter!;
+    const chapterNumber = Math.min(
+      plan.chapterCount,
+      divergenceChapter + Math.max(1, Math.floor((plan.chapterCount - divergenceChapter) / 3)),
+    );
+    const chapter = chapterByNumber(chapters, chapterNumber);
     return {
       id: uuid(plan.seed, `fact:branch-${branch.name}`),
       branchId: branch.id,
@@ -799,6 +957,9 @@ function createFacts(
       validFromChapter: chapter.number,
       validToChapter: null,
       visibility: "hidden" as const,
+      objectiveCanon: true,
+      decisionState: "locked" as const,
+      allowedDisclosureFromChapter: chapter.number,
       sourceChapterId: chapter.id,
       sourceEventId: uuid(plan.seed, `fact-event:branch-${branch.name}`),
       versionNodeId: chapter.versionNodeId,
@@ -816,7 +977,7 @@ function createKnowledgeStates(
 ): CharacterKnowledgeState[] {
   const states: KnowledgeStateKind[] = ["knowledge", "belief", "suspicion", "misbelief", "unknown"];
   const mainBranchId = branches[0]!.id;
-  const mainStates = states.map((state, index) => {
+  const mainStates: CharacterKnowledgeState[] = states.map((state, index) => {
     const chapter = chapterAtReference(plan, chapters, (index + 1) / 6);
     const fact = facts[index % facts.length]!;
     return {
@@ -828,32 +989,38 @@ function createKnowledgeStates(
       claimedContent: state === "unknown" ? null : `角色对“${fact.object}”持${state}状态`,
       validFromChapter: chapter.number,
       validToChapter: null,
+      decisionState: state === "unknown" ? "proposed" : "confirmed",
+      allowedDisclosureFromChapter: state === "unknown" ? null : chapter.number,
       sourceChapterId: chapter.id,
       versionNodeId: chapter.versionNodeId,
     };
   });
-  const branchStates = branches.slice(1).flatMap((branch, branchIndex) => {
-    const branchFact = facts.find((fact) => fact.branchId === branch.id)!;
-    return (["knowledge", "unknown"] as const).map((state, stateIndex) => {
-      const chapter = chapterAtReference(
-        plan,
-        chapters,
-        0.2 + branchIndex * 0.26 + stateIndex * 0.04,
-      );
-      return {
-        id: uuid(plan.seed, `knowledge:${branch.name}:${state}`),
-        branchId: branch.id,
-        characterId: characterIds[(branchIndex + stateIndex) % characterIds.length]!,
-        objectiveFactId: branchFact.id,
-        state,
-        claimedContent: state === "unknown" ? null : `分支角色知道“${branchFact.object}”`,
-        validFromChapter: chapter.number,
-        validToChapter: null,
-        sourceChapterId: chapter.id,
-        versionNodeId: chapter.versionNodeId,
-      };
+  const branchStates: CharacterKnowledgeState[] = branches
+    .slice(1)
+    .flatMap((branch, branchIndex) => {
+      const branchFact = facts.find((fact) => fact.branchId === branch.id)!;
+      return (["knowledge", "unknown"] as const).map((state, stateIndex) => {
+        const chapter = chapterAtReference(
+          plan,
+          chapters,
+          0.2 + branchIndex * 0.26 + stateIndex * 0.04,
+        );
+        return {
+          id: uuid(plan.seed, `knowledge:${branch.name}:${state}`),
+          branchId: branch.id,
+          characterId: characterIds[(branchIndex + stateIndex) % characterIds.length]!,
+          objectiveFactId: branchFact.id,
+          state,
+          claimedContent: state === "unknown" ? null : `分支角色知道“${branchFact.object}”`,
+          validFromChapter: chapter.number,
+          validToChapter: null,
+          decisionState: state === "unknown" ? "proposed" : "locked",
+          allowedDisclosureFromChapter: state === "unknown" ? null : chapter.number,
+          sourceChapterId: chapter.id,
+          versionNodeId: chapter.versionNodeId,
+        };
+      });
     });
-  });
   return [...mainStates, ...branchStates];
 }
 
@@ -914,6 +1081,47 @@ function createItems(
   });
 }
 
+function createItemRightsTransitions(
+  plan: ContinuityPlan,
+  chapters: readonly ContinuityChapter[],
+  items: readonly ContinuityItem[],
+  branchId: string,
+): ItemRightsTransition[] {
+  const actions: readonly ItemRightsAction[] = [
+    "transfer",
+    "theft",
+    "loan",
+    "inheritance",
+    "consumption",
+    "destruction",
+    "crafting",
+    "recovery",
+    "disposal",
+  ];
+  return actions.map((action, index) => {
+    const item = items[index % items.length]!;
+    const chapter = chapterAtReference(plan, chapters, 0.16 + index * 0.08);
+    const lostItem = ["consumption", "destruction", "disposal"].includes(action);
+    return {
+      id: uuid(plan.seed, `item-rights:${item.id}:${action}`),
+      branchId,
+      itemId: item.id,
+      action,
+      fromRights: item.rights,
+      toRights: lostItem
+        ? null
+        : {
+            ...item.rights,
+            custodianId: item.rights.ownerId,
+            usageRightId: item.rights.ownerId,
+          },
+      chapterNumber: chapter.number,
+      sourceEventId: uuid(plan.seed, `item-rights-event:${item.id}:${action}`),
+      versionNodeId: chapter.versionNodeId,
+    };
+  });
+}
+
 function createTimeline(
   plan: ContinuityPlan,
   chapters: readonly ContinuityChapter[],
@@ -921,7 +1129,7 @@ function createTimeline(
   locationIds: readonly string[],
   branches: readonly ContinuityBranch[],
 ): TimelineEvent[] {
-  return Array.from({ length: Math.min(chapters.length, 24) }, (_, index) => {
+  const mainEvents = Array.from({ length: Math.min(chapters.length, 24) }, (_, index) => {
     const chapter = chapterAtReference(
       plan,
       chapters,
@@ -932,11 +1140,37 @@ function createTimeline(
       branchId: branches[0]!.id,
       chapterNumber: chapter.number,
       storyTimeLabel: `第${chapter.volumeNumber}年春-${index + 1}`,
+      storyTimeStartLabel: `第${chapter.volumeNumber}年春`,
+      storyTimeEndLabel: `第${chapter.volumeNumber}年夏`,
       storySortKey: chapter.number * 1_000 + index,
+      simultaneousGroup: index === 5 || index === 6 ? "main-simultaneous" : null,
+      isTimeSkip: index === 12,
       locationId: locationIds[index % locationIds.length]!,
       participants: [characterIds[index % characterIds.length]!],
     };
   });
+  const branchEvents = branches.slice(1).flatMap((branch, branchIndex) =>
+    Array.from({ length: 4 }, (_, index) => {
+      const divergenceChapter = branch.divergenceChapter!;
+      const span = plan.chapterCount - divergenceChapter;
+      const chapterNumber = divergenceChapter + Math.round((span * index) / 3);
+      const chapter = chapterByNumber(chapters, Math.min(plan.chapterCount, chapterNumber));
+      return {
+        id: uuid(plan.seed, `timeline:${branch.name}:${index}`),
+        branchId: branch.id,
+        chapterNumber: chapter.number,
+        storyTimeLabel: `第${chapter.volumeNumber}年春-${branch.name}-${index + 1}`,
+        storyTimeStartLabel: `第${chapter.volumeNumber}年春`,
+        storyTimeEndLabel: `第${chapter.volumeNumber + 1}年春`,
+        storySortKey: chapter.number * 1_000 + branchIndex * 100 + index,
+        simultaneousGroup: index < 2 ? `${branch.name}-simultaneous` : null,
+        isTimeSkip: index === 3,
+        locationId: locationIds[(branchIndex + index) % locationIds.length]!,
+        participants: [characterIds[(branchIndex + index) % characterIds.length]!],
+      };
+    }),
+  );
+  return [...mainEvents, ...branchEvents];
 }
 
 function createRelationships(
@@ -964,6 +1198,46 @@ function createRelationships(
       versionNodeId: chapter.versionNodeId,
     };
   });
+}
+
+function createMapNodes(
+  plan: ContinuityPlan,
+  locationIds: readonly string[],
+  branchId: string,
+): MapNode[] {
+  const worldId = uuid(plan.seed, "map:world");
+  const realmId = uuid(plan.seed, "map:north-realm");
+  const regionId = uuid(plan.seed, "map:old-city-region");
+  return [
+    {
+      id: worldId,
+      branchId,
+      parentId: null,
+      scale: "world",
+      name: "九洲",
+    },
+    {
+      id: realmId,
+      branchId,
+      parentId: worldId,
+      scale: "realm",
+      name: "北境",
+    },
+    {
+      id: regionId,
+      branchId,
+      parentId: realmId,
+      scale: "region",
+      name: "旧城辖区",
+    },
+    ...locationIds.map((id, index) => ({
+      id,
+      branchId,
+      parentId: regionId,
+      scale: "city" as const,
+      name: ["旧城", "忘川渡", "北境关", "归墟"][index]!,
+    })),
+  ];
 }
 
 function createMapRoutes(plan: ContinuityPlan, locationIds: readonly string[]): MapRoute[] {
@@ -1058,6 +1332,88 @@ function createCharacterArcs(
       `第${chapterNumberAt(plan, 0.62 + index * 0.05)}章重新解释核心恐惧`,
     ],
   }));
+}
+
+function createCharacterPowerStates(
+  plan: ContinuityPlan,
+  chapters: readonly ContinuityChapter[],
+  characterIds: readonly string[],
+  branchId: string,
+): CharacterPowerState[] {
+  const definitions: ReadonlyArray<{
+    characterIndex: number;
+    realm: string;
+    ageYears: number;
+    remainingLifespanYears: number;
+    previousLifespanYears: number;
+    transition: CharacterPowerState["transition"];
+    position: number;
+  }> = [
+    {
+      characterIndex: 0,
+      realm: "引气",
+      ageYears: 24,
+      remainingLifespanYears: 76,
+      previousLifespanYears: 100,
+      transition: "baseline",
+      position: 0.12,
+    },
+    {
+      characterIndex: 0,
+      realm: "照骨",
+      ageYears: 29,
+      remainingLifespanYears: 165,
+      previousLifespanYears: 100,
+      transition: "breakthrough",
+      position: 0.42,
+    },
+    {
+      characterIndex: 1,
+      realm: "返魂",
+      ageYears: 81,
+      remainingLifespanYears: 259,
+      previousLifespanYears: 180,
+      transition: "breakthrough",
+      position: 0.58,
+    },
+    {
+      characterIndex: 2,
+      realm: "照骨",
+      ageYears: 44,
+      remainingLifespanYears: 136,
+      previousLifespanYears: 180,
+      transition: "lifespan_decay",
+      position: 0.72,
+    },
+    {
+      characterIndex: 3,
+      realm: "引气",
+      ageYears: 39,
+      remainingLifespanYears: 51,
+      previousLifespanYears: 100,
+      transition: "resurrection_penalty",
+      position: 0.86,
+    },
+  ];
+  return definitions.map((definition) => {
+    const chapter = chapterAtReference(plan, chapters, definition.position);
+    return {
+      id: uuid(plan.seed, `power-state:${definition.characterIndex}:${definition.transition}`),
+      branchId,
+      characterId: characterIds[definition.characterIndex]!,
+      realm: definition.realm,
+      ageYears: definition.ageYears,
+      remainingLifespanYears: definition.remainingLifespanYears,
+      previousLifespanYears: definition.previousLifespanYears,
+      transition: definition.transition,
+      chapterNumber: chapter.number,
+      sourceEventId: uuid(
+        plan.seed,
+        `power-state-event:${definition.characterIndex}:${definition.transition}`,
+      ),
+      versionNodeId: chapter.versionNodeId,
+    };
+  });
 }
 
 function createIdentityTransitions(
@@ -1243,7 +1599,9 @@ function createControls(
   characterIds: readonly string[],
 ): ContinuityControl[] {
   const controls: ContinuityControl[] = [];
-  for (const [index, family] of continuityDefectFamilies.entries()) {
+  for (const [index, family] of continuityDefectFamilies
+    .filter((candidate) => continuityScenarioMetadata[candidate].hasCleanControl)
+    .entries()) {
     const chapter = chapterAtReference(plan, chapters, 0.25 + (index % 5) * 0.08);
     controls.push({
       id: uuid(plan.seed, `control:clean:${family}`),

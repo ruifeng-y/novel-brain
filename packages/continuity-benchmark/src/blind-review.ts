@@ -11,7 +11,12 @@ import {
   type ContinuityScenarioFamily,
   type ContinuitySeverity,
 } from "./plan";
-import { volumePositionFor, type VolumePosition } from "./strata";
+import {
+  reviewStrata,
+  volumeNumberForChapter,
+  volumePositionFor,
+  type VolumePosition,
+} from "./strata";
 
 export type ReviewStratum = VolumePosition;
 
@@ -79,10 +84,14 @@ export function buildContinuityBlindReviewPacket(input: {
   }
 
   const defectsByStratum = new Map<ReviewStratum, ContinuityDefect[]>();
-  for (const stratum of ["early", "middle", "late"] as const) {
+  for (const stratum of reviewStrata) {
     const candidates = fixture.defects
       .filter(
-        (defect) => volumePositionFor(fixture.plan.chapterCount, defect.chapterNumber) === stratum,
+        (defect) =>
+          volumePositionFor(
+            fixture.plan.volumeCount,
+            volumeNumberForChapter(fixture.plan.chaptersPerVolume, defect.chapterNumber),
+          ) === stratum,
       )
       .sort((left, right) =>
         deterministicOrder(fixture, left).localeCompare(deterministicOrder(fixture, right)),
@@ -90,19 +99,24 @@ export function buildContinuityBlindReviewPacket(input: {
     if (candidates.length < samplesPerStratum) {
       throw new Error("INSUFFICIENT_STRATIFIED_SAMPLES");
     }
-    const priority = [...candidates].sort(
+    const orderedCandidates = [...candidates].sort(
       (left, right) =>
         samplingPriority(right.family) - samplingPriority(left.family) ||
         deterministicOrder(fixture, left).localeCompare(deterministicOrder(fixture, right)),
-    )[0];
-    const selected = priority ? [priority] : [];
-    for (const candidate of candidates) {
+    );
+    const selected: ContinuityDefect[] = [];
+    for (const candidate of orderedCandidates) {
       if (selected.length >= samplesPerStratum) {
         break;
       }
-      if (!selected.includes(candidate)) {
+      if (
+        !selected.some((selectedDefect) => selectedDefect.chapterNumber === candidate.chapterNumber)
+      ) {
         selected.push(candidate);
       }
+    }
+    if (selected.length < samplesPerStratum) {
+      throw new Error("INSUFFICIENT_UNIQUE_STRATIFIED_CHAPTERS");
     }
     defectsByStratum.set(
       stratum,
@@ -114,7 +128,7 @@ export function buildContinuityBlindReviewPacket(input: {
 
   const packetItems: BlindReviewItem[] = [];
   const oracleItems: BlindReviewOracleItem[] = [];
-  for (const stratum of ["early", "middle", "late"] as const) {
+  for (const stratum of reviewStrata) {
     for (const defect of defectsByStratum.get(stratum) ?? []) {
       const chapter = fixture.chapters.find(
         (candidate) => candidate.number === defect.chapterNumber,
@@ -131,7 +145,12 @@ export function buildContinuityBlindReviewPacket(input: {
         isVisibleAtChapter(fixture, fact, chapter.number, chapter.povCharacterId, branch.id),
       );
       const approvedFacts = visibleFacts
-        .filter((fact) => fact.visibility === "public")
+        .filter(
+          (fact) =>
+            fact.visibility === "public" &&
+            fact.objectiveCanon &&
+            (fact.decisionState === "confirmed" || fact.decisionState === "locked"),
+        )
         .map(toReviewFact);
       const knownStates = fixture.knowledgeStates
         .filter(
@@ -139,7 +158,9 @@ export function buildContinuityBlindReviewPacket(input: {
             state.characterId === chapter.povCharacterId &&
             isSharedOrSameBranch(fixture, state.branchId, branch.id, chapter.number) &&
             state.validFromChapter <= chapter.number &&
-            (state.validToChapter === null || state.validToChapter >= chapter.number),
+            (state.validToChapter === null || state.validToChapter >= chapter.number) &&
+            (state.allowedDisclosureFromChapter === null ||
+              state.allowedDisclosureFromChapter <= chapter.number),
         )
         .map(toReviewKnowledgeState);
       packetItems.push({
@@ -201,6 +222,16 @@ export function buildContinuityBlindReviewPacket(input: {
       oracleSha256: sha256(oracleWithoutHash),
     },
   };
+}
+
+export function verifyBlindReviewPacket(packet: BlindReviewPacket): boolean {
+  const { packetSha256, ...packetWithoutHash } = packet;
+  return packetSha256 === sha256(packetWithoutHash);
+}
+
+export function verifyBlindReviewOracle(oracle: BlindReviewOracle): boolean {
+  const { oracleSha256, ...oracleWithoutHash } = oracle;
+  return oracleSha256 === sha256(oracleWithoutHash);
 }
 
 function isVisibleAtChapter(
