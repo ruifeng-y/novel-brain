@@ -28,12 +28,13 @@ The rubric intentionally contains `reviewPolicy: null`; an inter-rater variance 
 
 ## Run and gate
 
-- A run records code/model/prompt/context/agent versions, every sample score, scorer id/type, confidence, evidence quotes, reviewer attestation, review timestamp, blind-packet hash, decisions and continuity evaluation.
+- A run records code/model/prompt/context/agent versions plus `configHash`, every sample score, scorer id/type, confidence, evidence quotes, reviewer attestation, review timestamp, blind-packet hash, decisions and continuity evaluation.
 - Human-required dimensions accept only `human_blind` scores. Model-assisted scores never satisfy the gate.
 - Each human score must reference a consistent reviewer attestation, review timestamp and the frozen blind-packet hash. This records the review contract; it does not prove that a real person performed the review.
 - The deterministic P0, knowledge and continuity metrics are recomputed from the pinned #138 fixture and the raw continuity findings retained in the run, not copied from caller-provided aggregate values.
 - Continuity conflicts include both missed ground-truth defects and unexpected findings.
 - Baseline and candidate reports must contain the five approved metrics exactly once, embed the approved dataset/rubric digests, and be reproducible from their embedded scores, raw continuity findings and fixture.
+- Report and continuity evidence digests use canonical JSON so they remain stable after PostgreSQL `jsonb` key normalization.
 - Baseline and candidate runs must share dataset and rubric hashes.
 - The inter-rater variance policy is supplied separately by the trusted evaluation boundary; a threshold embedded inside a candidate or report never satisfies the decision gate.
 - Candidate release failure, invalid or non-reproducible report, missing metric, identical baseline/candidate report, dataset/rubric mismatch or P0 regression blocks rollout.

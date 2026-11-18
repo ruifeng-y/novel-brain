@@ -1,6 +1,24 @@
 import { createHash } from "node:crypto";
 
+import { requestPinnedHttps, validateProviderEndpoint } from "./provider-endpoint";
+
 export { decryptApiKey, encryptApiKey, maskApiKey } from "./model-config-crypto";
+export {
+  isPublicProviderAddress,
+  ProviderEndpointValidationError,
+  requestPinnedHttps,
+  validateProviderEndpoint,
+} from "./provider-endpoint";
+export {
+  DEFAULT_CONTEXT_COMPILER_VERSION,
+  DEFAULT_WRITING_PROMPT_VERSION,
+  SUPPORTED_CONTEXT_COMPILER_VERSIONS,
+  WRITING_PROMPT_BUNDLE_HASHES,
+  WRITING_PROMPT_BUNDLES,
+  assertReleaseRuntimePinMatchesModelConfig,
+  releaseRuntimePinForSubject,
+  resolveWritingRelease,
+} from "./writing-release";
 
 export interface GenerationRequest {
   prompt: string;
@@ -63,11 +81,25 @@ export type AiFailureClass = (typeof AI_FAILURE_CLASSES)[number];
 export class AiProviderError extends Error {
   readonly code = "MODEL_PROVIDER_ERROR";
   readonly failureClass: AiFailureClass;
+  readonly retryable: boolean;
+  readonly usage: GenerationUsage | undefined;
+  readonly providerRequestId: string | undefined;
 
-  constructor(message = "AI provider failed", options: { failureClass?: AiFailureClass } = {}) {
+  constructor(
+    message = "AI provider failed",
+    options: {
+      failureClass?: AiFailureClass;
+      retryable?: boolean;
+      usage?: GenerationUsage;
+      providerRequestId?: string;
+    } = {},
+  ) {
     super(message);
     this.name = "AiProviderError";
     this.failureClass = options.failureClass ?? "provider";
+    this.retryable = options.retryable ?? true;
+    this.usage = options.usage;
+    this.providerRequestId = options.providerRequestId;
   }
 }
 
@@ -89,6 +121,10 @@ interface DeepSeekProviderOptions {
   model?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  provider?: "deepseek" | "openai-compatible";
+  openAiAllowlist?: readonly string[];
+  endpointValidator?: typeof validateProviderEndpoint;
+  pinnedRequest?: typeof requestPinnedEndpoint;
 }
 
 interface DeepSeekResponse {
@@ -109,38 +145,61 @@ export class DeepSeekProvider implements AiGateway {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly defaultModel: string;
-  private readonly fetchImpl: typeof fetch;
+  private readonly fetchImpl: typeof fetch | undefined;
   private readonly timeoutMs: number;
+  private readonly provider: "deepseek" | "openai-compatible";
+  private readonly openAiAllowlist: readonly string[];
+  private readonly endpointValidator: typeof validateProviderEndpoint;
+  private readonly pinnedRequest: typeof requestPinnedEndpoint;
   private lastResponseId: string | undefined;
 
   constructor(options: DeepSeekProviderOptions) {
     this.apiKey = options.apiKey;
     this.baseUrl = (options.baseUrl ?? "https://api.deepseek.com").replace(/\/$/, "");
     this.defaultModel = options.model ?? "deepseek-chat";
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = options.fetchImpl;
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.provider = options.provider ?? "deepseek";
+    this.openAiAllowlist = options.openAiAllowlist ?? [];
+    this.endpointValidator = options.endpointValidator ?? validateProviderEndpoint;
+    this.pinnedRequest = options.pinnedRequest ?? requestPinnedEndpoint;
   }
 
   async generateText(input: GenerationRequest): Promise<GenerationResult> {
     const model = input.model ?? this.defaultModel;
-    const response = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          ...(input.system ? [{ role: "system", content: input.system }] : []),
-          { role: "user", content: input.prompt },
-        ],
-        max_tokens: input.maxTokens ?? 2_000,
-        stream: false,
-      }),
-      redirect: "error",
-      signal: AbortSignal.timeout(this.timeoutMs),
+    const endpoint = await this.endpointValidator({
+      provider: this.provider,
+      baseUrl: this.baseUrl,
+      openAiAllowlist: this.openAiAllowlist,
     });
+    const headers = {
+      authorization: `Bearer ${this.apiKey}`,
+      "content-type": "application/json",
+    };
+    const body = JSON.stringify({
+      model,
+      messages: [
+        ...(input.system ? [{ role: "system", content: input.system }] : []),
+        { role: "user", content: input.prompt },
+      ],
+      max_tokens: input.maxTokens ?? 2_000,
+      stream: false,
+    });
+    const response = this.fetchImpl
+      ? await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers,
+          body,
+          redirect: "error",
+          signal: AbortSignal.timeout(this.timeoutMs),
+        })
+      : await this.pinnedRequest({
+          baseUrl: this.baseUrl,
+          address: endpoint.addresses[0] ?? "",
+          headers,
+          body,
+          timeoutMs: this.timeoutMs,
+        });
     const payload = (await response.json().catch(() => ({}))) as DeepSeekResponse;
     if (!response.ok) {
       throw new AiProviderError(`DeepSeek request failed with status ${response.status}`, {
@@ -148,23 +207,37 @@ export class DeepSeekProvider implements AiGateway {
       });
     }
     const text = payload.choices?.[0]?.message?.content;
+    const finishReason = payload.choices?.[0]?.finish_reason;
     const inputTokens = payload.usage?.prompt_tokens;
     const outputTokens = payload.usage?.completion_tokens;
-    if (
-      typeof text !== "string" ||
-      typeof inputTokens !== "number" ||
-      typeof outputTokens !== "number"
-    ) {
+    const usage =
+      typeof inputTokens === "number" && typeof outputTokens === "number"
+        ? { inputTokens, outputTokens }
+        : undefined;
+    if (payload.id) {
+      this.lastResponseId = payload.id;
+    }
+    if (typeof text !== "string" || text.trim().length === 0 || usage === undefined) {
       throw new AiProviderError("DeepSeek returned an incomplete generation response", {
         failureClass: "schema",
+        retryable: false,
+        ...(usage ? { usage } : {}),
+        ...(payload.id ? { providerRequestId: payload.id } : {}),
       });
     }
-    this.lastResponseId = payload.id;
+    if (finishReason !== "stop") {
+      throw new AiProviderError(`DeepSeek generation finished with ${finishReason ?? "unknown"}`, {
+        failureClass: "provider",
+        retryable: false,
+        usage,
+        ...(payload.id ? { providerRequestId: payload.id } : {}),
+      });
+    }
     return {
       text,
       model: payload.model ?? model,
       finishReason: "stop",
-      usage: { inputTokens, outputTokens },
+      usage,
       ...(payload.id ? { providerRequestId: payload.id } : {}),
     };
   }
@@ -200,24 +273,40 @@ function providerFailureClass(status: number): AiFailureClass {
 interface DeepSeekSmokeOptions {
   env: Record<string, string | undefined>;
   fetchImpl?: typeof fetch;
+  endpointValidator?: typeof validateProviderEndpoint;
   now?: () => Date;
+  sleep?: (milliseconds: number) => Promise<void>;
 }
 
 export type DeepSeekSmokeEvidence =
   | {
+      schemaVersion: 1;
       status: "skipped";
-      reason: "DEEPSEEK_API_KEY_MISSING";
+      reason: "DEEPSEEK_SMOKE_DISABLED" | "DEEPSEEK_API_KEY_MISSING";
       provider: "deepseek";
       checkedAt: string;
       networkCalls: 0;
     }
   | {
+      schemaVersion: 1;
+      runId: string;
       status: "succeeded";
       provider: "deepseek";
+      baseUrl: string;
       model: string;
+      promptVersion: string;
+      contextCompilerVersion: string;
+      agentContractVersion: string;
+      configVersion: string;
+      configHash: string;
+      promptHash: string;
       startedAt: string;
       finishedAt: string;
       latencyMs: number;
+      timeoutMs: number;
+      maxBudgetCny: number;
+      maxAttempts: number;
+      attempts: number;
       generation: {
         textHash: string;
         textLength: number;
@@ -232,17 +321,59 @@ export type DeepSeekSmokeEvidence =
         estimatedCny: number;
         pricingBasis: "m0-usage-baseline";
       };
+      costCny: number;
+      providerRequestId?: string;
       providerResponseId?: string;
-      networkCalls: 1;
+      networkCalls: number;
+    }
+  | {
+      schemaVersion: 1;
+      runId: string;
+      status: "failed";
+      provider: "deepseek";
+      baseUrl: string;
+      model: string;
+      promptVersion: string;
+      contextCompilerVersion: string;
+      agentContractVersion: string;
+      configVersion: string;
+      configHash: string;
+      promptHash: string;
+      startedAt: string;
+      finishedAt: string;
+      latencyMs: number;
+      timeoutMs: number;
+      maxBudgetCny: number;
+      maxAttempts: number;
+      attempts: number;
+      costCny: number;
+      failureClass: AiFailureClass;
+      reason: string;
+      networkCalls: number;
     };
+
+const DEEPSEEK_SMOKE_SYSTEM = "你是 NovelBrain M3 发布验收助手。只输出一句不超过三十字的仙侠正文。";
+const DEEPSEEK_SMOKE_PROMPT = "写一句包含山门、雨和一个人物的测试正文。";
+const DEEPSEEK_SMOKE_MAX_OUTPUT_TOKENS = 64;
 
 export async function runDeepSeekSmoke(
   options: DeepSeekSmokeOptions,
 ): Promise<DeepSeekSmokeEvidence> {
   const now = options.now ?? (() => new Date());
+  if (options.env.DEEPSEEK_SMOKE_ENABLED !== "1") {
+    return {
+      schemaVersion: 1,
+      status: "skipped",
+      reason: "DEEPSEEK_SMOKE_DISABLED",
+      provider: "deepseek",
+      checkedAt: now().toISOString(),
+      networkCalls: 0,
+    };
+  }
   const apiKey = options.env.DEEPSEEK_API_KEY?.trim();
   if (!apiKey) {
     return {
+      schemaVersion: 1,
       status: "skipped",
       reason: "DEEPSEEK_API_KEY_MISSING",
       provider: "deepseek",
@@ -251,45 +382,312 @@ export async function runDeepSeekSmoke(
     };
   }
 
+  const model = options.env.DEEPSEEK_SMOKE_MODEL?.trim() || "deepseek-chat";
+  const baseUrl = options.env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com";
+  const promptVersion =
+    options.env.DEEPSEEK_SMOKE_PROMPT_VERSION?.trim() || "m1-writing-prompts-v1";
+  const contextCompilerVersion =
+    options.env.DEEPSEEK_SMOKE_CONTEXT_VERSION?.trim() || "m1-context-v1";
+  const agentContractVersion =
+    options.env.DEEPSEEK_SMOKE_AGENT_VERSION?.trim() || "agent-m3-06b-v1";
+  const configVersion = options.env.DEEPSEEK_SMOKE_CONFIG_VERSION?.trim() || "deepseek-default-v1";
+  const timeoutMs = boundedNumber(options.env.DEEPSEEK_SMOKE_TIMEOUT_MS, 15_000, 1_000, 60_000);
+  const maxAttempts = boundedInteger(options.env.DEEPSEEK_SMOKE_MAX_ATTEMPTS, 1, 1, 3);
+  const maxBudgetCny = boundedNumber(options.env.DEEPSEEK_SMOKE_MAX_BUDGET_CNY, 0, 0, 1);
   const startedAt = now();
-  const provider = new DeepSeekProvider({
-    apiKey,
-    ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
-  });
-  const result = await provider.generateText({
-    system: "你是 NovelBrain M0 验收助手。只输出一句不超过三十字的仙侠正文。",
-    prompt: "写一句包含山门、雨和一个人物的测试正文。",
-    maxTokens: 64,
-    operation: "draft",
-  });
-  const finishedAt = now();
-  const totalTokens = result.usage.inputTokens + result.usage.outputTokens;
-  const providerResponseId = provider.getLastResponseId();
-
-  return {
-    status: "succeeded",
+  const configHash = hashJson({
     provider: "deepseek",
-    model: result.model,
+    baseUrl,
+    model,
+    promptVersion,
+    contextCompilerVersion,
+    agentContractVersion,
+    configVersion,
+    timeoutMs,
+  });
+  const promptHash = createHash("sha256")
+    .update(`${DEEPSEEK_SMOKE_SYSTEM}\n${DEEPSEEK_SMOKE_PROMPT}`)
+    .digest("hex");
+  const runId = `provider-smoke-${startedAt.toISOString()}-${configHash.slice(0, 12)}`;
+  const estimatedTokens =
+    Array.from(`${DEEPSEEK_SMOKE_SYSTEM}${DEEPSEEK_SMOKE_PROMPT}`).length +
+    DEEPSEEK_SMOKE_MAX_OUTPUT_TOKENS;
+  const estimatedMaxCostCny = Number((estimatedTokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
+  const endpointValidator = options.endpointValidator ?? validateProviderEndpoint;
+  try {
+    await endpointValidator({
+      provider: "deepseek",
+      baseUrl,
+    });
+  } catch {
+    const finishedAt = now();
+    return {
+      schemaVersion: 1,
+      runId,
+      status: "failed",
+      provider: "deepseek",
+      baseUrl,
+      model,
+      promptVersion,
+      contextCompilerVersion,
+      agentContractVersion,
+      configVersion,
+      configHash,
+      promptHash,
+      startedAt: startedAt.toISOString(),
+      finishedAt: finishedAt.toISOString(),
+      latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+      timeoutMs,
+      maxBudgetCny,
+      maxAttempts,
+      attempts: 0,
+      costCny: 0,
+      failureClass: "policy",
+      reason: "DEEPSEEK_BASE_URL_INVALID",
+      networkCalls: 0,
+    };
+  }
+  if (maxBudgetCny <= 0 || estimatedMaxCostCny * maxAttempts > maxBudgetCny) {
+    const finishedAt = now();
+    return {
+      schemaVersion: 1,
+      runId,
+      status: "failed",
+      provider: "deepseek",
+      baseUrl,
+      model,
+      promptVersion,
+      contextCompilerVersion,
+      agentContractVersion,
+      configVersion,
+      configHash,
+      promptHash,
+      startedAt: startedAt.toISOString(),
+      finishedAt: finishedAt.toISOString(),
+      latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+      timeoutMs,
+      maxBudgetCny,
+      maxAttempts,
+      attempts: 0,
+      costCny: 0,
+      failureClass: "budget",
+      reason: "DEEPSEEK_SMOKE_BUDGET_EXCEEDED",
+      networkCalls: 0,
+    };
+  }
+
+  const sleep =
+    options.sleep ??
+    ((milliseconds: number) =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, milliseconds);
+      }));
+  let attempts = 0;
+  let lastFailureClass: AiFailureClass = "unknown";
+  let lastReason = "DEEPSEEK_PROVIDER_ERROR";
+  let totalCostCny = 0;
+  let lastProviderRequestId: string | undefined;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    attempts = attempt;
+    const provider = new DeepSeekProvider({
+      apiKey,
+      baseUrl,
+      model,
+      timeoutMs,
+      endpointValidator,
+      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+    });
+    try {
+      const result = await provider.generateText({
+        system: DEEPSEEK_SMOKE_SYSTEM,
+        prompt: DEEPSEEK_SMOKE_PROMPT,
+        model,
+        maxTokens: DEEPSEEK_SMOKE_MAX_OUTPUT_TOKENS,
+        operation: "draft",
+      });
+      const finishedAt = now();
+      const totalTokens = result.usage.inputTokens + result.usage.outputTokens;
+      const attemptCostCny = Number((totalTokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
+      totalCostCny = Number((totalCostCny + attemptCostCny).toFixed(8));
+      const providerResponseId = result.providerRequestId ?? provider.getLastResponseId();
+      if (totalCostCny > maxBudgetCny) {
+        return {
+          schemaVersion: 1,
+          runId,
+          status: "failed",
+          provider: "deepseek",
+          baseUrl,
+          model: result.model,
+          promptVersion,
+          contextCompilerVersion,
+          agentContractVersion,
+          configVersion,
+          configHash,
+          promptHash,
+          startedAt: startedAt.toISOString(),
+          finishedAt: finishedAt.toISOString(),
+          latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+          timeoutMs,
+          maxBudgetCny,
+          maxAttempts,
+          attempts,
+          costCny: totalCostCny,
+          failureClass: "budget",
+          reason: "DEEPSEEK_SMOKE_BUDGET_EXCEEDED",
+          networkCalls: attempts,
+        };
+      }
+      return {
+        schemaVersion: 1,
+        runId,
+        status: "succeeded",
+        provider: "deepseek",
+        baseUrl,
+        model: result.model,
+        promptVersion,
+        contextCompilerVersion,
+        agentContractVersion,
+        configVersion,
+        configHash,
+        promptHash,
+        startedAt: startedAt.toISOString(),
+        finishedAt: finishedAt.toISOString(),
+        latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+        timeoutMs,
+        maxBudgetCny,
+        maxAttempts,
+        attempts,
+        generation: {
+          textHash: createHash("sha256").update(result.text).digest("hex"),
+          textLength: Array.from(result.text).length,
+          finishReason: result.finishReason,
+        },
+        usage: {
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          totalTokens,
+        },
+        cost: {
+          estimatedCny: totalCostCny,
+          pricingBasis: "m0-usage-baseline",
+        },
+        costCny: totalCostCny,
+        ...(providerResponseId ? { providerRequestId: providerResponseId } : {}),
+        ...(providerResponseId ? { providerResponseId } : {}),
+        networkCalls: attempts,
+      };
+    } catch (error) {
+      lastFailureClass = classifyAiFailure(error);
+      lastReason = smokeFailureReason(lastFailureClass);
+      if (error instanceof AiProviderError) {
+        lastProviderRequestId = error.providerRequestId ?? lastProviderRequestId;
+        if (error.usage) {
+          const attemptCostCny = Number(
+            ((error.usage.inputTokens + error.usage.outputTokens) * M0_COST_PER_TOKEN_CNY).toFixed(
+              8,
+            ),
+          );
+          totalCostCny = Number((totalCostCny + attemptCostCny).toFixed(8));
+        }
+      }
+      const retryable =
+        (lastFailureClass === "rate_limit" || lastFailureClass === "provider") &&
+        (!(error instanceof AiProviderError) || error.retryable);
+      if (!retryable || attempt >= maxAttempts) {
+        break;
+      }
+      await sleep(Math.min(1_000, 100 * 2 ** (attempt - 1)));
+    }
+  }
+  const finishedAt = now();
+  return {
+    schemaVersion: 1,
+    runId,
+    status: "failed",
+    provider: "deepseek",
+    baseUrl,
+    model,
+    promptVersion,
+    contextCompilerVersion,
+    agentContractVersion,
+    configVersion,
+    configHash,
+    promptHash,
     startedAt: startedAt.toISOString(),
     finishedAt: finishedAt.toISOString(),
     latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
-    generation: {
-      textHash: createHash("sha256").update(result.text).digest("hex"),
-      textLength: Array.from(result.text).length,
-      finishReason: result.finishReason,
-    },
-    usage: {
-      inputTokens: result.usage.inputTokens,
-      outputTokens: result.usage.outputTokens,
-      totalTokens,
-    },
-    cost: {
-      estimatedCny: Number((totalTokens * M0_COST_PER_TOKEN_CNY).toFixed(8)),
-      pricingBasis: "m0-usage-baseline",
-    },
-    ...(providerResponseId ? { providerResponseId } : {}),
-    networkCalls: 1,
+    timeoutMs,
+    maxBudgetCny,
+    maxAttempts,
+    attempts,
+    costCny: totalCostCny,
+    failureClass: lastFailureClass,
+    reason: lastReason,
+    networkCalls: attempts,
+    ...(lastProviderRequestId ? { providerRequestId: lastProviderRequestId } : {}),
   };
+}
+
+async function requestPinnedEndpoint(input: {
+  baseUrl: string;
+  address: string;
+  headers: Record<string, string>;
+  body: string;
+  timeoutMs: number;
+}): Promise<Response> {
+  const target = new URL(input.baseUrl);
+  target.pathname = `${target.pathname.replace(/\/$/, "")}/chat/completions`;
+  const response = await requestPinnedHttps({
+    target,
+    address: input.address,
+    method: "POST",
+    headers: input.headers,
+    body: input.body,
+    timeoutMs: input.timeoutMs,
+  });
+  return new Response(response.body, { status: response.status });
+}
+
+function boundedNumber(
+  value: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const parsed = value === undefined ? fallback : Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(maximum, Math.max(minimum, parsed));
+}
+
+function boundedInteger(
+  value: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  return Math.round(boundedNumber(value, fallback, minimum, maximum));
+}
+
+function hashJson(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function smokeFailureReason(failureClass: AiFailureClass): string {
+  if (failureClass === "rate_limit") {
+    return "DEEPSEEK_RATE_LIMITED";
+  }
+  if (failureClass === "timeout") {
+    return "DEEPSEEK_TIMEOUT";
+  }
+  if (failureClass === "policy") {
+    return "DEEPSEEK_POLICY_BLOCKED";
+  }
+  if (failureClass === "schema") {
+    return "DEEPSEEK_SCHEMA_INVALID";
+  }
+  return "DEEPSEEK_PROVIDER_ERROR";
 }
 
 function stableHash(value: string): string {

@@ -7,6 +7,10 @@ function providerWith(fetchImpl: typeof fetch) {
     apiKey: "sk-failure-class-1234",
     fetchImpl,
     timeoutMs: 50,
+    endpointValidator: async (input) => ({
+      normalizedBaseUrl: input.baseUrl.replace(/\/$/, ""),
+      addresses: ["93.184.216.34"],
+    }),
   });
 }
 

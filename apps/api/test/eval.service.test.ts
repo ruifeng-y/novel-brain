@@ -3,7 +3,7 @@ import { vi, describe, expect, it } from "vitest";
 import {
   createContinuityPlan,
   generateContinuityFixture,
-  sha256Json,
+  sha256CanonicalJson,
 } from "@novel-brain/continuity-benchmark";
 import {
   APPROVED_QUALITY_RUBRIC_SHA256,
@@ -117,6 +117,7 @@ function createCandidate(
       promptVersion,
       contextCompilerVersion: "context-v1",
       agentContractVersion: "agent-v1",
+      configHash: "1".repeat(64),
     },
     continuityFindings: fixture.defects.map((defect) => ({
       family: defect.family,
@@ -144,7 +145,7 @@ function createCandidate(
 
 function createHumanScores(dataset: ReturnType<typeof createApprovedQualityBenchmarkDataset>) {
   const samples = [...dataset.chapterSamples, ...dataset.adversarialCases];
-  const blindPacketSha256 = sha256Json({
+  const blindPacketSha256 = sha256CanonicalJson({
     datasetSha256: dataset.manifest.datasetSha256,
     rubricSha256: APPROVED_QUALITY_RUBRIC_SHA256,
   });

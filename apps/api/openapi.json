@@ -22325,6 +22325,7 @@
                                       "expired_fact",
                                       "time_window",
                                       "knowledge_boundary",
+                                      "summary_superseded",
                                       "empty_content",
                                       "missing_source"
                                     ]
@@ -22937,6 +22938,7 @@
                                   "expired_fact",
                                   "time_window",
                                   "knowledge_boundary",
+                                  "summary_superseded",
                                   "empty_content",
                                   "missing_source"
                                 ]
@@ -23888,6 +23890,7 @@
                                         "expired_fact",
                                         "time_window",
                                         "knowledge_boundary",
+                                        "summary_superseded",
                                         "empty_content",
                                         "missing_source"
                                       ]
@@ -24871,6 +24874,7 @@
                                       "expired_fact",
                                       "time_window",
                                       "knowledge_boundary",
+                                      "summary_superseded",
                                       "empty_content",
                                       "missing_source"
                                     ]
@@ -25846,6 +25850,7 @@
                                       "expired_fact",
                                       "time_window",
                                       "knowledge_boundary",
+                                      "summary_superseded",
                                       "empty_content",
                                       "missing_source"
                                     ]
@@ -26821,6 +26826,7 @@
                                       "expired_fact",
                                       "time_window",
                                       "knowledge_boundary",
+                                      "summary_superseded",
                                       "empty_content",
                                       "missing_source"
                                     ]
@@ -27850,6 +27856,7 @@
                                           "expired_fact",
                                           "time_window",
                                           "knowledge_boundary",
+                                          "summary_superseded",
                                           "empty_content",
                                           "missing_source"
                                         ]
@@ -126537,6 +126544,7 @@
                                       "expired_fact",
                                       "time_window",
                                       "knowledge_boundary",
+                                      "summary_superseded",
                                       "empty_content",
                                       "missing_source"
                                     ]
@@ -128129,6 +128137,7 @@
                                         "expired_fact",
                                         "time_window",
                                         "knowledge_boundary",
+                                        "summary_superseded",
                                         "empty_content",
                                         "missing_source"
                                       ]
@@ -129709,6 +129718,7 @@
                                       "expired_fact",
                                       "time_window",
                                       "knowledge_boundary",
+                                      "summary_superseded",
                                       "empty_content",
                                       "missing_source"
                                     ]
@@ -131281,6 +131291,7 @@
                                       "expired_fact",
                                       "time_window",
                                       "knowledge_boundary",
+                                      "summary_superseded",
                                       "empty_content",
                                       "missing_source"
                                     ]
@@ -132853,6 +132864,7 @@
                                       "expired_fact",
                                       "time_window",
                                       "knowledge_boundary",
+                                      "summary_superseded",
                                       "empty_content",
                                       "missing_source"
                                     ]
@@ -134479,6 +134491,7 @@
                                           "expired_fact",
                                           "time_window",
                                           "knowledge_boundary",
+                                          "summary_superseded",
                                           "empty_content",
                                           "missing_source"
                                         ]

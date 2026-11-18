@@ -36,6 +36,7 @@ import {
   describeProviderFailure,
 } from "./budgeted-provider-call";
 import { JobStoppedError } from "./provider-call-errors";
+import { releaseProviderRuntime, resolveWritingRelease } from "./release-versions";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
@@ -157,7 +158,10 @@ export class GenerationJobProcessor {
               provider =
                 "generateText" in this.providerResolver
                   ? this.providerResolver
-                  : this.providerResolver.create(loaded.modelConfig);
+                  : this.providerResolver.create(
+                      loaded.modelConfig,
+                      releaseProviderRuntime(loaded.releasePin),
+                    );
             } catch {
               throw new ModelConfigurationError();
             }
@@ -221,9 +225,15 @@ export class GenerationJobProcessor {
             return;
           }
           const decision = decideStepRecovery({
-            failureClass: failure.failureClass,
+            failureClass:
+              error instanceof AiProviderError && !error.retryable
+                ? "policy"
+                : failure.failureClass,
             attempt: jobStep?.attempt ?? 1,
-            maxAutomaticAttempts: this.recoveryOptions.maxAutomaticAttempts,
+            maxAutomaticAttempts: Math.min(
+              this.recoveryOptions.maxAutomaticAttempts,
+              loaded.releasePin?.maxAttempts ?? this.recoveryOptions.maxAutomaticAttempts,
+            ),
           });
           await this.repository.failStep({
             payload: durablePayload,
@@ -267,6 +277,8 @@ export class GenerationJobProcessor {
     checkpointPayload: Record<string, unknown>;
     contextPack?: ContextPackManifest;
   }> {
+    const writingRelease = resolveWritingRelease(input.loaded.releasePin);
+    const releasePin = input.loaded.releasePin;
     switch (input.step) {
       case "prepare": {
         const sources = await this.requireSources(input.payload);
@@ -286,7 +298,7 @@ export class GenerationJobProcessor {
           {
             branchId: input.payload.branchId,
             branchStatus: sources.branch.status,
-            compilerVersion: "m1-context-v1",
+            compilerVersion: writingRelease.contextCompilerVersion,
             chapter: {
               id: sources.chapter.id,
               number: sources.chapter.number,
@@ -337,7 +349,7 @@ export class GenerationJobProcessor {
       }
       case "draft": {
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
-        const prompt = promptFromPack(pack, "根据本章章纲起草完整章节。");
+        const prompt = promptFromPack(pack, writingRelease.templates.draft.instruction);
         const result = await this.providerCalls.call({
           payload: input.payload,
           provider: requireProvider(input.provider),
@@ -346,9 +358,10 @@ export class GenerationJobProcessor {
           role: "writer",
           operation: "draft",
           prompt,
-          system: "你是长篇仙侠小说写作助手。只输出本章正文。",
+          system: writingRelease.templates.draft.system,
           citations: pack.sourceRefs,
           parameters: { operation: "draft" },
+          ...(releasePin ? { releasePin } : {}),
           ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         const version = await this.repository.saveGeneratedVersion({
@@ -368,7 +381,7 @@ export class GenerationJobProcessor {
           throw new Error("Draft checkpoint is missing");
         }
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
-        const prompt = `${promptFromPack(pack, "检查草稿与章纲、已确认设定和必用事实是否一致。")}\n\n草稿：\n${draft}`;
+        const prompt = `${promptFromPack(pack, writingRelease.templates.verify.instruction)}\n\n草稿：\n${draft}`;
         const result = await this.providerCalls.call({
           payload: input.payload,
           provider: requireProvider(input.provider),
@@ -377,9 +390,10 @@ export class GenerationJobProcessor {
           role: "critic",
           operation: "verify",
           prompt,
-          system: "你是连续性与知识边界审校员。输出简短、确定的审校结论。",
+          system: writingRelease.templates.verify.system,
           citations: pack.sourceRefs,
           parameters: { operation: "verify" },
+          ...(releasePin ? { releasePin } : {}),
           ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         return {
@@ -395,7 +409,7 @@ export class GenerationJobProcessor {
           throw new Error("Draft checkpoint is missing");
         }
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
-        const prompt = `${promptFromPack(pack, "根据审校结论定向修订草稿，保留已满足的章纲和必用事实。")}\n\n草稿：\n${draft}\n\n审校：\n${String(verifyOutput?.verification ?? "")}`;
+        const prompt = `${promptFromPack(pack, writingRelease.templates.revise.instruction)}\n\n草稿：\n${draft}\n\n审校：\n${String(verifyOutput?.verification ?? "")}`;
         const result = await this.providerCalls.call({
           payload: input.payload,
           provider: requireProvider(input.provider),
@@ -404,9 +418,10 @@ export class GenerationJobProcessor {
           role: "reviser",
           operation: "revise",
           prompt,
-          system: "你是定向修订编辑。只输出修订后的完整本章正文。",
+          system: writingRelease.templates.revise.system,
           citations: pack.sourceRefs,
           parameters: { operation: "revise" },
+          ...(releasePin ? { releasePin } : {}),
           ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         const version = await this.repository.saveGeneratedVersion({

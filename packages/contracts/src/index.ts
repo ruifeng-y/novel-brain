@@ -501,6 +501,61 @@ export const modelProviderSchema = z.enum(["deepseek", "openai-compatible"]);
 export const modelPurposeSchema = z.enum(["planning", "writing", "review"]);
 export type ModelPurpose = z.infer<typeof modelPurposeSchema>;
 
+export const PROVIDER_CANARY_CHANNEL = "internal-release" as const;
+
+export const providerReleaseLimitsSchema = z.object({
+  maxCostCny: z.number().finite().nonnegative(),
+  maxLatencyMs: z.number().finite().positive(),
+  maxAttempts: z.number().int().min(1).max(3),
+  timeoutMs: z.number().finite().positive(),
+});
+export type ProviderReleaseLimits = z.infer<typeof providerReleaseLimitsSchema>;
+
+export const providerReleaseVersionPinSchema = z.object({
+  provider: z.literal("deepseek"),
+  baseUrl: z.literal("https://api.deepseek.com"),
+  model: z.string().trim().min(1).max(200),
+  promptVersion: z.string().trim().min(1).max(100),
+  promptHash: z.string().regex(/^[a-f0-9]{64}$/u),
+  smokePromptHash: z.string().regex(/^[a-f0-9]{64}$/u),
+  contextCompilerVersion: z.string().trim().min(1).max(100),
+  agentContractVersion: z.string().trim().min(1).max(100),
+  configHash: z.string().regex(/^[a-f0-9]{64}$/u),
+});
+export type ProviderReleaseVersionPin = z.infer<typeof providerReleaseVersionPinSchema>;
+
+export const providerCanaryPolicySchema = z.object({
+  schemaVersion: z.literal(1),
+  policyVersion: z.literal("provider-canary-v1"),
+  channelKey: z.literal(PROVIDER_CANARY_CHANNEL),
+  releaseVersion: z.string().trim().min(1),
+  cohortId: z.string().trim().min(1),
+  subjectIds: z.array(z.string().trim().min(1)).min(1),
+  maxCostCny: z.number().finite().nonnegative(),
+  maxLatencyMs: z.number().finite().positive(),
+  maxAttempts: z.number().int().min(1).max(3),
+  timeoutMs: z.number().finite().positive(),
+  pin: providerReleaseVersionPinSchema,
+});
+export type ProviderCanaryPolicy = z.infer<typeof providerCanaryPolicySchema>;
+
+export const providerReleaseRuntimeSchema = z
+  .object({
+    action: z.enum(["canary", "rollback"]),
+    releaseVersion: z.string().trim().min(1),
+    cohort: z.object({
+      subjectIds: z.array(z.string().trim().min(1)),
+    }),
+    pin: providerReleaseVersionPinSchema,
+    limits: providerReleaseLimitsSchema,
+  })
+  .passthrough();
+export type ProviderReleaseRuntimeEvidence = z.infer<typeof providerReleaseRuntimeSchema>;
+export type ProviderReleaseRuntime = ProviderReleaseVersionPin &
+  ProviderReleaseLimits & {
+    releaseVersion: string;
+  };
+
 export const modelConfigInputSchema = z.object({
   provider: modelProviderSchema,
   label: z.string().trim().min(1).max(80),
@@ -6075,6 +6130,7 @@ export const contextEvictionReasonSchema = z.enum([
   "expired_fact",
   "time_window",
   "knowledge_boundary",
+  "summary_superseded",
   "empty_content",
   "missing_source",
 ]);

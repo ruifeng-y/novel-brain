@@ -13,6 +13,7 @@ import {
   WorkerGenerationRepository,
   type WorkerJobBase,
 } from "../generation/generation.repository";
+import { resolveWritingRelease } from "../generation/release-versions";
 
 @Injectable()
 export class WorkerGoldenThreeContextCompiler implements GoldenThreeContextCompiler {
@@ -39,11 +40,12 @@ export class WorkerGoldenThreeContextCompiler implements GoldenThreeContextCompi
     if (!sources || !loaded) {
       throw new Error("Golden three context sources are incomplete");
     }
+    const writingRelease = resolveWritingRelease(loaded.releasePin);
     const pack = compileChapterContextManifest(
       {
         branchId: payload.branchId,
         branchStatus: sources.branch.status,
-        compilerVersion: "m1-context-v1",
+        compilerVersion: writingRelease.contextCompilerVersion,
         chapter: {
           id: sources.chapter.id,
           number: sources.chapter.number,

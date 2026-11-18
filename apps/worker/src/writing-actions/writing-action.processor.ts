@@ -35,6 +35,7 @@ import {
 } from "../generation/budgeted-provider-call";
 import { AI_GATEWAY } from "../generation/generation.tokens";
 import type { ByokAiGatewayFactory } from "../generation/model-provider.factory";
+import { releaseProviderRuntime, resolveWritingRelease } from "../generation/release-versions";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
@@ -135,7 +136,10 @@ export class WritingActionProcessor {
             provider =
               "generateText" in this.providerResolver
                 ? this.providerResolver
-                : this.providerResolver.create(loaded.modelConfig);
+                : this.providerResolver.create(
+                    loaded.modelConfig,
+                    releaseProviderRuntime(loaded.releasePin),
+                  );
           }
           jobStep = await this.repository.startStep(
             durable,
@@ -180,9 +184,12 @@ export class WritingActionProcessor {
             return;
           }
           const decision = decideStepRecovery({
-            failureClass: failure.failureClass,
+            failureClass:
+              error instanceof AiProviderError && !error.retryable
+                ? "policy"
+                : failure.failureClass,
             attempt: jobStep?.attempt ?? 1,
-            maxAutomaticAttempts: 3,
+            maxAutomaticAttempts: Math.min(3, loaded.releasePin?.maxAttempts ?? 3),
           });
           await this.repository.failStep({
             payload: durable,
@@ -232,6 +239,8 @@ export class WritingActionProcessor {
     checkpointPayload: Record<string, unknown>;
   }> {
     const spec = WRITING_ACTION_SPECS[input.payload.action];
+    const writingRelease = resolveWritingRelease(input.loaded.releasePin);
+    const releasePin = input.loaded.releasePin;
     switch (input.step) {
       case "prepare": {
         const source = await this.requireSource(input.payload);
@@ -243,7 +252,7 @@ export class WritingActionProcessor {
           {
             branchId: input.payload.branchId,
             branchStatus: sources.branch.status,
-            compilerVersion: "m1-context-v1",
+            compilerVersion: writingRelease.contextCompilerVersion,
             task: "chapter_revision",
             chapter: {
               id: sources.chapter.id,
@@ -352,6 +361,7 @@ export class WritingActionProcessor {
             promptKey: spec.promptKey,
             promptVersion: spec.promptVersion,
           },
+          ...(releasePin ? { releasePin } : {}),
           ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         const output = await this.repository.saveWritingActionOutput({

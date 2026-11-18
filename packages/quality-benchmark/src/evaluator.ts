@@ -1,4 +1,4 @@
-import { sha256Json } from "@novel-brain/continuity-benchmark";
+import { sha256CanonicalJson } from "@novel-brain/continuity-benchmark";
 import {
   evaluateContinuityFindings,
   generateContinuityFixture,
@@ -60,6 +60,7 @@ export interface QualityBenchmarkRun {
     promptVersion: string;
     contextCompilerVersion: string;
     agentContractVersion: string;
+    configHash: string;
   };
   scores: readonly QualityMetricScore[];
   decisions: readonly QualityBenchmarkDecision[];
@@ -185,7 +186,7 @@ export function evaluateQualityBenchmarkRun(input: {
     ]);
     validatedScores.push(score);
   }
-  const blindPacketSha256 = sha256Json({
+  const blindPacketSha256 = sha256CanonicalJson({
     datasetSha256: dataset.manifest.datasetSha256,
     rubricSha256: rubric.sha256,
   });
@@ -262,7 +263,7 @@ export function evaluateQualityBenchmarkRun(input: {
   const attestationCount = new Set(humanScores.map((score) => score.reviewerAttestationId)).size;
   const reviewPolicy = validReviewPolicy(input.reviewPolicy) ? input.reviewPolicy : null;
   const varianceThreshold = reviewPolicy?.interRaterVarianceThreshold ?? null;
-  const reviewPolicySha256 = reviewPolicy ? sha256Json(reviewPolicy) : null;
+  const reviewPolicySha256 = reviewPolicy ? sha256CanonicalJson(reviewPolicy) : null;
   const maxVariance = computeMaxVariance(humanScores);
   if (varianceThreshold === null) {
     blockers.add("decision-required:interRaterVarianceThreshold");
@@ -302,7 +303,7 @@ export function evaluateQualityBenchmarkRun(input: {
   };
   return {
     ...reportWithoutHash,
-    sha256: sha256Json(reportWithoutHash),
+    sha256: sha256CanonicalJson(reportWithoutHash),
   };
 }
 
@@ -338,9 +339,10 @@ export function verifyQualityBenchmarkReport(
     expectedMetricIds.every((id) => metricIds.includes(id)) &&
     new Set(metricIds).size === expectedMetricIds.length &&
     metricIds.length === expectedMetricIds.length &&
+    /^[a-f0-9]{64}$/u.test(report.provenance.configHash) &&
     report.status === (report.releaseGate.passed ? "passed" : "blocked") &&
     report.releaseGate.passed === (report.releaseGate.blockers.length === 0) &&
-    sha256 === sha256Json(reportWithoutHash);
+    sha256 === sha256CanonicalJson(reportWithoutHash);
   if (!structurallyValid) {
     return false;
   }

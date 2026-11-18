@@ -1,4 +1,4 @@
-import { sha256Json } from "./digest";
+import { sha256CanonicalJson } from "./digest";
 import type {
   ContinuityControl,
   ContinuityDefect,
@@ -117,7 +117,7 @@ export function evaluateContinuityFindings(input: {
 
   const evaluationWithoutHash = {
     fixtureSha256: fixture.digest.sha256,
-    findingsSha256: sha256Json(findings),
+    findingsSha256: sha256CanonicalJson(findings),
     summary,
     byFamily: groupMetrics(classified, (entry) => entry.key),
     bySeverity: groupMetrics(
@@ -137,13 +137,13 @@ export function evaluateContinuityFindings(input: {
   };
   return {
     ...evaluationWithoutHash,
-    sha256: sha256Json(evaluationWithoutHash),
+    sha256: sha256CanonicalJson(evaluationWithoutHash),
   };
 }
 
 export function verifyContinuityEvaluation(evaluation: ContinuityEvaluation): boolean {
   const { sha256: recordedSha256, ...evaluationWithoutHash } = evaluation;
-  return recordedSha256 === sha256Json(evaluationWithoutHash);
+  return recordedSha256 === sha256CanonicalJson(evaluationWithoutHash);
 }
 
 function matchesDefect(

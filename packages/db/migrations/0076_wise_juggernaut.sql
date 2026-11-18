@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "eval_release_decisions_previous_unique" ON "eval_release_decisions" USING btree ("user_id","previous_decision_id") WHERE "eval_release_decisions"."previous_decision_id" is not null;

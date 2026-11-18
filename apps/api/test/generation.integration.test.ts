@@ -281,7 +281,7 @@ describe("generation HTTP integration", () => {
     expect(completedJob.cost.totalTokens).toBeGreaterThan(0);
     expect(completedJob.contextPack).toMatchObject({
       version: 1,
-      compilerVersion: "m1-context-v1",
+      compilerVersion: "m1-context-v0",
       tokenBudget: 12_000,
       task: "chapter_draft",
       chapterNumber: 1,

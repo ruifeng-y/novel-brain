@@ -519,6 +519,27 @@
       "when": 1794991172507,
       "tag": "0073_rich_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794996501619,
+      "tag": "0074_talented_thanos",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1794999632461,
+      "tag": "0075_true_dorian_gray",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795002090813,
+      "tag": "0076_wise_juggernaut",
+      "breakpoints": true
     }
   ]
 }

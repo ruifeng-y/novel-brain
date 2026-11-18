@@ -8,6 +8,7 @@ import {
   createDatabaseClient,
   createDatabasePool,
   entities,
+  evalReleaseDecisions,
   facts as canonicalFacts,
   jobEvents,
   jobCheckpoints,
@@ -24,6 +25,7 @@ import {
   type DatabaseClient,
 } from "@novel-brain/db";
 import {
+  PROVIDER_CANARY_CHANNEL,
   generationBudgetSchema,
   generationCheckpointSchema,
   jobRecoveryRecordSchema,
@@ -34,8 +36,10 @@ import {
   type GenerationJobListQuery,
   type JobRecoveryRecord,
   type JobRecoveryRequest,
+  type ProviderReleaseRuntime,
 } from "@novel-brain/contracts";
 import { GENERATE_CHAPTER_JOB, WORKER_JOB_STEPS } from "@novel-brain/contracts";
+import { releaseRuntimePinForSubject } from "@novel-brain/ai";
 import { resolveRecoveryStep, type RecoveryStepStatus } from "@novel-brain/core";
 import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
@@ -496,6 +500,24 @@ export class GenerationRepository implements OnModuleDestroy {
             }
           : {}),
       };
+    });
+  }
+
+  async loadReleaseRuntimePin(userId: string): Promise<ProviderReleaseRuntime | undefined> {
+    return this.withTenant(userId, async (transaction) => {
+      const [row] = await transaction
+        .select({ evidence: evalReleaseDecisions.evidence })
+        .from(evalReleaseDecisions)
+        .where(
+          and(
+            eq(evalReleaseDecisions.userId, userId),
+            eq(evalReleaseDecisions.channelKey, PROVIDER_CANARY_CHANNEL),
+            inArray(evalReleaseDecisions.status, ["approved", "rolled_back"]),
+          ),
+        )
+        .orderBy(desc(evalReleaseDecisions.createdAt), desc(evalReleaseDecisions.id))
+        .limit(1);
+      return row ? releaseRuntimePinForSubject(row.evidence, userId) : undefined;
     });
   }
 

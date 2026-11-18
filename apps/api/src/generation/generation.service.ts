@@ -19,7 +19,12 @@ import {
   type JobEvent,
   type JobRecoveryRecord,
   type JobRecoveryRequest,
+  type ProviderReleaseRuntime,
 } from "@novel-brain/contracts";
+import {
+  DEFAULT_CONTEXT_COMPILER_VERSION,
+  assertReleaseRuntimePinMatchesModelConfig,
+} from "@novel-brain/ai";
 import {
   compileChapterContextManifest,
   ContextBudgetExceededError,
@@ -53,7 +58,6 @@ import {
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GenerationQueue } from "./generation.queue";
 
-const COMPILER_VERSION = "m1-context-v1";
 const RESERVED_OUTPUT_TOKENS = 2_000;
 
 @Injectable()
@@ -91,9 +95,17 @@ export class GenerationService {
         items: readiness.items.filter((item) => item.severity === "blocker" && !item.ready),
       });
     }
-    const sources = await this.requireSources(userId, context);
+    const [sources, releasePin] = await Promise.all([
+      this.requireSources(userId, context),
+      this.repository.loadReleaseRuntimePin(userId),
+    ]);
+    assertGenerationReleaseCompatibility(releasePin, sources.modelConfig);
     try {
-      compileGenerationContext(sources, request.budget.maxTokens);
+      compileGenerationContext(
+        sources,
+        request.budget.maxTokens,
+        releasePin?.contextCompilerVersion ?? DEFAULT_CONTEXT_COMPILER_VERSION,
+      );
     } catch (error) {
       if (error instanceof ContextBudgetExceededError) {
         throw new ApiError(400, "JOB_BUDGET_EXCEEDED", "上下文超过本章生成预算", {
@@ -163,9 +175,19 @@ export class GenerationService {
     context: GenerationWorkContext,
     tokenBudget: number,
   ): Promise<ContextPackPreview> {
-    const sources = await this.requireSources(userId, context);
+    const [sources, releasePin] = await Promise.all([
+      this.requireSources(userId, context),
+      this.repository.loadReleaseRuntimePin(userId),
+    ]);
+    assertGenerationReleaseCompatibility(releasePin, sources.modelConfig);
     try {
-      return contextPackPreviewSchema.parse(compileGenerationContext(sources, tokenBudget));
+      return contextPackPreviewSchema.parse(
+        compileGenerationContext(
+          sources,
+          tokenBudget,
+          releasePin?.contextCompilerVersion ?? DEFAULT_CONTEXT_COMPILER_VERSION,
+        ),
+      );
     } catch (error) {
       if (error instanceof ContextBudgetExceededError) {
         throw new ApiError(400, "JOB_BUDGET_EXCEEDED", "上下文超过本章生成预算", {
@@ -411,6 +433,7 @@ function toWorkerJob(userId: string, record: JobWithContextPack): GenerateChapte
 export function compileGenerationContext(
   sources: GenerationSources,
   tokenBudget: number,
+  compilerVersion: string = DEFAULT_CONTEXT_COMPILER_VERSION,
 ): ContextPackPreview {
   const brief = sources.chapter.brief as {
     goal?: string;
@@ -423,7 +446,7 @@ export function compileGenerationContext(
     {
       branchId: sources.branch.id,
       branchStatus: sources.branch.status,
-      compilerVersion: COMPILER_VERSION,
+      compilerVersion,
       chapter: {
         id: sources.chapter.id,
         number: sources.chapter.number,
@@ -462,6 +485,20 @@ export function compileGenerationContext(
     tokenBudget,
   );
   return contextPackPreviewSchema.parse(compiled);
+}
+
+function assertGenerationReleaseCompatibility(
+  releasePin: ProviderReleaseRuntime | undefined,
+  modelConfig: { provider: string; baseUrl: string },
+): void {
+  try {
+    assertReleaseRuntimePinMatchesModelConfig(releasePin, modelConfig);
+  } catch (error) {
+    if (error instanceof Error && error.message === "RELEASE_PIN_KEY_MISMATCH") {
+      throw new ApiError(409, "GEN_READINESS_BLOCKED", "当前模型配置与内部灰度版本不匹配");
+    }
+    throw error;
+  }
 }
 
 function delay(milliseconds: number): Promise<void> {

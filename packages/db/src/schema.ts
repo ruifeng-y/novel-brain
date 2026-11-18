@@ -5327,6 +5327,65 @@ export const evalGates = pgTable(
   ],
 );
 
+export const evalReleaseDecisions = pgTable(
+  "eval_release_decisions",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    channelKey: text("channel_key").notNull(),
+    releaseVersion: text("release_version").notNull(),
+    action: text("action").notNull(),
+    status: text("status").notNull(),
+    decisionSha256: text("decision_sha256").notNull(),
+    policySha256: text("policy_sha256"),
+    cohortSha256: text("cohort_sha256"),
+    configHash: text("config_hash").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    model: text("model").notNull(),
+    previousDecisionId: uuid("previous_decision_id"),
+    rollbackTargetDecisionId: uuid("rollback_target_decision_id"),
+    evidence: jsonb("evidence").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("eval_release_decisions_user_sha_unique").on(table.userId, table.decisionSha256),
+    uniqueIndex("eval_release_decisions_id_user_unique").on(table.id, table.userId),
+    uniqueIndex("eval_release_decisions_previous_unique")
+      .on(table.userId, table.previousDecisionId)
+      .where(sql`${table.previousDecisionId} is not null`),
+    index("eval_release_decisions_user_channel_created_idx").on(
+      table.userId,
+      table.channelKey,
+      table.createdAt,
+    ),
+    check("eval_release_decisions_action_check", sql`${table.action} in ('canary', 'rollback')`),
+    check(
+      "eval_release_decisions_status_check",
+      sql`${table.status} in ('approved', 'blocked', 'rolled_back')`,
+    ),
+    check(
+      "eval_release_decisions_hashes_check",
+      sql`${table.decisionSha256} ~ '^[a-f0-9]{64}$' and ${table.configHash} ~ '^[a-f0-9]{64}$' and (${table.policySha256} is null or ${table.policySha256} ~ '^[a-f0-9]{64}$') and (${table.cohortSha256} is null or ${table.cohortSha256} ~ '^[a-f0-9]{64}$')`,
+    ),
+    check(
+      "eval_release_decisions_rollback_refs_check",
+      sql`(${table.action} = 'canary' and ${table.previousDecisionId} is null and ${table.rollbackTargetDecisionId} is null) or (${table.action} = 'rollback' and ${table.previousDecisionId} is not null and ${table.rollbackTargetDecisionId} is not null)`,
+    ),
+    foreignKey({
+      name: "eval_release_decisions_previous_user_fk",
+      columns: [table.previousDecisionId, table.userId],
+      foreignColumns: [table.id, table.userId],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "eval_release_decisions_target_user_fk",
+      columns: [table.rollbackTargetDecisionId, table.userId],
+      foreignColumns: [table.id, table.userId],
+    }).onDelete("cascade"),
+  ],
+);
+
 export type VolumeAuditFindingJson = {
   id: string;
   chapterId: string | null;

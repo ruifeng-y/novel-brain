@@ -8,6 +8,7 @@ import {
   type GenerationOperation,
   type GenerationResult,
 } from "@novel-brain/ai";
+import type { ProviderReleaseRuntime } from "@novel-brain/contracts";
 import { planProviderCallBudget, PROVIDER_CALL_MAX_OUTPUT_TOKENS } from "@novel-brain/core";
 import { BudgetReservationError, calculateModelCallCost as calculateCost } from "@novel-brain/db";
 
@@ -49,6 +50,7 @@ export interface BudgetedProviderCallInput {
   system: string;
   citations: unknown[];
   parameters: Record<string, unknown>;
+  releasePin?: ProviderReleaseRuntime;
   traceLogger?: ProviderCallTraceLogger;
 }
 
@@ -63,10 +65,28 @@ export class BudgetedProviderCallExecutor {
     });
     const estimatedTokens = providerBudget.reservedTokens;
     const estimatedCostCny = calculateCost(estimatedTokens, M0_COST_PER_TOKEN_CNY);
+    if (input.releasePin && estimatedCostCny > input.releasePin.maxCostCny) {
+      await this.repository.recordBudgetFailure({
+        payload: input.payload,
+        step: input.step,
+        attempt: input.attempt,
+        role: input.role,
+        prompt: input.prompt,
+        system: input.system,
+        estimatedTokens,
+        estimatedCostCny,
+        errorCode: "RELEASE_BUDGET_EXCEEDED",
+        message: "发布 pin 的预算上限低于本次模型调用的预估成本",
+        escalationReason: "请等待新的 release pin 或由发布负责人调整灰度预算",
+        releasePin: input.releasePin,
+      });
+      throw new ProviderBudgetExceededError();
+    }
     const parameters = {
       ...input.parameters,
       maxTokens: providerBudget.maxOutputTokens,
       stream: false,
+      ...(input.releasePin ? { releasePin: input.releasePin } : {}),
     };
     let call: StartedModelCall;
     try {
@@ -75,13 +95,18 @@ export class BudgetedProviderCallExecutor {
         step: input.step,
         attempt: input.attempt,
         role: input.role,
-        ...(input.promptKey ? { promptKey: input.promptKey } : {}),
+        ...(input.promptKey
+          ? { promptKey: input.promptKey }
+          : input.releasePin
+            ? { promptKey: `release.${input.releasePin.promptVersion}.${input.step}` }
+            : {}),
         prompt: input.prompt,
         system: input.system,
         citations: input.citations,
         estimatedTokens,
         estimatedCostCny,
         parameters,
+        ...(input.releasePin ? { releasePin: input.releasePin } : {}),
       });
     } catch (error) {
       if (error instanceof JobStoppedError) {
@@ -100,6 +125,7 @@ export class BudgetedProviderCallExecutor {
           errorCode: "JOB_BUDGET_EXCEEDED",
           message: BUDGET_EXHAUSTED_MESSAGE,
           escalationReason: BUDGET_EXHAUSTED_ESCALATION,
+          ...(input.releasePin ? { releasePin: input.releasePin } : {}),
           ...(error.details.bindingScope ? { bindingScope: error.details.bindingScope } : {}),
         });
         throw new ProviderBudgetExceededError();
