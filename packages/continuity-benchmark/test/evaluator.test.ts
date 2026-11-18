@@ -81,6 +81,8 @@ describe("continuity evaluator", () => {
       chapterNumber: control.chapterNumber,
       branchId: control.branchId,
       entityIds: [...control.entityIds],
+      sourceFactId: fixture.facts[0]!.id,
+      versionNodeId: fixture.chapters[0]!.versionNodeId,
       evidence: "surface wording is not a continuity defect",
     };
 
@@ -95,5 +97,32 @@ describe("continuity evaluator", () => {
       result.byVolumePosition.reduce((sum, entry) => sum + entry.metrics.falsePositives, 0),
     ).toBe(1);
     expect(result.byBranch.reduce((sum, entry) => sum + entry.metrics.falsePositives, 0)).toBe(1);
+  });
+
+  it("requires exact severity, source fact, version node and evidence for a true positive", () => {
+    const findings = perfectFindings();
+    const target = findings.find((finding) => finding.family === "knowledge_boundary")!;
+    const invalidFinding: ContinuityFinding = {
+      ...target,
+      severity: "P2",
+      sourceFactId: "00000000-0000-7000-8000-000000000000",
+      versionNodeId: "00000000-0000-7000-8000-000000000001",
+      evidence: "unrelated prose",
+    };
+    const result = evaluateContinuityFindings({
+      fixture,
+      findings: findings.map((finding) => (finding === target ? invalidFinding : finding)),
+    });
+
+    expect(result.summary.truePositives).toBe(fixture.defects.length - 1);
+    expect(result.summary.falseNegatives).toBe(1);
+    expect(result.summary.falsePositives).toBe(1);
+    expect(result.missingFindings).toContainEqual(
+      expect.objectContaining({
+        family: "knowledge_boundary",
+        chapterNumber: target.chapterNumber,
+      }),
+    );
+    expect(result.unexpectedFindings).toContainEqual(invalidFinding);
   });
 });

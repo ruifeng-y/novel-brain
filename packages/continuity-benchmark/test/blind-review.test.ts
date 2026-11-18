@@ -4,7 +4,7 @@ import { buildContinuityBlindReviewPacket } from "../src/blind-review";
 import { generateContinuityFixture } from "../src/fixture";
 import { createContinuityPlan } from "../src/plan";
 
-const plan = createContinuityPlan({ seed: 20261118, tier: "smoke" });
+const plan = createContinuityPlan({ seed: 20261118, tier: "minimum" });
 const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
 
 describe("continuity blind review packet", () => {
@@ -23,6 +23,9 @@ describe("continuity blind review packet", () => {
     for (const stratum of ["early", "middle", "late"] as const) {
       expect(first.packet.items.filter((item) => item.stratum === stratum)).toHaveLength(2);
     }
+    expect(new Set(first.packet.items.map((item) => item.chapterNumber)).size).toBe(
+      first.packet.items.length,
+    );
     expect(first.packet.packetSha256).toMatch(/^[a-f0-9]{64}$/u);
     expect(first.oracle.oracleSha256).toMatch(/^[a-f0-9]{64}$/u);
   });
@@ -70,5 +73,29 @@ describe("continuity blind review packet", () => {
     expect(() => buildContinuityBlindReviewPacket({ fixture, samplesPerStratum: 0 })).toThrow(
       "BLIND_SAMPLE_COUNT_INVALID",
     );
+  });
+
+  it("keeps each reviewer packet inside its branch history", () => {
+    const { packet } = buildContinuityBlindReviewPacket({
+      fixture,
+      samplesPerStratum: 3,
+    });
+    const mainBranchId = fixture.branches[0]!.id;
+
+    for (const item of packet.items) {
+      const branch = fixture.branches.find((candidate) => candidate.id === item.branchId)!;
+      const visibleFactIds = new Set([
+        ...item.povContext.approvedFacts.map((fact) => fact.id),
+        ...item.povContext.knownStates.map((state) => state.objectiveFactId),
+      ]);
+      for (const factId of visibleFactIds) {
+        const fact = fixture.facts.find((candidate) => candidate.id === factId)!;
+        const sharedHistory =
+          fact.branchId === mainBranchId &&
+          branch.divergenceChapter !== null &&
+          fact.validFromChapter <= branch.divergenceChapter;
+        expect(fact.branchId === item.branchId || sharedHistory).toBe(true);
+      }
+    }
   });
 });

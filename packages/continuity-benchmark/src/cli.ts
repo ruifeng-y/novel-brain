@@ -15,6 +15,7 @@ import { createContinuityPlan, type ContinuityPlan, type ContinuityTier } from "
 import {
   buildContinuityBenchmarkReport,
   type ContinuityBenchmarkDecision,
+  type ContinuityNarrativeEvidence,
   type ContinuityReviewEvidence,
 } from "./report";
 import { readJsonArtifact, writeJsonArtifact } from "./report-io";
@@ -97,6 +98,11 @@ export async function runContinuityCli(argv: readonly string[]): Promise<Continu
       const decisions = options.decisions
         ? await readJsonArtifact<ContinuityBenchmarkDecision[]>(resolvePath(options.decisions))
         : [];
+      const narrativeEvidence = options["narrative-evidence"]
+        ? await readJsonArtifact<ContinuityNarrativeEvidence>(
+            resolvePath(options["narrative-evidence"]),
+          )
+        : null;
       const report = buildContinuityBenchmarkReport({
         fixture,
         evaluation,
@@ -104,6 +110,7 @@ export async function runContinuityCli(argv: readonly string[]): Promise<Continu
         blindReviewOracle: oracle,
         reviewEvidence,
         decisions,
+        narrativeEvidence,
       });
       const output = resolvePath(
         options.output ??

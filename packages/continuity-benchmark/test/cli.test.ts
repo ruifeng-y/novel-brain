@@ -17,6 +17,8 @@ describe("continuity benchmark cli", () => {
       const oraclePath = path.join(directory, "oracle.json");
       const findingsPath = path.join(directory, "findings.json");
       const evaluationPath = path.join(directory, "evaluation.json");
+      const narrativeEvidencePath = path.join(directory, "narrative-evidence.json");
+      const reportPath = path.join(directory, "report.json");
 
       await runContinuityCli([
         "plan",
@@ -91,6 +93,40 @@ describe("continuity benchmark cli", () => {
         releaseGate: { passed: boolean };
       };
       expect(evaluation.releaseGate.passed).toBe(true);
+
+      await writeFile(
+        narrativeEvidencePath,
+        `${JSON.stringify(
+          {
+            outlineAdherence: 0.9,
+            hookProseScore: 4,
+            continuityConflictsPer50k: 1,
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
+      );
+      await runContinuityCli([
+        "report",
+        "--fixture",
+        fixturePath,
+        "--evaluation",
+        evaluationPath,
+        "--review-packet",
+        packetPath,
+        "--review-oracle",
+        oraclePath,
+        "--narrative-evidence",
+        narrativeEvidencePath,
+        "--output",
+        reportPath,
+      ]);
+
+      const report = JSON.parse(await readFile(reportPath, "utf8")) as {
+        narrativeEvidence: { outlineAdherence: number } | null;
+      };
+      expect(report.narrativeEvidence?.outlineAdherence).toBe(0.9);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

@@ -6,9 +6,14 @@ import type {
   ContinuityFact,
   ContinuityFixture,
 } from "./fixture";
-import type { ContinuityScenarioFamily, ContinuitySeverity } from "./plan";
+import {
+  continuityScenarioMetadata,
+  type ContinuityScenarioFamily,
+  type ContinuitySeverity,
+} from "./plan";
+import { volumePositionFor, type VolumePosition } from "./strata";
 
-export type ReviewStratum = "early" | "middle" | "late";
+export type ReviewStratum = VolumePosition;
 
 export interface BlindReviewPacket {
   schemaVersion: 1;
@@ -76,21 +81,20 @@ export function buildContinuityBlindReviewPacket(input: {
   const defectsByStratum = new Map<ReviewStratum, ContinuityDefect[]>();
   for (const stratum of ["early", "middle", "late"] as const) {
     const candidates = fixture.defects
-      .filter((defect) => stratumFor(fixture, defect.chapterNumber) === stratum)
+      .filter(
+        (defect) => volumePositionFor(fixture.plan.chapterCount, defect.chapterNumber) === stratum,
+      )
       .sort((left, right) =>
         deterministicOrder(fixture, left).localeCompare(deterministicOrder(fixture, right)),
       );
     if (candidates.length < samplesPerStratum) {
       throw new Error("INSUFFICIENT_STRATIFIED_SAMPLES");
     }
-    const priority = candidates.find((defect) =>
-      [
-        "knowledge_boundary",
-        "identity_transition",
-        "branch_divergence",
-        "foreshadow_payoff",
-      ].includes(defect.family),
-    );
+    const priority = [...candidates].sort(
+      (left, right) =>
+        samplingPriority(right.family) - samplingPriority(left.family) ||
+        deterministicOrder(fixture, left).localeCompare(deterministicOrder(fixture, right)),
+    )[0];
     const selected = priority ? [priority] : [];
     for (const candidate of candidates) {
       if (selected.length >= samplesPerStratum) {
@@ -118,9 +122,13 @@ export function buildContinuityBlindReviewPacket(input: {
       if (!chapter) {
         throw new Error("DEFECT_CHAPTER_MISSING");
       }
+      const branch = fixture.branches.find((candidate) => candidate.id === defect.branchId);
+      if (!branch) {
+        throw new Error("DEFECT_BRANCH_MISSING");
+      }
       const reviewId = `review-${defect.id}`;
       const visibleFacts = fixture.facts.filter((fact) =>
-        isVisibleAtChapter(fixture, fact, chapter.number, chapter.povCharacterId),
+        isVisibleAtChapter(fixture, fact, chapter.number, chapter.povCharacterId, branch.id),
       );
       const approvedFacts = visibleFacts
         .filter((fact) => fact.visibility === "public")
@@ -129,6 +137,7 @@ export function buildContinuityBlindReviewPacket(input: {
         .filter(
           (state) =>
             state.characterId === chapter.povCharacterId &&
+            isSharedOrSameBranch(fixture, state.branchId, branch.id, chapter.number) &&
             state.validFromChapter <= chapter.number &&
             (state.validToChapter === null || state.validToChapter >= chapter.number),
         )
@@ -158,6 +167,7 @@ export function buildContinuityBlindReviewPacket(input: {
           .filter(
             (fact) =>
               fact.visibility === "hidden" &&
+              isSharedOrSameBranch(fixture, fact.branchId, branch.id, chapter.number) &&
               !visibleFacts.some((visible) => visible.id === fact.id),
           )
           .map((fact) => fact.id),
@@ -198,11 +208,15 @@ function isVisibleAtChapter(
   fact: ContinuityFact,
   chapterNumber: number,
   povCharacterId: string,
+  branchId: string,
 ): boolean {
   if (
     fact.validFromChapter > chapterNumber ||
     (fact.validToChapter !== null && fact.validToChapter < chapterNumber)
   ) {
+    return false;
+  }
+  if (!isSharedOrSameBranch(fixture, fact.branchId, branchId, chapterNumber)) {
     return false;
   }
   if (fact.visibility === "public") {
@@ -215,6 +229,25 @@ function isVisibleAtChapter(
       state.state !== "unknown" &&
       state.validFromChapter <= chapterNumber &&
       (state.validToChapter === null || state.validToChapter >= chapterNumber),
+  );
+}
+
+function isSharedOrSameBranch(
+  fixture: ContinuityFixture,
+  objectBranchId: string,
+  targetBranchId: string,
+  chapterNumber: number,
+): boolean {
+  if (objectBranchId === targetBranchId) {
+    return true;
+  }
+  const mainBranchId = fixture.branches[0]?.id;
+  const targetBranch = fixture.branches.find((branch) => branch.id === targetBranchId);
+  return (
+    objectBranchId === mainBranchId &&
+    targetBranch?.divergenceChapter !== null &&
+    targetBranch?.divergenceChapter !== undefined &&
+    chapterNumber <= targetBranch.divergenceChapter
   );
 }
 
@@ -240,15 +273,11 @@ function deterministicOrder(fixture: ContinuityFixture, defect: ContinuityDefect
   return createHash("sha256").update(`${fixture.plan.seed}:${defect.id}`).digest("hex");
 }
 
-function stratumFor(fixture: ContinuityFixture, chapterNumber: number): ReviewStratum {
-  const ratio = chapterNumber / fixture.plan.chapterCount;
-  if (ratio <= 1 / 3) {
-    return "early";
+function samplingPriority(family: ContinuityScenarioFamily): number {
+  if (family === "false_alarm" || family === "incomplete_context") {
+    return 0;
   }
-  if (ratio <= 2 / 3) {
-    return "middle";
-  }
-  return "late";
+  return continuityScenarioMetadata[family].samplingPriority;
 }
 
 function sha256(value: unknown): string {

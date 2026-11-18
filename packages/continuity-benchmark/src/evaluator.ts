@@ -1,5 +1,6 @@
 import type { ContinuityControl, ContinuityDefect, ContinuityFixture } from "./fixture";
 import type { ContinuityScenarioFamily, ContinuitySeverity } from "./plan";
+import { volumePositionFor, type VolumePosition } from "./strata";
 
 export interface ContinuityFinding {
   family: ContinuityScenarioFamily;
@@ -7,9 +8,9 @@ export interface ContinuityFinding {
   chapterNumber: number;
   branchId: string;
   entityIds: readonly string[];
-  sourceFactId?: string;
-  versionNodeId?: string;
-  evidence?: string;
+  sourceFactId: string;
+  versionNodeId: string;
+  evidence: string;
 }
 
 export interface ContinuityMetrics {
@@ -44,7 +45,6 @@ export interface ContinuityEvaluation {
   };
 }
 
-type VolumePosition = "early" | "middle" | "late";
 type FindingKind = "tp" | "fp" | "fn" | "tn";
 
 interface Classified {
@@ -103,10 +103,10 @@ export function evaluateContinuityFindings(input: {
     (defect) => defect.family === "knowledge_boundary",
   ).length;
   const blockers: string[] = [];
-  if (p0FalseNegatives > 0) {
+  if (p0FalseNegatives > fixture.plan.thresholds.p0FactLossMax) {
     blockers.push("p0-fact-loss");
   }
-  if (knowledgeBoundaryFalseNegatives > 0) {
+  if (knowledgeBoundaryFalseNegatives > fixture.plan.thresholds.knowledgeBoundaryViolationMax) {
     blockers.push("knowledge-boundary-leak");
   }
 
@@ -132,19 +132,30 @@ export function evaluateContinuityFindings(input: {
 
 function matchesDefect(finding: ContinuityFinding, defect: ContinuityDefect): boolean {
   return (
-    finding.family === defect.family &&
-    finding.branchId === defect.branchId &&
-    finding.chapterNumber === defect.chapterNumber &&
-    intersects(finding.entityIds, defect.entityIds)
+    matchesLocator(finding, defect) &&
+    finding.severity === defect.severity &&
+    finding.sourceFactId === defect.sourceFactId &&
+    finding.versionNodeId === defect.versionNodeId &&
+    normalizeEvidence(finding.evidence) === normalizeEvidence(defect.evidence)
   );
 }
 
 function matchesControl(finding: ContinuityFinding, control: ContinuityControl): boolean {
+  return matchesLocator(finding, control);
+}
+
+function matchesLocator(
+  finding: ContinuityFinding,
+  expected: Pick<
+    ContinuityDefect | ContinuityControl,
+    "family" | "branchId" | "chapterNumber" | "entityIds"
+  >,
+): boolean {
   return (
-    finding.family === control.family &&
-    finding.branchId === control.branchId &&
-    finding.chapterNumber === control.chapterNumber &&
-    intersects(finding.entityIds, control.entityIds)
+    finding.family === expected.family &&
+    finding.branchId === expected.branchId &&
+    finding.chapterNumber === expected.chapterNumber &&
+    intersects(finding.entityIds, expected.entityIds)
   );
 }
 
@@ -228,16 +239,13 @@ function ratio(numerator: number, denominator: number): number {
 }
 
 function volumePosition(fixture: ContinuityFixture, chapterNumber: number): VolumePosition {
-  const ratio = chapterNumber / fixture.plan.chapterCount;
-  if (ratio <= 1 / 3) {
-    return "early";
-  }
-  if (ratio <= 2 / 3) {
-    return "middle";
-  }
-  return "late";
+  return volumePositionFor(fixture.plan.chapterCount, chapterNumber);
 }
 
 function intersects(left: readonly string[], right: readonly string[]): boolean {
   return left.some((value) => right.includes(value));
+}
+
+function normalizeEvidence(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
 }

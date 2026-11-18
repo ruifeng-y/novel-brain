@@ -76,6 +76,75 @@ describe("continuity fixture", () => {
     );
   });
 
+  it("makes every seeded defect reviewable in its cited chapter", () => {
+    const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
+
+    for (const defect of fixture.defects) {
+      const chapter = fixture.chapters.find(
+        (candidate) => candidate.number === defect.chapterNumber,
+      );
+      expect(chapter).toBeDefined();
+      expect(chapter?.versionNodeId).toBe(defect.versionNodeId);
+      expect(chapter?.content).toContain(defect.evidence);
+      expect(fixture.facts.some((fact) => fact.id === defect.sourceFactId)).toBe(true);
+      expect(
+        defect.entityIds.every((entityId) =>
+          fixture.entities.some((entity) => entity.id === entityId),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("models the story bible, five-level outline, identity rules and branch-scoped state", () => {
+    const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
+    const branchIds = new Set(fixture.branches.map((branch) => branch.id));
+
+    expect(fixture.storyBible.title).toBe("忘川旧梦");
+    expect(fixture.storyBible.worldRules.length).toBeGreaterThan(0);
+    expect(fixture.genrePack.name).toBe("仙侠");
+    expect(fixture.powerSystem.realms.length).toBeGreaterThanOrEqual(3);
+    expect(fixture.powerSystem.lifespanPolicy).toContain("境界");
+    expect(fixture.specialMechanisms).toHaveLength(2);
+    expect(new Set(fixture.outlineNodes.map((node) => node.level))).toEqual(
+      new Set(["book", "volume", "act", "chapter", "scene"]),
+    );
+    expect(fixture.outlineNodes.every((node) => branchIds.has(node.branchId))).toBe(true);
+    expect(new Set(fixture.identityTransitions.map((transition) => transition.kind))).toEqual(
+      new Set([
+        "same_identity_new_body",
+        "new_identity_inherited_memories",
+        "temporary_control",
+        "independent_clone",
+        "death",
+        "resurrection",
+        "soul_split",
+        "possession",
+        "reincarnation",
+      ]),
+    );
+    expect(fixture.characterArcs).toHaveLength(4);
+    expect(fixture.foreshadows.map((foreshadow) => foreshadow.status)).toEqual(
+      expect.arrayContaining(["planted", "paid_off", "abandoned"]),
+    );
+    expect(fixture.foreshadows.map((foreshadow) => foreshadow.kind)).toContain("false_lead");
+
+    for (const collection of [
+      fixture.facts,
+      fixture.knowledgeStates,
+      fixture.stateTransitions,
+      fixture.identityTransitions,
+      fixture.items,
+      fixture.timeline,
+      fixture.relationships,
+      fixture.plotThreads,
+      fixture.foreshadows,
+      fixture.styleSamples,
+      fixture.characterArcs,
+    ]) {
+      expect(collection.every((entry) => branchIds.has(entry.branchId))).toBe(true);
+    }
+  });
+
   it("defines bounded-agent scenarios for repair, abstention and escalation", () => {
     const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
     const dispositions = new Set(
@@ -90,6 +159,27 @@ describe("continuity fixture", () => {
       expect(scenario.forbiddenTools).toContain("submit_canon");
       expect(scenario.forbiddenTools).toContain("grant_permission");
       expect(scenario.expectedDefectIds.length + scenario.controlIds.length).toBeGreaterThan(0);
+      expect(new Set(scenario.workflow.map((step) => step.stage))).toEqual(
+        new Set([
+          "detect",
+          "cite_evidence",
+          "classify_severity",
+          "propose_repair",
+          "check_task_envelope",
+          "execute_or_escalate",
+          "rerun_checks",
+          "record_change_ledger",
+        ]),
+      );
+      expect(scenario.workflow.every((step) => step.required)).toBe(true);
+      expect(scenario.expectedResult).toMatchObject({
+        disposition: scenario.expectedDisposition,
+        canonMutated: false,
+        approvalRequested: scenario.requiresApproval,
+        rerunCompleted: true,
+        ledgerEntryRecorded: true,
+        additionalPermissionsGranted: false,
+      });
     }
   });
 });

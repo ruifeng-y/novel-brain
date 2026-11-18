@@ -1,19 +1,18 @@
-export const continuityScenarioFamilies = [
-  "knowledge_boundary",
-  "body_continuity",
-  "identity_transition",
-  "inventory_rights",
-  "travel_time",
-  "foreshadow_payoff",
-  "motivation_drift",
-  "branch_divergence",
-  "false_alarm",
-  "incomplete_context",
-] as const;
+import { continuityScenarioFamilies } from "./families";
 
-export type ContinuityScenarioFamily = (typeof continuityScenarioFamilies)[number];
+export {
+  continuityControlFamilies,
+  continuityDefectFamilies,
+  continuityScenarioFamilies,
+  continuityScenarioMetadata,
+} from "./families";
+export type {
+  ContinuityControlFamily,
+  ContinuityDefectFamily,
+  ContinuityScenarioFamily,
+  ContinuitySeverity,
+} from "./families";
 export type ContinuityTier = "smoke" | "minimum" | "full" | "maximum";
-export type ContinuitySeverity = "P0" | "P1" | "P2";
 
 export interface ContinuityThresholds {
   p0FactLossMax: 0;

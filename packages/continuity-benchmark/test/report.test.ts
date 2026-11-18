@@ -6,25 +6,59 @@ import { generateContinuityFixture } from "../src/fixture";
 import { createContinuityPlan } from "../src/plan";
 import { buildContinuityBenchmarkReport } from "../src/report";
 
-const plan = createContinuityPlan({ seed: 20261118, tier: "smoke" });
+const plan = createContinuityPlan({ seed: 20261118, tier: "minimum" });
 const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
-const perfectFindings: ContinuityFinding[] = fixture.defects.map((defect) => ({
-  family: defect.family,
-  severity: defect.severity,
-  chapterNumber: defect.chapterNumber,
-  branchId: defect.branchId,
-  entityIds: [...defect.entityIds],
-  sourceFactId: defect.sourceFactId,
-  versionNodeId: defect.versionNodeId,
-  evidence: defect.evidence,
-}));
+const perfectFindings = findingsFor(fixture);
 const evaluation = evaluateContinuityFindings({ fixture, findings: perfectFindings });
 const { packet, oracle } = buildContinuityBlindReviewPacket({
   fixture,
   samplesPerStratum: 2,
 });
 
+const smokePlan = createContinuityPlan({ seed: 20261118, tier: "smoke" });
+const smokeFixture = generateContinuityFixture({ plan: smokePlan, sourceCommit: "abc1234" });
+const smokeEvaluation = evaluateContinuityFindings({
+  fixture: smokeFixture,
+  findings: findingsFor(smokeFixture),
+});
+const smokeReview = buildContinuityBlindReviewPacket({
+  fixture: smokeFixture,
+  samplesPerStratum: 2,
+});
+
 describe("continuity benchmark report", () => {
+  it("blocks a non-certification fixture even when review evidence looks complete", () => {
+    const report = buildContinuityBenchmarkReport({
+      fixture: smokeFixture,
+      evaluation: smokeEvaluation,
+      blindReviewPacket: smokeReview.packet,
+      blindReviewOracle: smokeReview.oracle,
+      reviewEvidence: completeReviewEvidence(smokeReview.packet),
+      decisions: [
+        {
+          id: "blindReviewSamplesPerStratum",
+          approved: true,
+          owner: "product-owner",
+          rationale: "approved review depth",
+          approvedValue: 2,
+          decidedAt: "2026-11-18T00:00:00.000Z",
+        },
+        {
+          id: "interRaterAgreementThreshold",
+          approved: true,
+          owner: "product-owner",
+          rationale: "approved agreement floor",
+          approvedValue: 0.8,
+          decidedAt: "2026-11-18T00:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(report.status).toBe("blocked");
+    expect(report.continuityReady).toBe(false);
+    expect(report.blockers).toContain("fixture-not-certification-eligible");
+  });
+
   it("blocks a perfect automatic run until human review and thresholds are approved", () => {
     const report = buildContinuityBenchmarkReport({
       fixture,
@@ -46,43 +80,105 @@ describe("continuity benchmark report", () => {
     );
   });
 
+  it("blocks release when approved narrative-quality measurements are missing", () => {
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(packet),
+      decisions: approvedDecisions(),
+    });
+
+    expect(report.status).toBe("blocked");
+    expect(report.blockers).toContain("narrative-evidence-missing");
+  });
+
   it("passes only with approved thresholds and stratified blind-review evidence", () => {
     const report = buildContinuityBenchmarkReport({
       fixture,
       evaluation,
       blindReviewPacket: packet,
       blindReviewOracle: oracle,
-      reviewEvidence: {
-        samplesPerStratum: 2,
-        reviewerIds: ["reviewer-a", "reviewer-b"],
-        reviewedItemCount: packet.items.length,
-        interRaterAgreement: 0.86,
-        adjudicatedDisagreements: 2,
+      reviewEvidence: completeReviewEvidence(packet),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
       },
-      decisions: [
-        {
-          id: "blindReviewSamplesPerStratum",
-          approved: true,
-          owner: "product-owner",
-          rationale: "approved review depth",
-          approvedValue: 2,
-          decidedAt: "2026-11-18T00:00:00.000Z",
-        },
-        {
-          id: "interRaterAgreementThreshold",
-          approved: true,
-          owner: "product-owner",
-          rationale: "approved agreement floor",
-          approvedValue: 0.8,
-          decidedAt: "2026-11-18T00:00:00.000Z",
-        },
-      ],
     });
 
     expect(report.status).toBe("passed");
     expect(report.continuityReady).toBe(true);
     expect(report.blockers).toEqual([]);
     expect(report.evaluation.summary).toEqual(evaluation.summary);
+  });
+
+  it("blocks every approved narrative metric that crosses its threshold", () => {
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(packet),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.89,
+        hookProseScore: 3.9,
+        continuityConflictsPer50k: 1.1,
+      },
+    });
+
+    expect(report.blockers).toEqual(
+      expect.arrayContaining([
+        "narrative-outline-adherence-below-threshold",
+        "narrative-hook-prose-below-threshold",
+        "narrative-continuity-conflicts-above-threshold",
+      ]),
+    );
+  });
+
+  it("blocks non-human reviewers", () => {
+    const evidence = completeReviewEvidence(packet);
+    evidence.reviewers[1]!.kind = "llm_self_score" as "human";
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: evidence,
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.blockers).toEqual(
+      expect.arrayContaining(["blind-review-reviewer-count-insufficient"]),
+    );
+  });
+
+  it("blocks unresolved blind-review disagreements", () => {
+    const evidence = completeReviewEvidence(packet, { disagreementCount: 1 });
+    evidence.adjudications = [];
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: evidence,
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.blockers).toContain("blind-review-adjudication-missing");
   });
 
   it("keeps P0 misses and low reviewer agreement blocking", () => {
@@ -95,31 +191,13 @@ describe("continuity benchmark report", () => {
       evaluation: missed,
       blindReviewPacket: packet,
       blindReviewOracle: oracle,
-      reviewEvidence: {
-        samplesPerStratum: 2,
-        reviewerIds: ["reviewer-a", "reviewer-b"],
-        reviewedItemCount: packet.items.length,
-        interRaterAgreement: 0.5,
-        adjudicatedDisagreements: 4,
+      reviewEvidence: completeReviewEvidence(packet, { disagreementCount: 2 }),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
       },
-      decisions: [
-        {
-          id: "blindReviewSamplesPerStratum",
-          approved: true,
-          owner: "product-owner",
-          rationale: "approved review depth",
-          approvedValue: 2,
-          decidedAt: "2026-11-18T00:00:00.000Z",
-        },
-        {
-          id: "interRaterAgreementThreshold",
-          approved: true,
-          owner: "product-owner",
-          rationale: "approved agreement floor",
-          approvedValue: 0.8,
-          decidedAt: "2026-11-18T00:00:00.000Z",
-        },
-      ],
     });
 
     expect(report.blockers).toEqual(
@@ -130,3 +208,88 @@ describe("continuity benchmark report", () => {
     );
   });
 });
+
+function completeReviewEvidence(
+  reviewPacket: typeof packet,
+  options: { disagreementCount?: number } = {},
+) {
+  const disagreementCount = options.disagreementCount ?? 0;
+  return {
+    schemaVersion: 1 as const,
+    packetSha256: reviewPacket.packetSha256,
+    rubricVersion: reviewPacket.rubricVersion,
+    samplesPerStratum: 2,
+    reviewers: [
+      {
+        id: "reviewer-a",
+        kind: "human" as const,
+        displayName: "Reviewer A",
+        attestedAt: "2026-11-18T00:00:00.000Z",
+      },
+      {
+        id: "reviewer-b",
+        kind: "human" as const,
+        displayName: "Reviewer B",
+        attestedAt: "2026-11-18T00:00:00.000Z",
+      },
+    ],
+    items: reviewPacket.items.flatMap((item, itemIndex) =>
+      ["reviewer-a", "reviewer-b"].map((reviewerId, reviewerIndex) => ({
+        reviewId: item.reviewId,
+        reviewerId,
+        disposition: itemIndex < disagreementCount && reviewerIndex === 1 ? "no_defect" : "defect",
+        rubricScores: {
+          factualContinuity: 5,
+          knowledgeBoundary: 5,
+          narrativeCausality: 5,
+          outlineAdherence: 0.95,
+          hookProse: 4.5,
+        },
+        confidence: 0.9,
+        evidenceQuote: "样本中的证据句",
+        reviewedAt: "2026-11-18T00:00:00.000Z",
+      })),
+    ),
+    adjudications: Array.from({ length: disagreementCount }, (_, index) => ({
+      reviewId: reviewPacket.items[index]!.reviewId,
+      adjudicatorId: "adjudicator-c",
+      decision: "defect" as const,
+      rationale: "按版本化 rubric 裁决",
+      adjudicatedAt: "2026-11-18T00:00:00.000Z",
+    })),
+  };
+}
+
+function approvedDecisions() {
+  return [
+    {
+      id: "blindReviewSamplesPerStratum" as const,
+      approved: true,
+      owner: "product-owner",
+      rationale: "approved review depth",
+      approvedValue: 2,
+      decidedAt: "2026-11-18T00:00:00.000Z",
+    },
+    {
+      id: "interRaterAgreementThreshold" as const,
+      approved: true,
+      owner: "product-owner",
+      rationale: "approved agreement floor",
+      approvedValue: 0.8,
+      decidedAt: "2026-11-18T00:00:00.000Z",
+    },
+  ];
+}
+
+function findingsFor(value: typeof fixture): ContinuityFinding[] {
+  return value.defects.map((defect) => ({
+    family: defect.family,
+    severity: defect.severity,
+    chapterNumber: defect.chapterNumber,
+    branchId: defect.branchId,
+    entityIds: [...defect.entityIds],
+    sourceFactId: defect.sourceFactId,
+    versionNodeId: defect.versionNodeId,
+    evidence: defect.evidence,
+  }));
+}
