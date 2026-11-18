@@ -1,6 +1,7 @@
 export * from "./agent";
 export * from "./blind-review";
 export * from "./cli";
+export * from "./digest";
 export * from "./evaluator";
 export * from "./families";
 export * from "./fixture";

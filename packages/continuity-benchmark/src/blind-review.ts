@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
-
+import { sha256Json, sha256Text } from "./digest";
 import type {
   CharacterKnowledgeState,
+  ContinuityControl,
   ContinuityDefect,
   ContinuityFact,
   ContinuityFixture,
@@ -54,7 +54,9 @@ export interface BlindReviewOracle {
 
 export interface BlindReviewOracleItem {
   reviewId: string;
+  expectedDisposition: "defect" | "no_defect" | "escalate";
   expectedDefectIds: readonly string[];
+  controlIds: readonly string[];
   expectedFamilies: readonly ContinuityScenarioFamily[];
   expectedSeverities: readonly ContinuitySeverity[];
   hiddenFactIds: readonly string[];
@@ -79,13 +81,18 @@ export function buildContinuityBlindReviewPacket(input: {
   samplesPerStratum: number;
 }): { packet: BlindReviewPacket; oracle: BlindReviewOracle } {
   const { fixture, samplesPerStratum } = input;
-  if (!Number.isSafeInteger(samplesPerStratum) || samplesPerStratum <= 0) {
+  if (!Number.isSafeInteger(samplesPerStratum) || samplesPerStratum < 2) {
     throw new Error("BLIND_SAMPLE_COUNT_INVALID");
   }
 
   const defectsByStratum = new Map<ReviewStratum, ContinuityDefect[]>();
+  const controlsByStratum = new Map<ReviewStratum, ContinuityControl[]>();
+  const controlCount = Math.max(1, Math.floor(samplesPerStratum / 2));
+  const defectCount = samplesPerStratum - controlCount;
+  const usedChapterNumbers = new Set<number>();
+  const seededDefectChapters = new Set(fixture.defects.map((defect) => defect.chapterNumber));
   for (const stratum of reviewStrata) {
-    const candidates = fixture.defects
+    const defectCandidates = fixture.defects
       .filter(
         (defect) =>
           volumePositionFor(
@@ -96,102 +103,201 @@ export function buildContinuityBlindReviewPacket(input: {
       .sort((left, right) =>
         deterministicOrder(fixture, left).localeCompare(deterministicOrder(fixture, right)),
       );
-    if (candidates.length < samplesPerStratum) {
+    if (defectCandidates.length < defectCount) {
       throw new Error("INSUFFICIENT_STRATIFIED_SAMPLES");
     }
-    const orderedCandidates = [...candidates].sort(
+    const orderedDefects = [...defectCandidates].sort(
       (left, right) =>
         samplingPriority(right.family) - samplingPriority(left.family) ||
         deterministicOrder(fixture, left).localeCompare(deterministicOrder(fixture, right)),
     );
-    const selected: ContinuityDefect[] = [];
-    for (const candidate of orderedCandidates) {
-      if (selected.length >= samplesPerStratum) {
+    const selectedDefects: ContinuityDefect[] = [];
+    for (const candidate of orderedDefects) {
+      if (selectedDefects.length >= defectCount) {
         break;
       }
-      if (
-        !selected.some((selectedDefect) => selectedDefect.chapterNumber === candidate.chapterNumber)
-      ) {
-        selected.push(candidate);
+      if (!usedChapterNumbers.has(candidate.chapterNumber)) {
+        selectedDefects.push(candidate);
+        usedChapterNumbers.add(candidate.chapterNumber);
       }
     }
-    if (selected.length < samplesPerStratum) {
+    if (selectedDefects.length < defectCount) {
       throw new Error("INSUFFICIENT_UNIQUE_STRATIFIED_CHAPTERS");
     }
     defectsByStratum.set(
       stratum,
-      selected.sort((left, right) =>
+      selectedDefects.sort((left, right) =>
         deterministicOrder(fixture, left).localeCompare(deterministicOrder(fixture, right)),
       ),
     );
+
+    const controlCandidates = fixture.controls
+      .filter(
+        (control) =>
+          volumePositionFor(
+            fixture.plan.volumeCount,
+            volumeNumberForChapter(fixture.plan.chaptersPerVolume, control.chapterNumber),
+          ) === stratum &&
+          !usedChapterNumbers.has(control.chapterNumber) &&
+          !seededDefectChapters.has(control.chapterNumber),
+      )
+      .sort((left, right) => {
+        const preferredMode = stratum === "middle" ? "incomplete_context" : "false_alarm";
+        return (
+          Number(right.mode === preferredMode) - Number(left.mode === preferredMode) ||
+          left.id.localeCompare(right.id)
+        );
+      });
+    if (controlCandidates.length < controlCount) {
+      throw new Error("INSUFFICIENT_STRATIFIED_CONTROLS");
+    }
+    const selectedControls = controlCandidates.slice(0, controlCount);
+    for (const control of selectedControls) {
+      usedChapterNumbers.add(control.chapterNumber);
+    }
+    controlsByStratum.set(stratum, selectedControls);
   }
 
   const packetItems: BlindReviewItem[] = [];
   const oracleItems: BlindReviewOracleItem[] = [];
+  const appendItem = (inputItem: {
+    reviewId: string;
+    stratum: ReviewStratum;
+    branchId: string;
+    chapterNumber: number;
+    volumeNumber: number;
+    povCharacterId: string;
+    candidateText: string;
+    expectedDisposition: BlindReviewOracleItem["expectedDisposition"];
+    expectedDefectIds: readonly string[];
+    controlIds: readonly string[];
+    expectedFamilies: readonly ContinuityScenarioFamily[];
+    expectedSeverities: readonly ContinuitySeverity[];
+  }): void => {
+    const visibleFacts = fixture.facts.filter((fact) =>
+      isVisibleAtChapter(
+        fixture,
+        fact,
+        inputItem.chapterNumber,
+        inputItem.povCharacterId,
+        inputItem.branchId,
+      ),
+    );
+    const approvedFacts = visibleFacts
+      .filter(
+        (fact) =>
+          fact.visibility === "public" &&
+          fact.objectiveCanon &&
+          (fact.decisionState === "confirmed" || fact.decisionState === "locked"),
+      )
+      .map(toReviewFact);
+    const knownStates = fixture.knowledgeStates
+      .filter(
+        (state) =>
+          state.characterId === inputItem.povCharacterId &&
+          isSharedOrSameBranch(
+            fixture,
+            state.branchId,
+            inputItem.branchId,
+            inputItem.chapterNumber,
+          ) &&
+          state.validFromChapter <= inputItem.chapterNumber &&
+          (state.validToChapter === null || state.validToChapter >= inputItem.chapterNumber) &&
+          (state.allowedDisclosureFromChapter === null ||
+            state.allowedDisclosureFromChapter <= inputItem.chapterNumber),
+      )
+      .map(toReviewKnowledgeState);
+    packetItems.push({
+      reviewId: inputItem.reviewId,
+      stratum: inputItem.stratum,
+      volumeNumber: inputItem.volumeNumber,
+      chapterNumber: inputItem.chapterNumber,
+      branchId: inputItem.branchId,
+      povCharacterId: inputItem.povCharacterId,
+      candidateText: inputItem.candidateText,
+      rubricVersion: fixture.plan.rubricVersion,
+      reviewPrompt:
+        "只依据给出的已确认设定与 POV 信息，判断候选片段是否出现连续性或知识边界问题；信息不足时必须选择升级复核。",
+      povContext: {
+        approvedFacts,
+        knownStates,
+      },
+    });
+    oracleItems.push({
+      reviewId: inputItem.reviewId,
+      expectedDisposition: inputItem.expectedDisposition,
+      expectedDefectIds: inputItem.expectedDefectIds,
+      controlIds: inputItem.controlIds,
+      expectedFamilies: inputItem.expectedFamilies,
+      expectedSeverities: inputItem.expectedSeverities,
+      hiddenFactIds: fixture.facts
+        .filter(
+          (fact) =>
+            fact.visibility === "hidden" &&
+            isSharedOrSameBranch(
+              fixture,
+              fact.branchId,
+              inputItem.branchId,
+              inputItem.chapterNumber,
+            ) &&
+            !visibleFacts.some((visible) => visible.id === fact.id),
+        )
+        .map((fact) => fact.id),
+    });
+  };
+
   for (const stratum of reviewStrata) {
     for (const defect of defectsByStratum.get(stratum) ?? []) {
-      const chapter = fixture.chapters.find(
-        (candidate) => candidate.number === defect.chapterNumber,
-      );
-      if (!chapter) {
-        throw new Error("DEFECT_CHAPTER_MISSING");
-      }
       const branch = fixture.branches.find((candidate) => candidate.id === defect.branchId);
       if (!branch) {
         throw new Error("DEFECT_BRANCH_MISSING");
       }
-      const reviewId = `review-${defect.id}`;
-      const visibleFacts = fixture.facts.filter((fact) =>
-        isVisibleAtChapter(fixture, fact, chapter.number, chapter.povCharacterId, branch.id),
-      );
-      const approvedFacts = visibleFacts
-        .filter(
-          (fact) =>
-            fact.visibility === "public" &&
-            fact.objectiveCanon &&
-            (fact.decisionState === "confirmed" || fact.decisionState === "locked"),
-        )
-        .map(toReviewFact);
-      const knownStates = fixture.knowledgeStates
-        .filter(
-          (state) =>
-            state.characterId === chapter.povCharacterId &&
-            isSharedOrSameBranch(fixture, state.branchId, branch.id, chapter.number) &&
-            state.validFromChapter <= chapter.number &&
-            (state.validToChapter === null || state.validToChapter >= chapter.number) &&
-            (state.allowedDisclosureFromChapter === null ||
-              state.allowedDisclosureFromChapter <= chapter.number),
-        )
-        .map(toReviewKnowledgeState);
-      packetItems.push({
-        reviewId,
+      const chapter =
+        branch.id === fixture.branches[0]?.id
+          ? fixture.chapters.find((candidate) => candidate.number === defect.chapterNumber)
+          : fixture.branchChapters.find(
+              (candidate) =>
+                candidate.branchId === branch.id &&
+                candidate.chapterNumber === defect.chapterNumber,
+            );
+      if (!chapter) {
+        throw new Error("DEFECT_CHAPTER_MISSING");
+      }
+      appendItem({
+        reviewId: `review-${defect.id}`,
         stratum,
-        volumeNumber: chapter.volumeNumber,
-        chapterNumber: chapter.number,
         branchId: defect.branchId,
+        chapterNumber: defect.chapterNumber,
+        volumeNumber: chapter.volumeNumber,
         povCharacterId: chapter.povCharacterId,
         candidateText: chapter.content,
-        rubricVersion: fixture.plan.rubricVersion,
-        reviewPrompt:
-          "只依据给出的已确认设定与 POV 信息，判断候选片段是否出现连续性或知识边界问题；信息不足时必须选择升级复核。",
-        povContext: {
-          approvedFacts,
-          knownStates,
-        },
-      });
-      oracleItems.push({
-        reviewId,
+        expectedDisposition: "defect",
         expectedDefectIds: [defect.id],
+        controlIds: [],
         expectedFamilies: [defect.family],
         expectedSeverities: [defect.severity],
-        hiddenFactIds: fixture.facts
-          .filter(
-            (fact) =>
-              fact.visibility === "hidden" &&
-              isSharedOrSameBranch(fixture, fact.branchId, branch.id, chapter.number) &&
-              !visibleFacts.some((visible) => visible.id === fact.id),
-          )
-          .map((fact) => fact.id),
+      });
+    }
+    for (const control of controlsByStratum.get(stratum) ?? []) {
+      const chapter = fixture.chapters.find(
+        (candidate) => candidate.number === control.chapterNumber,
+      );
+      if (!chapter) {
+        throw new Error("CONTROL_CHAPTER_MISSING");
+      }
+      appendItem({
+        reviewId: `review-${control.id}`,
+        stratum,
+        branchId: control.branchId,
+        chapterNumber: chapter.number,
+        volumeNumber: chapter.volumeNumber,
+        povCharacterId: chapter.povCharacterId,
+        candidateText: chapter.content,
+        expectedDisposition: control.mode === "incomplete_context" ? "escalate" : "no_defect",
+        expectedDefectIds: [],
+        controlIds: [control.id],
+        expectedFamilies: [],
+        expectedSeverities: [],
       });
     }
   }
@@ -301,7 +407,7 @@ function toReviewKnowledgeState(state: CharacterKnowledgeState): ReviewKnowledge
 }
 
 function deterministicOrder(fixture: ContinuityFixture, defect: ContinuityDefect): string {
-  return createHash("sha256").update(`${fixture.plan.seed}:${defect.id}`).digest("hex");
+  return sha256Text(`${fixture.plan.seed}:${defect.id}`);
 }
 
 function samplingPriority(family: ContinuityScenarioFamily): number {
@@ -312,5 +418,5 @@ function samplingPriority(family: ContinuityScenarioFamily): number {
 }
 
 function sha256(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  return sha256Json(value);
 }

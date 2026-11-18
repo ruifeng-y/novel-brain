@@ -1,5 +1,4 @@
-import { createHash } from "node:crypto";
-
+import { sha256Json } from "./digest";
 import type {
   ContinuityControl,
   ContinuityDefect,
@@ -118,7 +117,7 @@ export function evaluateContinuityFindings(input: {
 
   const evaluationWithoutHash = {
     fixtureSha256: fixture.digest.sha256,
-    findingsSha256: sha256(findings),
+    findingsSha256: sha256Json(findings),
     summary,
     byFamily: groupMetrics(classified, (entry) => entry.key),
     bySeverity: groupMetrics(
@@ -138,13 +137,13 @@ export function evaluateContinuityFindings(input: {
   };
   return {
     ...evaluationWithoutHash,
-    sha256: sha256(evaluationWithoutHash),
+    sha256: sha256Json(evaluationWithoutHash),
   };
 }
 
 export function verifyContinuityEvaluation(evaluation: ContinuityEvaluation): boolean {
   const { sha256: recordedSha256, ...evaluationWithoutHash } = evaluation;
-  return recordedSha256 === sha256(evaluationWithoutHash);
+  return recordedSha256 === sha256Json(evaluationWithoutHash);
 }
 
 function matchesDefect(finding: ContinuityFinding, defect: ContinuityDefect): boolean {
@@ -153,7 +152,7 @@ function matchesDefect(finding: ContinuityFinding, defect: ContinuityDefect): bo
     finding.severity === defect.severity &&
     finding.sourceFactId === defect.sourceFactId &&
     finding.versionNodeId === defect.versionNodeId &&
-    normalizeEvidence(finding.evidence) === normalizeEvidence(defect.evidence)
+    finding.evidence.trim().length > 0
   );
 }
 
@@ -258,12 +257,4 @@ function volumePosition(fixture: ContinuityFixture, chapterNumber: number): Volu
 
 function intersects(left: readonly string[], right: readonly string[]): boolean {
   return left.some((value) => right.includes(value));
-}
-
-function normalizeEvidence(value: string): string {
-  return value.replace(/\s+/gu, " ").trim();
-}
-
-function sha256(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }

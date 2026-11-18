@@ -28,19 +28,26 @@ describe("continuity blind review packet", () => {
     );
     expect(first.packet.packetSha256).toMatch(/^[a-f0-9]{64}$/u);
     expect(first.oracle.oracleSha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect(new Set(first.oracle.items.map((item) => item.expectedDisposition))).toEqual(
+      new Set(["defect", "no_defect", "escalate"]),
+    );
+    expect(first.packet.items.every((item) => !item.candidateText.includes("【连续性证据】"))).toBe(
+      true,
+    );
   });
 
   it("withholds hidden author truth and provider identity from reviewers", () => {
     const { packet, oracle } = buildContinuityBlindReviewPacket({
       fixture,
-      samplesPerStratum: 1,
+      samplesPerStratum: 2,
     });
 
     expect(packet.items.every((item) => !("expectedDefectIds" in item))).toBe(true);
     expect(packet.items.every((item) => !("hiddenFactIds" in item))).toBe(true);
     expect(packet.items.every((item) => !("modelIdentity" in item))).toBe(true);
-    expect(oracle.items).toHaveLength(3);
-    expect(oracle.items.every((item) => item.expectedDefectIds.length > 0)).toBe(true);
+    expect(oracle.items).toHaveLength(6);
+    expect(oracle.items.some((item) => item.expectedDefectIds.length > 0)).toBe(true);
+    expect(oracle.items.some((item) => item.controlIds.length > 0)).toBe(true);
     expect(
       packet.items.some((item) =>
         item.povContext.approvedFacts.every(
@@ -69,8 +76,11 @@ describe("continuity blind review packet", () => {
     }
   });
 
-  it("requires an explicit positive sample count", () => {
+  it("requires at least one defect and one control sample per stratum", () => {
     expect(() => buildContinuityBlindReviewPacket({ fixture, samplesPerStratum: 0 })).toThrow(
+      "BLIND_SAMPLE_COUNT_INVALID",
+    );
+    expect(() => buildContinuityBlindReviewPacket({ fixture, samplesPerStratum: 1 })).toThrow(
       "BLIND_SAMPLE_COUNT_INVALID",
     );
   });

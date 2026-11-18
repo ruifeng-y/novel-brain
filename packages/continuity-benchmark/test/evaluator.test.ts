@@ -117,4 +117,18 @@ describe("continuity evaluator", () => {
     );
     expect(result.unexpectedFindings).toContainEqual(invalidFinding);
   });
+
+  it("accepts an independent evidence quote when structured locators match", () => {
+    const findings = perfectFindings();
+    findings[0] = {
+      ...findings[0]!,
+      evidence: "独立评审引用：该段与已确认正史冲突。",
+    };
+
+    const result = evaluateContinuityFindings({ fixture, findings });
+
+    expect(result.summary.truePositives).toBe(fixture.defects.length);
+    expect(result.summary.falsePositives).toBe(0);
+    expect(result.summary.falseNegatives).toBe(0);
+  });
 });

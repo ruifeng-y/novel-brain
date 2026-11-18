@@ -44,6 +44,13 @@ describe("continuity fixture", () => {
           state.allowedDisclosureFromChapter === null,
       ),
     ).toBe(true);
+    expect(
+      fixture.knowledgeStates.every(
+        (state) =>
+          state.allowedDisclosureFromChapter === null ||
+          state.validFromChapter >= state.allowedDisclosureFromChapter,
+      ),
+    ).toBe(true);
     expect(new Set(fixture.knowledgeStates.map((state) => state.state))).toEqual(
       new Set(["knowledge", "belief", "suspicion", "misbelief", "unknown"]),
     );
@@ -91,13 +98,20 @@ describe("continuity fixture", () => {
     const fixture = generateContinuityFixture({ plan, sourceCommit: "abc1234" });
 
     for (const defect of fixture.defects) {
-      const chapter = fixture.chapters.find(
-        (candidate) => candidate.number === defect.chapterNumber,
-      );
+      const chapter =
+        defect.branchId === fixture.branches[0]!.id
+          ? fixture.chapters.find((candidate) => candidate.number === defect.chapterNumber)
+          : fixture.branchChapters.find(
+              (candidate) =>
+                candidate.branchId === defect.branchId &&
+                candidate.chapterNumber === defect.chapterNumber,
+            );
       expect(chapter).toBeDefined();
       expect(chapter?.versionNodeId).toBe(defect.versionNodeId);
       expect(chapter?.content).toContain(defect.evidence);
-      expect(fixture.facts.some((fact) => fact.id === defect.sourceFactId)).toBe(true);
+      const sourceFact = fixture.facts.find((fact) => fact.id === defect.sourceFactId);
+      expect(sourceFact?.objectiveCanon).toBe(true);
+      expect(["confirmed", "locked"]).toContain(sourceFact?.decisionState);
       expect(
         defect.entityIds.every((entityId) =>
           fixture.entities.some((entity) => entity.id === entityId),
@@ -114,6 +128,11 @@ describe("continuity fixture", () => {
     expect(fixture.storyBible.worldRules.length).toBeGreaterThan(0);
     expect(fixture.genrePack.name).toBe("仙侠");
     expect(fixture.genrePacks.map((genre) => genre.name)).toEqual(["仙侠", "历史", "都市"]);
+    expect(fixture.genreScenarios.map((scenario) => scenario.genre)).toEqual([
+      "仙侠",
+      "历史",
+      "都市",
+    ]);
     expect(fixture.powerSystem.realms.length).toBeGreaterThanOrEqual(3);
     expect(fixture.powerSystem.lifespanPolicy).toContain("境界");
     expect(fixture.specialMechanisms).toHaveLength(2);
@@ -124,6 +143,10 @@ describe("continuity fixture", () => {
         (state) => state.remainingLifespanYears !== state.previousLifespanYears,
       ),
     ).toBe(true);
+    for (const state of fixture.characterPowerStates) {
+      const realm = fixture.powerSystem.realms.find((candidate) => candidate.name === state.realm)!;
+      expect(state.ageYears + state.remainingLifespanYears).toBe(realm.lifespanYears);
+    }
     expect(fixture.itemRightsTransitions.map((transition) => transition.action)).toEqual(
       expect.arrayContaining([
         "transfer",
@@ -139,6 +162,21 @@ describe("continuity fixture", () => {
     );
     expect(fixture.timeline.some((event) => event.simultaneousGroup !== null)).toBe(true);
     expect(fixture.timeline.some((event) => event.isTimeSkip)).toBe(true);
+    expect(fixture.workId).toMatch(/^[0-9a-f-]{36}$/u);
+    for (const eventId of fixture.facts.map((fact) => fact.sourceEventId)) {
+      expect(fixture.eventManifest.some((event) => event.id === eventId)).toBe(true);
+    }
+    for (const item of fixture.items) {
+      const transitions = fixture.itemRightsTransitions
+        .filter((transition) => transition.itemId === item.id)
+        .sort((left, right) => left.chapterNumber - right.chapterNumber);
+      expect(transitions.length).toBeGreaterThan(0);
+      expect(transitions[0]?.fromRights).toEqual(item.rights);
+      expect(transitions[0]?.chapterNumber).toBeGreaterThan(item.validFromChapter);
+      for (let index = 1; index < transitions.length; index += 1) {
+        expect(transitions[index]?.fromRights).toEqual(transitions[index - 1]?.toRights);
+      }
+    }
     expect(new Set(fixture.outlineNodes.map((node) => node.level))).toEqual(
       new Set(["book", "volume", "act", "chapter", "scene"]),
     );

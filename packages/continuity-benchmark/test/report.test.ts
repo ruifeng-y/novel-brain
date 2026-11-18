@@ -16,25 +16,16 @@ const { packet, oracle } = buildContinuityBlindReviewPacket({
   samplesPerStratum: 2,
 });
 
-const smokePlan = createContinuityPlan({ seed: 20261118, tier: "smoke" });
-const smokeFixture = generateContinuityFixture({ plan: smokePlan, sourceCommit: "abc1234" });
-const smokeEvaluation = evaluateContinuityFindings({
-  fixture: smokeFixture,
-  findings: findingsFor(smokeFixture),
-});
-const smokeReview = buildContinuityBlindReviewPacket({
-  fixture: smokeFixture,
-  samplesPerStratum: 2,
-});
-
 describe("continuity benchmark report", () => {
   it("blocks a non-certification fixture even when review evidence looks complete", () => {
+    const nonCertificationFixture = structuredClone(fixture);
+    nonCertificationFixture.plan.certificationEligible = false;
     const report = buildContinuityBenchmarkReport({
-      fixture: smokeFixture,
-      evaluation: smokeEvaluation,
-      blindReviewPacket: smokeReview.packet,
-      blindReviewOracle: smokeReview.oracle,
-      reviewEvidence: completeReviewEvidence(smokeReview.packet),
+      fixture: nonCertificationFixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(packet),
       decisions: [
         {
           id: "blindReviewSamplesPerStratum",
@@ -201,9 +192,48 @@ describe("continuity benchmark report", () => {
     expect(report.blockers).toContain("blind-review-oracle-p0-miss");
   });
 
+  it("blocks a reviewer set that marks every clean-control sample as defective", () => {
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(packet, { allDefect: true }),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.status).toBe("blocked");
+    expect(report.blockers).toContain("blind-review-control-false-positive");
+  });
+
   it("blocks fixture content that no longer matches its recorded digest", () => {
     const tamperedFixture = structuredClone(fixture);
     tamperedFixture.chapters[0]!.content += "tampered";
+    const report = buildContinuityBenchmarkReport({
+      fixture: tamperedFixture,
+      evaluation,
+      blindReviewPacket: packet,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(packet),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.blockers).toContain("fixture-digest-mismatch");
+  });
+
+  it("blocks a fixture source commit that is not covered by its digest", () => {
+    const tamperedFixture = structuredClone(fixture);
+    tamperedFixture.digest.sourceCommit = "deadbee";
     const report = buildContinuityBenchmarkReport({
       fixture: tamperedFixture,
       evaluation,
@@ -298,7 +328,7 @@ describe("continuity benchmark report", () => {
 
 function completeReviewEvidence(
   reviewPacket: typeof packet,
-  options: { disagreementCount?: number; allNoDefect?: boolean } = {},
+  options: { disagreementCount?: number; allNoDefect?: boolean; allDefect?: boolean } = {},
 ) {
   const disagreementCount = options.disagreementCount ?? 0;
   return {
@@ -321,25 +351,34 @@ function completeReviewEvidence(
       },
     ],
     items: reviewPacket.items.flatMap((item, itemIndex) =>
-      ["reviewer-a", "reviewer-b"].map((reviewerId, reviewerIndex) => ({
-        reviewId: item.reviewId,
-        reviewerId,
-        disposition: options.allNoDefect
-          ? "no_defect"
-          : itemIndex < disagreementCount && reviewerIndex === 1
+      ["reviewer-a", "reviewer-b"].map((reviewerId, reviewerIndex) => {
+        const expected =
+          oracle.items.find((oracleItem) => oracleItem.reviewId === item.reviewId)
+            ?.expectedDisposition ?? "defect";
+        return {
+          reviewId: item.reviewId,
+          reviewerId,
+          disposition: options.allNoDefect
             ? "no_defect"
-            : "defect",
-        rubricScores: {
-          factualContinuity: 5,
-          knowledgeBoundary: 5,
-          narrativeCausality: 5,
-          outlineAdherence: 0.95,
-          hookProse: 4.5,
-        },
-        confidence: 0.9,
-        evidenceQuote: "样本中的证据句",
-        reviewedAt: "2026-11-18T00:00:00.000Z",
-      })),
+            : options.allDefect
+              ? "defect"
+              : itemIndex < disagreementCount && reviewerIndex === 1
+                ? expected === "defect"
+                  ? "no_defect"
+                  : "defect"
+                : expected,
+          rubricScores: {
+            factualContinuity: 5,
+            knowledgeBoundary: 5,
+            narrativeCausality: 5,
+            outlineAdherence: 0.95,
+            hookProse: 4.5,
+          },
+          confidence: 0.9,
+          evidenceQuote: "样本中的证据句",
+          reviewedAt: "2026-11-18T00:00:00.000Z",
+        };
+      }),
     ),
     adjudications: Array.from({ length: disagreementCount }, (_, index) => ({
       reviewId: reviewPacket.items[index]!.reviewId,

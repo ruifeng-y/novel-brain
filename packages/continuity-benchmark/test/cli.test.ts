@@ -26,7 +26,7 @@ describe("continuity benchmark cli", () => {
         "--seed",
         "20261118",
         "--tier",
-        "smoke",
+        "minimum",
         "--output",
         planPath,
       ]);
@@ -35,7 +35,7 @@ describe("continuity benchmark cli", () => {
         "--seed",
         "20261118",
         "--tier",
-        "smoke",
+        "minimum",
         "--source-commit",
         "abc1234",
         "--output",
@@ -57,8 +57,8 @@ describe("continuity benchmark cli", () => {
       const fixture = JSON.parse(await readFile(fixturePath, "utf8")) as ContinuityFixture;
       const packet = JSON.parse(await readFile(packetPath, "utf8")) as { items: unknown[] };
       const oracle = JSON.parse(await readFile(oraclePath, "utf8")) as { items: unknown[] };
-      expect(plan.chapterCount).toBe(12);
-      expect(fixture.chapters).toHaveLength(12);
+      expect(plan.chapterCount).toBe(3_000);
+      expect(fixture.chapters).toHaveLength(3_000);
       expect(packet.items).toHaveLength(6);
       expect(oracle.items).toHaveLength(6);
 
