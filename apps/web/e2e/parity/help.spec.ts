@@ -43,3 +43,42 @@ test("opens without work context and covers empty search at four viewports", asy
       .toHaveScreenshot(["help", `help-${width}.png`], productionScreenshotOptions);
   }
 });
+
+test("recovers from a production help navigation error at four viewports", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = String.prototype.toLocaleLowerCase;
+    const browserWindow = window as typeof window & { restoreHelpRuntime?: () => void };
+    browserWindow.restoreHelpRuntime = () => {
+      String.prototype.toLocaleLowerCase = original;
+      delete browserWindow.restoreHelpRuntime;
+    };
+    String.prototype.toLocaleLowerCase = function helpRuntimeFailure(locales?: string | string[]) {
+      if (locales === "zh-CN") {
+        throw new Error("模拟真实浏览器运行时故障。");
+      }
+      return original.call(this, locales);
+    };
+  });
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/help");
+    await expect(page.getByRole("heading", { name: "内容暂时不可用" })).toBeVisible();
+    await expect(page.locator(".static-content-error")).toContainText(
+      "帮助或条款内容没有成功加载，请稍后重试。",
+    );
+    await expectAuthorFacingLanguage(page);
+    await expectNoPrototypeOnlyLeakage(page);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, `error state horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
+
+    await page.evaluate(() => {
+      const browserWindow = window as typeof window & { restoreHelpRuntime?: () => void };
+      browserWindow.restoreHelpRuntime?.();
+    });
+    await page.getByRole("button", { name: "重新加载" }).click();
+    await expect(page.getByRole("heading", { name: "先看这几件事" })).toBeVisible();
+  }
+});
