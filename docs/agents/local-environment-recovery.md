@@ -37,7 +37,10 @@ Download a GitHub Actions artifact with metadata lookup, retries, size verificat
 pwsh ./scripts/download-gh-artifact.ps1 `
   -RunId 44045578715 `
   -Name playwright-evidence `
-  -Destination artifacts/ui/candidates/example
+  -Destination artifacts/ui/candidates/example `
+  -Parallelism 8
 ```
 
 Use `-MetadataOnly` to inspect the artifact ID, size, and selection without downloading. Production Golden evidence still follows `docs/ui/production-visual-regression.md`; local Windows screenshots never become authoritative Linux Golden files.
+
+Large artifacts download as resumable ranges. The destination must resolve inside the repository workspace; symlink and junction escapes are rejected. Existing zips are reused only when the size and sidecar SHA-256 match and every entry decompresses successfully. Failed chunk files remain under the destination's `<Name>-<RunId>.parts-<Parallelism>` directory. `.part` / `.part.meta` files can remain if the process stops during transfer or cleanup; the next run reconciles both states. Use `-Parallelism 1` when diagnosing curl or network failures.
