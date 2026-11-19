@@ -13,7 +13,7 @@
 | new-project | `/workspace/new-project` | 想法/空白/三题材模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long/conflict | 导入报告 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，三题材模板、导入双模式、冲突裁决、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改、跨卷风格检查、卷末审计与签收 | loading/empty/error/partial/readonly/archived/long | 生成摘要/风格证据/卷审计证据 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，正常态、长内容态、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | parity-verified；9 个必需动作均通过真实 API 与持久化断言，三题材、世界铁律、版本/锁定、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
-| settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线、题材包版本切换 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | production-built；七栏 CRUD、题材包切换、状态矩阵和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线、题材包版本切换 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | parity-verified；10 个必需动作均通过真实 API 与持久化断言，七栏 CRUD、关系、地图、力量、时间线与题材包切换、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | outline | `/workspace/[workId]/outline` | 树/看板/张力曲线/账本、黄金三章；章节/场景规划张力（0–100） | loading/empty/error/locked/partial/long | 黄金三章候选 | production-built；五层大纲、卷契约、场景卡、账本、黄金三章和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
 | foreshadows | `/workspace/[workId]/foreshadows` | 新增/编辑/埋设/推进/回收/失败回收/放弃/延期/检查 | loading/empty/error/disabled/long | 逾期提醒 | production-built；完整动作、loading 状态和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
 | writing | `/workspace/[workId]/write` | 生成/续写/改写/检查/批准章节/确认事实/提交本章事实/版本 | loading/empty/error/disabled/partial/conflict/long | 本章参考/来源/淘汰/修订 diff/成本/检查点 | production-built；三段状态机、生成/修订/提交门禁和四档 Golden 已实现，等待动作审计和最终正常 PR CI |

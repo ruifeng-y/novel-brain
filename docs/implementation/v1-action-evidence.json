@@ -332,8 +332,10 @@
       ]
     },
     "settings": {
-      "status": "pending",
-      "rationale": "The ten-action settings owner spec and persistence checks pass locally; normal PR Production CI and Deployment Smoke evidence are still required before verification.",
+      "status": "verified",
+      "headSha": "f02cd9b727d5a1c69c5761dab524810555d39c58",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44573477468",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44573478266",
       "actions": [
         {
           "id": "create-setting",
