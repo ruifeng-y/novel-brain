@@ -31,6 +31,13 @@ export const productionScreenshotOptions = {
   scale: "css",
 } as const;
 
+export function waitForApiResponse(page: Page, method: string, pathname: string) {
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === method && new URL(response.url()).pathname === pathname,
+  );
+}
+
 export async function freezeApiTimestamps(page: Page): Promise<void> {
   await page.route("**/api/v1/**", async (route) => {
     const response = await route.fetch();

@@ -9,14 +9,11 @@ import {
 } from "@novel-brain/contracts";
 
 import { registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage, expectNoPrototypeOnlyLeakage } from "../helpers/ui";
-
-function waitForApiResponse(page: Page, method: string, pathname: string) {
-  return page.waitForResponse(
-    (response) =>
-      response.request().method() === method && new URL(response.url()).pathname === pathname,
-  );
-}
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  waitForApiResponse,
+} from "../helpers/ui";
 
 async function getPersistedWork(page: Page, workId: string) {
   const response = await page.request.get(`/api/v1/works/${workId}`);
