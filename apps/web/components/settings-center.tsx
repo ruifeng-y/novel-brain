@@ -28,6 +28,8 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import {
   apiErrorSchema,
   characterDetailResponseSchema,
+  characterRelationshipCreateRequestSchema,
+  characterRelationshipResponseSchema,
   confirmedSettingListResponseSchema,
   customFieldDefinitionListResponseSchema,
   customFieldDefinitionResponseSchema,
@@ -1172,6 +1174,64 @@ export function SettingsCenter({
     }
   }
 
+  async function createCharacterRelationship(
+    entity: SettingEntity,
+    targetId: string,
+    relationType: CharacterDetail["relationships"][number]["relationType"],
+  ): Promise<boolean> {
+    if (!work || entity.type !== "character") {
+      return false;
+    }
+    const target = entities.find((candidate) => candidate.id === targetId);
+    if (!target) {
+      setActionError("请选择关系对象。");
+      return false;
+    }
+    setBusy(`relationship-${entity.id}`);
+    setActionError("");
+    setNotice("");
+    try {
+      const csrfToken = await getCsrfToken();
+      const payload = characterRelationshipCreateRequestSchema.parse({
+        target: {
+          type: target.type,
+          id: target.id,
+          branchId: work.mainBranch.id,
+          label: target.name,
+          version: null,
+        },
+        relationType,
+        validity: {
+          fromChapter: 1,
+          toChapter: null,
+          fromStoryTime: null,
+          toStoryTime: null,
+        },
+        sourceChapterId: null,
+      });
+      const response = await fetch(`${settingsPath(work)}/characters/${entity.id}/relationships`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response, "关系保存失败。"));
+      }
+      characterRelationshipResponseSchema.parse(await response.json());
+      setNotice("关系已保存。");
+      await refreshDetail(entity.id, entity.type);
+      return true;
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "关系保存失败。");
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
   function selectColumn(key: ColumnKey) {
     setActiveColumn(key);
     setView("columns");
@@ -1299,6 +1359,9 @@ export function SettingsCenter({
           onBack={closeEntityDetail}
           onChangeRequest={() => beginChangeRequest(selected)}
           onCreateProposal={(input) => createProposal(selected, input)}
+          onCreateRelationship={(targetId, relationType) =>
+            createCharacterRelationship(selected, targetId, relationType)
+          }
           onDelete={() => deleteEntity(selected)}
           onDecideProposal={(proposal, decision, reason) =>
             decideProposal(selected, proposal, decision, reason)
@@ -1312,6 +1375,9 @@ export function SettingsCenter({
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
           powerLevelLabel={powerLevelLabel}
           proposals={proposals}
+          relationshipTargets={entities.filter(
+            (candidate) => candidate.type === "character" && candidate.id !== selected.id,
+          )}
           versionHistoryError={versionHistoryError}
           versionHistoryLoading={versionHistoryLoading}
           versions={versions}
@@ -2496,6 +2562,7 @@ function EntityDetail({
   onBack,
   onChangeRequest,
   onCreateProposal,
+  onCreateRelationship,
   onDecideProposal,
   onDelete,
   onEdit,
@@ -2507,6 +2574,7 @@ function EntityDetail({
   onRetryWorldDetail,
   powerLevelLabel,
   proposals,
+  relationshipTargets,
   versionHistoryError,
   versionHistoryLoading,
   versions,
@@ -2524,6 +2592,10 @@ function EntityDetail({
   onBack: () => void;
   onChangeRequest: () => void;
   onCreateProposal: (input: ProposalInput) => void;
+  onCreateRelationship: (
+    targetId: string,
+    relationType: CharacterDetail["relationships"][number]["relationType"],
+  ) => Promise<boolean>;
   onDecideProposal: (
     proposal: SettingProposal,
     decision: "accept" | "reject",
@@ -2539,6 +2611,7 @@ function EntityDetail({
   onRetryWorldDetail: () => void;
   powerLevelLabel: string;
   proposals: SettingProposal[];
+  relationshipTargets: SettingEntity[];
   versionHistoryError: string;
   versionHistoryLoading: boolean;
   versions: SettingEntityVersion[];
@@ -2555,6 +2628,9 @@ function EntityDetail({
   const [evidenceLabel, setEvidenceLabel] = useState("作者说明");
   const [evidenceQuote, setEvidenceQuote] = useState("");
   const [decisionReasons, setDecisionReasons] = useState<Record<string, string>>({});
+  const [relationshipTargetId, setRelationshipTargetId] = useState("");
+  const [relationshipType, setRelationshipType] =
+    useState<CharacterDetail["relationships"][number]["relationType"]>("ally");
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [restoreReason, setRestoreReason] = useState("恢复到作者确认的过去版本");
   const restorableVersions = versions.filter((version) => version.version < entity.version);
@@ -2591,6 +2667,17 @@ function EntityDetail({
     if (restored) {
       setSelectedVersion(null);
       setRestoreReason("恢复到作者确认的过去版本");
+    }
+  }
+
+  async function submitRelationship() {
+    if (!relationshipTargetId) {
+      return;
+    }
+    const saved = await onCreateRelationship(relationshipTargetId, relationshipType);
+    if (saved) {
+      setRelationshipTargetId("");
+      setRelationshipType("ally");
     }
   }
 
@@ -2830,6 +2917,70 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
+            {entity.type === "character" && !locked ? (
+              <div className="settings-detail-block settings-relationship-editor">
+                <h3>新增类型化关系</h3>
+                {relationshipTargets.length > 0 ? (
+                  <>
+                    <div className="settings-relationship-form">
+                      <label className="settings-field">
+                        <span>关系对象</span>
+                        <select
+                          aria-label="关系对象"
+                          onChange={(event) => setRelationshipTargetId(event.target.value)}
+                          value={relationshipTargetId}
+                        >
+                          <option value="">请选择人物</option>
+                          {relationshipTargets.map((target) => (
+                            <option key={target.id} value={target.id}>
+                              {target.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="settings-field">
+                        <span>关系类型</span>
+                        <select
+                          aria-label="关系类型"
+                          onChange={(event) =>
+                            setRelationshipType(
+                              event.target
+                                .value as CharacterDetail["relationships"][number]["relationType"],
+                            )
+                          }
+                          value={relationshipType}
+                        >
+                          {(
+                            Object.keys(relationshipTypeLabels) as Array<
+                              keyof typeof relationshipTypeLabels
+                            >
+                          ).map((value) => (
+                            <option key={value} value={value}>
+                              {relationshipTypeLabels[value]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-primary btn-small"
+                      disabled={!relationshipTargetId || busy === `relationship-${entity.id}`}
+                      onClick={() => void submitRelationship()}
+                      type="button"
+                    >
+                      {busy === `relationship-${entity.id}` ? (
+                        <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                      ) : (
+                        <Plus size={14} aria-hidden="true" />
+                      )}
+                      保存关系
+                    </button>
+                  </>
+                ) : (
+                  <p>先创建另一位人物，再补充类型化关系。</p>
+                )}
+              </div>
+            ) : null}
           </EntityDetailSection>
 
           <EntityDetailSection id="history" index="03" title={tabLabels.history}>

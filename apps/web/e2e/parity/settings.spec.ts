@@ -1,4 +1,19 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import {
+  characterDetailResponseSchema,
+  characterRelationshipResponseSchema,
+  customFieldDefinitionListResponseSchema,
+  customFieldDefinitionResponseSchema,
+  genrePackListResponseSchema,
+  mapDetailResponseSchema,
+  powerSystemResponseSchema,
+  settingEntityDeleteResponseSchema,
+  settingEntityResponseSchema,
+  settingProposalListResponseSchema,
+  settingProposalResponseSchema,
+  workResponseSchema,
+  worldTimelineResponseSchema,
+} from "@novel-brain/contracts";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import {
@@ -6,6 +21,7 @@ import {
   expectNoPrototypeOnlyLeakage,
   freezeApiTimestamps,
   productionScreenshotOptions,
+  waitForApiResponse,
 } from "../helpers/ui";
 
 const origin = "http://localhost:3000";
@@ -149,6 +165,7 @@ async function createProposal(
     },
   );
   expect(response.status()).toBe(201);
+  return settingProposalResponseSchema.parse(await response.json()).data;
 }
 
 async function expectNoOverflow(page: Page) {
@@ -169,6 +186,284 @@ test.beforeEach(async () => {
   await resetRateLimits();
 });
 
+test("persists setting creation, editing and deletion through the production API", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const entitiesApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+
+  await page.goto(`/workspace/${work.id}/settings`);
+  await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
+  await page.getByRole("button", { name: "新增世界规则" }).first().click();
+  await page.getByLabel("名称").fill("天门只认完整记忆");
+  await page.getByLabel("一句话摘要").fill("失去关键记忆的人无法通过天门。");
+  await page
+    .getByRole("textbox", { name: "世界规则" })
+    .fill("主动抹除关键记忆会导致天门通行失败。");
+
+  const createResponse = waitForApiResponse(page, "POST", entitiesApi);
+  await page.getByRole("button", { name: "创建设定" }).click();
+  const created = settingEntityResponseSchema.parse(await (await createResponse).json()).data;
+  await expect(
+    page.locator(".settings-entity-detail").getByRole("heading", { name: created.name }),
+  ).toBeVisible();
+
+  const entityApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${created.id}`;
+  const persistedCreateResponse = await page.request.get(entityApi);
+  expect(persistedCreateResponse.status()).toBe(200);
+  const persistedCreated = settingEntityResponseSchema.parse(
+    await persistedCreateResponse.json(),
+  ).data;
+  expect(persistedCreated.name).toBe("天门只认完整记忆");
+
+  const detail = page.locator(".settings-entity-detail");
+  await detail.getByRole("button", { name: "编辑设定", exact: true }).click();
+  await page.getByLabel("一句话摘要").fill("失去完整记忆的人会被天门留在门外。");
+  const editResponse = waitForApiResponse(page, "PATCH", entityApi);
+  await page.getByRole("button", { name: "保存修改" }).click();
+  const edited = settingEntityResponseSchema.parse(await (await editResponse).json()).data;
+  await expect(detail.getByText("失去完整记忆的人会被天门留在门外。")).toBeVisible();
+
+  const persistedEditResponse = await page.request.get(entityApi);
+  expect(persistedEditResponse.status()).toBe(200);
+  const persistedEdited = settingEntityResponseSchema.parse(
+    await persistedEditResponse.json(),
+  ).data;
+  expect(persistedEdited.summary).toBe("失去完整记忆的人会被天门留在门外。");
+
+  page.once("dialog", (dialog) => void dialog.accept());
+  const deleteResponse = waitForApiResponse(page, "DELETE", entityApi);
+  await detail.getByRole("button", { name: "删除设定" }).click();
+  const deleted = settingEntityDeleteResponseSchema.parse(await (await deleteResponse).json()).data;
+  expect(deleted.deleted).toBe(true);
+  const deletedDetailResponse = await page.request.get(entityApi);
+  expect(deletedDetailResponse.status()).toBe(403);
+  expect(edited.version).toBeGreaterThan(created.version);
+});
+
+test("persists relationship, map, power system, timeline and custom-field actions through production forms", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(90_000);
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const branchApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const charactersApi = `${branchApi}/characters`;
+  const mapApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/maps`;
+  const powerSystemsApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/power-systems`;
+  const customFieldsApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/custom-fields`;
+  const entitiesApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+  const token = await getCsrf(page.request);
+  const headers = { Origin: origin, "X-CSRF-Token": token };
+
+  const sourceCharacterResponse = await page.request.post(charactersApi, {
+    headers,
+    data: {
+      name: "沈砚",
+      aliases: [],
+      summary: "带着断臂追查身世的杂役。",
+      description: "",
+      tags: [],
+      profile: {
+        desire: "找回被抹去的记忆。",
+        fear: "再次被宗门抛弃。",
+        goal: "进入内门。",
+        voiceSample: "“我记得，只是还没想起来。”",
+        voiceGuide: "短句，克制。",
+        disguise: "藏起左臂伤势。",
+      },
+    },
+  });
+  expect(sourceCharacterResponse.status()).toBe(201);
+  const sourceCharacter = characterDetailResponseSchema.parse(
+    await sourceCharacterResponse.json(),
+  ).data;
+  const targetCharacterResponse = await page.request.post(charactersApi, {
+    headers,
+    data: {
+      name: "顾青",
+      aliases: [],
+      summary: "与沈砚互相提防又不得不同行。",
+      description: "",
+      tags: [],
+      profile: {
+        desire: "守住师门秘密。",
+        fear: "被宗门除名。",
+        goal: "查明忘川村的旧案。",
+        voiceSample: "“你刚才那招，我见过。”",
+        voiceGuide: "简短，带试探。",
+        disguise: "",
+      },
+    },
+  });
+  expect(targetCharacterResponse.status()).toBe(201);
+  const targetCharacter = characterDetailResponseSchema.parse(
+    await targetCharacterResponse.json(),
+  ).data;
+
+  const relationshipApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${sourceCharacter.character.id}/relationships`;
+  await page.goto(
+    `/workspace/${work.id}/settings?column=characters&entityId=${sourceCharacter.character.id}`,
+  );
+  await expect(page.getByRole("heading", { name: "沈砚" })).toBeVisible();
+  const relationshipSection = page.locator("#entity-section-relations");
+  await relationshipSection.getByLabel("关系对象").selectOption(targetCharacter.character.id);
+  await relationshipSection.getByLabel("关系类型").selectOption("ally");
+  const relationshipResponse = waitForApiResponse(page, "POST", relationshipApi);
+  await relationshipSection.getByRole("button", { name: "保存关系" }).click();
+  const relationship = characterRelationshipResponseSchema.parse(
+    await (await relationshipResponse).json(),
+  ).data;
+  await expect(relationshipSection).toContainText("同盟 · 顾青");
+  const persistedCharacterResponse = await page.request.get(
+    `${charactersApi}/${sourceCharacter.character.id}`,
+  );
+  expect(persistedCharacterResponse.status()).toBe(200);
+  const persistedCharacter = characterDetailResponseSchema.parse(
+    await persistedCharacterResponse.json(),
+  ).data;
+  expect(persistedCharacter.relationships[0]?.target.id).toBe(relationship.target.id);
+
+  await page.goto(`/workspace/${work.id}/settings`);
+  await page.locator(".settings-column-nav").getByRole("button", { name: /^地图/ }).click();
+  await page.getByRole("button", { name: "新增地图" }).first().click();
+  await page.getByLabel("名称").fill("东境舆图");
+  await page.getByLabel("一句话摘要").fill("忘川渡与太玄门之间的地理关系。");
+  await page
+    .getByRole("textbox", { name: "地图", exact: true })
+    .fill("山道、渡口与宗门驻地的层级关系。");
+  const mapResponse = waitForApiResponse(page, "POST", mapApi);
+  await page.getByRole("button", { name: "创建设定" }).click();
+  const createdMap = mapDetailResponseSchema.parse(await (await mapResponse).json()).data;
+  await expect(page.getByRole("heading", { name: "东境舆图" })).toBeVisible();
+  const persistedMapResponse = await page.request.get(`${mapApi}/${createdMap.map.id}`);
+  expect(persistedMapResponse.status()).toBe(200);
+  const persistedMap = mapDetailResponseSchema.parse(await persistedMapResponse.json()).data;
+  expect(persistedMap.map.label).toBe("东境舆图");
+
+  await page.getByRole("button", { name: "返回设定中心" }).first().click();
+  await page
+    .locator(".settings-column-nav")
+    .getByRole("button", { name: /^力量体系/ })
+    .click();
+  await page.getByRole("button", { name: "新增力量体系" }).first().click();
+  await page.getByLabel("名称").fill("北域双路径");
+  await page.getByLabel("一句话摘要").fill("剑修与体修并行。");
+  await page.getByRole("textbox", { name: "力量体系", exact: true }).fill("第一版力量体系总览。");
+  await page.getByLabel("寿命绑定").selectOption("fixed");
+  await page.getByRole("spinbutton", { name: "固定寿命" }).fill("120");
+  const powerSystemResponse = waitForApiResponse(page, "POST", powerSystemsApi);
+  await page.getByRole("button", { name: "创建设定" }).click();
+  const createdPowerSystem = powerSystemResponseSchema.parse(
+    await (await powerSystemResponse).json(),
+  ).data;
+  await expect(page.getByRole("heading", { name: "北域双路径" })).toBeVisible();
+  const persistedPowerResponse = await page.request.get(
+    `${powerSystemsApi}/${createdPowerSystem.powerSystem.id}`,
+  );
+  expect(persistedPowerResponse.status()).toBe(200);
+  const persistedPowerSystem = powerSystemResponseSchema.parse(
+    await persistedPowerResponse.json(),
+  ).data;
+  expect(persistedPowerSystem.overview).toBe("第一版力量体系总览。");
+
+  await page.getByRole("button", { name: "返回设定中心" }).first().click();
+  await page
+    .locator(".settings-column-nav")
+    .getByRole("button", { name: /^时间线/ })
+    .click();
+  await page.getByRole("button", { name: "新增时间线" }).first().click();
+  await page.getByLabel("名称").fill("忘川村灭门");
+  await page.getByLabel("一句话摘要").fill("十六年前改变沈砚命运的事件。");
+  await page.getByLabel("纪元", { exact: true }).fill("大玄历");
+  await page.getByLabel("故事时间", { exact: true }).fill("十六年前");
+  await page.getByLabel("持续时长", { exact: true }).fill("一夜");
+  await page.getByLabel("事件", { exact: true }).fill("沈砚父母被杀，真相被伪装成自杀。");
+  const timelineResponse = waitForApiResponse(page, "POST", entitiesApi);
+  await page.getByRole("button", { name: "创建设定" }).click();
+  const createdTimelineEvent = settingEntityResponseSchema.parse(
+    await (await timelineResponse).json(),
+  ).data;
+  await expect(page.getByRole("heading", { name: "忘川村灭门" })).toBeVisible();
+  const persistedTimelineResponse = await page.request.get(`${branchApi}/world/timeline`);
+  expect(persistedTimelineResponse.status()).toBe(200);
+  const persistedTimeline = worldTimelineResponseSchema.parse(
+    await persistedTimelineResponse.json(),
+  ).data;
+  const timelineEventIds = persistedTimeline.events.map((event) => event.event.id);
+  expect(timelineEventIds).toContain(createdTimelineEvent.id);
+
+  await page.getByRole("button", { name: "返回设定中心" }).first().click();
+  await page.getByRole("button", { name: "自定义字段" }).click();
+  await page.getByRole("button", { name: "新增字段" }).click();
+  await page.getByLabel("字段标识").fill("fate");
+  await page.getByLabel("字段名称").fill("命格");
+  await page.getByLabel("字段类型").selectOption("single_select");
+  await page.getByLabel("适用对象").selectOption("character");
+  await page.getByLabel("选项").fill("剑骨，凡骨");
+  const customFieldResponse = waitForApiResponse(page, "POST", customFieldsApi);
+  await page.getByRole("button", { name: "创建字段" }).click();
+  const customField = customFieldDefinitionResponseSchema.parse(
+    await (await customFieldResponse).json(),
+  ).data;
+  expect(customField.key).toBe("fate");
+  await expect(page.locator(".settings-custom-field-row", { hasText: "命格" })).toBeVisible();
+  const persistedFieldsResponse = await page.request.get(customFieldsApi);
+  expect(persistedFieldsResponse.status()).toBe(200);
+  const persistedFields = customFieldDefinitionListResponseSchema.parse(
+    await persistedFieldsResponse.json(),
+  ).data;
+  expect(persistedFields.some((field) => field.key === "fate")).toBe(true);
+});
+
+test("persists a setting proposal decision through the production API", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const entity = await createEntity(page, work, {
+    type: "world_rule",
+    name: "天门只认完整记忆",
+    aliases: [],
+    summary: "失去关键记忆的人无法通过天门。",
+    description: "",
+    tags: [],
+    data: { rule: "主动抹除关键记忆会导致天门通行失败。" },
+  });
+  const proposal = await createProposal(page, work, entity);
+  const entityApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${entity.id}`;
+  const proposalsApi = `${entityApi}/proposals`;
+  const decisionApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${entity.id}/proposals/${proposal.id}/decision`;
+
+  await page.goto(`/workspace/${work.id}/settings?column=world&entityId=${entity.id}`);
+  const detail = page.locator(".settings-entity-detail");
+  await expect(detail.getByRole("button", { name: "确认提案" })).toBeEnabled();
+  const decisionResponse = waitForApiResponse(page, "POST", decisionApi);
+  await detail.getByRole("button", { name: "确认提案" }).click();
+  const decided = settingProposalResponseSchema.parse(await (await decisionResponse).json()).data;
+  expect(decided.status).toBe("accepted");
+  await expect(detail.getByText("已锁定").first()).toBeVisible();
+
+  const persistedProposalsResponse = await page.request.get(proposalsApi);
+  expect(persistedProposalsResponse.status()).toBe(200);
+  const persistedProposals = settingProposalListResponseSchema.parse(
+    await persistedProposalsResponse.json(),
+  ).data;
+  const persistedProposal = persistedProposals.find((candidate) => candidate.id === proposal.id);
+  expect(persistedProposal?.status).toBe("accepted");
+
+  const persistedEntityResponse = await page.request.get(entityApi);
+  expect(persistedEntityResponse.status()).toBe(200);
+  const persistedEntity = settingEntityResponseSchema.parse(
+    await persistedEntityResponse.json(),
+  ).data;
+  expect(persistedEntity.status).toBe("locked");
+});
+
 test("switches a history work to an older genre pack version", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const work = await createWork(page.request, {
@@ -178,15 +473,30 @@ test("switches a history work to an older genre pack version", async ({ page, co
     scaleTarget: "long",
     chapterLengthTarget: 3000,
   });
+  const genrePackVersionApi = `/api/v1/works/${work.id}/genre-pack/version`;
+  const workApi = `/api/v1/works/${work.id}`;
+  const genrePacksApi = "/api/v1/genre-packs?key=history";
 
   await page.goto(`/workspace/${work.id}/settings`);
   const packBar = page.getByLabel("题材包版本");
   await expect(packBar.getByText("架空历史模板", { exact: true })).toBeVisible();
   await expect(packBar.getByText("当前第 2 版")).toBeVisible();
   await packBar.getByLabel("题材包版本").selectOption("1");
+  const switchResponse = waitForApiResponse(page, "POST", genrePackVersionApi);
   await packBar.getByRole("button", { name: "切换题材包版本" }).click();
+  const switchedWork = workResponseSchema.parse(await (await switchResponse).json()).data;
+  expect(switchedWork.templatePack?.version).toBe(1);
   await expect(page.getByText("题材包已切换到第 1 版。")).toBeVisible();
   await expect(packBar.getByText("当前第 1 版")).toBeVisible();
+
+  const persistedWorkResponse = await page.request.get(workApi);
+  expect(persistedWorkResponse.status()).toBe(200);
+  const persistedWork = workResponseSchema.parse(await persistedWorkResponse.json()).data;
+  expect(persistedWork.templatePack?.version).toBe(1);
+  const packsResponse = await page.request.get(genrePacksApi);
+  expect(packsResponse.status()).toBe(200);
+  const packs = genrePackListResponseSchema.parse(await packsResponse.json()).data;
+  expect(packs.some((pack) => pack.key === "history" && pack.version === 1)).toBe(true);
 });
 
 test("creates typed settings in all seven columns with custom fields, proposals and change requests", async ({
