@@ -332,8 +332,92 @@
       ]
     },
     "settings": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "f02cd9b727d5a1c69c5761dab524810555d39c58",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44573477468",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44573478266",
+      "actions": [
+        {
+          "id": "create-setting",
+          "name": "创建世界规则并从实体详情回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists setting creation, editing and deletion through the production API",
+          "assertion": "expect(persistedCreated.name).toBe(\"天门只认完整记忆\");"
+        },
+        {
+          "id": "edit-setting",
+          "name": "编辑设定并从实体详情回读新摘要",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${created.id}",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists setting creation, editing and deletion through the production API",
+          "assertion": "expect(persistedEdited.summary).toBe(\"失去完整记忆的人会被天门留在门外。\");"
+        },
+        {
+          "id": "delete-setting",
+          "name": "删除设定并确认实体不再可读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${created.id}",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists setting creation, editing and deletion through the production API",
+          "assertion": "expect(deletedDetailResponse.status()).toBe(403);"
+        },
+        {
+          "id": "relationship",
+          "name": "创建类型化人物关系并从人物详情回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${sourceCharacter.character.id}/relationships",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists relationship, map, power system, timeline and custom-field actions through production forms",
+          "assertion": "expect(persistedCharacter.relationships[0]?.target.id).toBe(relationship.target.id);"
+        },
+        {
+          "id": "map",
+          "name": "通过地图表单创建地图并从详情接口回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/maps",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists relationship, map, power system, timeline and custom-field actions through production forms",
+          "assertion": "expect(persistedMap.map.label).toBe(\"东境舆图\");"
+        },
+        {
+          "id": "power-system",
+          "name": "创建力量体系并从专用详情接口回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/power-systems",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists relationship, map, power system, timeline and custom-field actions through production forms",
+          "assertion": "expect(persistedPowerSystem.overview).toBe(\"第一版力量体系总览。\");"
+        },
+        {
+          "id": "timeline",
+          "name": "通过时间线表单创建事件并从世界时间线回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists relationship, map, power system, timeline and custom-field actions through production forms",
+          "assertion": "expect(timelineEventIds).toContain(createdTimelineEvent.id);"
+        },
+        {
+          "id": "custom-field",
+          "name": "创建自定义字段并从字段列表回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/custom-fields",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists relationship, map, power system, timeline and custom-field actions through production forms",
+          "assertion": "expect(persistedFields.some((field) => field.key === \"fate\")).toBe(true);"
+        },
+        {
+          "id": "proposal-decision",
+          "name": "确认设定提案并从提案列表与实体状态回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${entity.id}/proposals/${proposal.id}/decision",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "persists a setting proposal decision through the production API",
+          "assertion": "expect(persistedProposal?.status).toBe(\"accepted\");"
+        },
+        {
+          "id": "genre-pack-switch",
+          "name": "切换题材包版本并从作品与题材包接口回读",
+          "api": "/api/v1/works/${work.id}/genre-pack/version",
+          "spec": "apps/web/e2e/parity/settings.spec.ts",
+          "test": "switches a history work to an older genre pack version",
+          "assertion": "expect(persistedWork.templatePack?.version).toBe(1);"
+        }
+      ]
     },
     "outline": {
       "status": "pending",
