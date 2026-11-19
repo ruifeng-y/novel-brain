@@ -158,6 +158,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正常 PR Production CI [44514912820](https://github.com/ruifeng-y/novel-brain/actions/runs/44514912820) 的 `check` 与 `playwright`、Deployment Smoke [44514912829](https://github.com/ruifeng-y/novel-brain/actions/runs/44514912829) 均通过；`new-project` 提升为 `parity-verified`。
 
+## 2026-11-19 work-overview 逐动作持久化与最终 CI 签收
+
+沿用作者在 2026-11-11 对 `work-overview` 正常态与长内容态四档正式 Golden 的视觉签收。本次 #224 不改变视觉基线，只补齐七个页面动作的真实 API 与持久化证据。
+
+`apps/web/e2e/parity/work-overview.spec.ts` 覆盖继续写作、待处理任务、最近修改、跨卷文风趋势、卷末审计、卷末签收和创作线切换；断言包括 readiness 任务、持久化章节与设定、文风报告、审计报告的后续回读、作者签收决策及 branch-scoped 作品总览。targeted Playwright 4/4、完整 owner 语义测试、作者语言、prototype-only 扫描与四档 Linux Golden 回归均通过。
+
+正常 PR Production CI [44532653293](https://github.com/ruifeng-y/novel-brain/actions/runs/44532653293) 的 `check` 与 `playwright`、Deployment Smoke [44532653451](https://github.com/ruifeng-y/novel-brain/actions/runs/44532653451) 均通过；`work-overview` 提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

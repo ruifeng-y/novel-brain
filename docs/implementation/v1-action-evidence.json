@@ -189,6 +189,9 @@
     },
     "work-overview": {
       "status": "verified",
+      "headSha": "735e5b1af9a7914dfa8b4f43fbd28d83fbc1c1ec",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44532653293",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44532653451",
       "actions": [
         {
           "id": "continue-writing",
