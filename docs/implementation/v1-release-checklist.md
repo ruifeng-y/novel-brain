@@ -17,10 +17,10 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 | Gate | Evidence | Status |
 | --- | --- | --- |
 | Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`; `node scripts/validate-readiness.mjs` | structure pass; UI release remains blocked |
-| UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | blocked: `auth`, `help`, `legal`, dashboard, new-project and work-overview are `parity-verified`; 11 non-static pages remain `production-built` |
+| UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | blocked: `auth`, `help`, `legal`, dashboard, new-project, work-overview and bible are `parity-verified`; 10 non-static pages remain `production-built` |
 | Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | existing Golden baseline evidence pass; final normal PR CI pending |
 | Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | implemented; final normal PR CI pending |
-| Per-action API and persistence evidence | `docs/ui/v1-action-contract.json` + `docs/implementation/v1-action-evidence.json`; every required action must bind to its owner spec, `/api/v1/*` and persisted-result Playwright assertions | blocked / 11 pages pending |
+| Per-action API and persistence evidence | `docs/ui/v1-action-contract.json` + `docs/implementation/v1-action-evidence.json`; every required action must bind to its owner spec, `/api/v1/*` and persisted-result Playwright assertions | blocked / 10 pages pending |
 | Auth, password and session lifecycle | `docs/implementation/m0-02-email-auth-sessions.md`, `docs/implementation/m1-141-account-security.md`, `apps/web/e2e/parity/auth.spec.ts` | pass |
 | Account export, deletion and purge | `docs/implementation/m3-03c-account-lifecycle.md`, tenant RLS audit and lifecycle integration tests | pass |
 | Export, publish, reader preview and moderation | `docs/implementation/m3-01a-work-export.md`, `docs/implementation/m3-02a-publish-preview.md`, `docs/implementation/m3-02b-help-legal-moderation.md` | pass |
@@ -58,7 +58,7 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 ## 4. Remaining blockers
 
 1. Complete the capability-by-capability evidence audit and move applicable V1 traceability rows from `mapped`/`implemented` to `verified`; `pnpm release:check` currently reports 116 unresolved V1 capabilities.
-2. Complete the per-action API/persistence audit for the remaining 11 non-static production pages and replace each pending action-evidence ledger entry with reproducible Playwright evidence.
+2. Complete the per-action API/persistence audit for the remaining 10 non-static production pages and replace each pending action-evidence ledger entry with reproducible Playwright evidence.
 3. Keep `help` parity status bound to the recorded Production CI run; rerun normal CI after any further help-page change.
 4. Record actual human blind-review scores for the frozen quality packet.
 5. Approve and record the inter-rater variance threshold with an owner and rationale.

@@ -252,8 +252,84 @@
       ]
     },
     "bible": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "19b541c2a4b90bcda80159a18b3304cd26d6462d",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44554877251",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44554877179",
+      "actions": [
+        {
+          "id": "generate-cards",
+          "name": "生成九卡提案并回读持久化提案",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible/generate",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(persistedGeneratedBible.proposal?.source).toBe(\"work_premise\");"
+        },
+        {
+          "id": "edit-card",
+          "name": "编辑卡片并从故事圣经接口回读内容",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(persistedEditedCard?.content).toBe(\"一个忘记姓名的杂役，用吞噬记忆的古书追回自己的过去。\");"
+        },
+        {
+          "id": "ai-check",
+          "name": "读取生成准备度、缺失项与锁定门禁",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible/readiness",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(checkedReadiness.missingCards).toHaveLength(8);"
+        },
+        {
+          "id": "complete-card",
+          "name": "补全缺失卡片并回读完成度",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(persistedCompletedBible.readiness.missingCards).toHaveLength(8);"
+        },
+        {
+          "id": "world-rule",
+          "name": "保存结构化世界铁律并从专用接口回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible/world-rules?limit=100",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(persistedWorldRules.some((rule) => rule.name === \"记忆代价\")).toBe(true);"
+        },
+        {
+          "id": "lock-bible",
+          "name": "锁定故事圣经并回读锁定状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible/lock",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(persistedLockedBible.status).toBe(\"locked\");"
+        },
+        {
+          "id": "version-history",
+          "name": "读取不可变版本历史并确认锁定与解锁节点",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible/versions?limit=100",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(finalVersionActions).toContain(\"unlocked\");"
+        },
+        {
+          "id": "request-change",
+          "name": "为锁定内容创建待分析修改请求并回读旧值与新值",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible/change-requests",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(replayedChangeRequest.before.content).toBe(lockedOneSentence);"
+        },
+        {
+          "id": "unlock-bible",
+          "name": "记录原因解锁故事圣经并回读解锁状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible/unlock",
+          "spec": "apps/web/e2e/parity/bible.spec.ts",
+          "test": "persists all nine bible page actions through the production API",
+          "assertion": "expect(persistedUnlockedBible.status).toBe(\"draft\");"
+        }
+      ]
     },
     "settings": {
       "status": "pending",
