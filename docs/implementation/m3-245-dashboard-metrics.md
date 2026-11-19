@@ -18,6 +18,7 @@ The work-list contract exposes a **main creation line** summary under `metrics` 
 
 - `words=lt1m|1m-2m|gt2m`: persisted total word count below 1,000,000, from 1,000,000 to below 2,000,000, or at least 2,000,000.
 - `recent=day|week|month`: `lastEditedAt` within 24, 168 or 720 hours.
+- `status=preparing`: groups `draft` and `preparing`, matching the author-facing `筹备中` label.
 
 Both filters are applied before cursor pagination.
 

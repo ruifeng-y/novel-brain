@@ -452,6 +452,7 @@ describe("works HTTP integration", () => {
         })
         .expect(200);
     }
+    await databasePool.query("UPDATE works SET status = 'serializing'");
     await databasePool.query("UPDATE works SET status = 'preparing' WHERE title = '作品 02'");
 
     const firstPage = await owner.get("/api/v1/works?limit=5").expect(200);
@@ -662,6 +663,8 @@ describe("works HTTP integration", () => {
     expect(titlesOf(oneToTwoMillion.body)).toEqual(["百万之后"]);
     const overTwoMillion = await owner.get("/api/v1/works?words=gt2m").expect(200);
     expect(titlesOf(overTwoMillion.body)).toEqual(["超长旧稿"]);
+    const preparing = await owner.get("/api/v1/works?status=preparing").expect(200);
+    expect(titlesOf(preparing.body)).toEqual(["百万之后", "短篇旧稿", "超长旧稿"].sort());
 
     const updatedToday = await owner.get("/api/v1/works?recent=day").expect(200);
     expect(titlesOf(updatedToday.body)).toEqual(["百万之后"]);

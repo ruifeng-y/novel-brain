@@ -214,6 +214,17 @@ test("searches and filters persisted works from the dashboard", async ({ page, c
   expect(filteredStatuses).toEqual(["paused"]);
   await expect(page.getByRole("heading", { name: pausedWork.title })).toBeVisible();
   await expect(page.getByRole("heading", { name: searchWork.title })).toHaveCount(0);
+
+  const preparingFilter = waitForApiResponse(
+    page,
+    "GET",
+    "/api/v1/works?limit=20&status=preparing",
+  );
+  await page.getByLabel("状态筛选").selectOption("preparing");
+  await preparingFilter;
+  await expect(page.getByRole("heading", { name: searchWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: urbanWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: pausedWork.title })).toHaveCount(0);
 });
 
 test("shows persisted metrics and filters by word count and last edit", async ({

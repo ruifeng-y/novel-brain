@@ -1172,7 +1172,11 @@ export class WorksRepository implements OnModuleDestroy {
         query.trash ? isNotNull(works.deletedAt) : isNull(works.deletedAt),
       ];
       if (query.status) {
-        conditions.push(eq(works.status, query.status));
+        conditions.push(
+          query.status === "preparing"
+            ? inArray(works.status, ["draft", "preparing"])
+            : eq(works.status, query.status),
+        );
       } else if (!query.trash) {
         conditions.push(ne(works.status, "archived"));
       }
