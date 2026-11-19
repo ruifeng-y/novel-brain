@@ -166,6 +166,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正常 PR Production CI [44532653293](https://github.com/ruifeng-y/novel-brain/actions/runs/44532653293) 的 `check` 与 `playwright`、Deployment Smoke [44532653451](https://github.com/ruifeng-y/novel-brain/actions/runs/44532653451) 均通过；`work-overview` 提升为 `parity-verified`。
 
+## 2026-11-19 bible 逐动作持久化与最终 CI 签收
+
+沿用作者在 2026-11-11 与 2026-11-12 对 `bible` 四档正式 Golden 和题材化变化的视觉签收。本次 #225 不改变视觉基线，只补齐九个页面动作的真实 API 与持久化证据。
+
+`apps/web/e2e/parity/bible.spec.ts` 覆盖九卡生成、卡片编辑、准备度检查、缺失卡片补全、结构化世界铁律、锁定、版本历史、锁定修改请求和解锁；断言包括故事圣经回读、结构规则查询、版本节点、幂等修改请求的持久化旧值/新值，以及解锁后的持久化状态。targeted Playwright 九动作测试、完整 owner 4/4、作者语言、prototype-only 扫描与四档 Linux Golden 回归均通过。
+
+正常 PR Production CI [44554877251](https://github.com/ruifeng-y/novel-brain/actions/runs/44554877251) 的 `check` 与 `playwright`、Deployment Smoke [44554877179](https://github.com/ruifeng-y/novel-brain/actions/runs/44554877179) 均通过；`bible` 提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

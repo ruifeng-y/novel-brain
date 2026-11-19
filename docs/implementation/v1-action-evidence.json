@@ -252,8 +252,10 @@
       ]
     },
     "bible": {
-      "status": "pending",
-      "rationale": "The nine-action owner spec passes locally; normal PR Production CI and Deployment Smoke evidence are still required before verification.",
+      "status": "verified",
+      "headSha": "19b541c2a4b90bcda80159a18b3304cd26d6462d",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44554877251",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44554877179",
       "actions": [
         {
           "id": "generate-cards",
