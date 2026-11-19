@@ -125,6 +125,9 @@
     },
     "new-project": {
       "status": "verified",
+      "headSha": "7decdbe7e7a0df9a5dac0a133eef9cce3191f8ef",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44514912820",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44514912829",
       "actions": [
         {
           "id": "create-from-idea",
