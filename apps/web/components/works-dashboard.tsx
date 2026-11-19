@@ -1,20 +1,24 @@
 "use client";
 
 import {
+  Archive,
   BookOpen,
   LoaderCircle,
   Plus,
   RefreshCw,
   RotateCcw,
   Search,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   apiErrorSchema,
   workListResponseSchema,
+  workResponseSchema,
+  workTrashResponseSchema,
   type Work,
   type WorkGenre,
   type WorkStatus,
@@ -54,6 +58,11 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
   const [genre, setGenre] = useState("");
   const [status, setStatus] = useState("");
   const [busyWorkId, setBusyWorkId] = useState("");
+  const [manageWork, setManageWork] = useState<Work | null>(null);
+  const manageDialogRef = useRef<HTMLElement | null>(null);
+  const manageCloseRef = useRef<HTMLButtonElement | null>(null);
+  const manageTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [view, setView] = useState<"active" | "archived" | "trash">(
     searchParams.get("trash") === "true" ? "trash" : "active",
@@ -105,6 +114,42 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
 
   const load = useCallback(async () => loadPage(null, false), [loadPage]);
 
+  const closeManage = useCallback(() => {
+    setManageWork(null);
+    window.requestAnimationFrame(() => manageTriggerRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (!manageWork) return;
+    manageCloseRef.current?.focus();
+    const dialog = manageDialogRef.current;
+    if (!dialog) return;
+    const modal = dialog;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeManage();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...modal.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]")];
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [closeManage, manageWork]);
+
   async function restoreWork(work: Work) {
     setBusyWorkId(work.id);
     setError("");
@@ -124,6 +169,55 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "作品恢复失败。");
+    } finally {
+      setBusyWorkId("");
+    }
+  }
+
+  async function archiveWork(work: Work) {
+    setBusyWorkId(work.id);
+    setError("");
+    try {
+      const token = await getCsrfToken();
+      const response = await fetch(`/api/v1/works/${work.id}/archive`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": token },
+        body: JSON.stringify({ version: work.version }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      workResponseSchema.parse(await response.json());
+      closeManage();
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "作品归档失败。");
+    } finally {
+      setBusyWorkId("");
+    }
+  }
+
+  async function trashWork(work: Work) {
+    if (!window.confirm(`移入回收站《${work.title}》？30 天内仍可恢复。`)) return;
+    setBusyWorkId(work.id);
+    setError("");
+    try {
+      const token = await getCsrfToken();
+      const response = await fetch(`/api/v1/works/${work.id}/trash`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": token },
+        body: JSON.stringify({ version: work.version }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      workTrashResponseSchema.parse(await response.json());
+      closeManage();
+      setView("trash");
+      router.push("/workspace?trash=true");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "移入回收站失败。");
     } finally {
       setBusyWorkId("");
     }
@@ -362,9 +456,16 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
                     </Link>
                   )}
                   {work.deletedAt ? null : (
-                    <Link className="text-btn small" href={`/workspace/${work.id}/work-settings`}>
+                    <button
+                      className="text-btn small"
+                      onClick={(event) => {
+                        manageTriggerRef.current = event.currentTarget;
+                        setManageWork(work);
+                      }}
+                      type="button"
+                    >
                       管理
-                    </Link>
+                    </button>
                   )}
                 </div>
               </div>
@@ -383,6 +484,68 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
           ) : null}
         </section>
       )}
+
+      {manageWork ? (
+        <div className="modal-backdrop dashboard-action-backdrop" role="presentation">
+          <section
+            aria-labelledby="works-dashboard-manage-title"
+            aria-modal="true"
+            className="modal dashboard-action-dialog"
+            ref={manageDialogRef}
+            role="dialog"
+            tabIndex={-1}
+          >
+            <div className="modal-head">
+              <div>
+                <span className="panel-kicker">作品操作</span>
+                <h2 id="works-dashboard-manage-title">{manageWork.title}</h2>
+              </div>
+              <button
+                aria-label="关闭"
+                className="text-btn small"
+                onClick={closeManage}
+                ref={manageCloseRef}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="work-action-list">
+                <Link className="btn btn-ghost" href={`/workspace/${manageWork.id}/work-settings`}>
+                  作品设置
+                </Link>
+                {manageWork.status === "archived" ? null : (
+                  <>
+                    <button
+                      className="btn btn-ghost"
+                      disabled={busyWorkId === manageWork.id}
+                      onClick={() => archiveWork(manageWork)}
+                      type="button"
+                    >
+                      {busyWorkId === manageWork.id ? (
+                        <LoaderCircle className="spin" size={15} aria-hidden="true" />
+                      ) : (
+                        <Archive size={15} aria-hidden="true" />
+                      )}
+                      归档
+                    </button>
+                    <button
+                      className="btn btn-ghost danger-text"
+                      disabled={busyWorkId === manageWork.id}
+                      onClick={() => trashWork(manageWork)}
+                      type="button"
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                      移入回收站
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }

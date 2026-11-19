@@ -63,8 +63,65 @@
       ]
     },
     "dashboard": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "actions": [
+        {
+          "id": "create-work",
+          "name": "从工作台创建作品并读取持久化结果",
+          "api": "/api/v1/works",
+          "spec": "apps/web/e2e/parity/dashboard.spec.ts",
+          "test": "creates a work from the dashboard and persists it",
+          "assertion": "expect(persistedWork.title).toBe(\"雾港来信\");"
+        },
+        {
+          "id": "search",
+          "name": "搜索作品",
+          "api": "/api/v1/works?limit=20&q=",
+          "spec": "apps/web/e2e/parity/dashboard.spec.ts",
+          "test": "searches and filters persisted works from the dashboard",
+          "assertion": "expect(searchedTitles).toEqual([\"长夜行\"]);"
+        },
+        {
+          "id": "filter",
+          "name": "筛选作品",
+          "api": "/api/v1/works?limit=20&status=paused",
+          "spec": "apps/web/e2e/parity/dashboard.spec.ts",
+          "test": "searches and filters persisted works from the dashboard",
+          "assertion": "expect(filteredStatuses).toEqual([\"paused\"]);"
+        },
+        {
+          "id": "archive-work",
+          "name": "归档作品",
+          "api": "/api/v1/works/${work.id}/archive",
+          "spec": "apps/web/e2e/parity/dashboard.spec.ts",
+          "test": "archives and restores a work from dashboard views",
+          "assertion": "expect((await archived.json()).data.status).toBe(\"archived\");"
+        },
+        {
+          "id": "restore-work",
+          "name": "恢复归档作品",
+          "api": "/api/v1/works/${work.id}/restore",
+          "spec": "apps/web/e2e/parity/dashboard.spec.ts",
+          "test": "archives and restores a work from dashboard views",
+          "assertion": "expect((await restored.json()).data.status).toBe(\"serializing\");"
+        },
+        {
+          "id": "delete-work",
+          "name": "从工作台移入回收站并在导出后永久删除",
+          "api": "/api/v1/works/${deletedWork.id}/purge",
+          "spec": "apps/web/e2e/parity/dashboard.spec.ts",
+          "test": "deletes a work from trash after its export receipt is complete",
+          "assertion": "expect(purgedRows.rows[0]?.works).toBe(\"0\");"
+        },
+        {
+          "id": "load-more",
+          "name": "加载更多作品",
+          "api": "/api/v1/works?limit=20&cursor=",
+          "spec": "apps/web/e2e/parity/dashboard.spec.ts",
+          "test": "loads additional pages for a long work list",
+          "assertion": "expect((await loadedMore.json()).data).toHaveLength(2);"
+        }
+      ]
     },
     "new-project": {
       "status": "pending",
