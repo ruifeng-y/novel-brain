@@ -63,6 +63,30 @@ function waitForApiResponse(page: Page, method: string, api: string) {
   });
 }
 
+async function trashWorkFromDashboard(page: Page, workId: string, title: string) {
+  const workCard = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: title }) });
+  const trashApi = `/api/v1/works/${workId}/trash`;
+  const trashResponse = waitForApiResponse(page, "POST", trashApi);
+  const trashPage = waitForWorksPage(page, (url) => url.searchParams.get("trash") === "true");
+  let dialogMessage = "";
+  const confirmation = new Promise<void>((resolve, reject) => {
+    page.once("dialog", (dialog) => {
+      dialogMessage = dialog.message();
+      dialog.accept().then(resolve, reject);
+    });
+  });
+  await workCard.getByRole("button", { name: "管理", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: title })
+    .getByRole("button", { name: "移入回收站", exact: true })
+    .click();
+  await confirmation;
+  expect(dialogMessage).toContain(`移入回收站《${title}》`);
+  return { trashed: await trashResponse, trashPage };
+}
+
 test.beforeEach(async () => {
   await resetRateLimits();
 });
@@ -206,10 +230,21 @@ test("shows loading, disabled and long-content states", async ({ page, context }
   releaseWorks();
 
   await expect(page.getByRole("heading", { name: longTitle })).toBeVisible();
-  await expect(page.getByRole("link", { name: "管理" })).toHaveAttribute(
+  const manageButton = page.getByRole("button", { name: "管理", exact: true });
+  await manageButton.click();
+  const manageDialog = page.getByRole("dialog", { name: longTitle });
+  await expect(manageDialog.getByRole("button", { name: "关闭" })).toBeFocused();
+  await expect(manageDialog.getByRole("link", { name: "作品设置" })).toHaveAttribute(
     "href",
     /\/workspace\/[0-9a-f-]+\/work-settings$/,
   );
+  await page.keyboard.press("Shift+Tab");
+  await expect(manageDialog.getByRole("button", { name: "移入回收站", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(manageDialog.getByRole("button", { name: "关闭" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(manageDialog).toHaveCount(0);
+  await expect(manageButton).toBeFocused();
 });
 
 test("loads additional pages for a long work list", async ({ page, context }) => {
@@ -266,13 +301,24 @@ test("archives and restores a work from dashboard views", async ({ page, context
   });
   expect(serializing.status()).toBe(200);
 
-  await page.goto(`/workspace/${work.id}/work-settings`);
-  await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
-  await page.getByRole("button", { name: "归档作品" }).click();
+  await page.goto("/workspace");
+  await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
+  const workCard = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: work.title }) });
   const archiveApi = `/api/v1/works/${work.id}/archive`;
   const archiveResponse = waitForApiResponse(page, "POST", archiveApi);
-  await page.getByRole("button", { name: "确认归档" }).click();
+  const activeAfterArchive = waitForWorksPage(
+    page,
+    (url) => url.searchParams.get("limit") === "20" && !url.searchParams.has("status"),
+  );
+  await workCard.getByRole("button", { name: "管理", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: work.title })
+    .getByRole("button", { name: "归档", exact: true })
+    .click();
   const archived = await archiveResponse;
+  await activeAfterArchive;
   expect(archived.status()).toBe(200);
   expect((await archived.json()).data.status).toBe("archived");
 
@@ -315,13 +361,9 @@ test("archives and restores a work from dashboard views", async ({ page, context
   expect(persistedRestore.status()).toBe(200);
   expect((await persistedRestore.json()).data.status).toBe("serializing");
 
-  await page.goto(`/workspace/${work.id}/work-settings`);
-  await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
-  await page.getByRole("button", { name: "移入回收站" }).click();
-  const trashApi = `/api/v1/works/${work.id}/trash`;
-  const trashResponse = waitForApiResponse(page, "POST", trashApi);
-  await page.getByRole("button", { name: "确认移入" }).click();
-  const trashed = await trashResponse;
+  await page.goto("/workspace");
+  await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
+  const { trashed, trashPage } = await trashWorkFromDashboard(page, work.id, work.title);
   expect(trashed.status()).toBe(200);
   expect((await trashed.json()).data).toMatchObject({
     id: work.id,
@@ -329,7 +371,6 @@ test("archives and restores a work from dashboard views", async ({ page, context
     purgeAfter: expect.any(String),
   });
 
-  const trashPage = waitForWorksPage(page, (url) => url.searchParams.get("trash") === "true");
   await expect(page).toHaveURL(/\/workspace\?trash=true$/);
   await trashPage;
   await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
@@ -399,18 +440,20 @@ test("deletes a work from trash after its export receipt is complete", async ({
     await worker.stop();
   }
 
+  await page.goto("/workspace");
+  await expect(page.getByRole("heading", { name: deletedWork.title })).toBeVisible();
+  const { trashed, trashPage } = await trashWorkFromDashboard(
+    page,
+    deletedWork.id,
+    deletedWork.title,
+  );
+
   const databaseUrl =
     process.env.E2E_DATABASE_URL ??
     "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
   const pool = new Pool({ connectionString: databaseUrl });
   try {
-    await page.goto(`/workspace/${deletedWork.id}/work-settings`);
-    await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
-    await page.getByRole("button", { name: "移入回收站" }).click();
-    const trashApi = `/api/v1/works/${deletedWork.id}/trash`;
-    const trashResponse = waitForApiResponse(page, "POST", trashApi);
-    await page.getByRole("button", { name: "确认移入" }).click();
-    const trashed = await trashResponse;
+    await trashPage;
     expect(trashed.status()).toBe(200);
     const trashPayload = (await trashed.json()).data as {
       deletedAt: string;
@@ -422,6 +465,7 @@ test("deletes a work from trash after its export receipt is complete", async ({
       deletedAt: expect.any(String),
       purgeAfter: expect.any(String),
     });
+    expect(trashPayload.id).toBe(deletedWork.id);
     expect(
       new Date(trashPayload.purgeAfter).getTime() - new Date(trashPayload.deletedAt).getTime(),
     ).toBe(30 * 24 * 60 * 60 * 1_000);
@@ -434,9 +478,7 @@ test("deletes a work from trash after its export receipt is complete", async ({
       [deletedWork.id],
     );
 
-    const trashPage = waitForWorksPage(page, (url) => url.searchParams.get("trash") === "true");
     await page.goto("/workspace?trash=true");
-    await trashPage;
     await expect(page.getByRole("heading", { name: deletedWork.title })).toBeVisible();
     await expect(page.getByRole("button", { name: "永久删除" })).toBeEnabled();
 
@@ -479,6 +521,7 @@ test("deletes a work from trash after its export receipt is complete", async ({
       versions: "0",
       works: "0",
     });
+    expect(purgedRows.rows[0]?.works).toBe("0");
   } finally {
     await pool.end();
   }
@@ -486,6 +529,10 @@ test("deletes a work from trash after its export receipt is complete", async ({
 
 test("dashboard states and four viewports hold", async ({ page, context }, testInfo) => {
   await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "视口检查作品",
+  });
   await page.route("**/api/v1/works?*", async (route) => {
     await route.fulfill({
       status: 500,
@@ -506,8 +553,14 @@ test("dashboard states and four viewports hold", async ({ page, context }, testI
 
   for (const width of [390, 900, 1180, 1440]) {
     await page.setViewportSize({ width, height: 900 });
+    const listPage = waitForWorksPage(
+      page,
+      (url) => url.searchParams.get("limit") === "20" && !url.searchParams.has("status"),
+    );
     await page.goto("/workspace");
+    await listPage;
     await expect(page.getByRole("heading", { name: "工作台" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
     await expectAuthorFacingLanguage(page);
     await expectNoPrototypeOnlyLeakage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -519,5 +572,23 @@ test("dashboard states and four viewports hold", async ({ page, context }, testI
       body: await page.screenshot({ animations: "disabled", caret: "hide" }),
       contentType: "image/png",
     });
+
+    await page.getByRole("button", { name: "管理", exact: true }).click();
+    const manageDialog = page.getByRole("dialog", { name: work.title });
+    await expect(manageDialog.getByRole("button", { name: "归档", exact: true })).toBeVisible();
+    await expect(
+      manageDialog.getByRole("button", { name: "移入回收站", exact: true }),
+    ).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+    await expectNoPrototypeOnlyLeakage(page);
+    const manageOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(manageOverflow).toBeLessThanOrEqual(0);
+    await testInfo.attach(`dashboard-manage-${width}`, {
+      body: await page.screenshot({ animations: "disabled", caret: "hide" }),
+      contentType: "image/png",
+    });
+    await page.keyboard.press("Escape");
   }
 });

@@ -1210,6 +1210,74 @@ a:focus-visible {
   box-shadow: 0 1px 4px rgba(27, 45, 39, 0.1);
 }
 
+.dashboard-action-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 20, 18, 0.46);
+  backdrop-filter: blur(3px);
+}
+
+.dashboard-action-dialog {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.23);
+}
+
+.dashboard-action-dialog .modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dashboard-action-dialog .modal-head h2 {
+  margin: 0;
+  font-family: "Songti SC", "SimSun", serif;
+  font-size: 23px;
+}
+
+.dashboard-action-dialog .modal-head .text-btn {
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--ink-3);
+  font-size: 20px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.dashboard-action-dialog .modal-head .text-btn:hover {
+  color: var(--ink);
+  background: #f8f9f6;
+  border-color: var(--line-strong);
+}
+
+.dashboard-action-dialog .modal-body {
+  padding: 18px 22px;
+}
+
+.dashboard-action-dialog .work-action-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dashboard-action-dialog .work-action-list .btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+
 .project-actions .danger-text {
   color: var(--danger);
 }

@@ -83,7 +83,7 @@
         },
         {
           "id": "filter",
-          "name": "按已实现的作品状态筛选",
+          "name": "筛选作品",
           "api": "/api/v1/works?limit=20&status=paused",
           "spec": "apps/web/e2e/parity/dashboard.spec.ts",
           "test": "searches and filters persisted works from the dashboard",
@@ -107,11 +107,11 @@
         },
         {
           "id": "delete-work",
-          "name": "导出后永久删除作品",
+          "name": "从工作台移入回收站并在导出后永久删除",
           "api": "/api/v1/works/${deletedWork.id}/purge",
           "spec": "apps/web/e2e/parity/dashboard.spec.ts",
           "test": "deletes a work from trash after its export receipt is complete",
-          "assertion": "expect((await purged.json()).data).toEqual({ id: deletedWork.id, deleted: true });"
+          "assertion": "expect(purgedRows.rows[0]?.works).toBe(\"0\");"
         },
         {
           "id": "load-more",
