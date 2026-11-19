@@ -1,7 +1,13 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { Pool } from "pg";
 
-import { createWork, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { createM0Chapter } from "../helpers/m0";
 import { expectAuthorFacingLanguage, expectNoPrototypeOnlyLeakage } from "../helpers/ui";
+
+const origin = "http://localhost:3000";
+
+test.describe.configure({ timeout: 180_000 });
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("dashboard");
@@ -31,6 +37,15 @@ async function holdWorksApi(page: Page) {
   return release;
 }
 
+function waitForWorksPage(page: Page, predicate: (url: URL) => boolean) {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === "GET" && url.pathname === "/api/v1/works" && predicate(url)
+    );
+  });
+}
+
 test.beforeEach(async () => {
   await resetRateLimits();
 });
@@ -48,32 +63,119 @@ test("shows the empty work library with a real create action", async ({ page, co
   await expect(page).toHaveURL(/\/workspace\/new-project$/);
 });
 
-test("lists, searches and filters works", async ({ page, context }) => {
+test("creates a work from the dashboard and persists it", async ({ page, context }) => {
   await authenticatedPage(page, context);
-  await createWork(page.request, {
+  await expect(page.getByRole("heading", { name: "工作台" })).toBeVisible();
+  await page.getByRole("link", { name: "新建作品" }).first().click();
+  await expect(page).toHaveURL(/\/workspace\/new-project$/);
+  await page.getByRole("button", { name: "空白作品", exact: true }).click();
+  await page.getByLabel("书名").fill("雾港来信");
+
+  const creationResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/v1/works" && response.request().method() === "POST";
+  });
+  await page.getByRole("button", { name: "创建作品并进入总览" }).click();
+  const created = await creationResponse;
+  expect(created.status()).toBe(200);
+  const createdWork = (await created.json()).data as { id: string };
+  await expect(page).toHaveURL(new RegExp(`/workspace/${createdWork.id}/overview$`));
+
+  const persistedResponse = await page.request.get(`/api/v1/works/${createdWork.id}`);
+  expect(persistedResponse.status()).toBe(200);
+  const persistedWork = (await persistedResponse.json()).data as { title: string };
+  expect(persistedWork.title).toBe("雾港来信");
+
+  const workspacePage = waitForWorksPage(page, (url) => url.searchParams.get("limit") === "20");
+  await page.goto("/workspace");
+  await workspacePage;
+  await expect(page.getByRole("heading", { name: "雾港来信" })).toBeVisible();
+});
+
+test("searches and filters persisted works from the dashboard", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const searchWork = await createWork(page.request, {
     mode: "blank",
     title: "长夜行",
     genre: "xianxia",
     scaleTarget: "long",
   });
-  await createWork(page.request, {
+  const urbanWork = await createWork(page.request, {
     mode: "blank",
     title: "都市回声",
     genre: "urban",
     scaleTarget: "medium",
   });
+  const pausedWork = await createWork(page.request, {
+    mode: "blank",
+    title: "暂停之后",
+    genre: "urban",
+    scaleTarget: "short",
+  });
+  const pausedDetails = await page.request.get(`/api/v1/works/${pausedWork.id}`);
+  expect(pausedDetails.status()).toBe(200);
+  const pausedVersion = (await pausedDetails.json()).data.version as number;
+  const token = await getCsrf(page.request);
+  const paused = await page.request.patch(`/api/v1/works/${pausedWork.id}`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: { version: pausedVersion, status: "paused" },
+  });
+  expect(paused.status()).toBe(200);
+
+  const initialPage = waitForWorksPage(page, (url) => url.searchParams.get("limit") === "20");
   await page.reload();
-
+  await initialPage;
   await expect(page.getByRole("heading", { name: "长夜行" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "都市回声" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "暂停之后" })).toBeVisible();
+
+  const searchApi = "/api/v1/works?limit=20&q=";
+  const searchResponse = page.waitForResponse((response) => response.url().includes(searchApi));
   await page.getByLabel("搜索作品").fill("长夜");
-  await expect(page.getByRole("heading", { name: "长夜行" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "都市回声" })).toHaveCount(0);
+  const searched = await searchResponse;
+  expect(searched.status()).toBe(200);
+  const searchedTitles = (await searched.json()).data.map((work: { title: string }) => work.title);
+  expect(searchedTitles).toEqual(["长夜行"]);
+  await expect(page.getByRole("heading", { name: searchWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: urbanWork.title })).toHaveCount(0);
 
+  const clearedSearch = waitForWorksPage(
+    page,
+    (url) => url.searchParams.get("limit") === "20" && !url.searchParams.has("q"),
+  );
   await page.getByLabel("搜索作品").fill("");
+  await clearedSearch;
+
+  const genreApi = "/api/v1/works?limit=20&genre=urban";
+  const genreResponse = page.waitForResponse((response) => response.url().includes(genreApi));
   await page.getByLabel("题材筛选").selectOption("urban");
-  await expect(page.getByRole("heading", { name: "都市回声" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "长夜行" })).toHaveCount(0);
+  const genreFiltered = await genreResponse;
+  expect(genreFiltered.status()).toBe(200);
+  expect((await genreFiltered.json()).data.map((work: { genre: string }) => work.genre)).toEqual([
+    "urban",
+    "urban",
+  ]);
+  await expect(page.getByRole("heading", { name: urbanWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: searchWork.title })).toHaveCount(0);
+
+  const clearedGenre = waitForWorksPage(
+    page,
+    (url) => url.searchParams.get("limit") === "20" && !url.searchParams.has("genre"),
+  );
+  await page.getByLabel("题材筛选").selectOption("");
+  await clearedGenre;
+
+  const statusApi = "/api/v1/works?limit=20&status=paused";
+  const statusResponse = page.waitForResponse((response) => response.url().includes(statusApi));
+  await page.getByLabel("状态筛选").selectOption("paused");
+  const statusFiltered = await statusResponse;
+  expect(statusFiltered.status()).toBe(200);
+  const filteredStatuses = (await statusFiltered.json()).data.map(
+    (work: { status: string }) => work.status,
+  );
+  expect(filteredStatuses).toEqual(["paused"]);
+  await expect(page.getByRole("heading", { name: pausedWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: searchWork.title })).toHaveCount(0);
 });
 
 test("shows loading, disabled and long-content states", async ({ page, context }) => {
@@ -107,13 +209,195 @@ test("loads additional pages for a long work list", async ({ page, context }) =>
   await page.reload();
 
   await expect(page.getByRole("heading", { name: /批量作品/ })).toHaveCount(20);
-  const releaseWorks = await holdWorksApi(page);
+  const loadMoreApi = "/api/v1/works?limit=20&cursor=";
+  const additionalPage = page.waitForResponse((response) => response.url().includes(loadMoreApi));
   const loadMore = page.getByRole("button", { name: "加载更多作品" });
   await loadMore.click();
-  await expect(loadMore).toBeDisabled();
-  releaseWorks();
+  const loadedMore = await additionalPage;
+  expect(loadedMore.status()).toBe(200);
+  expect((await loadedMore.json()).data).toHaveLength(2);
   await expect(page.getByRole("heading", { name: /批量作品/ })).toHaveCount(22);
-  await page.unroute("**/api/v1/works?*");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: /批量作品/ })).toHaveCount(20);
+});
+
+test("archives and restores a work from dashboard views", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "归档往返",
+    genre: "history",
+    scaleTarget: "long",
+  });
+  const details = await page.request.get(`/api/v1/works/${work.id}`);
+  expect(details.status()).toBe(200);
+  const version = (await details.json()).data.version as number;
+  const token = await getCsrf(page.request);
+  const serializing = await page.request.patch(`/api/v1/works/${work.id}`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: { version, status: "serializing" },
+  });
+  expect(serializing.status()).toBe(200);
+
+  await page.goto(`/workspace/${work.id}/work-settings`);
+  await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
+  await page.getByRole("button", { name: "归档作品" }).click();
+  const archiveApi = `/api/v1/works/${work.id}/archive`;
+  const archiveResponse = page.waitForResponse((response) => response.url().includes(archiveApi));
+  await page.getByRole("button", { name: "确认归档" }).click();
+  const archived = await archiveResponse;
+  expect(archived.status()).toBe(200);
+  expect((await archived.json()).data.status).toBe("archived");
+
+  await page.goto("/workspace");
+  const archivedPage = waitForWorksPage(
+    page,
+    (url) => url.searchParams.get("status") === "archived",
+  );
+  await page.getByRole("button", { name: "已归档" }).click();
+  await archivedPage;
+  await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
+
+  const persistedArchived = await page.request.get("/api/v1/works?status=archived");
+  expect(persistedArchived.status()).toBe(200);
+  expect((await persistedArchived.json()).data.map((item: { id: string }) => item.id)).toEqual([
+    work.id,
+  ]);
+
+  const restoreApi = `/api/v1/works/${work.id}/restore`;
+  const restoreResponse = page.waitForResponse((response) => response.url().includes(restoreApi));
+  const restoredArchivedPage = waitForWorksPage(
+    page,
+    (url) => url.searchParams.get("status") === "archived",
+  );
+  await page.getByRole("button", { name: "恢复" }).click();
+  const restored = await restoreResponse;
+  await restoredArchivedPage;
+  expect(restored.status()).toBe(200);
+  expect((await restored.json()).data.status).toBe("serializing");
+
+  const activePage = waitForWorksPage(
+    page,
+    (url) => url.searchParams.get("limit") === "20" && !url.searchParams.has("status"),
+  );
+  await page.getByRole("button", { name: "作品", exact: true }).click();
+  await activePage;
+  await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
+
+  const persistedRestore = await page.request.get(`/api/v1/works/${work.id}`);
+  expect(persistedRestore.status()).toBe(200);
+  expect((await persistedRestore.json()).data.status).toBe("serializing");
+});
+
+test("deletes a work from trash after its export receipt is complete", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const deletedWork = await createWork(page.request, {
+    mode: "blank",
+    title: "终章备份",
+    genre: "urban",
+    scaleTarget: "short",
+  });
+  const branchPath = `/api/v1/works/${deletedWork.id}/branches/${deletedWork.mainBranch.id}`;
+  const chapter = await createM0Chapter(page.request, deletedWork);
+  const chapterDetails = await page.request.get(`${branchPath}/chapters/${chapter.id}`);
+  expect(chapterDetails.status()).toBe(200);
+  const chapterVersion = (await chapterDetails.json()).data.version as number;
+  const chapterToken = await getCsrf(page.request);
+  const savedChapter = await page.request.post(`${branchPath}/chapters/${chapter.id}/versions`, {
+    headers: { Origin: origin, "X-CSRF-Token": chapterToken },
+    data: {
+      version: chapterVersion,
+      content: "最后一章已经备份，作者确认可以永久删除。",
+    },
+  });
+  expect(savedChapter.status()).toBe(201);
+
+  const exportToken = await getCsrf(page.request);
+  const exportResponse = await page.request.post(`${branchPath}/exports`, {
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": exportToken,
+      "Idempotency-Key": "dashboard-delete-export",
+    },
+    data: { format: "txt", scope: { kind: "book" } },
+  });
+  expect(exportResponse.status()).toBe(202);
+  const exportId = (await exportResponse.json()).data.id as string;
+
+  const databaseUrl =
+    process.env.E2E_DATABASE_URL ??
+    "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
+  const pool = new Pool({ connectionString: databaseUrl });
+  try {
+    await pool.query(
+      `UPDATE work_export_receipts
+          SET status = 'completed',
+              artifact_object_key = $2,
+              checksum = $3,
+              byte_size = 18,
+              file_name = '终章备份.txt',
+              content_type = 'text/plain',
+              completed_at = now(),
+              expires_at = now() + interval '1 day'
+        WHERE id = $1`,
+      [exportId, `exports/${deletedWork.id}/dashboard-delete.txt`, "c".repeat(64)],
+    );
+
+    await page.goto(`/workspace/${deletedWork.id}/work-settings`);
+    await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
+    await page.getByRole("button", { name: "移入回收站" }).click();
+    const trashApi = `/api/v1/works/${deletedWork.id}/trash`;
+    const trashResponse = page.waitForResponse((response) => response.url().includes(trashApi));
+    await page.getByRole("button", { name: "确认移入" }).click();
+    const trashed = await trashResponse;
+    expect(trashed.status()).toBe(200);
+    expect((await trashed.json()).data).toMatchObject({
+      id: deletedWork.id,
+      deletedAt: expect.any(String),
+      purgeAfter: expect.any(String),
+    });
+
+    await pool.query(
+      `UPDATE works
+          SET deleted_at = now() - interval '2 minutes',
+              purge_after = now() - interval '1 minute'
+        WHERE id = $1`,
+      [deletedWork.id],
+    );
+
+    const trashPage = waitForWorksPage(page, (url) => url.searchParams.get("trash") === "true");
+    await page.goto("/workspace?trash=true");
+    await trashPage;
+    await expect(page.getByRole("heading", { name: deletedWork.title })).toBeVisible();
+    await expect(page.getByRole("button", { name: "永久删除" })).toBeEnabled();
+
+    const purgeApi = `/api/v1/works/${deletedWork.id}/purge`;
+    const purgeResponse = page.waitForResponse((response) => response.url().includes(purgeApi));
+    const dialogHandled = new Promise<void>((resolve) => {
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toContain(`永久删除《${deletedWork.title}》`);
+        await dialog.accept();
+        resolve();
+      });
+    });
+    await page.getByRole("button", { name: "永久删除" }).click();
+    await dialogHandled;
+    const purged = await purgeResponse;
+    expect(purged.status()).toBe(200);
+    expect((await purged.json()).data).toEqual({ id: deletedWork.id, deleted: true });
+    await expect(page.getByRole("heading", { name: deletedWork.title })).toHaveCount(0);
+    expect((await page.request.get(`/api/v1/works/${deletedWork.id}`)).status()).toBe(403);
+    const purgedRows = await pool.query<{ count: string }>(
+      "SELECT count(*) FROM works WHERE id = $1",
+      [deletedWork.id],
+    );
+    expect(purgedRows.rows[0]?.count).toBe("0");
+  } finally {
+    await pool.end();
+  }
 });
 
 test("dashboard states and four viewports hold", async ({ page, context }, testInfo) => {
@@ -140,6 +424,8 @@ test("dashboard states and four viewports hold", async ({ page, context }, testI
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/workspace");
     await expect(page.getByRole("heading", { name: "工作台" })).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+    await expectNoPrototypeOnlyLeakage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
