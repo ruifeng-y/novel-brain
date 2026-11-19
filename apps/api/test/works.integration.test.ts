@@ -97,6 +97,58 @@ describe("works HTTP integration", () => {
     return (await agent.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
   }
 
+  async function createBlankWork(
+    agent: SuperAgentTest,
+    title: string,
+  ): Promise<{ id: string; mainBranch: { id: string } }> {
+    const token = await csrf(agent);
+    const response = await agent
+      .post("/api/v1/works")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
+      .send({ mode: "blank", title })
+      .expect(200);
+    return response.body.data as { id: string; mainBranch: { id: string } };
+  }
+
+  async function createChapterWithContent(
+    agent: SuperAgentTest,
+    token: string,
+    work: { id: string; mainBranch: { id: string } },
+    number: number,
+    title: string,
+    content: string,
+  ): Promise<{ chapterId: string; chapterVersionId: string }> {
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const chapter = await agent
+      .post(`${branchPath}/chapters`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        number,
+        title,
+        brief: {
+          goal: `完成${title}。`,
+          pov: "沈砚",
+          location: "山门",
+          sceneBeats: ["主角抵达山门。"],
+          requiredFacts: ["山门存在"],
+        },
+      })
+      .expect(201);
+    const saved = await agent
+      .post(`${branchPath}/chapters/${chapter.body.data.id}/versions`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: chapter.body.data.version, content })
+      .expect(201);
+    return {
+      chapterId: chapter.body.data.id as string,
+      chapterVersionId: saved.body.data.version.id as string,
+    };
+  }
+
   it("creates a draft work from an idea with a main branch and initial head", async () => {
     const owner = await createAuthenticatedAgent("idea@example.com");
     const token = await csrf(owner);
@@ -438,6 +490,185 @@ describe("works HTTP integration", () => {
       .set("X-CSRF-Token", otherToken)
       .send({ mode: "blank", title: "不应创建" });
     expect([401, 403]).toContain(owned.status);
+  });
+
+  it("projects dashboard progress, word count, quality and open foreshadows from persisted data", async () => {
+    const owner = await createAuthenticatedAgent("dashboard-metrics@example.com");
+    const work = await createBlankWork(owner, "卷末审计");
+    const token = await csrf(owner);
+    const firstChapter = await createChapterWithContent(
+      owner,
+      token,
+      work,
+      1,
+      "第一章",
+      "风雪压住山门。".repeat(20),
+    );
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await owner
+      .post(`${branchPath}/chapters`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        number: 2,
+        title: "尚未动笔",
+        brief: {
+          goal: "完成第二章。",
+          pov: "沈砚",
+          location: "山门",
+          sceneBeats: ["主角推开山门。"],
+          requiredFacts: ["山门存在"],
+        },
+      })
+      .expect(201);
+
+    await databasePool.query(`UPDATE chapters SET word_count = 1200000 WHERE id = $1`, [
+      firstChapter.chapterId,
+    ]);
+    const userId = (await owner.get("/api/v1/auth/me").expect(200)).body.data.user.id as string;
+    const dimensions = [
+      ["hook", "章末钩子"],
+      ["pacing", "节奏"],
+      ["information_density", "信息密度"],
+      ["character_voice", "人物声纹"],
+      ["prose", "文笔"],
+      ["continuity", "连续性"],
+    ].map(([dimension, label]) => ({
+      dimension,
+      label,
+      score: 4,
+      rationale: "证据充分。",
+      evidence: [
+        {
+          kind: "chapter",
+          sourceId: firstChapter.chapterId,
+          sourceVersionId: firstChapter.chapterVersionId,
+          chapterId: firstChapter.chapterId,
+          chapterVersionId: firstChapter.chapterVersionId,
+          quote: "风雪压住山门。",
+          startOffset: 0,
+          endOffset: 7,
+          locator: "第一章开头",
+          explanation: "正文证据。",
+        },
+      ],
+    }));
+    await databasePool.query(
+      `INSERT INTO quality_reports
+         (id, work_id, branch_id, user_id, chapter_id, chapter_version_id,
+          rubric_version, rule_version, source_hash, dimensions, summary, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, 'm1-quality-rubric-v1', 'm1-critic-rules-v1',
+               $7, $8::jsonb, '质量证据', $4)`,
+      [
+        uuidv7(),
+        work.id,
+        work.mainBranch.id,
+        userId,
+        firstChapter.chapterId,
+        firstChapter.chapterVersionId,
+        "a".repeat(64),
+        JSON.stringify(dimensions),
+      ],
+    );
+    await owner
+      .post(`${branchPath}/ledger/entries`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "dashboard-metrics-foreshadow")
+      .send({
+        kind: "foreshadow",
+        title: "断碑下的旧名",
+        summary: "断碑下的名字会在卷末回收。",
+        responsibleRole: "protagonist",
+        targetWindow: { fromChapter: 1, toChapter: 2 },
+        importance: "must",
+        readerPromise: "身世真相",
+      })
+      .expect(201);
+
+    const listed = await owner.get("/api/v1/works").expect(200);
+    expect(listed.body.data[0]).toMatchObject({
+      id: work.id,
+      metrics: {
+        totalWordCount: 1_200_000,
+        progress: {
+          writtenChapters: 1,
+          plannedChapters: 2,
+          percent: 50,
+        },
+        qualityScore: 80,
+        unrecoveredForeshadowCount: 1,
+      },
+    });
+    expect(listed.body.data[0].metrics.lastEditedAt).toEqual(expect.any(String));
+  });
+
+  it("filters works by persisted word count and last edit time", async () => {
+    const owner = await createAuthenticatedAgent("dashboard-filters@example.com");
+    const titlesOf = (body: { data: Array<{ title: string }> }) =>
+      body.data.map((work) => work.title).sort();
+    const fixtures = [
+      {
+        title: "百万之后",
+        wordCount: 1_500_000,
+        age: "now()",
+      },
+      {
+        title: "短篇旧稿",
+        wordCount: 500_000,
+        age: "now() - interval '2 days'",
+      },
+      {
+        title: "超长旧稿",
+        wordCount: 2_500_000,
+        age: "now() - interval '40 days'",
+      },
+    ] as const;
+    for (const fixture of fixtures) {
+      const work = await createBlankWork(owner, fixture.title);
+      const token = await csrf(owner);
+      const chapter = await createChapterWithContent(
+        owner,
+        token,
+        work,
+        1,
+        "第一章",
+        "风雪压住山门。",
+      );
+      await databasePool.query(
+        `UPDATE chapters
+            SET word_count = $2,
+                updated_at = ${fixture.age}
+          WHERE id = $1`,
+        [chapter.chapterId, fixture.wordCount],
+      );
+      await databasePool.query(
+        `UPDATE works
+            SET updated_at = ${fixture.age}
+          WHERE id = $1`,
+        [work.id],
+      );
+      await databasePool.query(
+        `UPDATE work_branches
+            SET updated_at = ${fixture.age}
+          WHERE work_id = $1`,
+        [work.id],
+      );
+    }
+
+    const underOneMillion = await owner.get("/api/v1/works?words=lt1m").expect(200);
+    expect(titlesOf(underOneMillion.body)).toEqual(["短篇旧稿"]);
+    const oneToTwoMillion = await owner.get("/api/v1/works?words=1m-2m").expect(200);
+    expect(titlesOf(oneToTwoMillion.body)).toEqual(["百万之后"]);
+    const overTwoMillion = await owner.get("/api/v1/works?words=gt2m").expect(200);
+    expect(titlesOf(overTwoMillion.body)).toEqual(["超长旧稿"]);
+
+    const updatedToday = await owner.get("/api/v1/works?recent=day").expect(200);
+    expect(titlesOf(updatedToday.body)).toEqual(["百万之后"]);
+    const updatedThisWeek = await owner.get("/api/v1/works?recent=week").expect(200);
+    expect(titlesOf(updatedThisWeek.body)).toEqual(["百万之后", "短篇旧稿"].sort());
+    const updatedThisMonth = await owner.get("/api/v1/works?recent=month").expect(200);
+    expect(titlesOf(updatedThisMonth.body)).toEqual(["百万之后", "短篇旧稿"].sort());
   });
 
   it("updates reversible settings with optimistic locking and archive/restore", async () => {

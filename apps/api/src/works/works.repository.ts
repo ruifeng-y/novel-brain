@@ -9,10 +9,12 @@ import {
   createDatabasePool,
   entities,
   entityVersions,
+  foreshadows,
   genrePacks,
   idempotencyRecords,
   modelConfigs,
   outlineNodes,
+  qualityReports,
   storyBibles,
   versionNodes,
   volumeContracts,
@@ -53,6 +55,20 @@ import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
 export type WorkRecord = InferSelectModel<typeof works>;
 export type WorkBranchRecord = InferSelectModel<typeof workBranches>;
 export type GenrePackRecord = InferSelectModel<typeof genrePacks>;
+export interface WorkListRow {
+  work: WorkRecord;
+  metrics: {
+    totalWordCount: number;
+    progress: {
+      writtenChapters: number;
+      plannedChapters: number;
+      percent: number;
+    };
+    qualityScore: number | null;
+    unrecoveredForeshadowCount: number;
+    lastEditedAt: Date;
+  };
+}
 type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1_000;
 type CopyRow = Record<string, unknown>;
@@ -1063,8 +1079,94 @@ export class WorksRepository implements OnModuleDestroy {
   async list(
     userId: string,
     query: WorkListQuery,
-  ): Promise<{ works: WorkRecord[]; nextCursor: string | null } | "invalid_cursor"> {
+  ): Promise<{ works: WorkListRow[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const mainBranchId = workBranches.id;
+      const totalWordCount = sql<number>`coalesce((
+        SELECT sum(main_chapter.word_count)::int
+          FROM chapters main_chapter
+         WHERE main_chapter.work_id = ${works.id}
+           AND main_chapter.user_id = ${userId}
+           AND main_chapter.branch_id = ${mainBranchId}
+      ), 0)`;
+      const writtenChapters = sql<number>`coalesce((
+        SELECT count(*)::int
+          FROM chapters written_chapter
+         WHERE written_chapter.work_id = ${works.id}
+           AND written_chapter.user_id = ${userId}
+           AND written_chapter.branch_id = ${mainBranchId}
+           AND written_chapter.word_count > 0
+      ), 0)`;
+      const plannedChapters = sql<number>`greatest(
+        coalesce((
+          SELECT count(*)::int
+            FROM chapters planned_chapter
+           WHERE planned_chapter.work_id = ${works.id}
+             AND planned_chapter.user_id = ${userId}
+             AND planned_chapter.branch_id = ${mainBranchId}
+        ), 0),
+        coalesce((
+          SELECT count(DISTINCT outline_chapter.chapter_id)::int
+            FROM outline_nodes outline_chapter
+           WHERE outline_chapter.work_id = ${works.id}
+             AND outline_chapter.user_id = ${userId}
+             AND outline_chapter.branch_id = ${mainBranchId}
+             AND outline_chapter.level = 'chapter'
+             AND outline_chapter.chapter_id IS NOT NULL
+        ), 0)
+      )`;
+      const progressPercent = sql<number>`CASE
+        WHEN ${plannedChapters} = 0 THEN 0
+        ELSE round(100.0 * ${writtenChapters} / ${plannedChapters})::int
+      END`;
+      const lastEditedAt = sql<Date>`greatest(
+        ${works.updatedAt},
+        ${workBranches.updatedAt},
+        coalesce((
+          SELECT max(chapter_edit.updated_at)
+            FROM chapters chapter_edit
+           WHERE chapter_edit.work_id = ${works.id}
+             AND chapter_edit.user_id = ${userId}
+             AND chapter_edit.branch_id = ${mainBranchId}
+        ), ${works.updatedAt}),
+        coalesce((
+          SELECT max(outline_edit.updated_at)
+            FROM outline_nodes outline_edit
+           WHERE outline_edit.work_id = ${works.id}
+             AND outline_edit.user_id = ${userId}
+             AND outline_edit.branch_id = ${mainBranchId}
+        ), ${works.updatedAt}),
+        coalesce((
+          SELECT max(foreshadow_edit.updated_at)
+            FROM foreshadows foreshadow_edit
+           WHERE foreshadow_edit.work_id = ${works.id}
+             AND foreshadow_edit.user_id = ${userId}
+             AND foreshadow_edit.branch_id = ${mainBranchId}
+             AND foreshadow_edit.deleted_at IS NULL
+        ), ${works.updatedAt}),
+        coalesce((
+          SELECT max(entity_edit.updated_at)
+            FROM entities entity_edit
+           WHERE entity_edit.work_id = ${works.id}
+             AND entity_edit.user_id = ${userId}
+             AND entity_edit.branch_id = ${mainBranchId}
+             AND entity_edit.deleted_at IS NULL
+        ), ${works.updatedAt}),
+        coalesce((
+          SELECT max(story_bible_edit.updated_at)
+            FROM story_bibles story_bible_edit
+           WHERE story_bible_edit.work_id = ${works.id}
+             AND story_bible_edit.user_id = ${userId}
+             AND story_bible_edit.branch_id = ${mainBranchId}
+        ), ${works.updatedAt}),
+        coalesce((
+          SELECT max(volume_contract_edit.updated_at)
+            FROM volume_contracts volume_contract_edit
+           WHERE volume_contract_edit.work_id = ${works.id}
+             AND volume_contract_edit.user_id = ${userId}
+             AND volume_contract_edit.branch_id = ${mainBranchId}
+        ), ${works.updatedAt})
+      )`;
       const conditions: SQL[] = [
         eq(works.userId, userId),
         query.trash ? isNotNull(works.deletedAt) : isNull(works.deletedAt),
@@ -1080,6 +1182,17 @@ export class WorksRepository implements OnModuleDestroy {
       if (query.q) {
         const search = `%${query.q}%`;
         conditions.push(or(ilike(works.title, search), ilike(works.penName, search))!);
+      }
+      if (query.words === "lt1m") {
+        conditions.push(sql`${totalWordCount} < 1000000`);
+      } else if (query.words === "1m-2m") {
+        conditions.push(sql`${totalWordCount} >= 1000000 AND ${totalWordCount} < 2000000`);
+      } else if (query.words === "gt2m") {
+        conditions.push(sql`${totalWordCount} >= 2000000`);
+      }
+      if (query.recent) {
+        const hours = query.recent === "day" ? 24 : query.recent === "week" ? 168 : 720;
+        conditions.push(sql`${lastEditedAt} >= now() - make_interval(hours => ${hours})`);
       }
       if (query.cursor) {
         const [cursor] = await transaction
@@ -1100,16 +1213,113 @@ export class WorksRepository implements OnModuleDestroy {
       }
 
       const records = await transaction
-        .select()
+        .select({
+          work: works,
+          mainBranchId,
+          totalWordCount,
+          writtenChapters,
+          plannedChapters,
+          progressPercent,
+          lastEditedAt,
+        })
         .from(works)
+        .leftJoin(
+          workBranches,
+          and(
+            eq(workBranches.workId, works.id),
+            eq(workBranches.userId, userId),
+            eq(workBranches.name, "main"),
+          ),
+        )
         .where(and(...conditions))
         .orderBy(desc(works.id))
         .limit(query.limit + 1);
       const hasMore = records.length > query.limit;
       const page = hasMore ? records.slice(0, query.limit) : records;
+      const workIds = page.map((row) => row.work.id);
+      const branchIds = page.flatMap((row) => (row.mainBranchId ? [row.mainBranchId] : []));
+      const qualityByWork = new Map<string, number[]>();
+      if (workIds.length > 0 && branchIds.length > 0) {
+        const reports = await transaction
+          .select({
+            workId: qualityReports.workId,
+            chapterId: qualityReports.chapterId,
+            dimensions: qualityReports.dimensions,
+          })
+          .from(qualityReports)
+          .innerJoin(chapters, eq(chapters.id, qualityReports.chapterId))
+          .where(
+            and(
+              eq(qualityReports.userId, userId),
+              inArray(qualityReports.workId, workIds),
+              inArray(qualityReports.branchId, branchIds),
+              eq(qualityReports.branchId, chapters.branchId),
+              eq(qualityReports.chapterVersionId, chapters.currentVersionId),
+            ),
+          )
+          .orderBy(desc(qualityReports.createdAt), desc(qualityReports.id));
+        const latestByChapter = new Map<string, (typeof reports)[number]>();
+        for (const report of reports) {
+          if (!latestByChapter.has(report.chapterId)) {
+            latestByChapter.set(report.chapterId, report);
+          }
+        }
+        for (const report of latestByChapter.values()) {
+          const scores = report.dimensions.map((dimension) => dimension.score);
+          if (scores.length === 0) continue;
+          const average = scores.reduce((total, score) => total + score, 0) / scores.length;
+          const normalized = Math.round(average * 20);
+          qualityByWork.set(report.workId, [
+            ...(qualityByWork.get(report.workId) ?? []),
+            normalized,
+          ]);
+        }
+      }
+      const openForeshadowRows =
+        workIds.length > 0 && branchIds.length > 0
+          ? await transaction
+              .select({
+                workId: foreshadows.workId,
+                count: sql<number>`count(*)::int`,
+              })
+              .from(foreshadows)
+              .where(
+                and(
+                  eq(foreshadows.userId, userId),
+                  inArray(foreshadows.workId, workIds),
+                  inArray(foreshadows.branchId, branchIds),
+                  isNull(foreshadows.deletedAt),
+                  inArray(foreshadows.status, ["planned", "planted", "progressed", "deferred"]),
+                ),
+              )
+              .groupBy(foreshadows.workId)
+          : [];
+      const openForeshadowByWork = new Map(
+        openForeshadowRows.map((row) => [row.workId, Number(row.count)]),
+      );
+      const worksWithMetrics: WorkListRow[] = page.map((row) => {
+        const scores = qualityByWork.get(row.work.id) ?? [];
+        return {
+          work: row.work,
+          metrics: {
+            totalWordCount: Number(row.totalWordCount),
+            progress: {
+              writtenChapters: Number(row.writtenChapters),
+              plannedChapters: Number(row.plannedChapters),
+              percent: Number(row.progressPercent),
+            },
+            qualityScore:
+              scores.length > 0
+                ? Math.round(scores.reduce((total, score) => total + score, 0) / scores.length)
+                : null,
+            unrecoveredForeshadowCount: openForeshadowByWork.get(row.work.id) ?? 0,
+            lastEditedAt: new Date(row.lastEditedAt),
+          },
+        };
+      });
       return {
-        works: page,
-        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+        works: worksWithMetrics,
+        nextCursor: hasMore ? (page.at(-1)?.work.id ?? null) : null,
       };
     });
   }

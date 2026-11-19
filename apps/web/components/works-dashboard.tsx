@@ -19,8 +19,8 @@ import {
   workListResponseSchema,
   workResponseSchema,
   workTrashResponseSchema,
-  type Work,
   type WorkGenre,
+  type WorkListItem,
   type WorkStatus,
 } from "@novel-brain/contracts";
 
@@ -49,7 +49,7 @@ const scaleLabels = {
 } as const;
 
 export function WorksDashboard({ displayName }: { displayName: string }) {
-  const [works, setWorks] = useState<Work[]>([]);
+  const [works, setWorks] = useState<WorkListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
@@ -57,8 +57,10 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
   const [status, setStatus] = useState("");
+  const [words, setWords] = useState("");
+  const [recent, setRecent] = useState("");
   const [busyWorkId, setBusyWorkId] = useState("");
-  const [manageWork, setManageWork] = useState<Work | null>(null);
+  const [manageWork, setManageWork] = useState<WorkListItem | null>(null);
   const manageDialogRef = useRef<HTMLElement | null>(null);
   const manageCloseRef = useRef<HTMLButtonElement | null>(null);
   const manageTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -89,6 +91,12 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
         } else if (view === "active" && status) {
           params.set("status", status);
         }
+        if (words) {
+          params.set("words", words);
+        }
+        if (recent) {
+          params.set("recent", recent);
+        }
         if (view === "trash") {
           params.set("trash", "true");
         }
@@ -109,7 +117,7 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
         setLoadingMore(false);
       }
     },
-    [genre, query, status, view],
+    [genre, query, recent, status, view, words],
   );
 
   const load = useCallback(async () => loadPage(null, false), [loadPage]);
@@ -150,7 +158,7 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [closeManage, manageWork]);
 
-  async function restoreWork(work: Work) {
+  async function restoreWork(work: WorkListItem) {
     setBusyWorkId(work.id);
     setError("");
     try {
@@ -174,7 +182,7 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
     }
   }
 
-  async function archiveWork(work: Work) {
+  async function archiveWork(work: WorkListItem) {
     setBusyWorkId(work.id);
     setError("");
     try {
@@ -197,7 +205,7 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
     }
   }
 
-  async function trashWork(work: Work) {
+  async function trashWork(work: WorkListItem) {
     if (!window.confirm(`移入回收站《${work.title}》？30 天内仍可恢复。`)) return;
     setBusyWorkId(work.id);
     setError("");
@@ -223,7 +231,7 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
     }
   }
 
-  async function purgeWork(work: Work) {
+  async function purgeWork(work: WorkListItem) {
     if (!window.confirm(`永久删除《${work.title}》？此操作不可恢复。`)) return;
     setBusyWorkId(work.id);
     setError("");
@@ -346,6 +354,32 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
             <option value="archived">已归档</option>
           </select>
         </label>
+        <label>
+          <span className="sr-only">字数筛选</span>
+          <select
+            aria-label="字数筛选"
+            onChange={(event) => setWords(event.target.value)}
+            value={words}
+          >
+            <option value="">全部字数</option>
+            <option value="lt1m">100 万字以下</option>
+            <option value="1m-2m">100–200 万字</option>
+            <option value="gt2m">200 万字以上</option>
+          </select>
+        </label>
+        <label>
+          <span className="sr-only">最近编辑</span>
+          <select
+            aria-label="最近编辑"
+            onChange={(event) => setRecent(event.target.value)}
+            value={recent}
+          >
+            <option value="">全部时间</option>
+            <option value="day">24 小时内</option>
+            <option value="week">7 天内</option>
+            <option value="month">30 天内</option>
+          </select>
+        </label>
       </section>
 
       {error ? (
@@ -398,10 +432,28 @@ export function WorksDashboard({ displayName }: { displayName: string }) {
                   </span>
                 </div>
                 <p>
-                  {genreLabels[work.genre]} · {scaleLabels[work.scaleTarget]} · 每章约{" "}
-                  {work.chapterLengthTarget.toLocaleString("zh-CN")} 字
+                  主线 · {genreLabels[work.genre]} · {formatWordCount(work.metrics.totalWordCount)}{" "}
+                  · {scaleLabels[work.scaleTarget]}
                 </p>
-                <small>最近编辑 {formatDate(work.updatedAt)}</small>
+                <div
+                  aria-label={`已完成 ${work.metrics.progress.writtenChapters} / ${work.metrics.progress.plannedChapters} 章`}
+                  aria-valuemax={100}
+                  aria-valuemin={0}
+                  aria-valuenow={work.metrics.progress.percent}
+                  className="project-progress"
+                  role="progressbar"
+                >
+                  <span style={{ width: `${work.metrics.progress.percent}%` }} />
+                </div>
+                <time dateTime={work.metrics.lastEditedAt}>
+                  最近编辑 {formatDate(work.metrics.lastEditedAt)} · 已完成{" "}
+                  {work.metrics.progress.writtenChapters} / {work.metrics.progress.plannedChapters}{" "}
+                  章
+                </time>
+                <div className="project-metrics">
+                  <span>质量 {work.metrics.qualityScore ?? "--"}</span>
+                  <span>未回收伏笔 {work.metrics.unrecoveredForeshadowCount}</span>
+                </div>
                 {work.deletedAt ? (
                   <small>
                     {work.canPurge
@@ -562,4 +614,11 @@ function formatDate(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatWordCount(value: number): string {
+  if (value >= 10_000) {
+    return `${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 1 }).format(value / 10_000)} 万字`;
+  }
+  return `${value.toLocaleString("zh-CN")} 字`;
 }

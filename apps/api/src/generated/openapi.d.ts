@@ -17646,6 +17646,8 @@ export interface operations {
         q?: string;
         status?: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
         genre?: "xianxia" | "history" | "urban";
+        words?: "lt1m" | "1m-2m" | "gt2m";
+        recent?: "day" | "week" | "month";
         trash?: "true" | "false";
       };
       header?: never;
@@ -17748,6 +17750,18 @@ export interface operations {
               createdAt: string;
               /** Format: date-time */
               updatedAt: string;
+              metrics: {
+                totalWordCount: number;
+                progress: {
+                  writtenChapters: number;
+                  plannedChapters: number;
+                  percent: number;
+                };
+                qualityScore: number | null;
+                unrecoveredForeshadowCount: number;
+                /** Format: date-time */
+                lastEditedAt: string;
+              };
             }[];
             /** Format: starts_with */
             requestId: string;

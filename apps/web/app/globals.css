@@ -1426,9 +1426,38 @@ a:focus-visible {
   line-height: 1.5;
 }
 
-.project-info small {
+.project-info small,
+.project-info time {
   color: var(--muted);
   font-size: 11px;
+}
+
+.project-progress {
+  height: 5px;
+  margin: 8px 0;
+  overflow: hidden;
+  background: #eef1ec;
+  border-radius: 99px;
+}
+
+.project-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--jade);
+  border-radius: inherit;
+}
+
+.project-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.project-metrics span:first-child {
+  color: var(--jade);
 }
 
 .project-actions {
