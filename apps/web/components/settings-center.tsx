@@ -2917,7 +2917,7 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
-            {entity.type === "character" && !locked ? (
+            {entity.type === "character" && !locked && activeSection === "relations" ? (
               <div className="settings-detail-block settings-relationship-editor">
                 <h3>新增类型化关系</h3>
                 {relationshipTargets.length > 0 ? (

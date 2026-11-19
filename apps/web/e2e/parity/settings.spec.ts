@@ -309,6 +309,7 @@ test("persists relationship, map, power system, timeline and custom-field action
     `/workspace/${work.id}/settings?column=characters&entityId=${sourceCharacter.character.id}`,
   );
   await expect(page.getByRole("heading", { name: "沈砚" })).toBeVisible();
+  await page.locator(".entity-page-nav").getByRole("button", { name: /^关系/ }).click();
   const relationshipSection = page.locator("#entity-section-relations");
   await relationshipSection.getByLabel("关系对象").selectOption(targetCharacter.character.id);
   await relationshipSection.getByLabel("关系类型").selectOption("ally");
