@@ -4,6 +4,7 @@ import { Pool } from "pg";
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import { createM0Chapter } from "../helpers/m0";
 import { expectAuthorFacingLanguage, expectNoPrototypeOnlyLeakage } from "../helpers/ui";
+import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
 
@@ -46,6 +47,22 @@ function waitForWorksPage(page: Page, predicate: (url: URL) => boolean) {
   });
 }
 
+function waitForApiResponse(page: Page, method: string, api: string) {
+  const expected = new URL(api, origin);
+  return page.waitForResponse((response) => {
+    const actual = new URL(response.url());
+    if (response.request().method() !== method || actual.pathname !== expected.pathname) {
+      return false;
+    }
+    for (const [key, value] of expected.searchParams) {
+      if (value ? actual.searchParams.get(key) !== value : !actual.searchParams.has(key)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 test.beforeEach(async () => {
   await resetRateLimits();
 });
@@ -71,10 +88,7 @@ test("creates a work from the dashboard and persists it", async ({ page, context
   await page.getByRole("button", { name: "空白作品", exact: true }).click();
   await page.getByLabel("书名").fill("雾港来信");
 
-  const creationResponse = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return url.pathname === "/api/v1/works" && response.request().method() === "POST";
-  });
+  const creationResponse = waitForApiResponse(page, "POST", "/api/v1/works");
   await page.getByRole("button", { name: "创建作品并进入总览" }).click();
   const created = await creationResponse;
   expect(created.status()).toBe(200);
@@ -130,7 +144,7 @@ test("searches and filters persisted works from the dashboard", async ({ page, c
   await expect(page.getByRole("heading", { name: "暂停之后" })).toBeVisible();
 
   const searchApi = "/api/v1/works?limit=20&q=";
-  const searchResponse = page.waitForResponse((response) => response.url().includes(searchApi));
+  const searchResponse = waitForApiResponse(page, "GET", searchApi);
   await page.getByLabel("搜索作品").fill("长夜");
   const searched = await searchResponse;
   expect(searched.status()).toBe(200);
@@ -147,7 +161,7 @@ test("searches and filters persisted works from the dashboard", async ({ page, c
   await clearedSearch;
 
   const genreApi = "/api/v1/works?limit=20&genre=urban";
-  const genreResponse = page.waitForResponse((response) => response.url().includes(genreApi));
+  const genreResponse = waitForApiResponse(page, "GET", genreApi);
   await page.getByLabel("题材筛选").selectOption("urban");
   const genreFiltered = await genreResponse;
   expect(genreFiltered.status()).toBe(200);
@@ -166,7 +180,7 @@ test("searches and filters persisted works from the dashboard", async ({ page, c
   await clearedGenre;
 
   const statusApi = "/api/v1/works?limit=20&status=paused";
-  const statusResponse = page.waitForResponse((response) => response.url().includes(statusApi));
+  const statusResponse = waitForApiResponse(page, "GET", statusApi);
   await page.getByLabel("状态筛选").selectOption("paused");
   const statusFiltered = await statusResponse;
   expect(statusFiltered.status()).toBe(200);
@@ -209,14 +223,27 @@ test("loads additional pages for a long work list", async ({ page, context }) =>
   await page.reload();
 
   await expect(page.getByRole("heading", { name: /批量作品/ })).toHaveCount(20);
+  let releaseMore!: () => void;
+  const additionalPageGate = new Promise<void>((resolve) => {
+    releaseMore = resolve;
+  });
+  await page.route("**/api/v1/works?*", async (route) => {
+    if (new URL(route.request().url()).searchParams.has("cursor")) {
+      await additionalPageGate;
+    }
+    await route.continue();
+  });
   const loadMoreApi = "/api/v1/works?limit=20&cursor=";
-  const additionalPage = page.waitForResponse((response) => response.url().includes(loadMoreApi));
+  const additionalPage = waitForApiResponse(page, "GET", loadMoreApi);
   const loadMore = page.getByRole("button", { name: "加载更多作品" });
   await loadMore.click();
+  await expect(loadMore).toBeDisabled();
+  releaseMore();
   const loadedMore = await additionalPage;
   expect(loadedMore.status()).toBe(200);
   expect((await loadedMore.json()).data).toHaveLength(2);
   await expect(page.getByRole("heading", { name: /批量作品/ })).toHaveCount(22);
+  await page.unroute("**/api/v1/works?*");
   await page.reload();
   await expect(page.getByRole("heading", { name: /批量作品/ })).toHaveCount(20);
 });
@@ -243,7 +270,7 @@ test("archives and restores a work from dashboard views", async ({ page, context
   await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
   await page.getByRole("button", { name: "归档作品" }).click();
   const archiveApi = `/api/v1/works/${work.id}/archive`;
-  const archiveResponse = page.waitForResponse((response) => response.url().includes(archiveApi));
+  const archiveResponse = waitForApiResponse(page, "POST", archiveApi);
   await page.getByRole("button", { name: "确认归档" }).click();
   const archived = await archiveResponse;
   expect(archived.status()).toBe(200);
@@ -265,7 +292,7 @@ test("archives and restores a work from dashboard views", async ({ page, context
   ]);
 
   const restoreApi = `/api/v1/works/${work.id}/restore`;
-  const restoreResponse = page.waitForResponse((response) => response.url().includes(restoreApi));
+  const restoreResponse = waitForApiResponse(page, "POST", restoreApi);
   const restoredArchivedPage = waitForWorksPage(
     page,
     (url) => url.searchParams.get("status") === "archived",
@@ -287,6 +314,36 @@ test("archives and restores a work from dashboard views", async ({ page, context
   const persistedRestore = await page.request.get(`/api/v1/works/${work.id}`);
   expect(persistedRestore.status()).toBe(200);
   expect((await persistedRestore.json()).data.status).toBe("serializing");
+
+  await page.goto(`/workspace/${work.id}/work-settings`);
+  await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
+  await page.getByRole("button", { name: "移入回收站" }).click();
+  const trashApi = `/api/v1/works/${work.id}/trash`;
+  const trashResponse = waitForApiResponse(page, "POST", trashApi);
+  await page.getByRole("button", { name: "确认移入" }).click();
+  const trashed = await trashResponse;
+  expect(trashed.status()).toBe(200);
+  expect((await trashed.json()).data).toMatchObject({
+    id: work.id,
+    deletedAt: expect.any(String),
+    purgeAfter: expect.any(String),
+  });
+
+  const trashPage = waitForWorksPage(page, (url) => url.searchParams.get("trash") === "true");
+  await expect(page).toHaveURL(/\/workspace\?trash=true$/);
+  await trashPage;
+  await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
+
+  const trashRestoreApi = `/api/v1/works/${work.id}/trash/restore`;
+  const trashRestoreResponse = waitForApiResponse(page, "POST", trashRestoreApi);
+  await page.getByRole("button", { name: "恢复" }).click();
+  const restoredTrash = await trashRestoreResponse;
+  expect(restoredTrash.status()).toBe(200);
+  expect((await restoredTrash.json()).data.deletedAt).toBeNull();
+
+  const persistedTrashRestore = await page.request.get(`/api/v1/works/${work.id}`);
+  expect(persistedTrashRestore.status()).toBe(200);
+  expect((await persistedTrashRestore.json()).data.deletedAt).toBeNull();
 });
 
 test("deletes a work from trash after its export receipt is complete", async ({
@@ -315,50 +372,59 @@ test("deletes a work from trash after its export receipt is complete", async ({
   });
   expect(savedChapter.status()).toBe(201);
 
-  const exportToken = await getCsrf(page.request);
-  const exportResponse = await page.request.post(`${branchPath}/exports`, {
-    headers: {
-      Origin: origin,
-      "X-CSRF-Token": exportToken,
-      "Idempotency-Key": "dashboard-delete-export",
-    },
-    data: { format: "txt", scope: { kind: "book" } },
-  });
-  expect(exportResponse.status()).toBe(202);
-  const exportId = (await exportResponse.json()).data.id as string;
+  let exportId = "";
+  const worker = await startWorker();
+  try {
+    const exportToken = await getCsrf(page.request);
+    const exportResponse = await page.request.post(`${branchPath}/exports`, {
+      headers: {
+        Origin: origin,
+        "X-CSRF-Token": exportToken,
+        "Idempotency-Key": "dashboard-delete-export",
+      },
+      data: { format: "txt", scope: { kind: "book" } },
+    });
+    expect(exportResponse.status()).toBe(202);
+    exportId = (await exportResponse.json()).data.id as string;
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get(`${branchPath}/exports/${exportId}`);
+          return response.ok() ? (await response.json()).data.status : response.status();
+        },
+        { timeout: 30_000 },
+      )
+      .toBe("completed");
+  } finally {
+    await worker.stop();
+  }
 
   const databaseUrl =
     process.env.E2E_DATABASE_URL ??
     "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
   const pool = new Pool({ connectionString: databaseUrl });
   try {
-    await pool.query(
-      `UPDATE work_export_receipts
-          SET status = 'completed',
-              artifact_object_key = $2,
-              checksum = $3,
-              byte_size = 18,
-              file_name = '终章备份.txt',
-              content_type = 'text/plain',
-              completed_at = now(),
-              expires_at = now() + interval '1 day'
-        WHERE id = $1`,
-      [exportId, `exports/${deletedWork.id}/dashboard-delete.txt`, "c".repeat(64)],
-    );
-
     await page.goto(`/workspace/${deletedWork.id}/work-settings`);
     await expect(page.getByRole("heading", { name: "把这本书的边界定清楚" })).toBeVisible();
     await page.getByRole("button", { name: "移入回收站" }).click();
     const trashApi = `/api/v1/works/${deletedWork.id}/trash`;
-    const trashResponse = page.waitForResponse((response) => response.url().includes(trashApi));
+    const trashResponse = waitForApiResponse(page, "POST", trashApi);
     await page.getByRole("button", { name: "确认移入" }).click();
     const trashed = await trashResponse;
     expect(trashed.status()).toBe(200);
-    expect((await trashed.json()).data).toMatchObject({
+    const trashPayload = (await trashed.json()).data as {
+      deletedAt: string;
+      id: string;
+      purgeAfter: string;
+    };
+    expect(trashPayload).toMatchObject({
       id: deletedWork.id,
       deletedAt: expect.any(String),
       purgeAfter: expect.any(String),
     });
+    expect(
+      new Date(trashPayload.purgeAfter).getTime() - new Date(trashPayload.deletedAt).getTime(),
+    ).toBe(30 * 24 * 60 * 60 * 1_000);
 
     await pool.query(
       `UPDATE works
@@ -375,26 +441,44 @@ test("deletes a work from trash after its export receipt is complete", async ({
     await expect(page.getByRole("button", { name: "永久删除" })).toBeEnabled();
 
     const purgeApi = `/api/v1/works/${deletedWork.id}/purge`;
-    const purgeResponse = page.waitForResponse((response) => response.url().includes(purgeApi));
-    const dialogHandled = new Promise<void>((resolve) => {
-      page.once("dialog", async (dialog) => {
-        expect(dialog.message()).toContain(`永久删除《${deletedWork.title}》`);
-        await dialog.accept();
-        resolve();
+    const purgeResponse = waitForApiResponse(page, "POST", purgeApi);
+    let dialogMessage = "";
+    const dialogHandled = new Promise<void>((resolve, reject) => {
+      page.once("dialog", (dialog) => {
+        dialogMessage = dialog.message();
+        dialog.accept().then(resolve, reject);
       });
     });
     await page.getByRole("button", { name: "永久删除" }).click();
     await dialogHandled;
+    expect(dialogMessage).toContain(`永久删除《${deletedWork.title}》`);
     const purged = await purgeResponse;
     expect(purged.status()).toBe(200);
     expect((await purged.json()).data).toEqual({ id: deletedWork.id, deleted: true });
     await expect(page.getByRole("heading", { name: deletedWork.title })).toHaveCount(0);
     expect((await page.request.get(`/api/v1/works/${deletedWork.id}`)).status()).toBe(403);
-    const purgedRows = await pool.query<{ count: string }>(
-      "SELECT count(*) FROM works WHERE id = $1",
+    const purgedRows = await pool.query<{
+      branches: string;
+      chapters: string;
+      exports: string;
+      versions: string;
+      works: string;
+    }>(
+      `SELECT
+         (SELECT count(*) FROM works WHERE id = $1)::text AS works,
+         (SELECT count(*) FROM work_branches WHERE work_id = $1)::text AS branches,
+         (SELECT count(*) FROM chapters WHERE work_id = $1)::text AS chapters,
+         (SELECT count(*) FROM chapter_versions WHERE work_id = $1)::text AS versions,
+         (SELECT count(*) FROM work_export_receipts WHERE work_id = $1)::text AS exports`,
       [deletedWork.id],
     );
-    expect(purgedRows.rows[0]?.count).toBe("0");
+    expect(purgedRows.rows[0]).toEqual({
+      branches: "0",
+      chapters: "0",
+      exports: "0",
+      versions: "0",
+      works: "0",
+    });
   } finally {
     await pool.end();
   }
