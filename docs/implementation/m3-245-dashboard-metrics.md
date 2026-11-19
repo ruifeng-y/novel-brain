@@ -28,4 +28,7 @@ Both filters are applied before cursor pagination.
   - `filters works by persisted word count and last edit time`
 - Dashboard owner Playwright: `apps/web/e2e/parity/dashboard.spec.ts`
   - `shows persisted metrics and filters by word count and last edit`
+- Linux/Chromium candidates: `artifacts/ui/candidates/m3-245-dashboard/`
+  - Author-approved at 390, 900, 1180 and 1440; hashes and signoff are recorded in `docs/ui/v1-prototype-signoff.md`.
+  - Formal files: `artifacts/ui/golden/dashboard/dashboard-{390,900,1180,1440}.png`.
 

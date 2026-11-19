@@ -7,7 +7,7 @@
 ## 实现结果
 
 - 17 个生产页面均有唯一 owner、production Playwright spec 和四档生产 Golden；`auth.spec.ts` 新增直接 `toHaveScreenshot` 与 `prototype_only` 扫描。
-- 当前 `auth`、`help` 与 `legal` 为 `parity-verified`；其余 14 个非静态页面在逐动作 API/持久化审计和最终 Linux/Chromium PR CI 通过前保持 `production-built`。`help` 已通过真实生产路由错误边界、重试恢复和正常 Production CI。
+- 当前 `auth`、`help`、`legal` 与 dashboard 为 `parity-verified`；其余 13 个非静态页面在逐动作 API/持久化审计和最终 Linux/Chromium PR CI 通过前保持 `production-built`。dashboard 已补齐完整列表筛选、主线持久化指标、四档 Golden 和作者视觉签收。
 - `scripts/validate-readiness.mjs` 校验页面、依赖和 Golden 结构；`pnpm release:check` 才负责要求所有生产页面为 `parity-verified` 或 `deviation-approved`。
 - `docs/ui/prototype-contract.md` 与 `docs/ui/v1-ui-parity-matrix.md` 已对齐 M0–M3 当前生产状态。
 - `#98/#99/#100/#101/#103` package parents 已用子项合并与 CI 证据关闭。

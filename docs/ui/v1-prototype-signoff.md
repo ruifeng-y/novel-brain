@@ -125,6 +125,17 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 12 张正式文件已写入 `artifacts/ui/golden/help/`、`artifacts/ui/golden/legal/` 与 `artifacts/ui/golden/export-publish/`。截图来自真实生产路由和固定验收数据；`help` 覆盖 FAQ 与空搜索状态，`legal` 覆盖三份法律文件入口和条款详情，`export-publish` 覆盖内容安全记录、证据、申诉/撤回入口及 AI 标识。Linux/Chromium 生成证据为 [Production CI #44045578715](https://github.com/ruifeng-y/novel-brain/actions/runs/44045578715) 的 `update_golden` Playwright artifact。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、`prototype_only` 扫描、无横向溢出和真实行为断言后才合并。
 
+## 2026-11-19 dashboard 完整筛选与指标 Linux Golden 签收
+
+签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-245-dashboard/` 中 dashboard 在 390 / 900 / 1180 / 1440 四档的 Linux/Chromium 候选作为正式 Golden。候选来自受控 `update_golden` 运行 [Production CI #44495408577](https://github.com/ruifeng-y/novel-brain/actions/runs/44495408577) 的 Playwright artifact。
+
+- `dashboard-390.png`：`390x900`，SHA-256 `C8B7B0EFCD1E6FD0B11307ACD3DCFD95B85228CD7384C3BE2A088C2E5ABD4FAC`
+- `dashboard-900.png`：`900x900`，SHA-256 `9BD05D2D5B4D91B8DAAE6D6014B03E8DE7456A8D00903F780AB0D011F8D797A7`
+- `dashboard-1180.png`：`1180x900`，SHA-256 `629B2253D42BDF836DE48AE0EECE4303DF5650CE225030BC8518EB674C57850C`
+- `dashboard-1440.png`：`1440x900`，SHA-256 `3CB0FDDA7BC3243B706D94CC6F8412500B3234ACF3B815149C0934EC79A1764D`
+
+四张正式文件已写入 `artifacts/ui/golden/dashboard/`。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、完整指标/筛选断言、作者语言、`prototype_only` 扫描和无横向溢出后才合并。
+
 ## 2026-11-18 work-settings 与 dashboard Linux Golden 签收
 
 签收人：ruifeng-y。作者确认 `#142` 的 `work-settings` 四档生产布局，以及受影响后的 `dashboard` 生产布局；并确认使用 Linux/Chromium actual 替换现有 Windows Golden。
