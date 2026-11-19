@@ -831,6 +831,31 @@ export const workSchema = z.object({
 });
 export type Work = z.infer<typeof workSchema>;
 
+export const workProgressSchema = z
+  .object({
+    writtenChapters: z.number().int().nonnegative(),
+    plannedChapters: z.number().int().nonnegative(),
+    percent: z.number().int().min(0).max(100),
+  })
+  .strict();
+export type WorkProgress = z.infer<typeof workProgressSchema>;
+
+export const workListMetricsSchema = z
+  .object({
+    totalWordCount: z.number().int().nonnegative(),
+    progress: workProgressSchema,
+    qualityScore: z.number().int().min(0).max(100).nullable(),
+    unrecoveredForeshadowCount: z.number().int().nonnegative(),
+    lastEditedAt: z.string().datetime(),
+  })
+  .strict();
+export type WorkListMetrics = z.infer<typeof workListMetricsSchema>;
+
+export const workListItemSchema = workSchema.extend({
+  metrics: workListMetricsSchema,
+});
+export type WorkListItem = z.infer<typeof workListItemSchema>;
+
 export const workUpdateRequestSchema = z
   .object({
     version: z.number().int().positive(),
@@ -927,6 +952,8 @@ export const workListQuerySchema = cursorPageQuerySchema
     q: z.string().trim().max(120).optional(),
     status: workStatusSchema.optional(),
     genre: workGenreSchema.optional(),
+    words: z.enum(["lt1m", "1m-2m", "gt2m"]).optional(),
+    recent: z.enum(["day", "week", "month"]).optional(),
     trash: z
       .enum(["true", "false"])
       .transform((value) => value === "true")
@@ -936,7 +963,7 @@ export const workListQuerySchema = cursorPageQuerySchema
 export type WorkListQuery = z.infer<typeof workListQuerySchema>;
 
 export const workResponseSchema = apiEnvelopeSchema(workOverviewSchema);
-export const workListResponseSchema = cursorListResponseSchema(z.array(workSchema));
+export const workListResponseSchema = cursorListResponseSchema(z.array(workListItemSchema));
 export const workBranchListQuerySchema = cursorPageQuerySchema;
 export type WorkBranchListQuery = z.infer<typeof workBranchListQuerySchema>;
 export const workBranchesResponseSchema = cursorListResponseSchema(z.array(workBranchSchema));

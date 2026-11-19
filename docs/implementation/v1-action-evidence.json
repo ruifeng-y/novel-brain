@@ -84,10 +84,10 @@
         {
           "id": "filter",
           "name": "筛选作品",
-          "api": "/api/v1/works?limit=20&status=paused",
+          "api": "/api/v1/works?limit=20&words=1m-2m",
           "spec": "apps/web/e2e/parity/dashboard.spec.ts",
-          "test": "searches and filters persisted works from the dashboard",
-          "assertion": "expect(filteredStatuses).toEqual([\"paused\"]);"
+          "test": "shows persisted metrics and filters by word count and last edit",
+          "assertion": "expect(wordFilteredTitles).toEqual([\"今日百万\"]);"
         },
         {
           "id": "archive-work",

@@ -13,6 +13,7 @@ import {
   type WorkCreateRequest,
   type WorkDuplicateRequest,
   type WorkLifecycleRequest,
+  type WorkListItem,
   type WorkListQuery,
   type WorkOverview,
   type WorkPurgeResponse,
@@ -34,6 +35,7 @@ import { ReadinessService } from "../readiness/readiness.service";
 import { WorksRepository } from "./works.repository";
 import type {
   WorkBranchRecord,
+  WorkListRow,
   WorkRecord,
   WorksAuditContext,
   WorkUpdateValues,
@@ -100,25 +102,25 @@ export class WorksService {
   async list(
     userId: string,
     query: WorkListQuery,
-  ): Promise<{ works: Work[]; nextCursor: string | null }> {
+  ): Promise<{ works: WorkListItem[]; nextCursor: string | null }> {
     const result = await this.repository.list(userId, query);
     if (result === "invalid_cursor") {
       throw invalidCursorError();
     }
     const packs = await this.repository.findGenrePacksByIds(
-      result.works.flatMap((work) => (work.templatePackId ? [work.templatePackId] : [])),
+      result.works.flatMap((row) => (row.work.templatePackId ? [row.work.templatePackId] : [])),
     );
     const exportReadyIds = await this.repository.exportReadyWorkIds(
       userId,
-      result.works.flatMap((work) => (work.deletedAt ? [work.id] : [])),
+      result.works.flatMap((row) => (row.work.deletedAt ? [row.work.id] : [])),
     );
     const packById = new Map(packs.map((pack) => [pack.id, pack]));
     return {
-      works: result.works.map((work) =>
-        this.toContract(
-          work,
-          work.templatePackId ? packById.get(work.templatePackId) : undefined,
-          exportReadyIds.has(work.id),
+      works: result.works.map((row) =>
+        this.toListContract(
+          row,
+          row.work.templatePackId ? packById.get(row.work.templatePackId) : undefined,
+          exportReadyIds.has(row.work.id),
         ),
       ),
       nextCursor: result.nextCursor,
@@ -544,6 +546,20 @@ export class WorksService {
       canPurge: purgeDue && exportReady,
       createdAt: work.createdAt.toISOString(),
       updatedAt: work.updatedAt.toISOString(),
+    };
+  }
+
+  private toListContract(
+    row: WorkListRow,
+    templatePack?: GenrePackRecord,
+    hasCompletedExport = false,
+  ): WorkListItem {
+    return {
+      ...this.toContract(row.work, templatePack, hasCompletedExport),
+      metrics: {
+        ...row.metrics,
+        lastEditedAt: row.metrics.lastEditedAt.toISOString(),
+      },
     };
   }
 

@@ -214,7 +214,253 @@ test("searches and filters persisted works from the dashboard", async ({ page, c
   expect(filteredStatuses).toEqual(["paused"]);
   await expect(page.getByRole("heading", { name: pausedWork.title })).toBeVisible();
   await expect(page.getByRole("heading", { name: searchWork.title })).toHaveCount(0);
+
+  const preparingFilter = waitForApiResponse(
+    page,
+    "GET",
+    "/api/v1/works?limit=20&status=preparing",
+  );
+  await page.getByLabel("状态筛选").selectOption("preparing");
+  await preparingFilter;
+  await expect(page.getByRole("heading", { name: searchWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: urbanWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: pausedWork.title })).toHaveCount(0);
 });
+
+test("shows persisted metrics and filters by word count and last edit", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const todayWork = await createWork(page.request, {
+    mode: "blank",
+    title: "今日百万",
+    genre: "xianxia",
+  });
+  const weekWork = await createWork(page.request, {
+    mode: "blank",
+    title: "本周短篇",
+    genre: "urban",
+  });
+  const oldWork = await createWork(page.request, {
+    mode: "blank",
+    title: "旧月超长",
+    genre: "history",
+  });
+
+  const todayChapter = await createM0Chapter(page.request, todayWork);
+  const todayBranchPath = `/api/v1/works/${todayWork.id}/branches/${todayWork.mainBranch.id}`;
+  const todayChapterDetails = await page.request.get(
+    `${todayBranchPath}/chapters/${todayChapter.id}`,
+  );
+  const todayChapterVersion = (await todayChapterDetails.json()).data.version as number;
+  const chapterToken = await getCsrf(page.request);
+  const todayVersion = await page.request.post(
+    `${todayBranchPath}/chapters/${todayChapter.id}/versions`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": chapterToken },
+      data: { version: todayChapterVersion, content: "风雪压住山门。".repeat(20) },
+    },
+  );
+  expect(todayVersion.status()).toBe(201);
+  const todayVersionId = (await todayVersion.json()).data.version.id as string;
+
+  const plannedChapterVersion = await page.request.post(`${todayBranchPath}/chapters`, {
+    headers: { Origin: origin, "X-CSRF-Token": await getCsrf(page.request) },
+    data: {
+      number: 2,
+      title: "尚未动笔",
+      brief: {
+        goal: "完成第二章。",
+        pov: "沈砚",
+        location: "山门",
+        sceneBeats: ["主角推开山门。"],
+        requiredFacts: ["山门存在"],
+      },
+    },
+  });
+  expect(plannedChapterVersion.status()).toBe(201);
+  for (const work of [weekWork, oldWork]) {
+    const chapter = await createM0Chapter(page.request, work);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const details = await page.request.get(`${branchPath}/chapters/${chapter.id}`);
+    const token = await getCsrf(page.request);
+    const saved = await page.request.post(`${branchPath}/chapters/${chapter.id}/versions`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        version: (await details.json()).data.version,
+        content: "风雪压住山门。",
+      },
+    });
+    expect(saved.status()).toBe(201);
+  }
+
+  const databaseUrl =
+    process.env.E2E_DATABASE_URL ??
+    "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
+  const pool = new Pool({ connectionString: databaseUrl });
+  try {
+    await pool.query("UPDATE chapters SET word_count = 1500000 WHERE id = $1", [todayChapter.id]);
+    await pool.query(`UPDATE works SET updated_at = now() - interval '40 days' WHERE id = $1`, [
+      oldWork.id,
+    ]);
+    await pool.query(`UPDATE chapters SET word_count = 500000 WHERE work_id = $1`, [weekWork.id]);
+    await pool.query(`UPDATE works SET updated_at = now() - interval '2 days' WHERE id = $1`, [
+      weekWork.id,
+    ]);
+    await pool.query(
+      `UPDATE chapters SET updated_at = now() - interval '2 days' WHERE work_id = $1`,
+      [weekWork.id],
+    );
+    await pool.query(
+      `UPDATE work_branches SET updated_at = now() - interval '2 days' WHERE work_id = $1`,
+      [weekWork.id],
+    );
+    await pool.query(`UPDATE chapters SET word_count = 2500000 WHERE work_id = $1`, [oldWork.id]);
+    await pool.query(
+      `UPDATE chapters SET updated_at = now() - interval '40 days' WHERE work_id = $1`,
+      [oldWork.id],
+    );
+    await pool.query(
+      `UPDATE work_branches SET updated_at = now() - interval '40 days' WHERE work_id = $1`,
+      [oldWork.id],
+    );
+
+    const userId = (await (await page.request.get("/api/v1/auth/me")).json()).data.user
+      .id as string;
+    const dimensions = [
+      "hook",
+      "pacing",
+      "information_density",
+      "character_voice",
+      "prose",
+      "continuity",
+    ].map((dimension) => ({
+      dimension,
+      label: dimension,
+      score: 4,
+      rationale: "证据充分。",
+      evidence: [
+        {
+          kind: "chapter",
+          sourceId: todayChapter.id,
+          sourceVersionId: todayVersionId,
+          chapterId: todayChapter.id,
+          chapterVersionId: todayVersionId,
+          quote: "风雪压住山门。",
+          startOffset: 0,
+          endOffset: 7,
+          locator: "第一章开头",
+          explanation: "正文证据。",
+        },
+      ],
+    }));
+    await pool.query(
+      `INSERT INTO quality_reports
+         (id, work_id, branch_id, user_id, chapter_id, chapter_version_id,
+          rubric_version, rule_version, source_hash, dimensions, summary, created_by)
+       VALUES ($8, $1, $2, $3, $4, $5,
+               'm1-quality-rubric-v1', 'm1-critic-rules-v1', $6, $7::jsonb, '质量证据', $3)`,
+      [
+        todayWork.id,
+        todayWork.mainBranch.id,
+        userId,
+        todayChapter.id,
+        todayVersionId,
+        "b".repeat(64),
+        JSON.stringify(dimensions),
+        crypto.randomUUID(),
+      ],
+    );
+  } finally {
+    await pool.end();
+  }
+
+  const foreshadow = await page.request.post(`${todayBranchPath}/ledger/entries`, {
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": await getCsrf(page.request),
+      "Idempotency-Key": "dashboard-metrics-foreshadow",
+    },
+    data: {
+      kind: "foreshadow",
+      title: "断碑旧名",
+      summary: "断碑旧名会在卷末回收。",
+      responsibleRole: "protagonist",
+      targetWindow: { fromChapter: 1, toChapter: 2 },
+      importance: "must",
+      readerPromise: "身世真相",
+    },
+  });
+  expect(foreshadow.status()).toBe(201);
+
+  const initialList = waitForWorksPage(
+    page,
+    (url) => url.searchParams.get("limit") === "20" && !url.searchParams.has("words"),
+  );
+  await page.reload();
+  await initialList;
+  const persistedList = (await (await page.request.get("/api/v1/works?limit=20")).json())
+    .data as Array<{
+    id: string;
+    metrics: {
+      lastEditedAt: string;
+      progress: { percent: number; plannedChapters: number; writtenChapters: number };
+      qualityScore: number | null;
+      totalWordCount: number;
+      unrecoveredForeshadowCount: number;
+    };
+  }>;
+  const persistedMetrics = persistedList.find((work) => work.id === todayWork.id)!.metrics;
+  const todayCard = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: todayWork.title }) });
+  await expect(todayCard).toContainText(formatDashboardWordCount(persistedMetrics.totalWordCount));
+  await expect(
+    todayCard.getByRole("progressbar", {
+      name: `已完成 ${persistedMetrics.progress.writtenChapters} / ${persistedMetrics.progress.plannedChapters} 章`,
+    }),
+  ).toHaveAttribute("aria-valuenow", String(persistedMetrics.progress.percent));
+  await expect(todayCard).toContainText(`质量 ${persistedMetrics.qualityScore}`);
+  await expect(todayCard).toContainText(
+    `未回收伏笔 ${persistedMetrics.unrecoveredForeshadowCount}`,
+  );
+  await expect(todayCard.locator("time")).toHaveAttribute(
+    "dateTime",
+    persistedMetrics.lastEditedAt,
+  );
+
+  const wordFilter = waitForApiResponse(page, "GET", "/api/v1/works?limit=20&words=1m-2m");
+  await page.getByLabel("字数筛选").selectOption("1m-2m");
+  const wordFilteredTitles = (await (await wordFilter).json()).data.map(
+    (work: { title: string }) => work.title,
+  );
+  expect(wordFilteredTitles).toEqual(["今日百万"]);
+  await expect(page.getByRole("heading", { name: todayWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: weekWork.title })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: oldWork.title })).toHaveCount(0);
+
+  const clearWordFilter = waitForWorksPage(
+    page,
+    (url) => url.searchParams.get("limit") === "20" && !url.searchParams.has("words"),
+  );
+  await page.getByLabel("字数筛选").selectOption("");
+  await clearWordFilter;
+
+  const recentFilter = waitForApiResponse(page, "GET", "/api/v1/works?limit=20&recent=week");
+  await page.getByLabel("最近编辑").selectOption("week");
+  await recentFilter;
+  await expect(page.getByRole("heading", { name: todayWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: weekWork.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: oldWork.title })).toHaveCount(0);
+});
+
+function formatDashboardWordCount(value: number): string {
+  if (value >= 10_000) {
+    return `${new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 1 }).format(value / 10_000)} 万字`;
+  }
+  return `${value.toLocaleString("zh-CN")} 字`;
+}
 
 test("shows loading, disabled and long-content states", async ({ page, context }) => {
   await authenticatedPage(page, context);
