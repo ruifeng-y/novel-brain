@@ -134,7 +134,7 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 - `dashboard-1180.png`：`1180x900`，SHA-256 `629B2253D42BDF836DE48AE0EECE4303DF5650CE225030BC8518EB674C57850C`
 - `dashboard-1440.png`：`1440x900`，SHA-256 `3CB0FDDA7BC3243B706D94CC6F8412500B3234ACF3B815149C0934EC79A1764D`
 
-四张正式文件已写入 `artifacts/ui/golden/dashboard/`。最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、完整指标/筛选断言、作者语言、`prototype_only` 扫描和无横向溢出后才合并。
+四张正式文件已写入 `artifacts/ui/golden/dashboard/`。最终正常 PR CI [44502900100](https://github.com/ruifeng-y/novel-brain/actions/runs/44502900100) 已通过四档 `toHaveScreenshot`、完整指标/筛选断言、作者语言、`prototype_only` 扫描和无横向溢出；Deployment Smoke [44502899883](https://github.com/ruifeng-y/novel-brain/actions/runs/44502899883) 同时通过。
 
 ## 2026-11-18 work-settings 与 dashboard Linux Golden 签收
 
