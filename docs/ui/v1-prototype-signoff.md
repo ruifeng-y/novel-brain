@@ -150,6 +150,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 两张 390px Linux actual 在两次 Playwright 执行中的 SHA-256 完全一致，生成证据为 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122)。此前失败在 390px 首次截图差异后停止后续比较，隐藏了其余 Windows 基线；`work-settings` 的 900 / 1180 / 1440 最终由 [Production CI #44138638764](https://github.com/ruifeng-y/novel-brain/actions/runs/44138638764) 的受控 `update_golden` 运行生成，并通过完整测试。该记录只证明视觉证据；当前 release status 以 parity matrix 为准，`work-settings` 在逐动作持久化审计和最终正常 PR CI 通过前保持 `production-built`。
 
+## 2026-11-19 new-project 逐动作持久化与最终 CI 签收
+
+沿用作者在 2026-11-12 对 `new-project` 四档生产布局与正式 Golden 的视觉签收。本次 #223 不改变视觉基线，只补齐七个必需动作的真实 API 与持久化证据。
+
+`apps/web/e2e/parity/new-project.spec.ts` 覆盖想法、空白、题材模板、设定导入、旧稿导入、导入冲突裁决和主创作线蓝图创建；断言包括持久化作品字段、导入设定实体、冲突选择、章节顺序、章节正文和 main 分支 head version node。targeted Playwright 13/13、作者语言、prototype-only 扫描及 390 / 900 / 1180 / 1440 四档无横向溢出均通过。
+
+正常 PR Production CI [44514912820](https://github.com/ruifeng-y/novel-brain/actions/runs/44514912820) 的 `check` 与 `playwright`、Deployment Smoke [44514912829](https://github.com/ruifeng-y/novel-brain/actions/runs/44514912829) 均通过；`new-project` 提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

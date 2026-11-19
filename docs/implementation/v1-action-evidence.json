@@ -124,8 +124,68 @@
       ]
     },
     "new-project": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "7decdbe7e7a0df9a5dac0a133eef9cce3191f8ef",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44514912820",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44514912829",
+      "actions": [
+        {
+          "id": "create-from-idea",
+          "name": "从一句话想法创建作品并持久化故事蓝图",
+          "api": "/api/v1/works",
+          "spec": "apps/web/e2e/parity/new-project.spec.ts",
+          "test": "creates a work from an idea and persists its blueprint",
+          "assertion": "idea: \"一个被宗门抛弃的杂役，意外得到一本会吞噬记忆的古书。\","
+        },
+        {
+          "id": "blank-work",
+          "name": "创建空白作品并持久化来源模式",
+          "api": "/api/v1/works",
+          "spec": "apps/web/e2e/parity/new-project.spec.ts",
+          "test": "creates a blank work without an idea and persists it",
+          "assertion": "expect(persistedWork.sourceMode).toBe(\"blank\");"
+        },
+        {
+          "id": "genre-template",
+          "name": "创建题材模板作品并持久化题材包",
+          "api": "/api/v1/works",
+          "spec": "apps/web/e2e/parity/new-project.spec.ts",
+          "test": "creates a xianxia template work and persists its genre pack",
+          "assertion": "expect(persistedWork.templatePack?.key).toBe(\"xianxia\");"
+        },
+        {
+          "id": "settings-import",
+          "name": "导入设定并持久化已接受设定实体",
+          "api": "/api/v1/imports/${settingsImport.id}/confirm",
+          "spec": "apps/web/e2e/parity/new-project.spec.ts",
+          "test": "imports partial settings and persists accepted entities",
+          "assertion": "expect(persistedWork.settings.materializedSettingCount).toBe(1);"
+        },
+        {
+          "id": "manuscript-import",
+          "name": "导入旧稿并持久化章节顺序和内容",
+          "api": "/api/v1/imports/manuscripts/${manuscriptImport.id}/confirm",
+          "spec": "apps/web/e2e/parity/new-project.spec.ts",
+          "test": "imports an old manuscript and persists chapter order and content",
+          "assertion": "expect(persistedManuscript).toContain(\"夜船顺流而下。\");"
+        },
+        {
+          "id": "import-conflict-resolution",
+          "name": "裁决设定冲突后再创建作品并持久化选择",
+          "api": "/api/v1/imports/${settingsImport.id}/conflicts/${conflict.id}/decision",
+          "spec": "apps/web/e2e/parity/new-project.spec.ts",
+          "test": "persists a settings conflict decision before creating the work",
+          "assertion": "expect(character.data.bodyState).toBe(\"外门杂役，左臂骨折。\");"
+        },
+        {
+          "id": "create-blueprint",
+          "name": "将作品创建为可继续写作的主创作线蓝图",
+          "api": "/api/v1/works",
+          "spec": "apps/web/e2e/parity/new-project.spec.ts",
+          "test": "creates a work from an idea and persists its blueprint",
+          "assertion": "expect(persistedWork.mainBranch.headNodeId).toMatch(/^[0-9a-f-]{36}$/);"
+        }
+      ]
     },
     "work-overview": {
       "status": "pending",
