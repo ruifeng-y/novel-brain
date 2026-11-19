@@ -188,8 +188,68 @@
       ]
     },
     "work-overview": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "735e5b1af9a7914dfa8b4f43fbd28d83fbc1c1ec",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44532653293",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44532653451",
+      "actions": [
+        {
+          "id": "continue-writing",
+          "name": "继续进入已持久化的下一章写作上下文",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters",
+          "spec": "apps/web/e2e/parity/work-overview.spec.ts",
+          "test": "continues into a persisted planned chapter with matching tasks and recent changes",
+          "assertion": "expect(writingContextChapters.some((candidate) => candidate.id === chapter.id)).toBe(true);"
+        },
+        {
+          "id": "tasks",
+          "name": "显示与准备度接口一致的待处理任务",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/readiness",
+          "spec": "apps/web/e2e/parity/work-overview.spec.ts",
+          "test": "continues into a persisted planned chapter with matching tasks and recent changes",
+          "assertion": "await expect(page.locator(\".overview-task-item\")).toHaveCount(expectedTaskCount);"
+        },
+        {
+          "id": "recent-changes",
+          "name": "显示已持久化章节和设定的最近修改",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters?limit=100",
+          "spec": "apps/web/e2e/parity/work-overview.spec.ts",
+          "test": "continues into a persisted planned chapter with matching tasks and recent changes",
+          "assertion": "await expect(page.locator(\".overview-change-list\")).toContainText(\"第 1 章 · 断碑夜雨\");"
+        },
+        {
+          "id": "style-drift",
+          "name": "检查跨卷文风趋势并从工作区回读持久化报告",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/style/drift",
+          "spec": "apps/web/e2e/parity/work-overview.spec.ts",
+          "test": "approves a traceable style baseline and shows cross-volume drift with growth evidence",
+          "assertion": "expect(persistedStyle.latestCrossVolumeReport?.id).toBe(driftReport.id);"
+        },
+        {
+          "id": "volume-audit",
+          "name": "运行卷末审计并持久化报告",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/volume-audits",
+          "spec": "apps/web/e2e/parity/work-overview.spec.ts",
+          "test": "runs and signs off a persisted volume audit",
+          "assertion": "expect(persistedWorkspace.latestReport?.id).toBe(auditReport.id);"
+        },
+        {
+          "id": "volume-signoff",
+          "name": "保存卷末审计作者决策并回读签收记录",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/volume-audits/${auditReport.id}/signoff",
+          "spec": "apps/web/e2e/parity/work-overview.spec.ts",
+          "test": "runs and signs off a persisted volume audit",
+          "assertion": "expect(persistedSignoff.latestReport?.signoff?.decision).toBe(\"changes_requested\");"
+        },
+        {
+          "id": "branch-context",
+          "name": "在作品总览中读取并切换已持久化的创作线上下文",
+          "api": "/api/v1/works/${work.id}?branchId=${branch.id}",
+          "spec": "apps/web/e2e/parity/work-overview.spec.ts",
+          "test": "uses the selected parallel branch across work pages",
+          "assertion": "expect(branchOverview.mainBranch.id).toBe(branch.id);"
+        }
+      ]
     },
     "bible": {
       "status": "pending",

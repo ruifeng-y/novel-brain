@@ -7,7 +7,7 @@
 ## 实现结果
 
 - 17 个生产页面均有唯一 owner、production Playwright spec 和四档生产 Golden；`auth.spec.ts` 新增直接 `toHaveScreenshot` 与 `prototype_only` 扫描。
-- 当前 `auth`、`help`、`legal`、dashboard 与 new-project 为 `parity-verified`；其余 12 个非静态页面在逐动作 API/持久化审计和最终 Linux/Chromium PR CI 通过前保持 `production-built`。dashboard 已补齐完整列表筛选、主线持久化指标、四档 Golden、作者视觉签收和最终正常 PR CI；new-project 已补齐七个入口动作的真实 API、持久化断言和最终正常 PR CI。
+- 当前 `auth`、`help`、`legal`、dashboard、new-project 与 work-overview 为 `parity-verified`；其余 11 个非静态页面在逐动作 API/持久化审计和最终 Linux/Chromium PR CI 通过前保持 `production-built`。dashboard 已补齐完整列表筛选、主线持久化指标、四档 Golden、作者视觉签收和最终正常 PR CI；new-project 已补齐七个入口动作的真实 API、持久化断言和最终正常 PR CI；work-overview 已补齐七个总览动作、卷末审计/签收回读和最终正常 PR CI。
 - `scripts/validate-readiness.mjs` 校验页面、依赖和 Golden 结构；`pnpm release:check` 才负责要求所有生产页面为 `parity-verified` 或 `deviation-approved`。
 - `docs/ui/prototype-contract.md` 与 `docs/ui/v1-ui-parity-matrix.md` 已对齐 M0–M3 当前生产状态。
 - `#98/#99/#100/#101/#103` package parents 已用子项合并与 CI 证据关闭。
@@ -26,7 +26,7 @@
 自动化完成不等于 V1 release approved。以下证据仍缺失：
 
 - 116 个仍为 `mapped`/`implemented` 的 V1 capability 逐项证据审计；
-- 12 个非静态生产页的逐动作 API 与持久化结果证据；
+- 11 个非静态生产页的逐动作 API 与持久化结果证据；
 - 真实 human blind review 记录；
 - 已批准的 inter-rater variance threshold；
 - `provider-smoke` environment 的手动真实 Provider smoke 结果；

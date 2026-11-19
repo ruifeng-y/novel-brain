@@ -1,5 +1,17 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { Pool } from "pg";
+import {
+  chapterWorkspaceListResponseSchema,
+  generationReadinessResponseSchema,
+  outlineNodeMutationResponseSchema,
+  settingEntityListResponseSchema,
+  styleDriftReportResponseSchema,
+  styleDriftWorkspaceResponseSchema,
+  volumeAuditReportResponseSchema,
+  volumeAuditWorkspaceResponseSchema,
+  workResponseSchema,
+  type OutlineNodeCreateRequest,
+} from "@novel-brain/contracts";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import {
@@ -16,6 +28,74 @@ import {
 } from "../helpers/ui";
 
 const origin = "http://localhost:3000";
+
+type WorkRef = { id: string; mainBranch: { id: string } };
+
+function branchPath(work: WorkRef) {
+  return `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+}
+
+async function createOutlineNode(
+  page: Page,
+  work: WorkRef,
+  token: string,
+  data: OutlineNodeCreateRequest,
+) {
+  const response = await page.request.post(`${branchPath(work)}/outline/nodes`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data,
+  });
+  expect(response.status()).toBe(201);
+  return outlineNodeMutationResponseSchema.parse(await response.json()).data.node;
+}
+
+async function createPlannedVolumeFixture(page: Page, work: WorkRef) {
+  const token = await getCsrf(page.request);
+  const book = await createOutlineNode(page, work, token, {
+    level: "book",
+    parentId: null,
+    title: "忘川书",
+    summary: "",
+    status: "active",
+    tension: null,
+  });
+  const volume = await createOutlineNode(page, work, token, {
+    level: "volume",
+    parentId: book.id,
+    title: "第一卷 · 断碑夜雨",
+    summary: "",
+    status: "active",
+    tension: null,
+  });
+  const act = await createOutlineNode(page, work, token, {
+    level: "act",
+    parentId: volume.id,
+    title: "第一幕 · 失忆",
+    summary: "",
+    status: "active",
+    tension: null,
+  });
+  const chapterNode = await createOutlineNode(page, work, token, {
+    level: "chapter",
+    parentId: act.id,
+    tension: 72,
+    summary: "",
+    status: "planned",
+    chapterCreate: {
+      number: 1,
+      title: "断碑夜雨",
+      brief: {
+        goal: "让沈砚在旧宅里发现父母留下的线索。",
+        pov: "沈砚",
+        location: "荒寺旧宅",
+        sceneBeats: ["沈砚藏起断臂。", "追兵逼近，两人继续上路。"],
+        requiredFacts: ["左臂骨折，不能双手结印"],
+      },
+    },
+  });
+  expect(chapterNode.chapter).toBeTruthy();
+  return { volume, chapter: chapterNode.chapter! };
+}
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("work-overview");
@@ -85,6 +165,88 @@ test("shows title, status, main branch, scale target and readiness", async ({ pa
   await expect(page.locator(".stat-grid .stat-card")).toHaveCount(6);
   await expect(page.locator(".overview-chapters")).toBeVisible();
   await expect(page.locator(".overview-links")).toBeVisible();
+});
+
+test("continues into a persisted planned chapter with matching tasks and recent changes", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "断碑夜雨",
+  });
+  const { chapter } = await createPlannedVolumeFixture(page, work);
+  const token = await getCsrf(page.request);
+  const chaptersApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters?limit=100`;
+  const entitiesApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities?limit=100`;
+  const readinessApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/readiness`;
+  const entityResponse = await page.request.post(`${branchPath(work)}/entities`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: {
+      type: "character",
+      name: "沈砚",
+      aliases: [],
+      summary: "带着断臂追查身世的杂役。",
+      description: "总览最近修改需要显示的持久化角色。",
+      tags: [],
+      data: {
+        bodyState: "左臂骨折",
+        knowledgeBoundary: "不知道父母死亡的真相",
+        relationshipSummary: "与顾青同行",
+      },
+    },
+  });
+  expect(entityResponse.status()).toBe(201);
+
+  const chaptersResponse = await page.request.get(chaptersApi);
+  expect(chaptersResponse.status()).toBe(200);
+  const persistedChapters = chapterWorkspaceListResponseSchema.parse(
+    await chaptersResponse.json(),
+  ).data;
+  expect(persistedChapters.map(({ number, title }) => ({ number, title }))).toEqual([
+    { number: 1, title: "断碑夜雨" },
+  ]);
+  const entitiesResponse = await page.request.get(entitiesApi);
+  expect(entitiesResponse.status()).toBe(200);
+  const persistedEntities = settingEntityListResponseSchema.parse(
+    await entitiesResponse.json(),
+  ).data;
+  expect(persistedEntities.some((entity) => entity.name === "沈砚")).toBe(true);
+
+  const readinessResponse = await page.request.get(readinessApi);
+  expect(readinessResponse.status()).toBe(200);
+  const readiness = generationReadinessResponseSchema.parse(await readinessResponse.json()).data;
+  const pendingReadiness = readiness.items.filter((item) => !item.ready);
+  const expectedTaskCount = Math.min(pendingReadiness.length, 3);
+
+  await page.goto(`/workspace/${work.id}/overview`);
+  const continueWriting = page.getByRole("link", { name: "继续写作", exact: true });
+  await expect(continueWriting).toHaveAttribute(
+    "href",
+    `/workspace/${work.id}/write?chapterId=${chapter.id}`,
+  );
+  await expect(page.locator(".overview-task-item")).toHaveCount(expectedTaskCount);
+  for (const task of pendingReadiness.slice(0, 3)) {
+    await expect(page.locator(".overview-task-list")).toContainText(task.label);
+  }
+  await expect(page.locator(".overview-change-list")).toContainText("第 1 章 · 断碑夜雨");
+  await expect(page.locator(".overview-change-list")).toContainText("沈砚");
+
+  const writingChaptersApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters`;
+  const writingContextResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === writingChaptersApi,
+  );
+  await continueWriting.click();
+  const writingContextChapters = chapterWorkspaceListResponseSchema.parse(
+    await (await writingContextResponse).json(),
+  ).data;
+  expect(writingContextChapters.some((candidate) => candidate.id === chapter.id)).toBe(true);
+  await expect(page).toHaveURL(
+    new RegExp(`/workspace/${work.id}/write\\?chapterId=${chapter.id}$`, "u"),
+  );
 });
 
 test("overview handles error and four viewports", async ({ page, context }) => {
@@ -249,6 +411,13 @@ test("uses the selected parallel branch across work pages", async ({ page, conte
       },
     })
     .then((response) => expect(response.status()).toBe(201));
+  const branchEntitiesApi = `/api/v1/works/${work.id}/branches/${branch.id}/entities?limit=100`;
+  const branchEntitiesResponse = await page.request.get(branchEntitiesApi);
+  expect(branchEntitiesResponse.status()).toBe(200);
+  const branchEntities = settingEntityListResponseSchema.parse(
+    await branchEntitiesResponse.json(),
+  ).data;
+  expect(branchEntities.some((entity) => entity.name === "平行线角色")).toBe(true);
 
   await page.goto("/workspace");
   await page.evaluate(
@@ -257,15 +426,42 @@ test("uses the selected parallel branch across work pages", async ({ page, conte
     },
     { branchId: branch.id, workId: work.id },
   );
-  await page.goto(`/workspace/${work.id}/settings`);
+  const branchOverviewApi = `/api/v1/works/${work.id}?branchId=${branch.id}`;
+  const branchOverviewUrl = new URL(branchOverviewApi, origin);
+  const branchOverviewResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === branchOverviewUrl.pathname &&
+      new URL(response.url()).searchParams.get("branchId") ===
+        branchOverviewUrl.searchParams.get("branchId"),
+  );
+  await page.goto(`/workspace/${work.id}/overview`);
+  const branchOverview = workResponseSchema.parse(await (await branchOverviewResponse).json()).data;
+  expect(branchOverview.mainBranch.id).toBe(branch.id);
   await expect(page.getByLabel("切换创作线")).toHaveValue(branch.id);
-  await expect(page.getByText("平行线角色")).toBeVisible();
-  await expect(page.locator(".workspace-copy")).toContainText("what-if");
+  await expect(page.getByLabel("当前作品与创作线")).toContainText("what-if");
+  await expect(page.locator(".overview-change-list")).toContainText("平行线角色");
 
+  const mainOverviewResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === `/api/v1/works/${work.id}` &&
+      new URL(response.url()).searchParams.get("branchId") === work.mainBranch.id,
+  );
   await page.getByLabel("切换创作线").selectOption(work.mainBranch.id);
+  const mainOverview = workResponseSchema.parse(await (await mainOverviewResponse).json()).data;
+  expect(mainOverview.mainBranch.id).toBe(work.mainBranch.id);
   await expect(page.getByLabel("切换创作线")).toHaveValue(work.mainBranch.id);
-  await expect(page.getByText("平行线角色")).toHaveCount(0);
-  await expect(page.locator(".workspace-copy")).toContainText("主线");
+  await expect(page.getByLabel("当前作品与创作线")).toContainText("主线");
+  await expect(page.locator(".overview-change-list")).toHaveCount(0);
+  const mainEntitiesResponse = await page.request.get(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities?limit=100`,
+  );
+  expect(mainEntitiesResponse.status()).toBe(200);
+  const mainEntities = settingEntityListResponseSchema.parse(
+    await mainEntitiesResponse.json(),
+  ).data;
+  expect(mainEntities.some((entity) => entity.name === "平行线角色")).toBe(false);
 });
 
 test("treats an archived branch as read-only without write links", async ({ page, context }) => {
@@ -346,6 +542,64 @@ test("shows completed work as read-only with a return path", async ({ page, cont
   await expect(page.locator(".overview-links .quick-link-grid")).toHaveCount(0);
   await expect(page.locator(".overview-style")).toHaveCount(0);
   await expect(page.locator(".overview-volume-audit")).toHaveCount(0);
+});
+
+test("runs and signs off a persisted volume audit", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "卷末审计证据",
+  });
+  const { volume } = await createPlannedVolumeFixture(page, work);
+  const volumeAuditsApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/volume-audits`;
+
+  await page.goto(`/workspace/${work.id}/overview`);
+  const panel = page.locator(".overview-volume-audit");
+  await expect(panel.getByRole("heading", { name: "卷末审计" })).toBeVisible();
+  const runButton = panel.getByRole("button", { name: "开始卷末审计" });
+  await expect(runButton).toBeEnabled();
+
+  const auditResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === volumeAuditsApi,
+  );
+  await runButton.click();
+  const auditReport = volumeAuditReportResponseSchema.parse(
+    await (await auditResponse).json(),
+  ).data;
+  expect(auditReport.volumeNodeId).toBe(volume.id);
+  await expect(panel.locator(`[data-volume-audit-status="${auditReport.status}"]`)).toBeVisible();
+
+  const workspaceResponse = await page.request.get(volumeAuditsApi);
+  expect(workspaceResponse.status()).toBe(200);
+  const persistedWorkspace = volumeAuditWorkspaceResponseSchema.parse(
+    await workspaceResponse.json(),
+  ).data;
+  expect(persistedWorkspace.latestReport?.id).toBe(auditReport.id);
+
+  const rationale = "第一卷正文与账本证据已核对，仍需补齐卷级问题后再申请通过。";
+  const signoffApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/volume-audits/${auditReport.id}/signoff`;
+  await panel.getByLabel("验收结论").selectOption("changes_requested");
+  await panel.getByLabel("签收意见").fill(rationale);
+  const signoffResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" && new URL(response.url()).pathname === signoffApi,
+  );
+  await panel.getByRole("button", { name: "保存签收记录" }).click();
+  const signedReport = volumeAuditReportResponseSchema.parse(
+    await (await signoffResponse).json(),
+  ).data;
+  expect(signedReport.signoff?.decision).toBe("changes_requested");
+  expect(signedReport.signoff?.rationale).toBe(rationale);
+  await expect(panel.getByText("作者要求修改")).toBeVisible();
+
+  const persistedSignoffResponse = await page.request.get(volumeAuditsApi);
+  expect(persistedSignoffResponse.status()).toBe(200);
+  const persistedSignoff = volumeAuditWorkspaceResponseSchema.parse(
+    await persistedSignoffResponse.json(),
+  ).data;
+  expect(persistedSignoff.latestReport?.signoff?.decision).toBe("changes_requested");
 });
 
 test("shows current branch, recent changes and long content at four viewports", async ({
@@ -472,6 +726,8 @@ test("approves a traceable style baseline and shows cross-volume drift with grow
   );
   await createStyleArc(page, work, characterId, baselineChapter.id);
   await createStyleProfile(page, work, characterId, baselineChapter.versionId);
+  const styleDriftApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/style/drift`;
+  const styleWorkspaceApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/style`;
 
   await page.goto(`/workspace/${work.id}/overview`);
   await expect(page.getByRole("heading", { name: "跨卷一致性" })).toBeVisible();
@@ -484,7 +740,12 @@ test("approves a traceable style baseline and shows cross-volume drift with grow
   await expect(page.getByText("作者已批准")).toBeVisible();
   await expectAuthorFacingLanguage(page);
 
+  const driftResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" && new URL(response.url()).pathname === styleDriftApi,
+  );
   await page.getByRole("button", { name: "检查跨卷趋势" }).click();
+  const driftReport = styleDriftReportResponseSchema.parse(await (await driftResponse).json()).data;
   const stylePanel = page.locator(".overview-style");
   await expect(stylePanel.locator('[data-style-drift-report="cross_volume"]')).toBeVisible();
   await expect(stylePanel.locator('[data-style-finding="CHARACTER_VOICE_DRIFT"]')).toContainText(
@@ -497,6 +758,13 @@ test("approves a traceable style baseline and shows cross-volume drift with grow
   await expect(stylePanel).toContainText(`第 1–3 章`);
   await expect(stylePanel).toContainText("基线版本 2");
   await expectAuthorFacingLanguage(page);
+
+  const persistedStyleResponse = await page.request.get(styleWorkspaceApi);
+  expect(persistedStyleResponse.status()).toBe(200);
+  const persistedStyle = styleDriftWorkspaceResponseSchema.parse(
+    await persistedStyleResponse.json(),
+  ).data;
+  expect(persistedStyle.latestCrossVolumeReport?.id).toBe(driftReport.id);
 
   const chapterResponse = await page.request.get(
     `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${growthChapter.id}`,
