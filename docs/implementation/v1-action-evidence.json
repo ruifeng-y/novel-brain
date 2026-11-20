@@ -596,8 +596,10 @@
       ]
     },
     "writing": {
-      "status": "pending",
-      "rationale": "Writing action evidence is implemented locally; normal PR Production CI and Deployment Smoke evidence are still required.",
+      "status": "verified",
+      "headSha": "b1750eef49404611e49130ced950602d13fefdc0",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44710611123",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44710611232",
       "actions": [
         {
           "id": "generate",
