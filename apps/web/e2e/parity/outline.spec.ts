@@ -1,11 +1,22 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import {
+  goldenThreeWorkspaceResponseSchema,
+  outlineNodeMutationResponseSchema,
+  outlineWorkspaceSchema,
+  outlineWorkspaceResponseSchema,
+  storyLedgerEntryCreateRequestSchema,
+  storyLedgerMutationResponseSchema,
+  storyLedgerWorkspaceResponseSchema,
+} from "@novel-brain/contracts";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { seedGoldenThree } from "../helpers/golden-three";
 import {
   expectAuthorFacingLanguage,
   expectNoPrototypeOnlyLeakage,
   freezeApiTimestamps,
   productionScreenshotOptions,
+  waitForApiResponse,
 } from "../helpers/ui";
 
 const origin = "http://localhost:3000";
@@ -51,19 +62,15 @@ async function createNode(
   token: string,
   body: Record<string, unknown>,
 ) {
-  const response = await page.request.post(`${branchPath(work)}/outline/nodes`, {
-    headers: { Origin: origin, "X-CSRF-Token": token },
-    data: body,
-  });
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: body,
+    },
+  );
   expect(response.status()).toBe(201);
-  return (await response.json()).data.node as {
-    id: string;
-    version: number;
-    level: string;
-    parentId: string | null;
-    sortOrder: number;
-    title: string;
-  };
+  return outlineNodeMutationResponseSchema.parse(await response.json()).data.node;
 }
 
 async function createEntity(
@@ -147,7 +154,11 @@ async function setupCompleteOutline(
   page: Page,
   work: { id: string; mainBranch: { id: string } },
   token: string,
-  options: { bookId?: string; withInformationRelease?: boolean } = {},
+  options: {
+    bookId?: string;
+    deferContractsAndScene?: boolean;
+    withInformationRelease?: boolean;
+  } = {},
 ) {
   const book =
     options.bookId !== undefined
@@ -204,17 +215,56 @@ async function setupCompleteOutline(
     tags: [],
     data: { details: "荒寺外山道" },
   });
-  await putVolumeContract(page, work, token, volume.id);
-  await putSceneCard(
-    page,
-    work,
-    token,
-    scene.id,
-    character.id,
-    map.id,
-    options.withInformationRelease ?? true,
-  );
+  if (!options.deferContractsAndScene) {
+    await putVolumeContract(page, work, token, volume.id);
+    await putSceneCard(
+      page,
+      work,
+      token,
+      scene.id,
+      character.id,
+      map.id,
+      options.withInformationRelease ?? true,
+    );
+  }
   return { book, volume, act, chapter, scene, character, map };
+}
+
+async function getOutlineWorkspace(page: Page, work: { id: string; mainBranch: { id: string } }) {
+  const response = await page.request.get(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline`,
+  );
+  expect(response.status()).toBe(200);
+  return outlineWorkspaceResponseSchema.parse(await response.json()).data;
+}
+
+async function createLedgerEntry(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  token: string,
+  title: string,
+) {
+  const payload = storyLedgerEntryCreateRequestSchema.parse({
+    kind: "foreshadow",
+    title,
+    summary: "用于验证大纲账本视图读取持久化记录。",
+    responsibleRole: "protagonist",
+    status: "planned",
+    targetWindow: { fromChapter: 1, toChapter: 3 },
+    importance: "must",
+    readerPromise: "身世谜团",
+    reason: "大纲页需要展示剧情账本。",
+  });
+  const response = await page.request.post(`${branchPath(work)}/ledger/entries`, {
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
+    data: payload,
+  });
+  expect(response.status()).toBe(201);
+  return storyLedgerMutationResponseSchema.parse(await response.json()).data.entry;
 }
 
 async function setupTwoActOutline(
@@ -288,6 +338,39 @@ test.beforeEach(async () => {
   await resetRateLimits();
 });
 
+test("creates and edits outline nodes through production forms", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createOutlineWork(page);
+  const outlineNodesApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes`;
+  const outlineApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline`;
+
+  await page.goto(`/workspace/${work.id}/outline`);
+  await page.getByRole("textbox", { name: "全书标题" }).fill("忘川书");
+  const createResponse = waitForApiResponse(page, "POST", outlineNodesApi);
+  await page.getByRole("button", { name: "创建全书大纲" }).click();
+  const created = outlineNodeMutationResponseSchema.parse(await (await createResponse).json()).data
+    .node;
+  const persistedResponse = await page.request.get(outlineApi);
+  expect(persistedResponse.status()).toBe(200);
+  const persisted = outlineWorkspaceResponseSchema.parse(await persistedResponse.json()).data;
+  expect(persisted.nodes[0]?.id).toBe(created.id);
+
+  await page.locator(`[data-outline-node-id="${created.id}"]`).click();
+  const editor = page.locator("form.outline-plan-form").filter({ hasText: "节点信息" });
+  await editor.getByLabel("摘要").fill("从生产节点表单保存的全书摘要。");
+  const editApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${created.id}`;
+  const editResponse = waitForApiResponse(page, "PATCH", editApi);
+  await editor.getByRole("button", { name: "保存节点" }).click();
+  expect((await editResponse).status()).toBe(200);
+  const persistedEditResponse = await page.request.get(outlineApi);
+  expect(persistedEditResponse.status()).toBe(200);
+  const persistedEdit = outlineWorkspaceResponseSchema.parse(
+    await persistedEditResponse.json(),
+  ).data;
+  const persistedSummary = persistedEdit.nodes[0]?.summary;
+  expect(persistedSummary).toBe("从生产节点表单保存的全书摘要。");
+});
+
 test("renders empty, tree, board and tension states at four viewports", async ({
   page,
   context,
@@ -332,9 +415,16 @@ test("renders empty, tree, board and tension states at four viewports", async ({
   await page.getByRole("button", { name: "创建全书大纲" }).click();
   const book = (await (await created).json()).data.node as { id: string };
   await expect(page.locator(`[data-outline-node-id="${book.id}"]`)).toBeVisible();
+  const persistedBook = await getOutlineWorkspace(page, work);
+  expect(persistedBook.nodes[0]?.id).toBe(book.id);
 
   const token = await getCsrf(page.request);
   const fixture = await setupCompleteOutline(page, work, token, { bookId: book.id });
+  const persistedFixture = await getOutlineWorkspace(page, work);
+  const persistedTension = persistedFixture.nodes.find(
+    (node) => node.id === fixture.chapter.id,
+  )?.tension;
+  expect(persistedTension).toBe(72);
   await freezeApiTimestamps(page);
 
   for (const width of viewports) {
@@ -383,21 +473,131 @@ test("renders empty, tree, board and tension states at four viewports", async ({
 
     await page.getByRole("tab", { name: "章节看板" }).click();
     await expect(page.getByRole("button", { name: /第 48 章/ })).toBeVisible();
+    await expectNoPrototypeOnlyLeakage(page);
+    await expectAuthorFacingLanguage(page);
 
     await page.getByRole("tab", { name: "张力曲线" }).click();
     await expect(page.getByRole("img", { name: "章节张力曲线" })).toBeVisible();
     await expect(page.getByText("张力 72")).toBeVisible();
+    await expectNoPrototypeOnlyLeakage(page);
+    await expectAuthorFacingLanguage(page);
 
     await page.getByRole("tab", { name: "树状大纲" }).click();
     await expectNoPrototypeOnlyLeakage(page);
+    await expectAuthorFacingLanguage(page);
     await expectNoOverflow(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await expect
       .soft(page)
       .toHaveScreenshot(["outline", `outline-${width}.png`], productionScreenshotOptions);
   }
+});
 
+test("persists volume contracts and scene cards through production forms", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(90_000);
+  await authenticatedPage(page, context);
+  const work = await createOutlineWork(page);
+  const token = await getCsrf(page.request);
+  const fixture = await setupCompleteOutline(page, work, token, {
+    deferContractsAndScene: true,
+  });
+  const volumeContractApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.volume.id}/volume-contract`;
+  const sceneCardApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.scene.id}/scene-card`;
+
+  await page.goto(`/workspace/${work.id}/outline`);
+  await page.locator(`[data-outline-node-id="${fixture.volume.id}"]`).click();
+  const volumeForm = page.locator("form.outline-plan-form").filter({ hasText: "卷契约" });
+  await volumeForm.getByLabel("卷目标").fill("守住忘川渡并揭开第一卷旧案。");
+  await volumeForm.getByLabel("核心冲突").fill("宗门追捕与同伴信任同时崩塌。");
+  await volumeForm.getByLabel("关键转折（一行一个）").fill("断臂\n铜牌显形");
+  await volumeForm.getByLabel("退出条件（一行一个）").fill("离开东境\n顾青立场动摇");
+  await volumeForm.getByLabel("相关剧情线（名称｜状态｜备注）").fill("天门将开｜active｜主线");
+  const volumeResponse = waitForApiResponse(page, "PUT", volumeContractApi);
+  await volumeForm.getByRole("button", { name: "保存卷契约" }).click();
+  const savedVolume = outlineWorkspaceSchema.parse(
+    (await (await volumeResponse).json()).data.workspace,
+  );
+  expect(savedVolume.volumeContracts[0]?.objective).toBe("守住忘川渡并揭开第一卷旧案。");
+
+  await page.locator(`[data-outline-node-id="${fixture.scene.id}"]`).click();
+  const sceneForm = page
+    .locator("form.outline-plan-form")
+    .filter({ hasText: "POV、地点、时间和信息释放" });
+  await sceneForm.getByLabel("场景标题").fill("荒寺外山道");
+  await sceneForm.getByLabel("视角人物").selectOption(fixture.character.id);
+  await sceneForm.getByLabel("地点").selectOption(fixture.map.id);
+  await sceneForm.getByLabel("故事纪元").fill("大玄历");
+  await sceneForm.getByLabel("故事时间").fill("雨夜");
+  await sceneForm.getByLabel("时间排序值").fill("100");
+  await sceneForm.getByLabel("场景节拍（一行一个）").fill("沈砚藏起断臂。\n顾青撞见。");
+  await sceneForm
+    .getByLabel("信息释放（一行一个，可用“｜”补充知情边界）")
+    .fill("顾青看见书页一角｜顾青不能知道完整来历");
+  await sceneForm.getByLabel("规划张力（0–100）").fill("72");
+  const sceneResponse = waitForApiResponse(page, "PUT", sceneCardApi);
+  await sceneForm.getByRole("button", { name: "保存场景卡" }).click();
+  const savedScene = outlineWorkspaceSchema.parse(
+    (await (await sceneResponse).json()).data.workspace,
+  );
+  expect(savedScene.sceneCards[0]?.informationReleases[0]?.description).toBe("顾青看见书页一角");
+
+  const persistedResponse = await page.request.get(`${branchPath(work)}/outline`);
+  expect(persistedResponse.status()).toBe(200);
+  const persisted = outlineWorkspaceResponseSchema.parse(await persistedResponse.json()).data;
+  const persistedVolumeObjective = persisted.volumeContracts[0]?.objective;
+  const persistedScenePov = persisted.sceneCards[0]?.pov?.id;
+  expect(persistedVolumeObjective).toBe("守住忘川渡并揭开第一卷旧案。");
+  expect(persistedScenePov).toBe(fixture.character.id);
+});
+
+test("renders the persisted story ledger from the outline workspace", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createOutlineWork(page);
+  const token = await getCsrf(page.request);
+  const entry = await createLedgerEntry(page, work, token, "旧信里的身世线索");
+  const ledgerApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger`;
+  const ledgerResponse = waitForApiResponse(page, "GET", ledgerApi);
+
+  await page.goto(`/workspace/${work.id}/outline`);
+  const ledger = storyLedgerWorkspaceResponseSchema.parse(await (await ledgerResponse).json()).data;
+  expect(ledger.entries[0]?.id).toBe(entry.id);
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/workspace/${work.id}/outline`);
+    await page.getByRole("tab", { name: "剧情账本" }).click();
+    await expect(page.locator("[data-outline-ledger]")).toContainText("旧信里的身世线索");
+    await expectNoPrototypeOnlyLeakage(page);
+    await expectAuthorFacingLanguage(page);
+    await expectNoOverflow(page);
+  }
+});
+
+test("selects a golden-three direction from the outline page", async ({ page, context }) => {
+  test.setTimeout(120_000);
+  await authenticatedPage(page, context);
+  const work = await createOutlineWork(page);
+  const token = await getCsrf(page.request);
+  const fixture = await seedGoldenThree(page, token, work);
+  const selectApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/golden-three/candidates/${fixture.candidateB.id}/select`;
+
+  await page.goto(`/workspace/${work.id}/outline`);
+  const candidateCard = page.locator(`[data-golden-candidate-id="${fixture.candidateB.id}"]`);
+  await expect(candidateCard).toBeVisible();
+  const selectResponse = waitForApiResponse(page, "POST", selectApi);
+  await candidateCard.getByRole("button", { name: "选定这个方向" }).click();
+  expect((await selectResponse).status()).toBe(200);
+  await expect(candidateCard.getByText("已选定")).toBeVisible();
+
+  const persistedResponse = await page.request.get(`${branchPath(work)}/golden-three`);
+  expect(persistedResponse.status()).toBe(200);
+  const persisted = goldenThreeWorkspaceResponseSchema.parse(await persistedResponse.json()).data;
+  expect(persisted.selectedCandidateId).toBe(fixture.candidateB.id);
+  await expectNoPrototypeOnlyLeakage(page);
   await expectAuthorFacingLanguage(page);
+  await expectNoOverflow(page);
 });
 
 test("drags to reorder and locks/unlocks a node with persisted state", async ({
@@ -409,6 +609,9 @@ test("drags to reorder and locks/unlocks a node with persisted state", async ({
   const work = await createOutlineWork(page);
   const token = await getCsrf(page.request);
   const fixture = await setupTwoActOutline(page, work, token);
+  const moveApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.actTwo.id}/move`;
+  const lockApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.actTwo.id}/lock`;
+  const unlockApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.actTwo.id}/unlock`;
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/workspace/${work.id}/outline`);
@@ -419,8 +622,7 @@ test("drags to reorder and locks/unlocks a node with persisted state", async ({
 
   const moved = page.waitForResponse(
     (response) =>
-      response.url().includes(`/outline/nodes/${fixture.actTwo.id}/move`) &&
-      response.request().method() === "POST",
+      new URL(response.url()).pathname === moveApi && response.request().method() === "POST",
   );
   await actTwoItem.dragTo(actOneItem);
   expect((await moved).status()).toBe(200);
@@ -438,13 +640,15 @@ test("drags to reorder and locks/unlocks a node with persisted state", async ({
   await actTwoItem.click();
   const lockedResponse = page.waitForResponse(
     (response) =>
-      response.url().includes(`/outline/nodes/${fixture.actTwo.id}/lock`) &&
-      response.request().method() === "POST",
+      new URL(response.url()).pathname === lockApi && response.request().method() === "POST",
   );
   await page.getByRole("button", { name: "锁定", exact: true }).click();
   expect((await lockedResponse).status()).toBe(200);
   await expect(page.locator(".outline-plan-detail-badges").getByText("已锁定")).toBeVisible();
   await expect(page.getByRole("button", { name: "保存节点" })).toBeDisabled();
+  const persistedLock = await getOutlineWorkspace(page, work);
+  const persistedLocked = persistedLock.nodes.find((node) => node.id === fixture.actTwo.id)?.locked;
+  expect(persistedLocked).toBe(true);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
@@ -460,8 +664,7 @@ test("drags to reorder and locks/unlocks a node with persisted state", async ({
 
   const unlockedResponse = page.waitForResponse(
     (response) =>
-      response.url().includes(`/outline/nodes/${fixture.actTwo.id}/unlock`) &&
-      response.request().method() === "POST",
+      new URL(response.url()).pathname === unlockApi && response.request().method() === "POST",
   );
   await page.getByRole("button", { name: "解锁", exact: true }).click();
   expect((await unlockedResponse).status()).toBe(200);

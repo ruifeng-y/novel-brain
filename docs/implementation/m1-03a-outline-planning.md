@@ -57,7 +57,7 @@ Web 代理 `apps/web/app/api/v1/[...path]/route.ts` 已补 `PUT` 转发，确保
   - error
   - long outline
   - 390 / 900 / 1180 / 1440 四视口，无横向溢出，作者语言扫描。
-- `docs/ui/v1-ui-parity-matrix.md` 中 outline 状态从 `parity-verified` 回退为 `production-built`，等待重新拍摄与作者视觉签收。
+- `docs/ui/v1-ui-parity-matrix.md` 中 outline 状态曾因布局变化回退为 `production-built`；#227 补齐当前 Golden、逐动作 API/持久化证据和最终正常 PR CI 后已恢复为 `parity-verified`。
 
 ## 验证
 

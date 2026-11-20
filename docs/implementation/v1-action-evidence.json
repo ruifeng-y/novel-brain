@@ -420,8 +420,100 @@
       ]
     },
     "outline": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "aa11a5f5cb4e06317e5bb903f949bcdebfeb582d",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44676510957",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44676510790",
+      "actions": [
+        {
+          "id": "create-outline-node",
+          "name": "创建全书大纲节点并回读持久化节点",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "creates and edits outline nodes through production forms",
+          "assertion": "expect(persisted.nodes[0]?.id).toBe(created.id);"
+        },
+        {
+          "id": "edit-outline-node",
+          "name": "从节点表单保存摘要并回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${created.id}",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "creates and edits outline nodes through production forms",
+          "assertion": "expect(persistedSummary).toBe(\"从生产节点表单保存的全书摘要。\");"
+        },
+        {
+          "id": "tree-view",
+          "name": "树状大纲读取持久化节点层级",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "renders empty, tree, board and tension states at four viewports",
+          "assertion": "expect(persistedBook.nodes[0]?.id).toBe(book.id);"
+        },
+        {
+          "id": "board-view",
+          "name": "章节看板读取持久化章节",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "renders empty, tree, board and tension states at four viewports",
+          "assertion": "await expect(page.getByRole(\"button\", { name: /第 48 章/ })).toBeVisible();"
+        },
+        {
+          "id": "tension-curve",
+          "name": "张力曲线读取持久化章节张力",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "renders empty, tree, board and tension states at four viewports",
+          "assertion": "expect(persistedTension).toBe(72);"
+        },
+        {
+          "id": "ledger-view",
+          "name": "剧情账本读取持久化账本记录",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "renders the persisted story ledger from the outline workspace",
+          "assertion": "expect(ledger.entries[0]?.id).toBe(entry.id);"
+        },
+        {
+          "id": "scene-card",
+          "name": "从场景卡表单保存并回读 POV",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.scene.id}/scene-card",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "persists volume contracts and scene cards through production forms",
+          "assertion": "expect(persistedScenePov).toBe(fixture.character.id);"
+        },
+        {
+          "id": "golden-three-select",
+          "name": "从大纲页选定黄金三章方向并回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/golden-three/candidates/${fixture.candidateB.id}/select",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "selects a golden-three direction from the outline page",
+          "assertion": "expect(persisted.selectedCandidateId).toBe(fixture.candidateB.id);"
+        },
+        {
+          "id": "volume-contract",
+          "name": "从卷契约表单保存并回读目标",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.volume.id}/volume-contract",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "persists volume contracts and scene cards through production forms",
+          "assertion": "expect(persistedVolumeObjective).toBe(\"守住忘川渡并揭开第一卷旧案。\");"
+        },
+        {
+          "id": "reorder-outline",
+          "name": "拖拽调整幕顺序并回读排序",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.actTwo.id}/move",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "drags to reorder and locks/unlocks a node with persisted state",
+          "assertion": "expect(volumeChildren).toEqual([fixture.actTwo.id, fixture.actOne.id]);"
+        },
+        {
+          "id": "lock-outline",
+          "name": "锁定大纲节点并回读锁定状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/outline/nodes/${fixture.actTwo.id}/lock",
+          "spec": "apps/web/e2e/parity/outline.spec.ts",
+          "test": "drags to reorder and locks/unlocks a node with persisted state",
+          "assertion": "expect(persistedLocked).toBe(true);"
+        }
+      ]
     },
     "foreshadows": {
       "status": "pending",

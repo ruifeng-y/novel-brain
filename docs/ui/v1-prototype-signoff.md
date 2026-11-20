@@ -182,6 +182,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正常 PR Production CI [44573477468](https://github.com/ruifeng-y/novel-brain/actions/runs/44573477468) 的 `check` 与 `playwright`、Deployment Smoke [44573478266](https://github.com/ruifeng-y/novel-brain/actions/runs/44573478266) 均通过；`settings` 提升为 `parity-verified`。
 
+## 2026-11-20 outline 逐动作持久化与最终 CI 签收
+
+沿用作者在 2026-11-11 与 2026-11-12 对 `outline` 四档正式 Golden 和题材化变化的视觉签收。本次 #227 不改变初始页面视觉基线，只补齐 11 个页面动作的真实 API 与持久化证据。
+
+`apps/web/e2e/parity/outline.spec.ts` 覆盖节点创建/编辑、树状/看板/张力/账本视图、卷契约、场景卡、黄金三章选择、排序和锁定。断言包括节点摘要、章节张力、账本记录、卷目标、场景 POV、黄金三章选定候选和锁定/排序状态的持久化回读。完整 `pnpm check` 通过（120 files / 605 tests），作者语言、prototype-only 扫描与四档 Linux Golden 回归均通过。
+
+正常 PR Production CI [44676510957](https://github.com/ruifeng-y/novel-brain/actions/runs/44676510957) 的 `check` 与 `playwright`、Deployment Smoke [44676510790](https://github.com/ruifeng-y/novel-brain/actions/runs/44676510790) 均通过；`outline` 提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
