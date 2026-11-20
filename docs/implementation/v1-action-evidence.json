@@ -685,7 +685,7 @@
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
           "spec": "apps/web/e2e/parity/writing.spec.ts",
           "test": "rewrites only the selected draft and applies a generated title at four viewports",
-          "assertion": "expect(persistedSelection.currentVersionId).toBe("
+          "assertion": "expect(persistedSelection.currentVersionId).toBe(selectionJob.output?.chapterVersionId);"
         },
         {
           "id": "check-chapter",
@@ -693,12 +693,12 @@
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/verify",
           "spec": "apps/web/e2e/parity/writing.spec.ts",
           "test": "shows six-dimension evidence and completes a finding dismiss/reopen lifecycle",
-          "assertion": "finding.code === \"FACT_CONTRADICTION\""
+          "assertion": "expect(checkedQuality.findings.some((f) => f.code === \"FACT_CONTRADICTION\")).toBe(true);"
         },
         {
           "id": "confirm-fact",
           "name": "确认事实提案并回读状态",
-          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/fact-proposals",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/fact-proposals/${proposalId}/decision",
           "spec": "apps/web/e2e/parity/writing.spec.ts",
           "test": "persists confirm and reject fact decisions without changing confirmed settings",
           "assertion": "expect(persistedConfirmedFact?.status).toBe(\"confirmed\");"
@@ -706,7 +706,7 @@
         {
           "id": "reject-fact",
           "name": "驳回事实提案并回读状态",
-          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/fact-proposals",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/fact-proposals/${proposalId}/decision",
           "spec": "apps/web/e2e/parity/writing.spec.ts",
           "test": "persists confirm and reject fact decisions without changing confirmed settings",
           "assertion": "expect(persistedRejectedFact?.status).toBe(\"rejected\");"

@@ -67,6 +67,10 @@ function branchPath(work: { id: string; mainBranch: { id: string } }) {
   return `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
 }
 
+function factDecisionPath(work: { id: string; mainBranch: { id: string } }, proposalId: string) {
+  return `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/fact-proposals/${proposalId}/decision`;
+}
+
 async function getChapter(
   page: Page,
   work: { id: string; mainBranch: { id: string } },
@@ -301,11 +305,10 @@ test("creates a new chapter and restores an earlier version through production c
 
   await page.getByRole("button", { name: "恢复第 1 版" }).click();
   await page.getByLabel("恢复原因").fill("回到第一次保存的段落节奏。");
-  const restored = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname ===
-        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/rollback` &&
-      response.request().method() === "POST",
+  const restored = waitForApiResponse(
+    page,
+    "POST",
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/rollback`,
   );
   await page.getByRole("button", { name: "确认恢复" }).click();
   expect((await restored).status()).toBe(200);
@@ -316,11 +319,7 @@ test("creates a new chapter and restores an earlier version through production c
   const restoredVersions = await getVersions(page, work, chapter.id);
   expect(restoredVersions).toHaveLength(3);
 
-  const created = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === chaptersPath(work) &&
-      response.request().method() === "POST",
-  );
+  const created = waitForApiResponse(page, "POST", chaptersPath(work));
   await page.getByRole("button", { name: "新建章节" }).click();
   expect((await created).status()).toBe(201);
   const chapterListResponse = await page.request.get(chaptersPath(work));
@@ -465,10 +464,8 @@ test("shows six-dimension evidence and completes a finding dismiss/reopen lifecy
   await page.getByRole("button", { name: "检查本章", exact: true }).click();
   const checked = await checkResponse;
   expect(checked.status()).toBe(200);
-  const checkedWorkspace = qualityWorkspaceResponseSchema.parse(await checked.json()).data;
-  expect(checkedWorkspace.findings.some((finding) => finding.code === "FACT_CONTRADICTION")).toBe(
-    true,
-  );
+  const checkedQuality = qualityWorkspaceResponseSchema.parse(await checked.json()).data;
+  expect(checkedQuality.findings.some((f) => f.code === "FACT_CONTRADICTION")).toBe(true);
   const quality = page.locator(".writing-quality");
   await expect(quality.getByRole("heading", { name: "质量报告" })).toBeVisible();
   await expect(quality.locator(".quality-dimension")).toHaveCount(6);
@@ -908,21 +905,14 @@ test("rewrites only the selected draft and applies a generated title at four vie
     await expect
       .poll(async () => (await getWritingAction(page, work, chapter.id, selectionAction.id)).status)
       .toBe("waiting_review");
-    const completedSelectionAction = await getWritingAction(
-      page,
-      work,
-      chapter.id,
-      selectionAction.id,
-    );
+    const selectionJob = await getWritingAction(page, work, chapter.id, selectionAction.id);
     await expect(editor).toHaveValue(/风停。\n\n改写片段/);
     await expect(editor).not.toHaveValue(/SELECTED_BLOCK/);
     await expect(editor).toHaveValue(/钟声未响。$/);
     await expect(actionPanel.getByText(/改写范围：第 \d+–\d+ 字/)).toBeVisible();
     await expect(actionPanel.getByText("新版本已生成，原稿保留在版本历史")).toBeVisible();
     const persistedSelection = await getChapter(page, work, chapter.id);
-    expect(persistedSelection.currentVersionId).toBe(
-      completedSelectionAction.output?.chapterVersionId,
-    );
+    expect(persistedSelection.currentVersionId).toBe(selectionJob.output?.chapterVersionId);
     expect(persistedSelection.currentVersion?.content).toContain("改写片段");
     await page.getByRole("tab", { name: "版本" }).click();
     await expect(page.locator(".writing-version-list").getByText("第 1 版")).toBeVisible();
@@ -1230,11 +1220,32 @@ test("persists confirm and reject fact decisions without changing confirmed sett
     await expect(factsPanel.getByText("待确认", { exact: true }).first()).toBeVisible();
     await expect(factsPanel.getByText(/来源句：/).first()).toBeVisible();
 
+    const initialProposalsResponse = await page.request.get(
+      `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/fact-proposals`,
+    );
+    expect(initialProposalsResponse.status()).toBe(200);
+    const initialProposals = factProposalListResponseSchema
+      .parse(await initialProposalsResponse.json())
+      .data.filter((proposal) => proposal.status === "proposed");
+    expect(initialProposals.length).toBeGreaterThanOrEqual(2);
+
     const confirmButtons = factsPanel.getByRole("button", { name: "确认", exact: true });
     expect(await confirmButtons.count()).toBeGreaterThanOrEqual(2);
+    const confirmResponse = waitForApiResponse(
+      page,
+      "POST",
+      factDecisionPath(work, initialProposals[0]!.id),
+    );
     await confirmButtons.first().click();
+    expect((await confirmResponse).status()).toBe(200);
     await expect(factsPanel.getByText("已确认", { exact: true })).toHaveCount(1);
+    const rejectResponse = waitForApiResponse(
+      page,
+      "POST",
+      factDecisionPath(work, initialProposals[1]!.id),
+    );
     await factsPanel.getByRole("button", { name: "驳回", exact: true }).first().click();
+    expect((await rejectResponse).status()).toBe(200);
     await expect(factsPanel.getByText("已驳回", { exact: true })).toHaveCount(1);
     await expect(factsPanel.getByText("来源句：").first()).toBeVisible();
     await expect(page.locator("body")).not.toContainText("已写入已确认设定");
