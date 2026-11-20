@@ -2,7 +2,7 @@
 
 > Issue: #142
 > Capabilities: WORK-006, WORK-007, WORK-008
-> Status: implementation and visual sign-off complete; final normal PR CI required before merge
+> Status: implementation, per-action evidence and visual sign-off complete
 
 ## 实现范围
 
@@ -22,4 +22,4 @@
 
 ## 视觉状态
 
-四视口生产 Golden 已生成到 `artifacts/ui/golden/work-settings/`。作者已确认四档生产布局；390px Linux/Chromium actual 来自 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122)，其余 `work-settings` Golden 由 [Production CI #44138638764](https://github.com/ruifeng-y/novel-brain/actions/runs/44138638764) 的受控 `update_golden` 运行生成。该记录只证明视觉证据；当前 release status 以 `docs/ui/v1-ui-parity-matrix.md` 为准，`work-settings` 在逐动作持久化审计和最终正常 PR CI 通过前保持 `production-built`。
+四视口生产 Golden 已生成到 `artifacts/ui/golden/work-settings/`。作者已确认四档生产布局；390px Linux/Chromium actual 来自 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122)，其余 `work-settings` Golden 由 [Production CI #44138638764](https://github.com/ruifeng-y/novel-brain/actions/runs/44138638764) 的受控 `update_golden` 运行生成。#233 补齐九个逐动作 API/持久化断言并通过正常 PR Production CI [44773690891](https://github.com/ruifeng-y/novel-brain/actions/runs/44773690891) 与 Deployment Smoke [44773691156](https://github.com/ruifeng-y/novel-brain/actions/runs/44773691156)，页面当前为 `parity-verified`。
