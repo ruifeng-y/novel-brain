@@ -585,11 +585,11 @@
         },
         {
           "id": "check-foreshadows",
-          "name": "从生产控件重新检查并回读持久化风险结果",
+          "name": "从生产控件重新检查并绑定持久化风险记录",
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger",
           "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
           "test": "persists all nine foreshadows page actions through the production API",
-          "assertion": "expect(persistedCheck.findings.some((finding) => finding.code === \"LEDGER_OVERDUE\")).toBe(true);"
+          "assertion": "expect(persistedOverdue?.entryId).toBe(overdueEntries[0]!.id);"
         }
       ]
     },

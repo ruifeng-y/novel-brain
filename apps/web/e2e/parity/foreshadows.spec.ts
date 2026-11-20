@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import {
+  storyLedgerEntryCreateRequestSchema,
   storyLedgerMutationResponseSchema,
   storyLedgerWorkspaceResponseSchema,
 } from "@novel-brain/contracts";
@@ -82,19 +83,20 @@ async function createForeshadow(
   body: Record<string, unknown>,
 ) {
   const token = await getCsrf(page.request);
+  const payload = storyLedgerEntryCreateRequestSchema.parse({
+    kind: "foreshadow",
+    responsibleRole: "protagonist",
+    importance: "must",
+    readerPromise: "身世谜团",
+    ...body,
+  });
   const response = await page.request.post(`${branchPath(work)}/ledger/entries`, {
     headers: {
       Origin: origin,
       "X-CSRF-Token": token,
       "Idempotency-Key": crypto.randomUUID(),
     },
-    data: {
-      kind: "foreshadow",
-      responsibleRole: "protagonist",
-      importance: "must",
-      readerPromise: "身世谜团",
-      ...body,
-    },
+    data: payload,
   });
   if (response.status() !== 201) {
     throw new Error(`${response.status()}: ${await response.text()}`);
@@ -207,9 +209,9 @@ test("persists all nine foreshadows page actions through the production API", as
   await expect(page.getByLabel("来源章节")).toHaveValue(chapter.id);
   await page.getByLabel("原因", { exact: true }).fill("第 1 章旧宅里埋下。");
 
-  const setup = waitForApiResponse(page, "POST", plantApi);
+  const plantResponse = waitForApiResponse(page, "POST", plantApi);
   await page.getByRole("button", { name: "确认埋设" }).click();
-  expect((await setup).status()).toBe(200);
+  expect((await plantResponse).status()).toBe(200);
   await expect(row.getByText("已埋设", { exact: true })).toBeVisible();
   await expect(row.getByText(/第 1 章 · 旧宅夜雨/).first()).toBeVisible();
   const persistedPlant = (await getLedger(page, work)).entries.find(
@@ -233,9 +235,9 @@ test("persists all nine foreshadows page actions through the production API", as
   await row.getByRole("button", { name: "回收", exact: true }).click();
   await page.getByLabel("原因", { exact: true }).fill("旧信夹层里的追杀令揭晓真相。");
   await page.getByLabel("回收证据", { exact: true }).fill("信纸夹层里是血河宗的追杀令。");
-  const payoff = waitForApiResponse(page, "POST", recoverApi);
+  const recoverResponse = waitForApiResponse(page, "POST", recoverApi);
   await page.getByRole("button", { name: "确认回收" }).click();
-  expect((await payoff).status()).toBe(200);
+  expect((await recoverResponse).status()).toBe(200);
   await expect(row.getByText("已回收", { exact: true })).toBeVisible();
   await expect(page.getByText("保留回收记录与证据")).toBeVisible();
   const persistedRecover = (await getLedger(page, work)).entries.find(
@@ -282,19 +284,21 @@ test("persists all nine foreshadows page actions through the production API", as
   );
   expect(persistedPostpone?.status).toBe("deferred");
 
-  await createForeshadow(page, work, {
-    title: "旧线索",
-    summary: "第 1 条重复线索。",
-    targetWindow: { fromChapter: 1, toChapter: 3 },
-    status: "planned",
-  });
-  await createForeshadow(page, work, {
-    title: "旧 线索",
-    summary: "第 2 条重复线索。",
-    targetWindow: { fromChapter: 1, toChapter: 3 },
-    status: "planned",
-    importance: "optional",
-  });
+  const overdueEntries = [
+    await createForeshadow(page, work, {
+      title: "旧线索",
+      summary: "第 1 条重复线索。",
+      targetWindow: { fromChapter: 1, toChapter: 3 },
+      status: "planned",
+    }),
+    await createForeshadow(page, work, {
+      title: "旧 线索",
+      summary: "第 2 条重复线索。",
+      targetWindow: { fromChapter: 1, toChapter: 3 },
+      status: "planned",
+      importance: "optional",
+    }),
+  ];
   const laterChapter = await createChapter(page, work, 6, "写作进度");
   const databaseUrl =
     process.env.E2E_DATABASE_URL ??
@@ -311,12 +315,23 @@ test("persists all nine foreshadows page actions through the production API", as
   await page.reload();
   const recheck = waitForApiResponse(page, "GET", ledgerApi);
   await page.getByRole("button", { name: "重新检查" }).click();
-  expect((await recheck).status()).toBe(200);
+  const recheckResponse = await recheck;
+  expect(recheckResponse.status()).toBe(200);
+  const recheckedWorkspace = storyLedgerWorkspaceResponseSchema.parse(
+    await recheckResponse.json(),
+  ).data;
   await expect(page.locator('[data-ledger-finding="LEDGER_OVERDUE"]')).toHaveCount(2);
   await expect(page.locator('[data-ledger-finding="LEDGER_DUPLICATE"]')).toHaveCount(2);
   await expect(page.getByText("当前进度：写到第 6 章")).toBeVisible();
   const persistedCheck = await getLedger(page, work);
-  expect(persistedCheck.findings.some((finding) => finding.code === "LEDGER_OVERDUE")).toBe(true);
+  const recheckedOverdue = recheckedWorkspace.findings.find(
+    (finding) => finding.code === "LEDGER_OVERDUE",
+  );
+  const persistedOverdue = persistedCheck.findings.find(
+    (finding) => finding.code === "LEDGER_OVERDUE",
+  );
+  expect(recheckedOverdue?.entryId).toBe(overdueEntries[0]!.id);
+  expect(persistedOverdue?.entryId).toBe(overdueEntries[0]!.id);
   await expectAuthorFacingLanguage(page);
 });
 
