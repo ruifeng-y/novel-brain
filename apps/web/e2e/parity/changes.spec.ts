@@ -1,5 +1,16 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { workResponseSchema } from "@novel-brain/contracts";
+import {
+  branchComparisonResponseSchema,
+  branchCreateResponseSchema,
+  changeAnalysisResponseSchema,
+  changeApplyResponseSchema,
+  changeRequestListResponseSchema,
+  mergeApplyResponseSchema,
+  mergeItemDecisionResponseSchema,
+  settingEntityResponseSchema,
+  versionRollbackResponseSchema,
+  workResponseSchema,
+} from "@novel-brain/contracts";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import {
@@ -305,9 +316,264 @@ test("keeps change records visible when comparison partially fails", async ({ pa
   await expect(page.getByText("调整角色伤势")).toBeVisible();
 });
 
-async function seedChangesPage(page: Page, context: BrowserContext, width: number) {
+test("creates, analyzes, applies and reverts a change through production controls", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const seeded = await seedEditableChangeTarget(page, context);
+  const changesPath = `/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/changes`;
+  const title = "把左臂伤势改为恢复";
+  const afterSummary = "左臂恢复，可以重新结印。";
+
+  await page.goto(`/workspace/${seeded.workId}/changes`);
+  const createPanel = page.locator("section").filter({ hasText: "新建修改请求" });
+  await createPanel.getByLabel("标题").fill(title);
+  await createPanel.getByLabel("风险").selectOption("high");
+  await createPanel.getByLabel("目标类型").selectOption("entity");
+  await createPanel.getByLabel("目标对象 ID").fill(seeded.entityId);
+  await createPanel.getByLabel("目标对象版本").fill(String(seeded.entityVersion));
+  await createPanel.getByLabel("对象类型").selectOption("entity");
+  await createPanel.getByLabel("原因").fill("让后续战斗成立。");
+  await createPanel.getByLabel("旧值 JSON").fill(JSON.stringify({ summary: seeded.entitySummary }));
+  await createPanel.getByLabel("新值 JSON").fill(JSON.stringify({ summary: afterSummary }));
+
+  const createResponse = page.waitForResponse(
+    (response) => response.url() === `${origin}${changesPath}` && response.status() === 200,
+  );
+  await createPanel.getByRole("button", { name: "创建修改请求" }).click();
+  await createResponse;
+
+  const createdListResponse = await page.request.get(`${changesPath}?limit=50`);
+  expect(createdListResponse.status()).toBe(200);
+  const createdList = changeRequestListResponseSchema.parse(await createdListResponse.json()).data;
+  const created = createdList.find((change) => change.title === title);
+  expect(created).toBeDefined();
+
+  const changeRow = page.locator(".change-row").filter({ hasText: title });
+  const analyzeResponse = page.waitForResponse(
+    (response) =>
+      response.url() ===
+        `${origin}/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/changes/${created!.id}/analyze` &&
+      response.status() === 200,
+  );
+  await changeRow.getByRole("button", { name: "分析" }).click();
+  const analysis = changeAnalysisResponseSchema.parse(await (await analyzeResponse).json()).data;
+  expect(analysis.change.status).toBe("awaiting_confirmation");
+  await expect(changeRow).toContainText("待确认");
+  const analyzedListResponse = await page.request.get(`${changesPath}?limit=50`);
+  expect(analyzedListResponse.status()).toBe(200);
+  const analyzedList = changeRequestListResponseSchema.parse(
+    await analyzedListResponse.json(),
+  ).data;
+  const persistedAnalysis = analyzedList.find((change) => change.id === created!.id);
+  expect(persistedAnalysis?.status).toBe("awaiting_confirmation");
+
+  const blockedApplyResponse = page.waitForResponse(
+    (response) =>
+      response.url() ===
+        `${origin}/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/changes/${created!.id}/apply` &&
+      response.status() === 409,
+  );
+  await changeRow.getByRole("button", { name: "应用", exact: true }).click();
+  await blockedApplyResponse;
+  await expect(page.getByText("高风险修改需要二次确认")).toBeVisible();
+  await page.getByLabel("我已确认高风险修改").check();
+
+  const headBeforeApply = await getPersistedBranchHead(page, seeded.workId, seeded.branchId);
+  const applyResponse = page.waitForResponse(
+    (response) =>
+      response.url() ===
+        `${origin}/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/changes/${created!.id}/apply` &&
+      response.status() === 200,
+  );
+  await changeRow.getByRole("button", { name: "应用", exact: true }).click();
+  const applied = changeApplyResponseSchema.parse(await (await applyResponse).json()).data;
+  expect(applied.change.status).toBe("applied");
+  expect(headBeforeApply).not.toBe(applied.versionNodeId);
+  const headAfterApply = await getPersistedBranchHead(page, seeded.workId, seeded.branchId);
+  expect(headAfterApply).toBe(applied.versionNodeId);
+  await expectPersistedEntitySummary(
+    page,
+    seeded.workId,
+    seeded.branchId,
+    seeded.entityId,
+    afterSummary,
+  );
+
+  const revertResponse = page.waitForResponse(
+    (response) =>
+      response.url() ===
+        `${origin}/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/rollback` &&
+      response.status() === 200,
+  );
+  await page.getByRole("button", { name: "撤销最近一次修改" }).click();
+  const reverted = versionRollbackResponseSchema.parse(await (await revertResponse).json()).data;
+  expect(reverted.nodeType).toBe("rollback");
+  const headAfterRevert = await getPersistedBranchHead(page, seeded.workId, seeded.branchId);
+  expect(headAfterRevert).toBe(reverted.versionNodeId);
+  expect(headAfterRevert).not.toBe(applied.versionNodeId);
+  await expectPersistedEntitySummary(
+    page,
+    seeded.workId,
+    seeded.branchId,
+    seeded.entityId,
+    seeded.entitySummary,
+  );
+  await expectAuthorFacingLanguage(page);
+});
+
+test("creates a parallel version through the production control", async ({ page, context }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const seeded = await seedEditableChangeTarget(page, context);
+  await page.goto(`/workspace/${seeded.workId}/changes`);
+
+  const branchPanel = page.locator("section").filter({ hasText: "平行版本" });
+  await expect(branchPanel.getByLabel("来源版本 ID")).not.toHaveValue("");
+  await branchPanel.getByLabel("名称").fill("验收平行线");
+  await branchPanel.getByLabel("原因").fill("验证另一条剧情走向。");
+
+  const branchResponse = page.waitForResponse(
+    (response) =>
+      response.url() === `${origin}/api/v1/works/${seeded.workId}/branches` &&
+      response.status() === 200,
+  );
+  await branchPanel.getByRole("button", { name: "创建平行版本" }).click();
+  expect((await branchResponse).status()).toBe(200);
+
+  const persistedWorkResponse = await page.request.get(`/api/v1/works/${seeded.workId}`);
+  expect(persistedWorkResponse.status()).toBe(200);
+  const persistedWork = workResponseSchema.parse(await persistedWorkResponse.json()).data;
+  expect(persistedWork.branches.map((candidate) => candidate.name)).toContain("验收平行线");
+});
+
+test("compares branches and applies a selected object through production controls", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const seeded = await seedEditableChangeTarget(page, context);
+  const token = await getCsrf(page.request);
+  const branchResponse = await page.request.post(`/api/v1/works/${seeded.workId}/branches`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: {
+      name: "摘取来源线",
+      sourceNodeId: seeded.headNodeId,
+      reason: "准备逐对象摘取。",
+    },
+  });
+  expect(branchResponse.status()).toBe(200);
+  const sourceBranch = branchCreateResponseSchema.parse(await branchResponse.json()).data;
+  const sourceSummary = "左臂已恢复，可以重新结印。";
+  const sourceEntity = await seedChangeCharacter(page, seeded.workId, sourceBranch.id, token, {
+    name: "沈砚",
+    summary: sourceSummary,
+    description: "来自平行版本的外门杂役。",
+    data: {
+      bodyState: "左臂恢复",
+      knowledgeBoundary: "不知道旧案真相",
+      relationshipSummary: "尚未与主角接触",
+    },
+  });
+
+  await page.goto(`/workspace/${seeded.workId}/changes`);
+  await page.getByLabel("来源分支").selectOption(sourceBranch.id);
+  const compareResponse = page.waitForResponse(
+    (response) =>
+      response.url() ===
+        `${origin}/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/compare/${sourceBranch.id}` &&
+      response.status() === 200,
+  );
+  await page.getByRole("button", { name: "比较" }).click();
+  const comparison = branchComparisonResponseSchema.parse(
+    await (await compareResponse).json(),
+  ).data;
+  const item = comparison.items.find(
+    (candidate) =>
+      candidate.objectType === "entity" &&
+      candidate.objectId === sourceEntity.id &&
+      candidate.changeKind === "changed",
+  );
+  expect(item).toBeDefined();
+  expect(item?.conflict).toBe(true);
+  expect(item?.sourcePayload.summary).toBe(sourceSummary);
+
+  const mergeRow = page.locator(".merge-row").filter({ hasText: item!.objectKey });
+  const decisionResponse = page.waitForResponse(
+    (response) =>
+      response.url() ===
+        `${origin}/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/merge-items/${item!.id}/decision` &&
+      response.status() === 200,
+  );
+  await mergeRow.getByRole("button", { name: "接受" }).click();
+  const decision = mergeItemDecisionResponseSchema.parse(
+    await (await decisionResponse).json(),
+  ).data;
+  expect(decision.id).toBe(item!.id);
+  expect(decision.status).toBe("accepted");
+
+  const headBeforeMerge = await getPersistedBranchHead(page, seeded.workId, seeded.branchId);
+  const blockedApplyResponse = page.waitForResponse(
+    (response) =>
+      response.url() ===
+        `${origin}/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/merge-items/apply` &&
+      response.status() === 409,
+  );
+  await page.getByRole("button", { name: "应用已接受项" }).click();
+  await blockedApplyResponse;
+  await expect(page.getByText("高风险摘取需要二次确认")).toBeVisible();
+
+  await page.getByLabel("我已确认高风险摘取").check();
+  const applyResponse = page.waitForResponse(
+    (response) =>
+      response.url() ===
+        `${origin}/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/merge-items/apply` &&
+      response.status() === 200,
+  );
+  await page.getByRole("button", { name: "应用已接受项" }).click();
+  const applied = mergeApplyResponseSchema.parse(await (await applyResponse).json()).data;
+  expect(applied.applied).toContain(item!.id);
+  const headAfterMerge = await getPersistedBranchHead(page, seeded.workId, seeded.branchId);
+  expect(headAfterMerge).toBe(applied.versionNodeId);
+  expect(headAfterMerge).not.toBe(headBeforeMerge);
+  await expectPersistedEntitySummary(
+    page,
+    seeded.workId,
+    seeded.branchId,
+    seeded.entityId,
+    sourceSummary,
+  );
+  await expectAuthorFacingLanguage(page);
+});
+
+async function getPersistedBranchHead(page: Page, workId: string, branchId: string) {
+  const response = await page.request.get(`/api/v1/works/${workId}?branchId=${branchId}`);
+  expect(response.status()).toBe(200);
+  return workResponseSchema.parse(await response.json()).data.mainBranch.headNodeId;
+}
+
+async function expectPersistedEntitySummary(
+  page: Page,
+  workId: string,
+  branchId: string,
+  entityId: string,
+  summary: string,
+) {
+  const response = await page.request.get(
+    `/api/v1/works/${workId}/branches/${branchId}/entities/${entityId}`,
+  );
+  expect(response.status()).toBe(200);
+  expect(settingEntityResponseSchema.parse(await response.json()).data.summary).toBe(summary);
+}
+
+async function seedChangesAuthorWork(
+  page: Page,
+  context: BrowserContext,
+  input: { title: string; idea: string },
+) {
   const email = uniqueEmail("changes");
   const session = await registerUser(page.request, email, "StrongPassword123", "修改作者");
+  expect(session).toBeTruthy();
   await context.addCookies([
     {
       name: "nb_session",
@@ -320,37 +586,93 @@ async function seedChangesPage(page: Page, context: BrowserContext, width: numbe
   ]);
   const work = await createWork(page.request, {
     mode: "idea",
-    title: "修改与版本验收书",
-    idea: "一个作者在修改旧稿时保持版本可追溯。",
+    title: input.title,
+    idea: input.idea,
     genre: "xianxia",
     scaleTarget: "long",
     chapterLengthTarget: 3000,
   });
   const detailResponse = await page.request.get(`/api/v1/works/${work.id}`);
   expect(detailResponse.status()).toBe(200);
-  const detail = workResponseSchema.parse(await detailResponse.json()).data;
-  const token = await getCsrf(page.request);
-  const targetResponse = await page.request.post(
-    `/api/v1/works/${work.id}/branches/${detail.mainBranch.id}/entities`,
+  return {
+    work,
+    detail: workResponseSchema.parse(await detailResponse.json()).data,
+  };
+}
+
+async function seedChangeCharacter(
+  page: Page,
+  workId: string,
+  branchId: string,
+  token: string,
+  input: {
+    name: string;
+    summary: string;
+    description: string;
+    data: Record<string, unknown>;
+  },
+) {
+  const response = await page.request.post(
+    `/api/v1/works/${workId}/branches/${branchId}/entities`,
     {
       headers: { Origin: origin, "X-CSRF-Token": token },
       data: {
         type: "character",
-        name: "修改目标角色",
+        name: input.name,
         aliases: [],
-        summary: "左臂骨折。",
-        description: "等待修改。",
+        summary: input.summary,
+        description: input.description,
         tags: [],
-        data: {
-          bodyState: "左臂骨折",
-          knowledgeBoundary: "不知道旧案真相",
-          relationshipSummary: "尚未与主角接触",
-        },
+        data: input.data,
       },
     },
   );
-  expect(targetResponse.status()).toBe(201);
-  const target = (await targetResponse.json()).data as { id: string; version: number };
+  expect(response.status()).toBe(201);
+  return settingEntityResponseSchema.parse(await response.json()).data;
+}
+
+async function seedEditableChangeTarget(page: Page, context: BrowserContext) {
+  const { work, detail } = await seedChangesAuthorWork(page, context, {
+    title: "修改生命周期验收书",
+    idea: "作者修改角色伤势后可以撤销并保留版本历史。",
+  });
+  const token = await getCsrf(page.request);
+  const entity = await seedChangeCharacter(page, work.id, detail.mainBranch.id, token, {
+    name: "沈砚",
+    summary: "左臂骨折。",
+    description: "外门杂役。",
+    data: {
+      bodyState: "左臂骨折",
+      knowledgeBoundary: "不知道旧案真相",
+      relationshipSummary: "尚未与主角接触",
+    },
+  });
+  return {
+    workId: work.id,
+    branchId: detail.mainBranch.id,
+    headNodeId: detail.mainBranch.headNodeId,
+    entityId: entity.id,
+    entityVersion: entity.version,
+    entitySummary: entity.summary,
+  };
+}
+
+async function seedChangesPage(page: Page, context: BrowserContext, width: number) {
+  const { work, detail } = await seedChangesAuthorWork(page, context, {
+    title: "修改与版本验收书",
+    idea: "一个作者在修改旧稿时保持版本可追溯。",
+  });
+  const token = await getCsrf(page.request);
+  const target = await seedChangeCharacter(page, work.id, detail.mainBranch.id, token, {
+    name: "修改目标角色",
+    summary: "左臂骨折。",
+    description: "等待修改。",
+    data: {
+      bodyState: "左臂骨折",
+      knowledgeBoundary: "不知道旧案真相",
+      relationshipSummary: "尚未与主角接触",
+    },
+  });
   const branchResponse = await page.request.post(`/api/v1/works/${work.id}/branches`, {
     headers: { Origin: origin, "X-CSRF-Token": token },
     data: {

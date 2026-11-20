@@ -18,7 +18,7 @@
 | foreshadows | `/workspace/[workId]/foreshadows` | 新增/编辑/埋设/推进/回收/失败回收/放弃/延期/检查 | loading/empty/error/disabled/long | 逾期提醒 | parity-verified；9 个必需动作均通过真实 API 与持久化断言，检查结果绑定持久化风险记录，四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | writing | `/workspace/[workId]/write` | 生成/续写/改写/检查/批准章节/确认事实/提交本章事实/版本 | loading/empty/error/disabled/partial/conflict/long | 本章参考/来源/淘汰/修订 diff/成本/检查点 | parity-verified；18 个必需动作均通过真实 API 与持久化断言，章节创建、append-only 旧版恢复、三段状态机、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | batch | `/workspace/[workId]/batch` | 开始/暂停/恢复/取消/重试/审核/报告 | loading/empty/error/partial/disabled/long/paused/failed | 失败断点/成本/审批 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，任务发现与生命周期控制、按需成本报告、审核决策、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
-| changes | `/workspace/[workId]/changes` | 新建/分析/应用/撤销/分支/比较/合并 | loading/error/conflict/partial/disabled/stale-version | 逐对象比较/摘取 | production-built；请求/影响/应用、分支比较、高风险门禁和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| changes | `/workspace/[workId]/changes` | 新建/分析/应用/撤销/分支/比较/合并 | loading/error/conflict/partial/disabled/stale-version | 逐对象比较/摘取 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，修改生命周期、回滚、平行版本、逐对象摘取、高风险门禁、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | export-publish | `/workspace/[workId]/export` | 导出/下载/发布检查/预览/文案 | loading/empty/error/partial/expired/long | 任务报告 | production-built；导出、发布检查、预览、过期恢复、AI 标识和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
 | work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/permission/readonly/confirmation | 无 | production-built；复制、归档恢复、回收站、导出后删除和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
 | entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | production-built；七类档案、题材化层级文案、引用/历史和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
