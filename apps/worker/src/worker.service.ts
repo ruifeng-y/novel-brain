@@ -67,6 +67,9 @@ import { WORKER_REDIS } from "./metrics/operational-metrics.tokens";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorkerGenerationRepository } from "./generation/generation.repository";
 
+const DEFAULT_MAINTENANCE_INTERVAL_MS = 60_000;
+const MIN_MAINTENANCE_INTERVAL_MS = 1_000;
+
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger: SafePinoLogger;
@@ -127,7 +130,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     await this.worker.waitUntilReady();
     await this.queue.upsertJobScheduler(
       "account-purge-scan",
-      { every: 60_000 },
+      { every: maintenanceIntervalMs() },
       {
         name: ACCOUNT_PURGE_TICK_JOB,
         data: accountPurgeTickJobPayload(),
@@ -338,4 +341,12 @@ function jobLogContext(payload: WorkerJob): Record<string, unknown> {
     default:
       return { jobId: payload.jobId, checkpointStep: payload.checkpoint.step };
   }
+}
+
+function maintenanceIntervalMs(): number {
+  const configured = Number(process.env.WORKER_MAINTENANCE_INTERVAL_MS);
+  if (!Number.isFinite(configured) || configured < MIN_MAINTENANCE_INTERVAL_MS) {
+    return DEFAULT_MAINTENANCE_INTERVAL_MS;
+  }
+  return Math.floor(configured);
 }

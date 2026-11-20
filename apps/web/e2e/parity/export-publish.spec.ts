@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
 import {
   expect,
   test,
@@ -6,6 +9,12 @@ import {
   type Page,
   type Route,
 } from "@playwright/test";
+import {
+  moderationCaseListResponseSchema,
+  publishPreviewResponseSchema,
+  workExportReceiptListResponseSchema,
+  workExportReceiptResponseSchema,
+} from "@novel-brain/contracts";
 import { Pool } from "pg";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
@@ -25,7 +34,7 @@ test.beforeEach(async () => {
   await resetRateLimits();
 });
 
-test("runs export, publish check and reader preview, then covers four viewports", async ({
+test("creates, downloads, checks, previews, copies, expires and appeals through production APIs", async ({
   page,
   context,
   playwright,
@@ -62,16 +71,80 @@ test("runs export, publish check and reader preview, then covers four viewports"
     );
     await expect(page.getByRole("button", { name: "TXT" })).toHaveAttribute("aria-pressed", "true");
 
+    const createExportResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url() === `${origin}${branchPath}/exports` &&
+        response.request().method() === "POST" &&
+        response.status() === 202,
+    );
     await page.getByRole("button", { name: "开始导出" }).click();
+    const createdExport = workExportReceiptResponseSchema.parse(
+      await (await createExportResponsePromise).json(),
+    ).data;
     await expect(page.getByText("导出完成，已写入导出历史。")).toBeVisible({
       timeout: 30_000,
     });
+    const persistedExportResponse = await page.request.get(
+      `${branchPath}/exports/${createdExport.id}`,
+    );
+    expect(persistedExportResponse.status()).toBe(200);
+    const persistedExport = workExportReceiptResponseSchema.parse(
+      await persistedExportResponse.json(),
+    ).data;
+    expect(persistedExport.status).toBe("completed");
+    expect(persistedExport.manifest?.chapters).toHaveLength(chapters.length);
+    expect(persistedExport.checksum).toMatch(/^[a-f0-9]{64}$/);
     const historyRow = page.locator(".export-history-row").first();
     await expect(historyRow).toContainText(".txt");
     await expect(historyRow.getByRole("button", { name: "下载" })).toBeEnabled();
 
+    const downloadResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url() === `${origin}${branchPath}/exports/${createdExport.id}/download` &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+    );
+    const downloadPromise = page.waitForEvent("download");
+    await historyRow.getByRole("button", { name: "下载" }).click();
+    const [downloadResponse, download] = await Promise.all([
+      downloadResponsePromise,
+      downloadPromise,
+    ]);
+    const downloadedPath = await download.path();
+    expect(downloadedPath).not.toBeNull();
+    const downloadedBytes = await readFile(downloadedPath!);
+    expect(createHash("sha256").update(downloadedBytes).digest("hex")).toBe(
+      persistedExport.checksum,
+    );
+    expect(download.suggestedFilename()).toBe(persistedExport.fileName);
+    expect(downloadResponse.headers()["x-export-checksum"]).toBe(persistedExport.checksum);
+    expect(downloadResponse.headers()["content-disposition"]).toContain(
+      encodeURIComponent(persistedExport.fileName!),
+    );
+    await expect(page.getByText("导出文件已开始下载。")).toBeVisible();
+
+    const publishCheckResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url() === `${origin}${branchPath}/publish-check` &&
+        response.request().method() === "POST" &&
+        response.status() === 201,
+    );
     await page.getByRole("button", { name: "重新检查" }).click();
+    const createdPreview = publishPreviewResponseSchema.parse(
+      await (await publishCheckResponsePromise).json(),
+    ).data;
     await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
+    const persistedPreviewResponse = await page.request.get(
+      `${branchPath}/publish-check/${createdPreview.id}`,
+    );
+    expect(persistedPreviewResponse.status()).toBe(200);
+    const persistedPreview = publishPreviewResponseSchema.parse(
+      await persistedPreviewResponse.json(),
+    ).data;
+    expect(persistedPreview.exportId).toBe(createdExport.id);
+    expect(persistedPreview.manifestHash).toBe(persistedExport.manifest?.manifestHash);
+    expect(persistedPreview.readerPreview.chapters).toHaveLength(3);
+    expect(persistedPreview.publishCopy.aiDisclosureMetadata?.required).toBe(true);
     await expect(page.locator(".publish-check")).toHaveCount(13);
     await expect(page.locator(".publish-check.blocked")).toHaveCount(0);
     await expect(page.locator(".publish-check.warning").first()).toBeVisible();
@@ -82,14 +155,49 @@ test("runs export, publish check and reader preview, then covers four viewports"
     await page.getByLabel("修正内容（可选）").fill("第 2 章的示例性步骤描述已准备删除。");
     await page.getByRole("button", { name: "提交申诉", exact: true }).click();
     await expect(page.getByText("申诉已提交，状态和证据已写入审计记录。")).toBeVisible();
+    const moderationResponse = await page.request.get(`${branchPath}/moderation-cases`);
+    expect(moderationResponse.status()).toBe(200);
+    const persistedModerationCase = moderationCaseListResponseSchema
+      .parse(await moderationResponse.json())
+      .data.find((item) => item.publishPreviewId === createdPreview.id);
+    expect(persistedModerationCase?.status).toBe("appeal_submitted");
+    expect(persistedModerationCase?.appeals[0]?.reason).toBe(
+      "已重新核对相关章节，请复核这条内容安全提示。",
+    );
+    expect(persistedModerationCase?.events.map((event) => event.type)).toEqual([
+      "case_created",
+      "appeal_submitted",
+    ]);
     await page.getByRole("button", { name: "撤回申诉" }).click();
     await expect(page.getByText("申诉已撤回，内容仍保持待复核状态。")).toBeVisible();
     await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
+    const withdrawnResponse = await page.request.get(`${branchPath}/moderation-cases`);
+    expect(withdrawnResponse.status()).toBe(200);
+    const withdrawnCase = moderationCaseListResponseSchema
+      .parse(await withdrawnResponse.json())
+      .data.find((item) => item.publishPreviewId === createdPreview.id);
+    expect(withdrawnCase?.status).toBe("needs_review");
+    expect(withdrawnCase?.appeals[0]?.status).toBe("withdrawn");
+    expect(withdrawnCase?.events.map((event) => event.type)).toEqual([
+      "case_created",
+      "appeal_submitted",
+      "appeal_withdrawn",
+    ]);
 
     const readerTrigger = page.getByRole("button", { name: "读者预览" });
+    const readerPreviewResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url() === `${origin}${branchPath}/publish-check/${createdPreview.id}` &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+    );
     await readerTrigger.click();
+    const readerPreview = publishPreviewResponseSchema.parse(
+      await (await readerPreviewResponsePromise).json(),
+    ).data;
     const readerDialog = page.getByRole("dialog", { name: "山海照夜" });
     await expect(readerDialog).toBeVisible();
+    await expect(readerDialog).toContainText(readerPreview.readerPreview.summary);
     await expect(readerDialog.getByText("第 1 章", { exact: true })).toBeVisible();
     await expect(readerDialog.getByRole("button", { name: "关闭读者预览" })).toBeFocused();
     await page.keyboard.press("Escape");
@@ -101,13 +209,25 @@ test("runs export, publish check and reader preview, then covers four viewports"
 
     await page.getByRole("button", { name: "生成发布文案" }).click();
     await expect(page.locator(".publish-copy-card")).toContainText("山海照夜");
+    const copyPreviewResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url() === `${origin}${branchPath}/publish-check/${createdPreview.id}` &&
+        response.request().method() === "GET" &&
+        response.status() === 200,
+    );
     await page.getByRole("button", { name: "复制文案" }).click();
+    const copiedPreview = publishPreviewResponseSchema.parse(
+      await (await copyPreviewResponsePromise).json(),
+    ).data;
     await expect
       .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
-      .toContain("书名备选");
+      .toContain(copiedPreview.publishCopy.titleOptions[0]!);
     await expect
       .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
       .toContain("AI 内容说明：含 AI 辅助生成内容");
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
+      .toContain(copiedPreview.publishCopy.summary);
 
     await page.getByText("编辑书名、简介、标签与封面元数据").click();
     await expect(page.getByLabel("作品简介")).toBeVisible();
@@ -217,15 +337,70 @@ test("runs export, publish check and reader preview, then covers four viewports"
           WHERE work_id = $1`,
         [work.id],
       );
+      await expect
+        .poll(
+          async () => {
+            const cleanup = await pool.query<{
+              artifact_cleared: boolean;
+              source_cleared: boolean;
+            }>(
+              `SELECT artifact_object_key IS NULL AS artifact_cleared,
+                      source_descriptor IS NULL AS source_cleared
+                 FROM work_export_receipts
+                WHERE id = $1`,
+              [createdExport.id],
+            );
+            return cleanup.rows[0];
+          },
+          { timeout: 15_000 },
+        )
+        .toEqual({ artifact_cleared: true, source_cleared: true });
     } finally {
       await pool.end();
     }
+    const expiredReceiptResponse = await page.request.get(
+      `${branchPath}/exports/${createdExport.id}`,
+    );
+    expect(expiredReceiptResponse.status()).toBe(200);
+    const expiredReceipt = workExportReceiptResponseSchema.parse(
+      await expiredReceiptResponse.json(),
+    ).data;
+    expect(expiredReceipt.status).toBe("expired");
+    const expiredDownload = await page.request.get(
+      `${branchPath}/exports/${createdExport.id}/download`,
+    );
+    expect(expiredDownload.status()).toBe(410);
+    expect((await expiredDownload.json()).error.code).toBe("WORK_EXPORT_EXPIRED");
+
     await page.setViewportSize({ width: 1180, height: 900 });
     await page.goto(`/workspace/${work.id}/export`);
     await expect(page.locator(".export-history-row").first()).toContainText("已过期");
-    await expect(
-      page.locator(".export-history-row").first().getByRole("button", { name: "重新导出" }),
-    ).toBeVisible();
+    const reexportResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url() === `${origin}${branchPath}/exports` &&
+        response.request().method() === "POST" &&
+        response.status() === 202,
+    );
+    await page
+      .locator(".export-history-row")
+      .first()
+      .getByRole("button", { name: "重新导出" })
+      .click();
+    const reexported = workExportReceiptResponseSchema.parse(
+      await (await reexportResponsePromise).json(),
+    ).data;
+    await expect(page.getByText("已按原设置重新导出。")).toBeVisible({ timeout: 30_000 });
+    const exportHistoryResponse = await page.request.get(`${branchPath}/exports`);
+    expect(exportHistoryResponse.status()).toBe(200);
+    const exportHistory = workExportReceiptListResponseSchema.parse(
+      await exportHistoryResponse.json(),
+    ).data;
+    expect(exportHistory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: createdExport.id, status: "expired" }),
+        expect.objectContaining({ id: reexported.id, status: "completed" }),
+      ]),
+    );
   } finally {
     await worker.stop();
   }
