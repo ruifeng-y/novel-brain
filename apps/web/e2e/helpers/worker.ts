@@ -19,7 +19,6 @@ export async function startWorker(options: { failStep?: "draft" | "verify" | "re
       STORAGE_LOCAL_DIRECTORY: "test-results/playwright-storage",
       NODE_ENV: "test",
       LOG_LEVEL: "info",
-      WORKER_MAINTENANCE_INTERVAL_MS: "1000",
       ...(options.failStep ? { FAKE_AI_FAILURE_STEP: options.failStep } : {}),
     },
     stdio: ["ignore", "pipe", "pipe"],

@@ -627,7 +627,13 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
     }
   }
 
-  async function fetchPinnedPreview(target: PublishPreview): Promise<PublishPreview> {
+  function rememberPreview(pinned: PublishPreview) {
+    setPreview(pinned);
+    setPreviewHistory((current) => [pinned, ...current.filter((item) => item.id !== pinned.id)]);
+    setSelectedExportId(pinned.exportId);
+  }
+
+  async function loadAndPinPreview(target: PublishPreview): Promise<PublishPreview> {
     if (!branchPath) {
       return target;
     }
@@ -638,9 +644,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
       throw new Error(await readError(response, "固定发布预览加载失败。"));
     }
     const pinned = publishPreviewResponseSchema.parse(await response.json()).data;
-    setPreview(pinned);
-    setPreviewHistory((current) => [pinned, ...current.filter((item) => item.id !== pinned.id)]);
-    setSelectedExportId(pinned.exportId);
+    rememberPreview(pinned);
     return pinned;
   }
 
@@ -653,7 +657,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
       if (!target) {
         return;
       }
-      await fetchPinnedPreview(target);
+      await loadAndPinPreview(target);
       setReaderOpen(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "固定发布预览加载失败。");
@@ -676,7 +680,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
       if (!target) {
         return;
       }
-      const pinned = await fetchPinnedPreview(target);
+      const pinned = await loadAndPinPreview(target);
       const copy = pinned.publishCopy;
       await copyText(
         [

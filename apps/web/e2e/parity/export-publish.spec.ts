@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path from "node:path";
 
 import {
   expect,
@@ -12,6 +14,7 @@ import {
 import {
   moderationCaseListResponseSchema,
   publishPreviewResponseSchema,
+  type WorkExportReceipt,
   workExportReceiptListResponseSchema,
   workExportReceiptResponseSchema,
 } from "@novel-brain/contracts";
@@ -27,6 +30,8 @@ import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440] as const;
+const root = path.resolve(__dirname, "../../../..");
+const requireFromRoot = createRequire(path.join(root, "package.json"));
 
 test.describe.configure({ timeout: 180_000 });
 
@@ -71,336 +76,366 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
     );
     await expect(page.getByRole("button", { name: "TXT" })).toHaveAttribute("aria-pressed", "true");
 
-    const createExportResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url() === `${origin}${branchPath}/exports` &&
-        response.request().method() === "POST" &&
-        response.status() === 202,
-    );
-    await page.getByRole("button", { name: "开始导出" }).click();
-    const createdExport = workExportReceiptResponseSchema.parse(
-      await (await createExportResponsePromise).json(),
-    ).data;
-    await expect(page.getByText("导出完成，已写入导出历史。")).toBeVisible({
-      timeout: 30_000,
-    });
-    const persistedExportResponse = await page.request.get(
-      `${branchPath}/exports/${createdExport.id}`,
-    );
-    expect(persistedExportResponse.status()).toBe(200);
-    const persistedExport = workExportReceiptResponseSchema.parse(
-      await persistedExportResponse.json(),
-    ).data;
-    expect(persistedExport.status).toBe("completed");
-    expect(persistedExport.manifest?.chapters).toHaveLength(chapters.length);
-    expect(persistedExport.checksum).toMatch(/^[a-f0-9]{64}$/);
-    const historyRow = page.locator(".export-history-row").first();
-    await expect(historyRow).toContainText(".txt");
-    await expect(historyRow.getByRole("button", { name: "下载" })).toBeEnabled();
-
-    const downloadResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url() === `${origin}${branchPath}/exports/${createdExport.id}/download` &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-    );
-    const downloadPromise = page.waitForEvent("download");
-    await historyRow.getByRole("button", { name: "下载" }).click();
-    const [downloadResponse, download] = await Promise.all([
-      downloadResponsePromise,
-      downloadPromise,
-    ]);
-    const downloadedPath = await download.path();
-    expect(downloadedPath).not.toBeNull();
-    const downloadedBytes = await readFile(downloadedPath!);
-    expect(createHash("sha256").update(downloadedBytes).digest("hex")).toBe(
-      persistedExport.checksum,
-    );
-    expect(download.suggestedFilename()).toBe(persistedExport.fileName);
-    expect(downloadResponse.headers()["x-export-checksum"]).toBe(persistedExport.checksum);
-    expect(downloadResponse.headers()["content-disposition"]).toContain(
-      encodeURIComponent(persistedExport.fileName!),
-    );
-    await expect(page.getByText("导出文件已开始下载。")).toBeVisible();
-
-    const publishCheckResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url() === `${origin}${branchPath}/publish-check` &&
-        response.request().method() === "POST" &&
-        response.status() === 201,
-    );
-    await page.getByRole("button", { name: "重新检查" }).click();
-    const createdPreview = publishPreviewResponseSchema.parse(
-      await (await publishCheckResponsePromise).json(),
-    ).data;
-    await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
-    const persistedPreviewResponse = await page.request.get(
-      `${branchPath}/publish-check/${createdPreview.id}`,
-    );
-    expect(persistedPreviewResponse.status()).toBe(200);
-    const persistedPreview = publishPreviewResponseSchema.parse(
-      await persistedPreviewResponse.json(),
-    ).data;
-    expect(persistedPreview.exportId).toBe(createdExport.id);
-    expect(persistedPreview.manifestHash).toBe(persistedExport.manifest?.manifestHash);
-    expect(persistedPreview.readerPreview.chapters).toHaveLength(3);
-    expect(persistedPreview.publishCopy.aiDisclosureMetadata?.required).toBe(true);
-    await expect(page.locator(".publish-check")).toHaveCount(13);
-    await expect(page.locator(".publish-check.blocked")).toHaveCount(0);
-    await expect(page.locator(".publish-check.warning").first()).toBeVisible();
-    await expect(page.getByText("内容安全与申诉")).toBeVisible();
-    await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
-    await page.getByRole("button", { name: "提交申诉或纠正说明" }).click();
-    await page.getByLabel("申诉或纠正说明").fill("已重新核对相关章节，请复核这条内容安全提示。");
-    await page.getByLabel("修正内容（可选）").fill("第 2 章的示例性步骤描述已准备删除。");
-    await page.getByRole("button", { name: "提交申诉", exact: true }).click();
-    await expect(page.getByText("申诉已提交，状态和证据已写入审计记录。")).toBeVisible();
-    const moderationResponse = await page.request.get(`${branchPath}/moderation-cases`);
-    expect(moderationResponse.status()).toBe(200);
-    const persistedModerationCase = moderationCaseListResponseSchema
-      .parse(await moderationResponse.json())
-      .data.find((item) => item.publishPreviewId === createdPreview.id);
-    expect(persistedModerationCase?.status).toBe("appeal_submitted");
-    expect(persistedModerationCase?.appeals[0]?.reason).toBe(
-      "已重新核对相关章节，请复核这条内容安全提示。",
-    );
-    expect(persistedModerationCase?.events.map((event) => event.type)).toEqual([
-      "case_created",
-      "appeal_submitted",
-    ]);
-    await page.getByRole("button", { name: "撤回申诉" }).click();
-    await expect(page.getByText("申诉已撤回，内容仍保持待复核状态。")).toBeVisible();
-    await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
-    const withdrawnResponse = await page.request.get(`${branchPath}/moderation-cases`);
-    expect(withdrawnResponse.status()).toBe(200);
-    const withdrawnCase = moderationCaseListResponseSchema
-      .parse(await withdrawnResponse.json())
-      .data.find((item) => item.publishPreviewId === createdPreview.id);
-    expect(withdrawnCase?.status).toBe("needs_review");
-    expect(withdrawnCase?.appeals[0]?.status).toBe("withdrawn");
-    expect(withdrawnCase?.events.map((event) => event.type)).toEqual([
-      "case_created",
-      "appeal_submitted",
-      "appeal_withdrawn",
-    ]);
-
-    const readerTrigger = page.getByRole("button", { name: "读者预览" });
-    const readerPreviewResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url() === `${origin}${branchPath}/publish-check/${createdPreview.id}` &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-    );
-    await readerTrigger.click();
-    const readerPreview = publishPreviewResponseSchema.parse(
-      await (await readerPreviewResponsePromise).json(),
-    ).data;
-    const readerDialog = page.getByRole("dialog", { name: "山海照夜" });
-    await expect(readerDialog).toBeVisible();
-    await expect(readerDialog).toContainText(readerPreview.readerPreview.summary);
-    await expect(readerDialog.getByText("第 1 章", { exact: true })).toBeVisible();
-    await expect(readerDialog.getByRole("button", { name: "关闭读者预览" })).toBeFocused();
-    await page.keyboard.press("Escape");
-    await expect(readerDialog).toHaveCount(0);
-    await expect(readerTrigger).toBeFocused();
-    await readerTrigger.click();
-    await readerDialog.getByRole("button", { name: "返回编辑" }).click();
-    await expect(readerDialog).toHaveCount(0);
-
-    await page.getByRole("button", { name: "生成发布文案" }).click();
-    await expect(page.locator(".publish-copy-card")).toContainText("山海照夜");
-    const copyPreviewResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url() === `${origin}${branchPath}/publish-check/${createdPreview.id}` &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-    );
-    await page.getByRole("button", { name: "复制文案" }).click();
-    const copiedPreview = publishPreviewResponseSchema.parse(
-      await (await copyPreviewResponsePromise).json(),
-    ).data;
-    await expect
-      .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
-      .toContain(copiedPreview.publishCopy.titleOptions[0]!);
-    await expect
-      .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
-      .toContain("AI 内容说明：含 AI 辅助生成内容");
-    await expect
-      .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
-      .toContain(copiedPreview.publishCopy.summary);
-
-    await page.getByText("编辑书名、简介、标签与封面元数据").click();
-    await expect(page.getByLabel("作品简介")).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "标签" })).toBeVisible();
-    await page.getByLabel("发布页保留 AI 辅助生成说明").check();
-    await page.getByLabel("已阅读原创与版权提醒，作品版权归作者所有").check();
-    await page.getByRole("button", { name: "应用并重新检查" }).click();
-    await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
-
-    const chapterResponse = await page.request.get(`${branchPath}/chapters/${chapters[0]!.id}`);
-    expect(chapterResponse.ok()).toBe(true);
-    const chapter = (await chapterResponse.json()).data as { version: number };
-    const chapterToken = await getCsrf(page.request);
-    const changedChapter = await page.request.post(
-      `${branchPath}/chapters/${chapters[0]!.id}/versions`,
-      {
-        headers: { Origin: origin, "X-CSRF-Token": chapterToken },
-        data: {
-          version: chapter.version,
-          content: `${"山灯换了新的旧名。".repeat(260)}这是第 1 章的后续修订。`,
-        },
-      },
-    );
-    expect(changedChapter.status()).toBe(201);
-    await page.reload();
-    await expect(page.getByText("作品版本已变化，请重新运行发布检查。")).toBeVisible();
-
-    await page.getByRole("button", { name: "开始导出" }).click();
-    await expect(page.getByText("导出完成，已写入导出历史。")).toBeVisible({
-      timeout: 30_000,
-    });
-    await page.getByRole("button", { name: "重新检查" }).click();
-    await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
-    await expect(page.getByText("作品版本已变化，请重新运行发布检查。")).toHaveCount(0);
-
-    const otherRequest = await playwright.request.newContext({ baseURL: origin });
-    try {
-      await registerUser(
-        otherRequest,
-        uniqueEmail("export-publish-other"),
-        "StrongPassword123",
-        "其他租户",
+    let createdExport!: WorkExportReceipt;
+    let persistedExport!: WorkExportReceipt;
+    await test.step("create and download the fixed export", async () => {
+      const createExportResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url() === `${origin}${branchPath}/exports` &&
+          response.request().method() === "POST" &&
+          response.status() === 202,
       );
-      const exportListResponse = await page.request.get(`${branchPath}/exports`);
-      expect(exportListResponse.ok()).toBe(true);
-      const exportList = (await exportListResponse.json()) as {
-        data: Array<{ id: string }>;
-      };
-      const otherToken = await getCsrf(otherRequest);
-      const forbidden = await otherRequest.post(`${branchPath}/publish-check`, {
-        headers: {
-          Origin: origin,
-          "Idempotency-Key": "other-tenant-publish",
-          "X-CSRF-Token": otherToken,
-        },
-        data: {
-          exportId: exportList.data[0]!.id,
-          platformPreset: "generic",
-          metadata: publishMetadata(),
-        },
+      await page.getByRole("button", { name: "开始导出" }).click();
+      createdExport = workExportReceiptResponseSchema.parse(
+        await (await createExportResponsePromise).json(),
+      ).data;
+      await expect(page.getByText("导出完成，已写入导出历史。")).toBeVisible({
+        timeout: 30_000,
       });
-      expect(forbidden.status()).toBe(403);
-      expect((await forbidden.json()).error.code).toBe("FORBIDDEN_TENANT_ACCESS");
-    } finally {
-      await otherRequest.dispose();
-    }
+      const persistedExportResponse = await page.request.get(
+        `${branchPath}/exports/${createdExport.id}`,
+      );
+      expect(persistedExportResponse.status()).toBe(200);
+      persistedExport = workExportReceiptResponseSchema.parse(
+        await persistedExportResponse.json(),
+      ).data;
+      expect(persistedExport.status).toBe("completed");
+      expect(persistedExport.manifest?.chapters).toHaveLength(chapters.length);
+      expect(persistedExport.checksum).toMatch(/^[a-f0-9]{64}$/);
+      const historyRow = page.locator(".export-history-row").first();
+      await expect(historyRow).toContainText(".txt");
+      await expect(historyRow.getByRole("button", { name: "下载" })).toBeEnabled();
 
-    await page.getByRole("button", { name: "查看完整目录" }).click();
-    await expect(page.locator(".export-toc > div")).toHaveCount(chapters.length);
-    await expect(page.getByRole("button", { name: "收起目录" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "导出与发布", exact: true })).toBeVisible();
-    await expectAuthorFacingLanguage(page);
-    await expectNoPrototypeOnlyLeakage(page);
+      const downloadResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url() === `${origin}${branchPath}/exports/${createdExport.id}/download` &&
+          response.request().method() === "GET" &&
+          response.status() === 200,
+      );
+      const downloadPromise = page.waitForEvent("download");
+      await historyRow.getByRole("button", { name: "下载" }).click();
+      const [downloadResponse, download] = await Promise.all([
+        downloadResponsePromise,
+        downloadPromise,
+      ]);
+      const downloadedPath = await download.path();
+      expect(downloadedPath).not.toBeNull();
+      const downloadedBytes = await readFile(downloadedPath!);
+      expect(createHash("sha256").update(downloadedBytes).digest("hex")).toBe(
+        persistedExport.checksum,
+      );
+      expect(download.suggestedFilename()).toBe(persistedExport.fileName);
+      expect(downloadResponse.headers()["x-export-checksum"]).toBe(persistedExport.checksum);
+      expect(downloadResponse.headers()["content-disposition"]).toContain(
+        encodeURIComponent(persistedExport.fileName!),
+      );
+      await expect(page.getByText("导出文件已开始下载。")).toBeVisible();
+    });
 
-    for (const width of viewports) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto(`/workspace/${work.id}/export`);
-      await expect(page.getByRole("heading", { name: "把故事带出去" })).toBeVisible();
-      await expect(page.locator(".export-history-row")).toHaveCount(2);
-      await expect(page.locator(".publish-check").first()).toBeVisible();
-      await expect(page.getByLabel("当前作品与创作线")).toContainText("山海照夜");
-      await expect(page.getByLabel("当前作品与创作线")).toContainText("主线");
+    await test.step("run checks, preview, copy and appeal", async () => {
+      const publishCheckResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url() === `${origin}${branchPath}/publish-check` &&
+          response.request().method() === "POST" &&
+          response.status() === 201,
+      );
+      await page.getByRole("button", { name: "重新检查" }).click();
+      const createdPreview = publishPreviewResponseSchema.parse(
+        await (await publishCheckResponsePromise).json(),
+      ).data;
+      await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
+      const persistedPreviewResponse = await page.request.get(
+        `${branchPath}/publish-check/${createdPreview.id}`,
+      );
+      expect(persistedPreviewResponse.status()).toBe(200);
+      const persistedPreview = publishPreviewResponseSchema.parse(
+        await persistedPreviewResponse.json(),
+      ).data;
+      expect(persistedPreview.exportId).toBe(createdExport.id);
+      expect(persistedPreview.manifestHash).toBe(persistedExport.manifest?.manifestHash);
+      expect(persistedPreview.readerPreview.chapters).toHaveLength(3);
+      expect(persistedPreview.publishCopy.aiDisclosureMetadata?.required).toBe(true);
+      await expect(page.locator(".publish-check")).toHaveCount(13);
+      await expect(page.locator(".publish-check.blocked")).toHaveCount(0);
+      await expect(page.locator(".publish-check.warning").first()).toBeVisible();
+      await expect(page.getByText("内容安全与申诉")).toBeVisible();
+      await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
+      const moderationBeforeAppealResponse = await page.request.get(
+        `${branchPath}/moderation-cases`,
+      );
+      expect(moderationBeforeAppealResponse.status()).toBe(200);
+      const activeModerationCaseId = moderationCaseListResponseSchema
+        .parse(await moderationBeforeAppealResponse.json())
+        .data.find((item) => item.publishPreviewId === createdPreview.id)?.id;
+      expect(activeModerationCaseId).toBeDefined();
+      await page.getByRole("button", { name: "提交申诉或纠正说明" }).click();
+      await page.getByLabel("申诉或纠正说明").fill("已重新核对相关章节，请复核这条内容安全提示。");
+      await page.getByLabel("修正内容（可选）").fill("第 2 章的示例性步骤描述已准备删除。");
+      const appealResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url() ===
+            `${origin}${branchPath}/moderation-cases/${activeModerationCaseId}/appeals` &&
+          response.request().method() === "POST" &&
+          response.status() === 201,
+      );
+      await page.getByRole("button", { name: "提交申诉", exact: true }).click();
+      const appealResponse = await appealResponsePromise;
+      expect(appealResponse.status()).toBe(201);
+      await expect(page.getByText("申诉已提交，状态和证据已写入审计记录。")).toBeVisible();
+      const moderationResponse = await page.request.get(`${branchPath}/moderation-cases`);
+      expect(moderationResponse.status()).toBe(200);
+      const persistedModerationCase = moderationCaseListResponseSchema
+        .parse(await moderationResponse.json())
+        .data.find((item) => item.publishPreviewId === createdPreview.id);
+      expect(persistedModerationCase?.status).toBe("appeal_submitted");
+      expect(persistedModerationCase?.appeals[0]?.reason).toBe(
+        "已重新核对相关章节，请复核这条内容安全提示。",
+      );
+      expect(persistedModerationCase?.events.map((event) => event.type)).toEqual([
+        "case_created",
+        "appeal_submitted",
+      ]);
+      await page.getByRole("button", { name: "撤回申诉" }).click();
+      await expect(page.getByText("申诉已撤回，内容仍保持待复核状态。")).toBeVisible();
+      await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
+      const withdrawnResponse = await page.request.get(`${branchPath}/moderation-cases`);
+      expect(withdrawnResponse.status()).toBe(200);
+      const withdrawnCase = moderationCaseListResponseSchema
+        .parse(await withdrawnResponse.json())
+        .data.find((item) => item.publishPreviewId === createdPreview.id);
+      expect(withdrawnCase?.status).toBe("needs_review");
+      expect(withdrawnCase?.appeals[0]?.status).toBe("withdrawn");
+      expect(withdrawnCase?.events.map((event) => event.type)).toEqual([
+        "case_created",
+        "appeal_submitted",
+        "appeal_withdrawn",
+      ]);
+
+      const readerTrigger = page.getByRole("button", { name: "读者预览" });
+      const readerPreviewResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url() === `${origin}${branchPath}/publish-check/${createdPreview.id}` &&
+          response.request().method() === "GET" &&
+          response.status() === 200,
+      );
+      await readerTrigger.click();
+      const readerPreview = publishPreviewResponseSchema.parse(
+        await (await readerPreviewResponsePromise).json(),
+      ).data;
+      const readerDialog = page.getByRole("dialog", { name: "山海照夜" });
+      await expect(readerDialog).toBeVisible();
+      await expect(readerDialog).toContainText(readerPreview.readerPreview.summary);
+      await expect(readerDialog.getByText("第 1 章", { exact: true })).toBeVisible();
+      await expect(readerDialog.getByRole("button", { name: "关闭读者预览" })).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(readerDialog).toHaveCount(0);
+      await expect(readerTrigger).toBeFocused();
+      await readerTrigger.click();
+      await readerDialog.getByRole("button", { name: "返回编辑" }).click();
+      await expect(readerDialog).toHaveCount(0);
+
+      await page.getByRole("button", { name: "生成发布文案" }).click();
+      await expect(page.locator(".publish-copy-card")).toContainText("山海照夜");
+      const copyPreviewResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url() === `${origin}${branchPath}/publish-check/${createdPreview.id}` &&
+          response.request().method() === "GET" &&
+          response.status() === 200,
+      );
+      await page.getByRole("button", { name: "复制文案" }).click();
+      const copiedPreview = publishPreviewResponseSchema.parse(
+        await (await copyPreviewResponsePromise).json(),
+      ).data;
+      await expect
+        .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
+        .toContain(copiedPreview.publishCopy.titleOptions[0]!);
+      await expect
+        .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
+        .toContain("AI 内容说明：含 AI 辅助生成内容");
+      await expect
+        .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
+        .toContain(copiedPreview.publishCopy.summary);
+
+      await page.getByText("编辑书名、简介、标签与封面元数据").click();
+      await expect(page.getByLabel("作品简介")).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "标签" })).toBeVisible();
+      await page.getByLabel("发布页保留 AI 辅助生成说明").check();
+      await page.getByLabel("已阅读原创与版权提醒，作品版权归作者所有").check();
+      await page.getByRole("button", { name: "应用并重新检查" }).click();
+      await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
+    });
+
+    await test.step("refresh stale source and reject another tenant", async () => {
+      const chapterResponse = await page.request.get(`${branchPath}/chapters/${chapters[0]!.id}`);
+      expect(chapterResponse.ok()).toBe(true);
+      const chapter = (await chapterResponse.json()).data as { version: number };
+      const chapterToken = await getCsrf(page.request);
+      const changedChapter = await page.request.post(
+        `${branchPath}/chapters/${chapters[0]!.id}/versions`,
+        {
+          headers: { Origin: origin, "X-CSRF-Token": chapterToken },
+          data: {
+            version: chapter.version,
+            content: `${"山灯换了新的旧名。".repeat(260)}这是第 1 章的后续修订。`,
+          },
+        },
+      );
+      expect(changedChapter.status()).toBe(201);
+      await page.reload();
+      await expect(page.getByText("作品版本已变化，请重新运行发布检查。")).toBeVisible();
+
+      await page.getByRole("button", { name: "开始导出" }).click();
+      await expect(page.getByText("导出完成，已写入导出历史。")).toBeVisible({
+        timeout: 30_000,
+      });
+      await page.getByRole("button", { name: "重新检查" }).click();
+      await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
+      await expect(page.getByText("作品版本已变化，请重新运行发布检查。")).toHaveCount(0);
+
+      const otherRequest = await playwright.request.newContext({ baseURL: origin });
+      try {
+        await registerUser(
+          otherRequest,
+          uniqueEmail("export-publish-other"),
+          "StrongPassword123",
+          "其他租户",
+        );
+        const exportListResponse = await page.request.get(`${branchPath}/exports`);
+        expect(exportListResponse.ok()).toBe(true);
+        const exportList = (await exportListResponse.json()) as {
+          data: Array<{ id: string }>;
+        };
+        const otherToken = await getCsrf(otherRequest);
+        const forbidden = await otherRequest.post(`${branchPath}/publish-check`, {
+          headers: {
+            Origin: origin,
+            "Idempotency-Key": "other-tenant-publish",
+            "X-CSRF-Token": otherToken,
+          },
+          data: {
+            exportId: exportList.data[0]!.id,
+            platformPreset: "generic",
+            metadata: publishMetadata(),
+          },
+        });
+        expect(forbidden.status()).toBe(403);
+        expect((await forbidden.json()).error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+      } finally {
+        await otherRequest.dispose();
+      }
+    });
+
+    await test.step("verify author-facing four-viewport structure", async () => {
+      await page.getByRole("button", { name: "查看完整目录" }).click();
+      await expect(page.locator(".export-toc > div")).toHaveCount(chapters.length);
+      await expect(page.getByRole("button", { name: "收起目录" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "导出与发布", exact: true })).toBeVisible();
       await expectAuthorFacingLanguage(page);
       await expectNoPrototypeOnlyLeakage(page);
-      await page.evaluate(() => document.fonts.ready.then(() => undefined));
-      const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      );
-      expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
-      await expect
-        .soft(page)
-        .toHaveScreenshot(
-          ["export-publish", `export-publish-${width}.png`],
-          productionScreenshotOptions,
-        );
-    }
-    await unfreezeTimestamps();
 
-    const databaseUrl =
-      process.env.E2E_DATABASE_URL ??
-      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
-    const pool = new Pool({ connectionString: databaseUrl });
-    try {
-      await pool.query(
-        `UPDATE work_export_receipts
+      for (const width of viewports) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(`/workspace/${work.id}/export`);
+        await expect(page.getByRole("heading", { name: "把故事带出去" })).toBeVisible();
+        await expect(page.locator(".export-history-row")).toHaveCount(2);
+        await expect(page.locator(".publish-check").first()).toBeVisible();
+        await expect(page.getByLabel("当前作品与创作线")).toContainText("山海照夜");
+        await expect(page.getByLabel("当前作品与创作线")).toContainText("主线");
+        await expectAuthorFacingLanguage(page);
+        await expectNoPrototypeOnlyLeakage(page);
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const overflow = await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+        expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
+        await expect
+          .soft(page)
+          .toHaveScreenshot(
+            ["export-publish", `export-publish-${width}.png`],
+            productionScreenshotOptions,
+          );
+      }
+      await unfreezeTimestamps();
+    });
+
+    await test.step("expire through worker cleanup and persist a re-export", async () => {
+      const databaseUrl =
+        process.env.E2E_DATABASE_URL ??
+        "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
+      const pool = new Pool({ connectionString: databaseUrl });
+      try {
+        await pool.query(
+          `UPDATE work_export_receipts
             SET expires_at = now() - interval '1 second'
           WHERE work_id = $1`,
-        [work.id],
-      );
-      await expect
-        .poll(
-          async () => {
-            const cleanup = await pool.query<{
-              artifact_cleared: boolean;
-              source_cleared: boolean;
-            }>(
-              `SELECT artifact_object_key IS NULL AS artifact_cleared,
+          [work.id],
+        );
+        await cleanupExpiredWorkExports();
+        await expect
+          .poll(
+            async () => {
+              const cleanup = await pool.query<{
+                artifact_cleared: boolean;
+                source_cleared: boolean;
+              }>(
+                `SELECT artifact_object_key IS NULL AS artifact_cleared,
                       source_descriptor IS NULL AS source_cleared
                  FROM work_export_receipts
                 WHERE id = $1`,
-              [createdExport.id],
-            );
-            return cleanup.rows[0];
-          },
-          { timeout: 15_000 },
-        )
-        .toEqual({ artifact_cleared: true, source_cleared: true });
-    } finally {
-      await pool.end();
-    }
-    const expiredReceiptResponse = await page.request.get(
-      `${branchPath}/exports/${createdExport.id}`,
-    );
-    expect(expiredReceiptResponse.status()).toBe(200);
-    const expiredReceipt = workExportReceiptResponseSchema.parse(
-      await expiredReceiptResponse.json(),
-    ).data;
-    expect(expiredReceipt.status).toBe("expired");
-    const expiredDownload = await page.request.get(
-      `${branchPath}/exports/${createdExport.id}/download`,
-    );
-    expect(expiredDownload.status()).toBe(410);
-    expect((await expiredDownload.json()).error.code).toBe("WORK_EXPORT_EXPIRED");
+                [createdExport.id],
+              );
+              return cleanup.rows[0];
+            },
+            { timeout: 5_000 },
+          )
+          .toEqual({ artifact_cleared: true, source_cleared: true });
+      } finally {
+        await pool.end();
+      }
+      const expiredReceiptResponse = await page.request.get(
+        `${branchPath}/exports/${createdExport.id}`,
+      );
+      expect(expiredReceiptResponse.status()).toBe(200);
+      const expiredReceipt = workExportReceiptResponseSchema.parse(
+        await expiredReceiptResponse.json(),
+      ).data;
+      expect(expiredReceipt.status).toBe("expired");
+      const expiredDownload = await page.request.get(
+        `${branchPath}/exports/${createdExport.id}/download`,
+      );
+      expect(expiredDownload.status()).toBe(410);
+      expect((await expiredDownload.json()).error.code).toBe("WORK_EXPORT_EXPIRED");
 
-    await page.setViewportSize({ width: 1180, height: 900 });
-    await page.goto(`/workspace/${work.id}/export`);
-    await expect(page.locator(".export-history-row").first()).toContainText("已过期");
-    const reexportResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url() === `${origin}${branchPath}/exports` &&
-        response.request().method() === "POST" &&
-        response.status() === 202,
-    );
-    await page
-      .locator(".export-history-row")
-      .first()
-      .getByRole("button", { name: "重新导出" })
-      .click();
-    const reexported = workExportReceiptResponseSchema.parse(
-      await (await reexportResponsePromise).json(),
-    ).data;
-    await expect(page.getByText("已按原设置重新导出。")).toBeVisible({ timeout: 30_000 });
-    const exportHistoryResponse = await page.request.get(`${branchPath}/exports`);
-    expect(exportHistoryResponse.status()).toBe(200);
-    const exportHistory = workExportReceiptListResponseSchema.parse(
-      await exportHistoryResponse.json(),
-    ).data;
-    expect(exportHistory).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: createdExport.id, status: "expired" }),
-        expect.objectContaining({ id: reexported.id, status: "completed" }),
-      ]),
-    );
+      await page.setViewportSize({ width: 1180, height: 900 });
+      await page.goto(`/workspace/${work.id}/export`);
+      await expect(page.locator(".export-history-row").first()).toContainText("已过期");
+      const reexportResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url() === `${origin}${branchPath}/exports` &&
+          response.request().method() === "POST" &&
+          response.status() === 202,
+      );
+      await page
+        .locator(".export-history-row")
+        .first()
+        .getByRole("button", { name: "重新导出" })
+        .click();
+      const reexported = workExportReceiptResponseSchema.parse(
+        await (await reexportResponsePromise).json(),
+      ).data;
+      await expect(page.getByText("已按原设置重新导出。")).toBeVisible({ timeout: 30_000 });
+      const exportHistoryResponse = await page.request.get(`${branchPath}/exports`);
+      expect(exportHistoryResponse.status()).toBe(200);
+      const exportHistory = workExportReceiptListResponseSchema.parse(
+        await exportHistoryResponse.json(),
+      ).data;
+      expect(exportHistory).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: createdExport.id, status: "expired" }),
+          expect.objectContaining({ id: reexported.id, status: "completed" }),
+        ]),
+      );
+    });
   } finally {
     await worker.stop();
   }
@@ -570,6 +605,48 @@ async function createChapters(
     chapters.push({ id: chapter.id, number });
   }
   return chapters;
+}
+
+async function cleanupExpiredWorkExports(): Promise<number> {
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL =
+    process.env.E2E_DATABASE_URL ??
+    "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
+  const { FileObjectStorage } = requireFromRoot(
+    path.join(root, "packages/storage/dist/index.js"),
+  ) as {
+    FileObjectStorage: new (rootDirectory: string) => unknown;
+  };
+  const { WorkExportProcessor } = requireFromRoot(
+    path.join(root, "apps/worker/dist/exports/work-export.processor.js"),
+  ) as {
+    WorkExportProcessor: new (
+      repository: unknown,
+      storage: unknown,
+    ) => {
+      cleanupExpiredReceipts(): Promise<number>;
+      onModuleDestroy(): Promise<void>;
+    };
+  };
+  const { WorkerWorkExportRepository } = requireFromRoot(
+    path.join(root, "apps/worker/dist/exports/work-export.repository.js"),
+  ) as {
+    WorkerWorkExportRepository: new () => unknown;
+  };
+  const processor = new WorkExportProcessor(
+    new WorkerWorkExportRepository(),
+    new FileObjectStorage("test-results/playwright-storage"),
+  );
+  try {
+    return await processor.cleanupExpiredReceipts();
+  } finally {
+    await processor.onModuleDestroy();
+    if (previousDatabaseUrl === undefined) {
+      delete process.env.DATABASE_URL;
+    } else {
+      process.env.DATABASE_URL = previousDatabaseUrl;
+    }
+  }
 }
 
 async function freezePublishTimestamps(page: Page): Promise<() => Promise<void>> {
