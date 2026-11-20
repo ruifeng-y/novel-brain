@@ -33,6 +33,7 @@ import {
   apiErrorSchema,
   canonCommitListResponseSchema,
   canonCommitResponseSchema,
+  chapterCreateRequestSchema,
   chapterVersionListResponseSchema,
   chapterVersionSaveResponseSchema,
   chapterReviewResponseSchema,
@@ -57,6 +58,8 @@ import {
   writingActionJobListResponseSchema,
   writingActionJobResponseSchema,
   writingActionRecoveryResponseSchema,
+  versionRollbackRequestSchema,
+  versionRollbackResponseSchema,
   type CanonCommit,
   type ChapterReadiness,
   type ChapterVersion,
@@ -273,6 +276,10 @@ export function WritingWorkspace({
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [newChapterBusy, setNewChapterBusy] = useState(false);
+  const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
+  const [restoreReason, setRestoreReason] = useState("");
+  const [restoreBusy, setRestoreBusy] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [leftVersionId, setLeftVersionId] = useState<string>("");
   const [rightVersionId, setRightVersionId] = useState<string>("");
@@ -525,6 +532,7 @@ export function WritingWorkspace({
   );
   const dirty = content !== savedContent;
   const canSave = Boolean(selected && content.trim() && dirty && !saving);
+  const canRestoreVersion = Boolean(selected?.currentVersionId && !dirty && !restoreBusy);
   const generationAwaitingRecovery = generationJob?.status === "paused";
   const writingActionAwaitingRecovery = writingActionJob?.status === "paused";
   const generationActive = Boolean(
@@ -685,6 +693,105 @@ export function WritingWorkspace({
       } catch (caught) {
         setActionError(caught instanceof Error ? caught.message : "章节资料加载失败。");
       }
+    }
+  }
+
+  async function createNextChapter() {
+    if (!work || !selected || newChapterBusy) {
+      return;
+    }
+    setNewChapterBusy(true);
+    setActionError("");
+    try {
+      const payload = chapterCreateRequestSchema.parse({
+        number: Math.max(0, ...chapters.map((chapter) => chapter.number)) + 1,
+        title: "未命名章节",
+        brief: selected.brief ?? {
+          goal: "继续推进当前主线。",
+          pov: "主角",
+          location: "待规划地点",
+          sceneBeats: ["确认本章冲突", "留下下一章钩子"],
+          requiredFacts: ["暂无必用事实"],
+        },
+      });
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "新建章节失败。"));
+      }
+      const created = chapterWorkspaceResponseSchema.parse(await response.json()).data;
+      setChapters((current) =>
+        [...current, created].sort((left, right) => left.number - right.number),
+      );
+      await selectChapter(created);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "新建章节失败。");
+    } finally {
+      setNewChapterBusy(false);
+    }
+  }
+
+  async function restoreVersion(version: ChapterVersion) {
+    if (!work || !selected || version.id === selected.currentVersionId || !canRestoreVersion) {
+      return;
+    }
+    setRestoreBusy(true);
+    setActionError("");
+    try {
+      const currentWork = await fetchWorkOverview(work.id);
+      const payload = versionRollbackRequestSchema.parse({
+        targetNodeId: version.versionNodeId,
+        expectedHeadNodeId: currentWork.mainBranch.headNodeId,
+        reason: restoreReason.trim() || `恢复到第 ${version.version} 版`,
+      });
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/rollback`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "恢复旧版失败。"));
+      }
+      versionRollbackResponseSchema.parse(await response.json());
+      const updatedWork = await fetchWorkOverview(work.id);
+      const chapterResponse = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}`,
+        { cache: "no-store" },
+      );
+      if (!chapterResponse.ok) {
+        throw new Error(await readError(chapterResponse, "恢复后的章节加载失败。"));
+      }
+      const chapter = chapterWorkspaceResponseSchema.parse(await chapterResponse.json()).data;
+      setWork(updatedWork);
+      setChapters((current) => current.map((item) => (item.id === chapter.id ? chapter : item)));
+      setContent(chapter.currentVersion?.content ?? "");
+      setSavedContent(chapter.currentVersion?.content ?? "");
+      setSaved(false);
+      setRestoreVersionId(null);
+      setRestoreReason("");
+      await Promise.all([
+        loadVersions(updatedWork, chapter.id, chapter.currentVersionId ?? undefined),
+        loadQuality(updatedWork, chapter.id),
+      ]);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "恢复旧版失败。");
+    } finally {
+      setRestoreBusy(false);
     }
   }
 
@@ -2253,6 +2360,19 @@ export function WritingWorkspace({
               <p className="writing-chapter-empty">没有匹配的章节。</p>
             ) : null}
           </div>
+          <button
+            className="btn btn-ghost btn-block"
+            disabled={newChapterBusy}
+            onClick={() => void createNextChapter()}
+            type="button"
+          >
+            {newChapterBusy ? (
+              <LoaderCircle className="spin" size={14} aria-hidden="true" />
+            ) : (
+              <FileText size={14} aria-hidden="true" />
+            )}
+            新建章节
+          </button>
         </aside>
 
         <section className="panel writing-editor" aria-labelledby="writing-chapter-title">
@@ -3585,12 +3705,65 @@ export function WritingWorkspace({
                       }`}
                       key={version.id}
                     >
-                      <div>
-                        <strong>第 {version.version} 版</strong>
-                        <small>{formatDateTime(version.createdAt)}</small>
+                      <div className="writing-version-row">
+                        <div>
+                          <strong>第 {version.version} 版</strong>
+                          <small>{formatDateTime(version.createdAt)}</small>
+                        </div>
+                        {version.id === selected.currentVersionId ? (
+                          <span className="badge">当前</span>
+                        ) : (
+                          <button
+                            aria-label={`恢复第 ${version.version} 版`}
+                            className="text-btn small"
+                            disabled={!canRestoreVersion}
+                            onClick={() => {
+                              setRestoreVersionId(version.id);
+                              setRestoreReason("");
+                            }}
+                            title={dirty ? "请先保存当前修改" : "恢复旧版"}
+                            type="button"
+                          >
+                            恢复
+                          </button>
+                        )}
                       </div>
-                      {version.id === selected.currentVersionId ? (
-                        <span className="badge">当前</span>
+                      {restoreVersionId === version.id ? (
+                        <div className="writing-version-restore">
+                          <label>
+                            <span>恢复原因</span>
+                            <textarea
+                              maxLength={2_000}
+                              onChange={(event) => setRestoreReason(event.target.value)}
+                              rows={2}
+                              value={restoreReason}
+                            />
+                          </label>
+                          <div className="writing-version-restore-actions">
+                            <button
+                              className="btn btn-ghost btn-small"
+                              disabled={restoreBusy}
+                              onClick={() => {
+                                setRestoreVersionId(null);
+                                setRestoreReason("");
+                              }}
+                              type="button"
+                            >
+                              取消恢复
+                            </button>
+                            <button
+                              className="btn btn-primary btn-small"
+                              disabled={restoreBusy || !restoreReason.trim()}
+                              onClick={() => void restoreVersion(version)}
+                              type="button"
+                            >
+                              {restoreBusy ? (
+                                <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                              ) : null}
+                              确认恢复
+                            </button>
+                          </div>
+                        </div>
                       ) : null}
                     </div>
                   ))}

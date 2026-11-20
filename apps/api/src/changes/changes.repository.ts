@@ -686,6 +686,28 @@ export class ChangesRepository implements OnModuleDestroy {
         return "target_not_found";
       }
       const restorePayload = rollbackPayload(targetNode);
+      if (targetNode.nodeType === "chapter_version") {
+        const [targetVersion] = await transaction
+          .select({
+            content: chapterVersions.content,
+            contentHash: chapterVersions.contentHash,
+          })
+          .from(chapterVersions)
+          .where(
+            and(
+              eq(chapterVersions.versionNodeId, targetNode.id),
+              eq(chapterVersions.userId, userId),
+              eq(chapterVersions.workId, workId),
+              eq(chapterVersions.branchId, branchId),
+            ),
+          )
+          .limit(1);
+        if (!targetVersion) {
+          return "target_not_found";
+        }
+        restorePayload.content = targetVersion.content;
+        restorePayload.contentHash = targetVersion.contentHash;
+      }
       const versionNodeId = uuidv7();
       const now = new Date();
       await transaction.insert(versionNodes).values({

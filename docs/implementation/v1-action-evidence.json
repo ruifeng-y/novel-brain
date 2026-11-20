@@ -596,8 +596,156 @@
       ]
     },
     "writing": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "b1750eef49404611e49130ced950602d13fefdc0",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44710611123",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44710611232",
+      "actions": [
+        {
+          "id": "generate",
+          "name": "从生产页生成整章并回读持久化版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/generate",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "generates a chapter with progress, references, citations, cost and checkpoint",
+          "assertion": "expect(persistedGeneratedChapter.currentVersion?.content).toContain(\"修订稿\");"
+        },
+        {
+          "id": "new-chapter",
+          "name": "从写作台创建下一章并回读章节列表",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "creates a new chapter and restores an earlier version through production controls",
+          "assertion": "expect(chapterList.some((item) => item.number === 2 && item.title === \"未命名章节\")).toBe(true);"
+        },
+        {
+          "id": "continue",
+          "name": "续写并回读新章节版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists continue, rewrite, expand, condense, point-of-view, hook and summary actions",
+          "assertion": "expect(continuedChapter.currentVersionId).toBe(continued.output?.chapterVersionId);"
+        },
+        {
+          "id": "rewrite",
+          "name": "整章改写并回读新章节版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists continue, rewrite, expand, condense, point-of-view, hook and summary actions",
+          "assertion": "expect(rewrittenChapter.currentVersionId).toBe(rewritten.output?.chapterVersionId);"
+        },
+        {
+          "id": "expand",
+          "name": "扩写并回读新章节版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists continue, rewrite, expand, condense, point-of-view, hook and summary actions",
+          "assertion": "expect(expandedChapter.currentVersionId).toBe(expanded.output?.chapterVersionId);"
+        },
+        {
+          "id": "condense",
+          "name": "缩写并回读新章节版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists continue, rewrite, expand, condense, point-of-view, hook and summary actions",
+          "assertion": "expect(condensedChapter.currentVersionId).toBe(condensed.output?.chapterVersionId);"
+        },
+        {
+          "id": "change-pov",
+          "name": "调整视角并回读新章节版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists continue, rewrite, expand, condense, point-of-view, hook and summary actions",
+          "assertion": "expect(changedPovChapter.currentVersionId).toBe(changedPov.output?.chapterVersionId);"
+        },
+        {
+          "id": "hook",
+          "name": "补章末钩子并回读三个持久化候选",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists continue, rewrite, expand, condense, point-of-view, hook and summary actions",
+          "assertion": "expect(hooked.output?.kind === \"hooks\" ? hooked.output.hooks : []).toHaveLength(3);"
+        },
+        {
+          "id": "title",
+          "name": "生成并应用章节标题后回读章节",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "rewrites only the selected draft and applies a generated title at four viewports",
+          "assertion": "expect(persistedTitleChapter.title).toBe(generatedTitle);"
+        },
+        {
+          "id": "summary",
+          "name": "生成章节摘要并回读持久化候选",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists continue, rewrite, expand, condense, point-of-view, hook and summary actions",
+          "assertion": "expect(summarized.output).toMatchObject({ summary: expect.stringContaining(\"沈砚断臂后\") });"
+        },
+        {
+          "id": "rewrite-selection",
+          "name": "只改写选区并回读新章节版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/write-actions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "rewrites only the selected draft and applies a generated title at four viewports",
+          "assertion": "expect(persistedSelection.currentVersionId).toBe(selectionJob.output?.chapterVersionId);"
+        },
+        {
+          "id": "check-chapter",
+          "name": "检查本章并回读持久化质量报告",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/verify",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "shows six-dimension evidence and completes a finding dismiss/reopen lifecycle",
+          "assertion": "expect(checkedQuality.findings.some((f) => f.code === \"FACT_CONTRADICTION\")).toBe(true);"
+        },
+        {
+          "id": "confirm-fact",
+          "name": "确认事实提案并回读状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/fact-proposals/${proposalId}/decision",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists confirm and reject fact decisions without changing confirmed settings",
+          "assertion": "expect(persistedConfirmedFact?.status).toBe(\"confirmed\");"
+        },
+        {
+          "id": "reject-fact",
+          "name": "驳回事实提案并回读状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/fact-proposals/${proposalId}/decision",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "persists confirm and reject fact decisions without changing confirmed settings",
+          "assertion": "expect(persistedRejectedFact?.status).toBe(\"rejected\");"
+        },
+        {
+          "id": "approve-chapter",
+          "name": "批准章节并回读批准状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/review",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "approves, confirms required facts and submits the chapter end to end",
+          "assertion": "expect(persistedApprovedChapter.status).toBe(\"approved\");"
+        },
+        {
+          "id": "submit-facts",
+          "name": "提交本章事实并回读提交记录",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/canon/commit",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "approves, confirms required facts and submits the chapter end to end",
+          "assertion": "expect(persistedCommits.some((commit) => commit.chapterId === chapter.id)).toBe(true);"
+        },
+        {
+          "id": "restore-version",
+          "name": "恢复旧版并生成新的 rollback 版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/rollback",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "creates a new chapter and restores an earlier version through production controls",
+          "assertion": "expect(restoredChapter.currentVersion?.content).toBe(\"第一版正文。\");"
+        },
+        {
+          "id": "save-version",
+          "name": "保存两个章节版本并回读版本列表",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/versions",
+          "spec": "apps/web/e2e/parity/writing.spec.ts",
+          "test": "opens a planned chapter, saves twice and compares two versions",
+          "assertion": "expect((await versions.json()).data).toHaveLength(2);"
+        }
+      ]
     },
     "batch": {
       "status": "pending",
