@@ -226,6 +226,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正常 PR Production CI [44763155194](https://github.com/ruifeng-y/novel-brain/actions/runs/44763155194) 的 `check` 与 `playwright`、Deployment Smoke [44763153754](https://github.com/ruifeng-y/novel-brain/actions/runs/44763153754) 均通过，现有四档 Golden 无需更新；`export-publish` 提升为 `parity-verified`。
 
+## 2026-11-20 work-settings 逐动作持久化与最终 CI 签收
+
+沿用作者在 2026-11-18 对 `work-settings` 四档 Linux/Chromium Golden 的视觉签收。本次 #233 不改变页面布局，只补齐九个必需动作的真实 API 与持久化证据。
+
+`apps/web/e2e/parity/work-settings.spec.ts` 覆盖设置、标签、状态和封面的真实写入与回读，复制默认隔离章节正文，归档恢复精确回到原状态和主分支，回收站保留期与永久删除后的分支、章节、版本和导出收据清理均有断言。targeted Playwright 7/7、完整单元 606 项、作品集成测试 14 项、作者语言、prototype-only 扫描和四档结构断言均通过。
+
+正常 PR Production CI [44773690891](https://github.com/ruifeng-y/novel-brain/actions/runs/44773690891) 的 `check` 与 `playwright`、Deployment Smoke [44773691156](https://github.com/ruifeng-y/novel-brain/actions/runs/44773691156) 均通过，现有四档 Golden 无需更新；`work-settings` 提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

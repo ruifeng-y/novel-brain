@@ -940,8 +940,84 @@
       ]
     },
     "work-settings": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "1257a2ab2058113b27ff167ef935e8a1730b0971",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44773690891",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44773691156",
+      "actions": [
+        {
+          "id": "save-settings",
+          "name": "保存作品设置并回读元数据",
+          "api": "/api/v1/works/${work.id}",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "saves settings, tags, status and cover through production APIs",
+          "assertion": "expect(persisted.title).toBe(\"仙途：忘川书 · 修订\");"
+        },
+        {
+          "id": "upload-cover",
+          "name": "上传封面并回读受保护图片",
+          "api": "/api/v1/works/${work.id}/cover?version=${coverVersion}",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "saves settings, tags, status and cover through production APIs",
+          "assertion": "expect(coverResponse.headers()[\"content-type\"]).toContain(\"image/webp\");"
+        },
+        {
+          "id": "edit-tags",
+          "name": "编辑作品标签并回读规范化列表",
+          "api": "/api/v1/works/${work.id}",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "saves settings, tags, status and cover through production APIs",
+          "assertion": "expect(persisted.tags).toEqual([\"记忆代价\", \"长线伏笔\"]);"
+        },
+        {
+          "id": "change-status",
+          "name": "切换连载状态并回读作品",
+          "api": "/api/v1/works/${work.id}",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "saves settings, tags, status and cover through production APIs",
+          "assertion": "expect(persisted.status).toBe(\"serializing\");"
+        },
+        {
+          "id": "copy-work",
+          "name": "复制作品并验证正文默认隔离",
+          "api": "/api/v1/works/${work.id}/duplicate",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "duplicates with conservative defaults",
+          "assertion": "expect(persistedCopy.tags).toEqual([]);"
+        },
+        {
+          "id": "archive-work",
+          "name": "归档作品并回读归档状态",
+          "api": "/api/v1/works/${work.id}/archive",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "archives and restores a work through production APIs",
+          "assertion": "expect(archived.status).toBe(\"archived\");"
+        },
+        {
+          "id": "restore-work",
+          "name": "恢复归档作品并回读原状态与主分支",
+          "api": "/api/v1/works/${work.id}/restore",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "archives and restores a work through production APIs",
+          "assertion": "expect(restored.status).toBe(beforeArchive.status);"
+        },
+        {
+          "id": "trash-work",
+          "name": "移入回收站并回读保留期",
+          "api": "/api/v1/works/${workId}/trash",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "moves a work to trash and restores it from the dashboard",
+          "assertion": "expect(trashed.id).toBe(work.id);"
+        },
+        {
+          "id": "delete-work",
+          "name": "导出后永久删除并核验派生数据清理",
+          "api": "/api/v1/works/${work.id}/purge",
+          "spec": "apps/web/e2e/parity/work-settings.spec.ts",
+          "test": "permanently deletes a trashed work after export through production APIs",
+          "assertion": "expect(purgedRows.rows[0]).toEqual({"
+        }
+      ]
     },
     "entity-detail": {
       "status": "pending",

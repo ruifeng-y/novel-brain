@@ -31,11 +31,21 @@ export const productionScreenshotOptions = {
   scale: "css",
 } as const;
 
-export function waitForApiResponse(page: Page, method: string, pathname: string) {
-  return page.waitForResponse(
-    (response) =>
-      response.request().method() === method && new URL(response.url()).pathname === pathname,
-  );
+export function waitForApiResponse(
+  page: Page,
+  method: string,
+  pathname: string,
+  expectedQuery: Record<string, string> = {},
+) {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    if (response.request().method() !== method || url.pathname !== pathname) {
+      return false;
+    }
+    return Object.entries(expectedQuery).every(
+      ([key, value]) => url.searchParams.get(key) === value,
+    );
+  });
 }
 
 export async function freezeApiTimestamps(page: Page): Promise<void> {
