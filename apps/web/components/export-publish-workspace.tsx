@@ -523,12 +523,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
         throw new Error(await readError(response, "发布检查失败。"));
       }
       const created = publishPreviewResponseSchema.parse(await response.json()).data;
-      setPreview(created);
-      setPreviewHistory((current) => [
-        created,
-        ...current.filter((item) => item.id !== created.id),
-      ]);
-      setSelectedExportId(created.exportId);
+      rememberPreview(created);
       await refreshModerationCases(branchPath).catch(() => {
         setPartialError("内容安全记录刷新失败，请稍后刷新页面。");
       });
@@ -641,7 +636,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
       cache: "no-store",
     });
     if (!response.ok) {
-      throw new Error(await readError(response, "固定发布预览加载失败。"));
+      throw new Error(await readError(response, "发布预览暂时无法加载，请稍后重试。"));
     }
     const pinned = publishPreviewResponseSchema.parse(await response.json()).data;
     rememberPreview(pinned);
@@ -660,7 +655,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
       await loadAndPinPreview(target);
       setReaderOpen(true);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "固定发布预览加载失败。");
+      setError(caught instanceof Error ? caught.message : "发布预览暂时无法加载，请稍后重试。");
     }
   }
 

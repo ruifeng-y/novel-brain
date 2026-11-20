@@ -30,8 +30,8 @@ import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440] as const;
-const root = path.resolve(__dirname, "../../../..");
-const requireFromRoot = createRequire(path.join(root, "package.json"));
+const repoRoot = path.resolve(__dirname, "../../../..");
+const requireFromRoot = createRequire(path.join(repoRoot, "package.json"));
 
 test.describe.configure({ timeout: 180_000 });
 
@@ -54,6 +54,9 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
     chapterLengthTarget: 2500,
   });
   const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const exportListEndpoint = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/exports`;
+  const publishCheckEndpoint = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/publish-check`;
+  const moderationCasesEndpoint = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/moderation-cases`;
   const chapters = await createChapters(page.request, branchPath, 18);
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", {
@@ -78,10 +81,11 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
 
     let createdExport!: WorkExportReceipt;
     let persistedExport!: WorkExportReceipt;
+    let downloadEndpoint = "";
     await test.step("create and download the fixed export", async () => {
       const createExportResponsePromise = page.waitForResponse(
         (response) =>
-          response.url() === `${origin}${branchPath}/exports` &&
+          response.url() === `${origin}${exportListEndpoint}` &&
           response.request().method() === "POST" &&
           response.status() === 202,
       );
@@ -92,9 +96,8 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       await expect(page.getByText("导出完成，已写入导出历史。")).toBeVisible({
         timeout: 30_000,
       });
-      const persistedExportResponse = await page.request.get(
-        `${branchPath}/exports/${createdExport.id}`,
-      );
+      const persistedExportEndpoint = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/exports/${createdExport.id}`;
+      const persistedExportResponse = await page.request.get(persistedExportEndpoint);
       expect(persistedExportResponse.status()).toBe(200);
       persistedExport = workExportReceiptResponseSchema.parse(
         await persistedExportResponse.json(),
@@ -106,9 +109,10 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       await expect(historyRow).toContainText(".txt");
       await expect(historyRow.getByRole("button", { name: "下载" })).toBeEnabled();
 
+      downloadEndpoint = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/exports/${createdExport.id}/download`;
       const downloadResponsePromise = page.waitForResponse(
         (response) =>
-          response.url() === `${origin}${branchPath}/exports/${createdExport.id}/download` &&
+          response.url() === `${origin}${downloadEndpoint}` &&
           response.request().method() === "GET" &&
           response.status() === 200,
       );
@@ -135,7 +139,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
     await test.step("run checks, preview, copy and appeal", async () => {
       const publishCheckResponsePromise = page.waitForResponse(
         (response) =>
-          response.url() === `${origin}${branchPath}/publish-check` &&
+          response.url() === `${origin}${publishCheckEndpoint}` &&
           response.request().method() === "POST" &&
           response.status() === 201,
       );
@@ -144,9 +148,8 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
         await (await publishCheckResponsePromise).json(),
       ).data;
       await expect(page.getByText("发布检查完成，可以继续核对发布文案。")).toBeVisible();
-      const persistedPreviewResponse = await page.request.get(
-        `${branchPath}/publish-check/${createdPreview.id}`,
-      );
+      const createdPreviewEndpoint = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/publish-check/${createdPreview.id}`;
+      const persistedPreviewResponse = await page.request.get(createdPreviewEndpoint);
       expect(persistedPreviewResponse.status()).toBe(200);
       const persistedPreview = publishPreviewResponseSchema.parse(
         await persistedPreviewResponse.json(),
@@ -160,9 +163,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       await expect(page.locator(".publish-check.warning").first()).toBeVisible();
       await expect(page.getByText("内容安全与申诉")).toBeVisible();
       await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
-      const moderationBeforeAppealResponse = await page.request.get(
-        `${branchPath}/moderation-cases`,
-      );
+      const moderationBeforeAppealResponse = await page.request.get(moderationCasesEndpoint);
       expect(moderationBeforeAppealResponse.status()).toBe(200);
       const activeModerationCaseId = moderationCaseListResponseSchema
         .parse(await moderationBeforeAppealResponse.json())
@@ -171,10 +172,10 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       await page.getByRole("button", { name: "提交申诉或纠正说明" }).click();
       await page.getByLabel("申诉或纠正说明").fill("已重新核对相关章节，请复核这条内容安全提示。");
       await page.getByLabel("修正内容（可选）").fill("第 2 章的示例性步骤描述已准备删除。");
+      const appealEndpoint = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/moderation-cases/${activeModerationCaseId}/appeals`;
       const appealResponsePromise = page.waitForResponse(
         (response) =>
-          response.url() ===
-            `${origin}${branchPath}/moderation-cases/${activeModerationCaseId}/appeals` &&
+          response.url() === `${origin}${appealEndpoint}` &&
           response.request().method() === "POST" &&
           response.status() === 201,
       );
@@ -182,7 +183,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       const appealResponse = await appealResponsePromise;
       expect(appealResponse.status()).toBe(201);
       await expect(page.getByText("申诉已提交，状态和证据已写入审计记录。")).toBeVisible();
-      const moderationResponse = await page.request.get(`${branchPath}/moderation-cases`);
+      const moderationResponse = await page.request.get(moderationCasesEndpoint);
       expect(moderationResponse.status()).toBe(200);
       const persistedModerationCase = moderationCaseListResponseSchema
         .parse(await moderationResponse.json())
@@ -198,7 +199,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       await page.getByRole("button", { name: "撤回申诉" }).click();
       await expect(page.getByText("申诉已撤回，内容仍保持待复核状态。")).toBeVisible();
       await expect(page.locator(".moderation-panel .badge")).toHaveText("待作者复核");
-      const withdrawnResponse = await page.request.get(`${branchPath}/moderation-cases`);
+      const withdrawnResponse = await page.request.get(moderationCasesEndpoint);
       expect(withdrawnResponse.status()).toBe(200);
       const withdrawnCase = moderationCaseListResponseSchema
         .parse(await withdrawnResponse.json())
@@ -214,7 +215,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       const readerTrigger = page.getByRole("button", { name: "读者预览" });
       const readerPreviewResponsePromise = page.waitForResponse(
         (response) =>
-          response.url() === `${origin}${branchPath}/publish-check/${createdPreview.id}` &&
+          response.url() === `${origin}${createdPreviewEndpoint}` &&
           response.request().method() === "GET" &&
           response.status() === 200,
       );
@@ -238,7 +239,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       await expect(page.locator(".publish-copy-card")).toContainText("山海照夜");
       const copyPreviewResponsePromise = page.waitForResponse(
         (response) =>
-          response.url() === `${origin}${branchPath}/publish-check/${createdPreview.id}` &&
+          response.url() === `${origin}${createdPreviewEndpoint}` &&
           response.request().method() === "GET" &&
           response.status() === 200,
       );
@@ -246,6 +247,8 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       const copiedPreview = publishPreviewResponseSchema.parse(
         await (await copyPreviewResponsePromise).json(),
       ).data;
+      expect(copiedPreview.id).toBe(createdPreview.id);
+      expect(copiedPreview.publishCopy.summary).toBe(persistedPreview.publishCopy.summary);
       await expect
         .poll(() => page.evaluate(() => window.localStorage.getItem("export-publish-copied")))
         .toContain(copiedPreview.publishCopy.titleOptions[0]!);
@@ -300,13 +303,13 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
           "StrongPassword123",
           "其他租户",
         );
-        const exportListResponse = await page.request.get(`${branchPath}/exports`);
+        const exportListResponse = await page.request.get(exportListEndpoint);
         expect(exportListResponse.ok()).toBe(true);
         const exportList = (await exportListResponse.json()) as {
           data: Array<{ id: string }>;
         };
         const otherToken = await getCsrf(otherRequest);
-        const forbidden = await otherRequest.post(`${branchPath}/publish-check`, {
+        const forbidden = await otherRequest.post(publishCheckEndpoint, {
           headers: {
             Origin: origin,
             "Idempotency-Key": "other-tenant-publish",
@@ -370,6 +373,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
           WHERE work_id = $1`,
           [work.id],
         );
+        // Exercise the same cleanup processor invoked by the worker maintenance tick.
         await cleanupExpiredWorkExports();
         await expect
           .poll(
@@ -392,17 +396,14 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       } finally {
         await pool.end();
       }
-      const expiredReceiptResponse = await page.request.get(
-        `${branchPath}/exports/${createdExport.id}`,
-      );
+      const expiredReceiptEndpoint = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/exports/${createdExport.id}`;
+      const expiredReceiptResponse = await page.request.get(expiredReceiptEndpoint);
       expect(expiredReceiptResponse.status()).toBe(200);
       const expiredReceipt = workExportReceiptResponseSchema.parse(
         await expiredReceiptResponse.json(),
       ).data;
       expect(expiredReceipt.status).toBe("expired");
-      const expiredDownload = await page.request.get(
-        `${branchPath}/exports/${createdExport.id}/download`,
-      );
+      const expiredDownload = await page.request.get(downloadEndpoint);
       expect(expiredDownload.status()).toBe(410);
       expect((await expiredDownload.json()).error.code).toBe("WORK_EXPORT_EXPIRED");
 
@@ -411,7 +412,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
       await expect(page.locator(".export-history-row").first()).toContainText("已过期");
       const reexportResponsePromise = page.waitForResponse(
         (response) =>
-          response.url() === `${origin}${branchPath}/exports` &&
+          response.url() === `${origin}${exportListEndpoint}` &&
           response.request().method() === "POST" &&
           response.status() === 202,
       );
@@ -424,7 +425,7 @@ test("creates, downloads, checks, previews, copies, expires and appeals through 
         await (await reexportResponsePromise).json(),
       ).data;
       await expect(page.getByText("已按原设置重新导出。")).toBeVisible({ timeout: 30_000 });
-      const exportHistoryResponse = await page.request.get(`${branchPath}/exports`);
+      const exportHistoryResponse = await page.request.get(exportListEndpoint);
       expect(exportHistoryResponse.status()).toBe(200);
       const exportHistory = workExportReceiptListResponseSchema.parse(
         await exportHistoryResponse.json(),
@@ -613,12 +614,12 @@ async function cleanupExpiredWorkExports(): Promise<number> {
     process.env.E2E_DATABASE_URL ??
     "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
   const { FileObjectStorage } = requireFromRoot(
-    path.join(root, "packages/storage/dist/index.js"),
+    path.join(repoRoot, "packages/storage/dist/index.js"),
   ) as {
     FileObjectStorage: new (rootDirectory: string) => unknown;
   };
   const { WorkExportProcessor } = requireFromRoot(
-    path.join(root, "apps/worker/dist/exports/work-export.processor.js"),
+    path.join(repoRoot, "apps/worker/dist/exports/work-export.processor.js"),
   ) as {
     WorkExportProcessor: new (
       repository: unknown,
@@ -629,7 +630,7 @@ async function cleanupExpiredWorkExports(): Promise<number> {
     };
   };
   const { WorkerWorkExportRepository } = requireFromRoot(
-    path.join(root, "apps/worker/dist/exports/work-export.repository.js"),
+    path.join(repoRoot, "apps/worker/dist/exports/work-export.repository.js"),
   ) as {
     WorkerWorkExportRepository: new () => unknown;
   };
