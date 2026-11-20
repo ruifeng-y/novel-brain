@@ -190,6 +190,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正常 PR Production CI [44676510957](https://github.com/ruifeng-y/novel-brain/actions/runs/44676510957) 的 `check` 与 `playwright`、Deployment Smoke [44676510790](https://github.com/ruifeng-y/novel-brain/actions/runs/44676510790) 均通过；`outline` 提升为 `parity-verified`。
 
+## 2026-11-20 foreshadows 逐动作持久化与最终 CI 签收
+
+沿用作者在 2026-11-10 至 2026-11-11 对 `foreshadows` 四档正式 Golden 和 loading 状态的视觉签收。本次 #228 不改变页面视觉基线，只补齐九个页面动作的真实 API 与持久化证据。
+
+`apps/web/e2e/parity/foreshadows.spec.ts` 覆盖创建、编辑、埋设、推进、回收、失败回收、放弃、延期和重新检查。断言包括条目摘要、状态转换、目标窗口、回收证据，以及检查结果与持久化逾期记录 ID 的绑定。targeted Playwright 九动作、错误重试状态、四档结构、作者语言和 prototype-only 扫描均通过；15 秒全量 Vitest 通过（120 files / 605 tests）。
+
+正常 PR Production CI [44694419586](https://github.com/ruifeng-y/novel-brain/actions/runs/44694419586) 的 `check` 与 `playwright`、Deployment Smoke [44694419654](https://github.com/ruifeng-y/novel-brain/actions/runs/44694419654) 均通过；`foreshadows` 提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

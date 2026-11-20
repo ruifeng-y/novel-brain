@@ -516,8 +516,10 @@
       ]
     },
     "foreshadows": {
-      "status": "pending",
-      "rationale": "Foreshadows action evidence is implemented locally; normal PR Production CI and Deployment Smoke evidence are still required.",
+      "status": "verified",
+      "headSha": "6fe3f16bf9ebbd2bceb029b539960b93c17fde16",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44694419586",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44694419654",
       "actions": [
         {
           "id": "create-entry",
