@@ -812,8 +812,10 @@
       ]
     },
     "changes": {
-      "status": "pending",
-      "rationale": "The seven production actions and persisted reads pass locally; normal PR CI evidence is still required.",
+      "status": "verified",
+      "headSha": "13fb396e93db780236452684fa2020c5b42ffe62",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44748955254",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44748955239",
       "actions": [
         {
           "id": "create-change",

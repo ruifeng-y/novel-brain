@@ -66,5 +66,5 @@
 ## 6. 视觉与边界
 
 - changes 四档当前生产基线已生成：`artifacts/ui/golden/changes/changes-{390,900,1180,1440}.png`。
-- changes 页面仍等待作者对本次新增页面的正式视觉签收；签收前状态保持 `production-built`。
+- changes 页面已于 2026-11-12 完成作者视觉签收；#231 于 2026-11-20 补齐逐动作持久化证据并通过正常 PR CI 后，当前状态提升为 `parity-verified`。
 - 搜索索引是派生数据，可从 PostgreSQL 源表重建；不引入向量检索。
