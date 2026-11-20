@@ -111,7 +111,7 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-230-batch/` 中 `batch-{390,900,1180,1440}.png` 四张 Linux/Chromium 候选，并同意将其作为当前正式 Golden。
 
-候选由受控 Production CI [44723219024](https://github.com/ruifeng-y/novel-brain/actions/runs/44723219024) 的 `update_golden` 任务生成；四张正式文件已写入 `artifacts/ui/golden/batch/`。新布局加入批量任务发现、开始/暂停/恢复/取消/重试、按需成本报告和审核队列组合。`apps/web/e2e/parity/batch.spec.ts` 的七个动作、四档截图、作者语言、`prototype_only` 扫描和语义断言仍须在最终正常 PR CI 中通过后，才能将页面提升为 `parity-verified`。
+候选由受控 Production CI [44723219024](https://github.com/ruifeng-y/novel-brain/actions/runs/44723219024) 的 `update_golden` 任务生成；四张正式文件已写入 `artifacts/ui/golden/batch/`。新布局加入批量任务发现、开始/暂停/恢复/取消/重试、按需成本报告和审核队列组合。`apps/web/e2e/parity/batch.spec.ts` 的七个动作、四档截图、作者语言、`prototype_only` 扫描和语义断言由正常 PR Production CI [44731154154](https://github.com/ruifeng-y/novel-brain/actions/runs/44731154154) 与 Deployment Smoke [44731154093](https://github.com/ruifeng-y/novel-brain/actions/runs/44731154093) 验证通过，页面已提升为 `parity-verified`。
 
 ## 2026-11-16 account-settings 账号生命周期视觉签收
 
