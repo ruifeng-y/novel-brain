@@ -420,8 +420,10 @@
       ]
     },
     "outline": {
-      "status": "pending",
-      "rationale": "Outline action evidence is implemented locally; normal PR Production CI and Deployment Smoke evidence are still required.",
+      "status": "verified",
+      "headSha": "aa11a5f5cb4e06317e5bb903f949bcdebfeb582d",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44676510957",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44676510790",
       "actions": [
         {
           "id": "create-outline-node",
