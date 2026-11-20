@@ -198,6 +198,12 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正常 PR Production CI [44694419586](https://github.com/ruifeng-y/novel-brain/actions/runs/44694419586) 的 `check` 与 `playwright`、Deployment Smoke [44694419654](https://github.com/ruifeng-y/novel-brain/actions/runs/44694419654) 均通过；`foreshadows` 提升为 `parity-verified`。
 
+## 2026-11-20 writing 新章节与版本恢复视觉签收
+
+签收人：ruifeng-y。#229 在写作台补齐“新建章节”和旧版恢复控件，因此重新生成 `writing` 四档 Linux/Chromium 候选。作者已确认 `artifacts/ui/candidates/m3-229-writing/` 中的 390 / 900 / 1180 / 1440 四张候选，并同意将其作为当前正式 Golden。
+
+候选由受控 Production CI [44704229643](https://github.com/ruifeng-y/novel-brain/actions/runs/44704229643) 的 `update_golden` 任务生成；390 与 900 正式文件本次更新，1180 与 1440 候选与现有正式文件一致。该记录仅确认视觉基线；`writing` 在逐动作持久化证据和最终正常 PR CI 通过前保持 `production-built`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
