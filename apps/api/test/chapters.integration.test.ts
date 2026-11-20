@@ -324,6 +324,38 @@ describe("chapter workspace HTTP integration", () => {
     expect(second.body.data.chapter.currentVersionId).toBe(second.body.data.version.id);
     expect(second.body.data.version.versionNodeId).toBe(graph.rows[1]?.branch_head_node_id);
 
+    const rollback = await owner
+      .post(`${branchPath}/rollback`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        targetNodeId: first.body.data.version.versionNodeId,
+        expectedHeadNodeId: second.body.data.version.versionNodeId,
+        reason: "恢复到第一次保存的段落节奏。",
+      })
+      .expect(200);
+    expect(rollback.body.data.nodeType).toBe("rollback");
+    const restored = await owner.get(`${branchPath}/chapters/${created.body.data.id}`).expect(200);
+    expect(restored.body.data.currentVersion.content).toBe("血从袖口滴下来，落在青石板上。");
+    const restoredVersions = await owner.get(versionsPath).expect(200);
+    expect(restoredVersions.body.data).toHaveLength(3);
+    expect(restoredVersions.body.data[0]).toMatchObject({
+      version: 4,
+      content: "血从袖口滴下来，落在青石板上。",
+    });
+    const rollbackGraph = await databasePool.query<{ node_type: string; object_type: string }>(
+      `SELECT node_type, object_type
+       FROM version_nodes
+       WHERE object_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [created.body.data.id],
+    );
+    expect(rollbackGraph.rows[0]).toEqual({
+      node_type: "rollback",
+      object_type: "chapter",
+    });
+
     const stale = await owner
       .post(versionsPath)
       .set("Origin", origin)

@@ -7022,10 +7022,8 @@ a:focus-visible {
 }
 
 .writing-version-item {
-  display: flex;
+  display: grid;
   gap: 10px;
-  align-items: center;
-  justify-content: space-between;
   padding: 10px;
   background: var(--paper-2);
   border: 1px solid var(--line);
@@ -7037,7 +7035,14 @@ a:focus-visible {
   background: var(--jade-soft);
 }
 
-.writing-version-item > div {
+.writing-version-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.writing-version-row > div {
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -7050,6 +7055,31 @@ a:focus-visible {
 .writing-version-item small {
   color: var(--muted);
   font-size: 12px;
+}
+
+.writing-version-restore {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.writing-version-restore label {
+  display: grid;
+  gap: 5px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.writing-version-restore textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.writing-version-restore-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .writing-version-compare {
