@@ -101,6 +101,8 @@ In the columns below, the prototype screenshot path and production test/golden p
 >
 > 2026-11-12：作者确认 Batch 四档视觉方向；`apps/web/e2e/parity/batch.spec.ts` 已生成 `artifacts/ui/golden/batch/batch-{390,900,1180,1440}.png` 正式 Golden，并覆盖审核队列、暂停、失败、成本硬停、部分失败与四档无横向溢出。
 >
+> 2026-11-20：#230 完成 batch 的 7 个必需动作、任务控制、按需成本报告和审核持久化证据。作者确认 `artifacts/ui/candidates/m3-230-batch/` 四张受控 Linux/Chromium 候选为正式 Golden；正式文件已更新。页面在最终正常 PR CI 通过前保持 `production-built`。
+>
 > 2026-11-18：#142 完成 `work-settings` 的作品设置、复制、归档恢复、回收站、封面上传与定时清理；作者确认四档生产布局。390px actual 来自 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122)，其余 `work-settings` Linux/Chromium Golden 由 [Production CI #44138638764](https://github.com/ruifeng-y/novel-brain/actions/runs/44138638764) 的受控 `update_golden` 运行生成。当前 release status 以页面表为准；逐动作证据和最终正常 PR CI 通过前保持 `production-built`。
 >
 > 2026-11-18：#104 将 `auth.spec.ts` 纳入直接的 390 / 900 / 1180 / 1440 `toHaveScreenshot` 与 `prototype_only` 扫描。`auth` 仍为 `production-built`，直到最终正常 PR 的 Linux/Chromium CI 通过；17 个生产页面均具备页面所有者 spec、四档生产 Golden 和作者语言/泄漏门禁。全局发布状态仍由真实人工质量证据和 release checklist 决定。
