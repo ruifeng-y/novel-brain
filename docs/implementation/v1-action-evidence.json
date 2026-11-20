@@ -749,7 +749,65 @@
     },
     "batch": {
       "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "rationale": "The seven production actions and persisted reads pass locally; normal PR CI evidence is still required.",
+      "actions": [
+        {
+          "id": "start-batch",
+          "name": "开始批量计划并回读运行状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/batch-plans/${plan.id}/start",
+          "spec": "apps/web/e2e/parity/batch.spec.ts",
+          "test": "starts, pauses, resumes, cancels and reports a batch plan through persisted APIs",
+          "assertion": "await expectPersistedPlanStatus(page, work, plan.id, \"running\");"
+        },
+        {
+          "id": "pause-batch",
+          "name": "暂停批量计划并回读暂停状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/batch-plans/${plan.id}/pause",
+          "spec": "apps/web/e2e/parity/batch.spec.ts",
+          "test": "starts, pauses, resumes, cancels and reports a batch plan through persisted APIs",
+          "assertion": "await expectPersistedPlanStatus(page, work, plan.id, \"paused\");"
+        },
+        {
+          "id": "resume-batch",
+          "name": "从未完成检查点恢复批量计划",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/batch-plans/${plan.id}/resume",
+          "spec": "apps/web/e2e/parity/batch.spec.ts",
+          "test": "starts, pauses, resumes, cancels and reports a batch plan through persisted APIs",
+          "assertion": "await expectPersistedPlanStatus(page, work, plan.id, \"running\");"
+        },
+        {
+          "id": "cancel-batch",
+          "name": "取消批量任务并保留已完成结果",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/batch-plans/${plan.id}/cancel",
+          "spec": "apps/web/e2e/parity/batch.spec.ts",
+          "test": "starts, pauses, resumes, cancels and reports a batch plan through persisted APIs",
+          "assertion": "await expectPersistedPlanStatus(page, work, plan.id, \"cancelled\");"
+        },
+        {
+          "id": "retry-batch",
+          "name": "从失败章节检查点重试批量计划",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/batch-plans/${plan.id}/retry",
+          "spec": "apps/web/e2e/parity/batch.spec.ts",
+          "test": "retries a failed batch plan through the production control",
+          "assertion": "await expectPersistedPlanStatus(page, work, plan.id, \"running\");"
+        },
+        {
+          "id": "review-item",
+          "name": "领取并驳回卷边界审核项后回读决策",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/review-queue/decisions",
+          "spec": "apps/web/e2e/parity/batch.spec.ts",
+          "test": "claims and rejects a persisted batch review item through production controls",
+          "assertion": "expect(reviewedPage.data.some((item) => item.status === \"rejected\")).toBe(true);"
+        },
+        {
+          "id": "report",
+          "name": "读取按卷聚合的任务成本与失败报告",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/batch-plans/${plan.id}/cost-report?groupBy=volume",
+          "spec": "apps/web/e2e/parity/batch.spec.ts",
+          "test": "starts, pauses, resumes, cancels and reports a batch plan through persisted APIs",
+          "assertion": "expect(report).toMatchObject({ planId: plan.id, currency: \"CNY\" });"
+        }
+      ]
     },
     "changes": {
       "status": "pending",

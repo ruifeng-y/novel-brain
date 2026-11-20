@@ -25,7 +25,7 @@ export class BatchPlanChildQueue implements OnModuleDestroy {
 
   async enqueueChapter(payload: GenerateChapterJob, priority: number): Promise<void> {
     await this.queue.add(GENERATE_CHAPTER_JOB, payload, {
-      jobId: `batch-child:${payload.jobId}`,
+      jobId: batchPlanChildJobId(payload.jobId),
       priority,
       removeOnComplete: true,
       removeOnFail: false,
@@ -42,4 +42,8 @@ export class BatchPlanChildQueue implements OnModuleDestroy {
       this.connection.disconnect();
     }
   }
+}
+
+export function batchPlanChildJobId(jobId: string): string {
+  return `batch-child-${jobId}`;
 }

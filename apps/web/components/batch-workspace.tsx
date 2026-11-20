@@ -1,14 +1,19 @@
 "use client";
 
 import {
+  BarChart3,
   Check,
   ClipboardCheck,
   FileWarning,
   Layers3,
   LoaderCircle,
+  Pause,
+  Play,
   RefreshCw,
+  RotateCcw,
   ShieldAlert,
   ShieldCheck,
+  Square,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,6 +25,7 @@ import {
   batchReviewClaimResponseSchema,
   batchReviewDecisionResponseSchema,
   batchReviewQueueListResponseSchema,
+  type BatchPlanSummary,
   type BatchReviewDecisionResult,
   type BatchReviewQueueItem,
   type BatchReviewRisk,
@@ -57,9 +63,9 @@ export function BatchWorkspace({ workId }: { workId: string }) {
     highRisk: 0,
     stale: 0,
   });
-  const [planStates, setPlanStates] = useState<
-    Array<{ id: string; status: GenerationJobStatus; report: BatchCostReport | null }>
-  >([]);
+  const [plans, setPlans] = useState<BatchPlanSummary[]>([]);
+  const [reports, setReports] = useState<Record<string, BatchCostReport>>({});
+  const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [risk, setRisk] = useState<"" | BatchReviewRisk>("");
   const [status, setStatus] = useState<"pending" | "claimed" | "">("pending");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -69,8 +75,13 @@ export function BatchWorkspace({ workId }: { workId: string }) {
   const [results, setResults] = useState<Record<string, BatchReviewDecisionResult>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"claim" | "approve" | "reject" | null>(null);
+  const [planBusy, setPlanBusy] = useState<{
+    id: string;
+    action: "start" | "pause" | "resume" | "cancel" | "retry" | "report";
+  } | null>(null);
   const [error, setError] = useState("");
   const [planStateError, setPlanStateError] = useState("");
+  const [reportError, setReportError] = useState("");
   const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
@@ -95,74 +106,69 @@ export function BatchWorkspace({ workId }: { workId: string }) {
       }
       const queue = batchReviewQueueListResponseSchema.parse(await queueResponse.json());
       let planStateLoadFailed = false;
-      let pausedPlans: Array<{ id: string }> = [];
-      let failedPlans: Array<{ id: string }> = [];
-      const [pausedPlanResult, failedPlanResult] = await Promise.allSettled([
-        fetchAllCursorPages(
-          `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans?status=paused`,
-          batchPlanListResponseSchema.parse,
-          "暂停计划加载失败。",
+      const planStatuses: GenerationJobStatus[] = [
+        "queued",
+        "preparing",
+        "running",
+        "paused",
+        "waiting_review",
+        "failed",
+        "completed",
+        "cancelled",
+      ];
+      const planResults = await Promise.allSettled(
+        planStatuses.map((planStatus) =>
+          fetchAllCursorPages(
+            `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans?status=${planStatus}`,
+            batchPlanListResponseSchema.parse,
+            "批量任务状态加载失败。",
+          ),
         ),
-        fetchAllCursorPages(
-          `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans?status=failed`,
-          batchPlanListResponseSchema.parse,
-          "失败计划加载失败。",
-        ),
-      ]);
-      if (pausedPlanResult.status === "fulfilled") {
-        pausedPlans = pausedPlanResult.value;
-      } else {
-        planStateLoadFailed = true;
-      }
-      if (failedPlanResult.status === "fulfilled") {
-        failedPlans = failedPlanResult.value;
-      } else {
-        planStateLoadFailed = true;
-      }
-      const planIds = [
-        ...new Set([
-          ...pausedPlans.map((plan) => plan.id),
-          ...failedPlans.map((plan) => plan.id),
-          ...queue.data.map((item) => item.planId),
-        ]),
-      ].slice(0, 100);
-      const plans = await Promise.all(
-        planIds.map(async (planId) => {
-          const response = await fetch(
-            `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans/${planId}`,
-            { cache: "no-store" },
-          );
-          if (!response.ok) {
-            planStateLoadFailed = true;
-            return null;
-          }
-          const plan = batchPlanResponseSchema.parse(await response.json()).data;
-          const reportResponse = await fetch(
-            `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans/${planId}/cost-report?groupBy=volume`,
-            { cache: "no-store" },
-          );
-          if (!reportResponse.ok) {
-            planStateLoadFailed = true;
-          }
-          const report = reportResponse.ok
-            ? batchCostReportResponseSchema.parse(await reportResponse.json()).data
-            : null;
-          return { id: plan.id, status: plan.status, report };
-        }),
       );
+      const plansById = new Map<string, BatchPlanSummary>();
+      for (const result of planResults) {
+        if (result.status === "fulfilled") {
+          for (const plan of result.value) {
+            plansById.set(plan.id, plan);
+          }
+        } else {
+          planStateLoadFailed = true;
+        }
+      }
+      const missingPlanIds = [
+        ...new Set(queue.data.map((item) => item.planId).filter((id) => !plansById.has(id))),
+      ].slice(0, 100);
+      for (const planId of missingPlanIds) {
+        const response = await fetch(
+          `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans/${planId}`,
+          { cache: "no-store" },
+        );
+        if (!response.ok) {
+          planStateLoadFailed = true;
+          continue;
+        }
+        const plan = batchPlanResponseSchema.parse(await response.json()).data;
+        plansById.set(plan.id, plan);
+      }
+      const loadedPlans = [...plansById.values()]
+        .sort(
+          (left, right) =>
+            right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+        )
+        .slice(0, 100);
       setWork(workData);
       setItems(queue.data);
       setCounts(queue.meta.counts);
-      setPlanStates(
-        plans.filter(
-          (
-            plan,
-          ): plan is {
-            id: string;
-            status: GenerationJobStatus;
-            report: BatchCostReport | null;
-          } => plan !== null,
+      setPlans(loadedPlans);
+      setReports((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(([planId]) =>
+            loadedPlans.some((plan) => plan.id === planId),
+          ),
         ),
+      );
+      setActiveReportId((current) =>
+        current && loadedPlans.some((plan) => plan.id === current) ? current : null,
       );
       if (planStateLoadFailed) {
         setPlanStateError("部分批量任务状态加载失败，请刷新重试。");
@@ -211,6 +217,69 @@ export function BatchWorkspace({ workId }: { workId: string }) {
       }
       return next;
     });
+  }
+
+  async function controlPlan(
+    plan: BatchPlanSummary,
+    action: "start" | "pause" | "resume" | "cancel" | "retry",
+  ) {
+    setPlanBusy({ id: plan.id, action });
+    setError("");
+    setReportError("");
+    setNotice("");
+    try {
+      const csrf = await getCsrfToken();
+      const response = await fetch(
+        `/api/v1/works/${workId}/branches/${work!.mainBranch.id}/batch-plans/${plan.id}/${action}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": `batch-control:${plan.id}:${action}:${crypto.randomUUID()}`,
+            "x-csrf-token": csrf,
+          },
+          body: JSON.stringify({ reason: planActionReason(action) }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const updated = batchPlanResponseSchema.parse(await response.json()).data;
+      setPlans((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setReports((current) => {
+        const next = { ...current };
+        delete next[updated.id];
+        return next;
+      });
+      setNotice(planActionNotice(action));
+    } catch (controlError) {
+      setError(controlError instanceof Error ? controlError.message : "批量任务操作失败。");
+    } finally {
+      setPlanBusy(null);
+    }
+  }
+
+  async function openReport(planId: string) {
+    setActiveReportId(planId);
+    setReportError("");
+    setPlanBusy({ id: planId, action: "report" });
+    try {
+      const response = await fetch(
+        `/api/v1/works/${workId}/branches/${work!.mainBranch.id}/batch-plans/${planId}/cost-report?groupBy=volume`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const report = batchCostReportResponseSchema.parse(await response.json()).data;
+      setReports((current) => ({ ...current, [planId]: report }));
+    } catch (reportLoadError) {
+      setReportError(
+        reportLoadError instanceof Error ? reportLoadError.message : "任务报告加载失败。",
+      );
+    } finally {
+      setPlanBusy(null);
+    }
   }
 
   async function claimSelected() {
@@ -340,37 +409,210 @@ export function BatchWorkspace({ workId }: { workId: string }) {
         <SummaryMetric icon={FileWarning} label="已过期" value={counts.stale} tone="warning" />
       </section>
 
-      {planStates.length > 0 ? (
-        <section className="batch-review-plan-states" aria-label="批量任务状态">
-          {planStates.map((plan) => (
-            <div
-              className={`batch-plan-state ${plan.status}${plan.report?.budget.status === "exhausted" ? " budget-exhausted" : ""}`}
-              key={plan.id}
-            >
-              <span>{planStateLabel(plan.status)}</span>
-              {plan.report ? (
-                <small>
-                  ¥{plan.report.totals.settledCostCny.toFixed(2)}
-                  {plan.report.budget.remainingCostCny === null
-                    ? " · 未设任务上限"
-                    : ` · 剩余 ¥${plan.report.budget.remainingCostCny.toFixed(2)}`}
-                </small>
-              ) : null}
-            </div>
-          ))}
-          {planStates.flatMap((plan) =>
-            (plan.report?.hardStops ?? []).slice(0, 3).map((hardStop) => (
-              <div
-                className="batch-budget-alert"
-                key={`${plan.id}:${hardStop.jobId}:${hardStop.occurredAt}`}
-              >
-                <strong>{budgetScopeLabel(hardStop.scope)}预算已耗尽</strong>
-                <span>{hardStop.message}</span>
-              </div>
-            )),
-          )}
-        </section>
-      ) : null}
+      <section className="batch-task-center" aria-label="批量任务">
+        <div className="batch-task-center-head">
+          <div>
+            <h2>批量任务</h2>
+            <p>开始、暂停或恢复生成任务，并从已完成任务读取成本与失败报告。</p>
+          </div>
+          <span>{plans.length} 个任务</span>
+        </div>
+        {loading && plans.length === 0 ? (
+          <div className="batch-plan-empty">
+            <LoaderCircle className="spin" size={18} />
+            正在加载批量任务
+          </div>
+        ) : plans.length === 0 ? (
+          <div className="batch-plan-empty">当前没有可操作的批量任务。</div>
+        ) : (
+          <div className="batch-plan-list">
+            {plans.map((plan) => {
+              const report = reports[plan.id];
+              const reportOpen = activeReportId === plan.id;
+              const planIsBusy = planBusy?.id === plan.id;
+              const terminal = ["completed", "failed", "cancelled"].includes(plan.status);
+              const readyCount = plan.counts.pending + plan.counts.ready;
+              return (
+                <article className="batch-plan-card" data-plan-id={plan.id} key={plan.id}>
+                  <div className="batch-plan-card-main">
+                    <div className="batch-plan-card-title">
+                      <span className={`batch-plan-status ${plan.status}`}>
+                        {planStateLabel(plan.status)}
+                      </span>
+                      <div>
+                        <h3>{planScopeLabel(plan)}</h3>
+                        <p>
+                          {plan.counts.chapter} 章 · 待执行 {readyCount} · 已完成{" "}
+                          {plan.counts.succeeded} · 失败 {plan.counts.failed}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="batch-plan-actions">
+                      {plan.status === "queued" ? (
+                        <button
+                          className="primary-button"
+                          disabled={planBusy !== null}
+                          onClick={() => void controlPlan(plan, "start")}
+                        >
+                          {planBusy?.action === "start" ? (
+                            <LoaderCircle className="spin" size={16} />
+                          ) : (
+                            <Play size={16} />
+                          )}
+                          开始任务
+                        </button>
+                      ) : null}
+                      {["queued", "preparing", "running"].includes(plan.status) ? (
+                        <button
+                          className="secondary-button"
+                          disabled={planBusy !== null}
+                          onClick={() => void controlPlan(plan, "pause")}
+                        >
+                          {planBusy?.action === "pause" ? (
+                            <LoaderCircle className="spin" size={16} />
+                          ) : (
+                            <Pause size={16} />
+                          )}
+                          暂停任务
+                        </button>
+                      ) : null}
+                      {plan.status === "paused" ? (
+                        <button
+                          className="primary-button"
+                          disabled={planBusy !== null}
+                          onClick={() => void controlPlan(plan, "resume")}
+                        >
+                          {planBusy?.action === "resume" ? (
+                            <LoaderCircle className="spin" size={16} />
+                          ) : (
+                            <Play size={16} />
+                          )}
+                          恢复任务
+                        </button>
+                      ) : null}
+                      {plan.status === "failed" ? (
+                        <button
+                          className="primary-button"
+                          disabled={planBusy !== null}
+                          onClick={() => void controlPlan(plan, "retry")}
+                        >
+                          {planBusy?.action === "retry" ? (
+                            <LoaderCircle className="spin" size={16} />
+                          ) : (
+                            <RotateCcw size={16} />
+                          )}
+                          重试任务
+                        </button>
+                      ) : null}
+                      <button
+                        className="secondary-button"
+                        disabled={planIsBusy && planBusy?.action === "report"}
+                        onClick={() => void openReport(plan.id)}
+                      >
+                        {planBusy?.action === "report" ? (
+                          <LoaderCircle className="spin" size={16} />
+                        ) : (
+                          <BarChart3 size={16} />
+                        )}
+                        查看报告
+                      </button>
+                      {!terminal ? (
+                        <button
+                          className="danger-button"
+                          disabled={planBusy !== null}
+                          onClick={() => void controlPlan(plan, "cancel")}
+                        >
+                          {planBusy?.action === "cancel" ? (
+                            <LoaderCircle className="spin" size={16} />
+                          ) : (
+                            <Square size={16} />
+                          )}
+                          取消任务
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {reportOpen ? (
+                    <section
+                      className="batch-plan-report"
+                      aria-label="批量任务报告"
+                      aria-busy={!report && !reportError}
+                    >
+                      <div className="batch-plan-report-head">
+                        <div>
+                          <h3>任务报告</h3>
+                          <p>按卷汇总调用成本、完成状态和成本硬停。</p>
+                        </div>
+                        <button
+                          aria-label="关闭任务报告"
+                          className="icon-button"
+                          onClick={() => setActiveReportId(null)}
+                          type="button"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      {report ? (
+                        <>
+                          <dl>
+                            <div>
+                              <dt>已结算费用</dt>
+                              <dd>¥{report.totals.settledCostCny.toFixed(2)}</dd>
+                            </div>
+                            <div>
+                              <dt>输入 / 输出 token</dt>
+                              <dd>
+                                {report.totals.inputTokens} / {report.totals.outputTokens}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>完成章节</dt>
+                              <dd>
+                                {report.totals.completedChapters} / {report.totals.chapters}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>剩余预算</dt>
+                              <dd>
+                                {report.budget.remainingCostCny === null
+                                  ? "未设任务上限"
+                                  : `¥${report.budget.remainingCostCny.toFixed(2)}`}
+                              </dd>
+                            </div>
+                          </dl>
+                          {report.hardStops.length > 0 ? (
+                            <div className="batch-budget-alerts">
+                              {report.hardStops.slice(0, 3).map((hardStop) => (
+                                <div
+                                  className="batch-budget-alert"
+                                  key={`${hardStop.jobId}:${hardStop.occurredAt}`}
+                                >
+                                  <strong>{budgetScopeLabel(hardStop.scope)}预算已耗尽</strong>
+                                  <span>{hardStop.message}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </>
+                      ) : reportError ? (
+                        <div className="page-inline-note error" role="alert">
+                          {reportError}
+                        </div>
+                      ) : (
+                        <div className="batch-plan-report-loading">
+                          <LoaderCircle className="spin" size={18} />
+                          正在读取任务报告
+                        </div>
+                      )}
+                    </section>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {planStateError ? (
         <div className="page-inline-note" role="status">
@@ -637,6 +879,19 @@ function qualityStateLabel(state: BatchReviewQueueItem["quality"]["reportState"]
   }
 }
 
+function planScopeLabel(plan: BatchPlanSummary) {
+  switch (plan.scope.type) {
+    case "book":
+      return "全书生成任务";
+    case "volume":
+      return `按卷生成 · ${plan.scope.volumeNodeIds.length} 卷`;
+    case "range":
+      return `连续区间 · 第 ${plan.scope.fromChapterNumber}–${plan.scope.toChapterNumber} 章`;
+    case "chapter":
+      return `按章生成 · ${plan.scope.chapterIds.length} 章`;
+  }
+}
+
 function planStateLabel(status: GenerationJobStatus) {
   switch (status) {
     case "queued":
@@ -655,6 +910,36 @@ function planStateLabel(status: GenerationJobStatus) {
       return "执行失败";
     case "cancelled":
       return "已取消";
+  }
+}
+
+function planActionReason(action: "start" | "pause" | "resume" | "cancel" | "retry") {
+  switch (action) {
+    case "start":
+      return "作者从批量任务中心开始生成";
+    case "pause":
+      return "作者从批量任务中心暂停生成";
+    case "resume":
+      return "作者从批量任务中心恢复生成";
+    case "cancel":
+      return "作者从批量任务中心取消生成";
+    case "retry":
+      return "作者从批量任务中心重试失败章节";
+  }
+}
+
+function planActionNotice(action: "start" | "pause" | "resume" | "cancel" | "retry") {
+  switch (action) {
+    case "start":
+      return "批量任务已开始。";
+    case "pause":
+      return "批量任务已暂停，当前步骤完成后停止。";
+    case "resume":
+      return "批量任务已从检查点恢复。";
+    case "cancel":
+      return "批量任务已取消，已完成章节和检查点已保留。";
+    case "retry":
+      return "失败章节已进入重试。";
   }
 }
 

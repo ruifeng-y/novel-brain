@@ -10261,6 +10261,198 @@ a:focus-visible {
   border-color: color-mix(in srgb, var(--cinnabar) 30%, var(--line));
 }
 
+.batch-task-center {
+  display: grid;
+  gap: 10px;
+}
+
+.batch-task-center-head,
+.batch-plan-card-main,
+.batch-plan-card-title,
+.batch-plan-actions,
+.batch-plan-report-head {
+  display: flex;
+  align-items: center;
+}
+
+.batch-task-center-head {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.batch-task-center-head h2,
+.batch-plan-card h3,
+.batch-plan-report h3 {
+  margin: 0;
+  color: var(--ink);
+}
+
+.batch-task-center-head h2 {
+  font-size: 18px;
+}
+
+.batch-task-center-head p,
+.batch-plan-card-title p,
+.batch-plan-report-head p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.batch-task-center-head > span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.batch-plan-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 76px;
+  color: var(--muted);
+  font-size: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.batch-plan-list {
+  display: grid;
+  gap: 10px;
+}
+
+.batch-plan-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  overflow: hidden;
+}
+
+.batch-plan-card-main {
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+}
+
+.batch-plan-card-title {
+  min-width: 0;
+  gap: 11px;
+}
+
+.batch-plan-card-title > div {
+  min-width: 0;
+}
+
+.batch-plan-card h3 {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.batch-plan-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  min-height: 27px;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+}
+
+.batch-plan-status.running,
+.batch-plan-status.completed {
+  color: var(--jade);
+  background: var(--jade-soft);
+}
+
+.batch-plan-status.paused,
+.batch-plan-status.waiting_review {
+  color: #8b5b17;
+  background: #fbf1de;
+}
+
+.batch-plan-status.failed {
+  color: var(--cinnabar);
+  background: var(--cinnabar-soft);
+}
+
+.batch-plan-actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.batch-plan-actions button {
+  min-height: 32px;
+  padding: 6px 10px;
+}
+
+.batch-plan-report {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.batch-plan-report-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.batch-plan-report h3 {
+  font-size: 14px;
+}
+
+.batch-plan-report dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.batch-plan-report dl div {
+  min-width: 0;
+  padding: 9px 10px;
+  border-left: 2px solid var(--line);
+}
+
+.batch-plan-report dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.batch-plan-report dd {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.batch-budget-alerts {
+  display: grid;
+  gap: 7px;
+}
+
+.batch-plan-report-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .batch-review-toolbar label {
   display: grid;
   gap: 5px;
@@ -10707,6 +10899,20 @@ a:focus-visible {
     margin-left: 0;
   }
 
+  .batch-plan-card-main {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .batch-plan-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .batch-plan-report dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .batch-review-workspace {
     grid-template-columns: 1fr;
   }
@@ -10738,6 +10944,31 @@ a:focus-visible {
 
   .batch-review-metric:first-child {
     border-top: 0;
+  }
+
+  .batch-task-center-head {
+    align-items: flex-start;
+  }
+
+  .batch-plan-card-title {
+    align-items: flex-start;
+  }
+
+  .batch-plan-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .batch-plan-actions button {
+    width: 100%;
+  }
+
+  .batch-plan-actions button:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .batch-plan-report dl {
+    grid-template-columns: 1fr;
   }
 
   .batch-review-item {
