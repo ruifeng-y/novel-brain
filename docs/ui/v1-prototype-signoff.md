@@ -107,6 +107,12 @@ settings、bible、entity-detail 的 12 张正式 Golden 已按当前生产渲�
 
 Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和四档视口。Changes Golden 覆盖 390 / 900 / 1180 / 1440，语义测试同时覆盖加载、错误、冲突、部分失败、禁用应用、旧版本拒绝、当前作品/全部作品搜索与选中平行版本上下文。正式 Linux `toHaveScreenshot` 以最终 PR 的绿色 Production CI 为准；合并前不得用本地截图替代该回归证据。
 
+## 2026-11-20 batch 任务中心视觉签收
+
+签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-230-batch/` 中 `batch-{390,900,1180,1440}.png` 四张 Linux/Chromium 候选，并同意将其作为当前正式 Golden。
+
+候选由受控 Production CI [44723219024](https://github.com/ruifeng-y/novel-brain/actions/runs/44723219024) 的 `update_golden` 任务生成；四张正式文件已写入 `artifacts/ui/golden/batch/`。新布局加入批量任务发现、开始/暂停/恢复/取消/重试、按需成本报告和审核队列组合。`apps/web/e2e/parity/batch.spec.ts` 的七个动作、四档截图、作者语言、`prototype_only` 扫描和语义断言由正常 PR Production CI [44731154154](https://github.com/ruifeng-y/novel-brain/actions/runs/44731154154) 与 Deployment Smoke [44731154093](https://github.com/ruifeng-y/novel-brain/actions/runs/44731154093) 验证通过，页面已提升为 `parity-verified`。
+
 ## 2026-11-16 account-settings 账号生命周期视觉签收
 
 签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-134-linux/artifacts/ui/golden/account-settings/` 中账号设置常规态与 Key 错误态各四档，共 8 张 Linux candidate 作为正式 Golden。
