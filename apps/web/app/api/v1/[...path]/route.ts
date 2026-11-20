@@ -59,6 +59,12 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
     if (contentType) {
       responseHeaders.set("content-type", contentType);
     }
+    for (const header of ["content-disposition", "content-length", "x-export-checksum"]) {
+      const value = response.headers.get(header);
+      if (value) {
+        responseHeaders.set(header, value);
+      }
+    }
     if (contentType?.includes("text/event-stream")) {
       responseHeaders.set("cache-control", "no-cache, no-transform");
       responseHeaders.set("x-accel-buffering", "no");

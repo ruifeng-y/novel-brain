@@ -876,8 +876,68 @@
       ]
     },
     "export-publish": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "67cac52b7c7bb505a1513776975dfe5be8d43ecd",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44763155194",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44763153754",
+      "actions": [
+        {
+          "id": "create-export",
+          "name": "创建导出任务并回读固定版本清单",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/exports",
+          "spec": "apps/web/e2e/parity/export-publish.spec.ts",
+          "test": "creates, downloads, checks, previews, copies, expires and appeals through production APIs",
+          "assertion": "expect(persistedExport.manifest?.chapters).toHaveLength(chapters.length);"
+        },
+        {
+          "id": "download-export",
+          "name": "下载真实导出文件并校验文件名、响应头与内容哈希",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/exports/${createdExport.id}/download",
+          "spec": "apps/web/e2e/parity/export-publish.spec.ts",
+          "test": "creates, downloads, checks, previews, copies, expires and appeals through production APIs",
+          "assertion": "expect(downloadResponse.headers()[\"x-export-checksum\"]).toBe(persistedExport.checksum);"
+        },
+        {
+          "id": "run-publish-check",
+          "name": "运行发布检查并回读固定发布预览",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/publish-check",
+          "spec": "apps/web/e2e/parity/export-publish.spec.ts",
+          "test": "creates, downloads, checks, previews, copies, expires and appeals through production APIs",
+          "assertion": "expect(persistedPreview.manifestHash).toBe(persistedExport.manifest?.manifestHash);"
+        },
+        {
+          "id": "preview-publish",
+          "name": "打开读者预览并回读固定预览正文",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/publish-check/${createdPreview.id}",
+          "spec": "apps/web/e2e/parity/export-publish.spec.ts",
+          "test": "creates, downloads, checks, previews, copies, expires and appeals through production APIs",
+          "assertion": "await expect(readerDialog).toContainText(readerPreview.readerPreview.summary);"
+        },
+        {
+          "id": "copy-publish-metadata",
+          "name": "复制发布文案并回读已保存的元数据",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/publish-check/${createdPreview.id}",
+          "spec": "apps/web/e2e/parity/export-publish.spec.ts",
+          "test": "creates, downloads, checks, previews, copies, expires and appeals through production APIs",
+          "assertion": "expect(copiedPreview.publishCopy.summary).toBe(persistedPreview.publishCopy.summary);"
+        },
+        {
+          "id": "expire-export",
+          "name": "过期清理对象与来源描述后回读拒绝下载并重新导出",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/exports/${createdExport.id}/download",
+          "spec": "apps/web/e2e/parity/export-publish.spec.ts",
+          "test": "creates, downloads, checks, previews, copies, expires and appeals through production APIs",
+          "assertion": "expect(expiredDownload.status()).toBe(410);"
+        },
+        {
+          "id": "appeal-moderation",
+          "name": "提交内容安全申诉并回读追加事件",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/moderation-cases/${activeModerationCaseId}/appeals",
+          "spec": "apps/web/e2e/parity/export-publish.spec.ts",
+          "test": "creates, downloads, checks, previews, copies, expires and appeals through production APIs",
+          "assertion": "expect(persistedModerationCase?.status).toBe(\"appeal_submitted\");"
+        }
+      ]
     },
     "work-settings": {
       "status": "pending",

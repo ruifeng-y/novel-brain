@@ -523,12 +523,7 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
         throw new Error(await readError(response, "发布检查失败。"));
       }
       const created = publishPreviewResponseSchema.parse(await response.json()).data;
-      setPreview(created);
-      setPreviewHistory((current) => [
-        created,
-        ...current.filter((item) => item.id !== created.id),
-      ]);
-      setSelectedExportId(created.exportId);
+      rememberPreview(created);
       await refreshModerationCases(branchPath).catch(() => {
         setPartialError("内容安全记录刷新失败，请稍后刷新页面。");
       });
@@ -627,12 +622,40 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
     }
   }
 
+  function rememberPreview(pinned: PublishPreview) {
+    setPreview(pinned);
+    setPreviewHistory((current) => [pinned, ...current.filter((item) => item.id !== pinned.id)]);
+    setSelectedExportId(pinned.exportId);
+  }
+
+  async function loadAndPinPreview(target: PublishPreview): Promise<PublishPreview> {
+    if (!branchPath) {
+      return target;
+    }
+    const response = await fetch(`${branchPath}/publish-check/${target.id}`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(await readError(response, "发布预览暂时无法加载，请稍后重试。"));
+    }
+    const pinned = publishPreviewResponseSchema.parse(await response.json()).data;
+    rememberPreview(pinned);
+    return pinned;
+  }
+
   async function openReaderPreview() {
     readerReturnFocusRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const target = selectedPreview ?? (await runPublishCheck());
-    if (target) {
+    setError("");
+    try {
+      const target = selectedPreview ?? (await runPublishCheck());
+      if (!target) {
+        return;
+      }
+      await loadAndPinPreview(target);
       setReaderOpen(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "发布预览暂时无法加载，请稍后重试。");
     }
   }
 
@@ -646,25 +669,31 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
   }
 
   async function copyPublishCopy() {
-    const target = selectedPreview ?? (await runPublishCheck());
-    if (!target) {
-      return;
+    setError("");
+    try {
+      const target = selectedPreview ?? (await runPublishCheck());
+      if (!target) {
+        return;
+      }
+      const pinned = await loadAndPinPreview(target);
+      const copy = pinned.publishCopy;
+      await copyText(
+        [
+          `书名备选：${copy.titleOptions.join(" / ")}`,
+          `简介：${copy.summary}`,
+          `标签：${copy.tags.join("、")}`,
+          `章节名建议：${copy.chapterTitleSuggestions.join(" / ")}`,
+          ...(copy.aiDisclosureMetadata?.required
+            ? [`AI 内容说明：${copy.aiDisclosureMetadata.label}`]
+            : []),
+          copy.platformNote,
+        ].join("\n"),
+      );
+      setPublishCopyExpanded(true);
+      setNotice("发布文案已复制到剪贴板。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "发布文案加载失败。");
     }
-    const copy = target.publishCopy;
-    await copyText(
-      [
-        `书名备选：${copy.titleOptions.join(" / ")}`,
-        `简介：${copy.summary}`,
-        `标签：${copy.tags.join("、")}`,
-        `章节名建议：${copy.chapterTitleSuggestions.join(" / ")}`,
-        ...(copy.aiDisclosureMetadata?.required
-          ? [`AI 内容说明：${copy.aiDisclosureMetadata.label}`]
-          : []),
-        copy.platformNote,
-      ].join("\n"),
-    );
-    setPublishCopyExpanded(true);
-    setNotice("发布文案已复制到剪贴板。");
   }
 
   async function downloadExport(receipt: WorkExportReceipt) {
@@ -683,7 +712,10 @@ export function ExportPublishWorkspace({ workId }: { workId: string }) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = receipt.fileName ?? `${work?.title ?? "作品"}_导出文件`;
+      link.download = downloadFileName(
+        response,
+        receipt.fileName ?? `${work?.title ?? "作品"}_导出文件`,
+      );
       link.click();
       URL.revokeObjectURL(url);
       setNotice("导出文件已开始下载。");
@@ -1981,4 +2013,17 @@ async function readError(response: Response, fallback: string): Promise<string> 
     return payload.error.message;
   }
   return fallback;
+}
+
+function downloadFileName(response: Response, fallback: string): string {
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const encoded = /filename\*=UTF-8''([^;]+)/iu.exec(disposition)?.[1];
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded);
+    } catch {
+      return fallback;
+    }
+  }
+  return /filename="?([^";]+)"?/iu.exec(disposition)?.[1] ?? fallback;
 }
