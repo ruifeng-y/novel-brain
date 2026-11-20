@@ -789,7 +789,7 @@
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/batch-plans/${plan.id}/retry",
           "spec": "apps/web/e2e/parity/batch.spec.ts",
           "test": "retries a failed batch plan through the production control",
-          "assertion": "await expectPersistedPlanStatus(page, work, plan.id, \"running\");"
+          "assertion": "expect(retriedSteps.find((item) => item.key.endsWith(\":verify\"))?.status).toBe(\"ready\");"
         },
         {
           "id": "review-item",
@@ -804,8 +804,8 @@
           "name": "读取按卷聚合的任务成本与失败报告",
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/batch-plans/${plan.id}/cost-report?groupBy=volume",
           "spec": "apps/web/e2e/parity/batch.spec.ts",
-          "test": "starts, pauses, resumes, cancels and reports a batch plan through persisted APIs",
-          "assertion": "expect(report).toMatchObject({ planId: plan.id, currency: \"CNY\" });"
+          "test": "claims and rejects a persisted batch review item through production controls",
+          "assertion": "expect(report.totals.calls).toBeGreaterThan(0);"
         }
       ]
     },

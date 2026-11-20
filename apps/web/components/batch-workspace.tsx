@@ -53,6 +53,8 @@ const statusLabels: Record<BatchReviewStatus, string> = {
   stale: "已过期",
 };
 
+type BatchPlanControl = "start" | "pause" | "resume" | "cancel" | "retry";
+
 export function BatchWorkspace({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverview | null>(null);
   const [items, setItems] = useState<BatchReviewQueueItem[]>([]);
@@ -77,7 +79,7 @@ export function BatchWorkspace({ workId }: { workId: string }) {
   const [busy, setBusy] = useState<"claim" | "approve" | "reject" | null>(null);
   const [planBusy, setPlanBusy] = useState<{
     id: string;
-    action: "start" | "pause" | "resume" | "cancel" | "retry" | "report";
+    action: BatchPlanControl | "report";
   } | null>(null);
   const [error, setError] = useState("");
   const [planStateError, setPlanStateError] = useState("");
@@ -219,10 +221,7 @@ export function BatchWorkspace({ workId }: { workId: string }) {
     });
   }
 
-  async function controlPlan(
-    plan: BatchPlanSummary,
-    action: "start" | "pause" | "resume" | "cancel" | "retry",
-  ) {
+  async function controlPlan(plan: BatchPlanSummary, action: BatchPlanControl) {
     setPlanBusy({ id: plan.id, action });
     setError("");
     setReportError("");
@@ -238,7 +237,7 @@ export function BatchWorkspace({ workId }: { workId: string }) {
             "idempotency-key": `batch-control:${plan.id}:${action}:${crypto.randomUUID()}`,
             "x-csrf-token": csrf,
           },
-          body: JSON.stringify({ reason: planActionReason(action) }),
+          body: JSON.stringify({ reason: planActionCopy[action].reason }),
         },
       );
       if (!response.ok) {
@@ -251,7 +250,7 @@ export function BatchWorkspace({ workId }: { workId: string }) {
         delete next[updated.id];
         return next;
       });
-      setNotice(planActionNotice(action));
+      setNotice(planActionCopy[action].notice);
     } catch (controlError) {
       setError(controlError instanceof Error ? controlError.message : "批量任务操作失败。");
     } finally {
@@ -913,35 +912,22 @@ function planStateLabel(status: GenerationJobStatus) {
   }
 }
 
-function planActionReason(action: "start" | "pause" | "resume" | "cancel" | "retry") {
-  switch (action) {
-    case "start":
-      return "作者从批量任务中心开始生成";
-    case "pause":
-      return "作者从批量任务中心暂停生成";
-    case "resume":
-      return "作者从批量任务中心恢复生成";
-    case "cancel":
-      return "作者从批量任务中心取消生成";
-    case "retry":
-      return "作者从批量任务中心重试失败章节";
-  }
-}
-
-function planActionNotice(action: "start" | "pause" | "resume" | "cancel" | "retry") {
-  switch (action) {
-    case "start":
-      return "批量任务已开始。";
-    case "pause":
-      return "批量任务已暂停，当前步骤完成后停止。";
-    case "resume":
-      return "批量任务已从检查点恢复。";
-    case "cancel":
-      return "批量任务已取消，已完成章节和检查点已保留。";
-    case "retry":
-      return "失败章节已进入重试。";
-  }
-}
+const planActionCopy: Record<BatchPlanControl, { reason: string; notice: string }> = {
+  start: { reason: "作者从批量任务中心开始生成", notice: "批量任务已开始。" },
+  pause: {
+    reason: "作者从批量任务中心暂停生成",
+    notice: "批量任务已暂停，当前步骤完成后停止。",
+  },
+  resume: {
+    reason: "作者从批量任务中心恢复生成",
+    notice: "批量任务已从检查点恢复。",
+  },
+  cancel: {
+    reason: "作者从批量任务中心取消生成",
+    notice: "批量任务已取消，已完成章节和检查点已保留。",
+  },
+  retry: { reason: "作者从批量任务中心重试失败章节", notice: "失败章节已进入重试。" },
+};
 
 function severityLabel(severity: BatchReviewQueueItem["findings"][number]["severity"]) {
   switch (severity) {

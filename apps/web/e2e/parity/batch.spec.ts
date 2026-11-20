@@ -1,6 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import {
   batchCostReportResponseSchema,
+  batchPlanItemListResponseSchema,
   batchPlanResponseSchema,
   batchReviewQueueListResponseSchema,
   outlineNodeMutationResponseSchema,
@@ -150,6 +151,14 @@ async function expectPersistedPlanStatus(
   await expect
     .poll(async () => (await getPersistedPlan(page, work, planId)).status, { timeout: 60_000 })
     .toBe(status);
+}
+
+async function getPersistedPlanSteps(page: Page, work: BatchWork, planId: string) {
+  const response = await page.request.get(
+    `${branchPathOf(work)}/batch-plans/${planId}/items?type=step&limit=100`,
+  );
+  expect(response.status()).toBe(200);
+  return batchPlanItemListResponseSchema.parse(await response.json()).data;
 }
 
 async function createWorkerReadyPlan(page: Page, title: string) {
@@ -386,7 +395,7 @@ test("starts, pauses, resumes, cancels and reports a batch plan through persiste
 test("retries a failed batch plan through the production control", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const { work, plan } = await createWorkerReadyPlan(page, "批量任务重试");
-  const worker = await startWorker({ failStep: "draft" });
+  const worker = await startWorker({ failStep: "verify" });
   try {
     await page.goto(`/workspace/${work.id}/batch`);
     const startResponse = page.waitForResponse(
@@ -400,6 +409,9 @@ test("retries a failed batch plan through the production control", async ({ page
       .click();
     await startResponse;
     await expectPersistedPlanStatus(page, work, plan.id, "failed");
+    const failedSteps = await getPersistedPlanSteps(page, work, plan.id);
+    expect(failedSteps.find((item) => item.key.endsWith(":draft"))?.status).toBe("succeeded");
+    expect(failedSteps.find((item) => item.key.endsWith(":verify"))?.status).toBe("failed");
   } finally {
     await worker.stop();
   }
@@ -416,6 +428,9 @@ test("retries a failed batch plan through the production control", async ({ page
   await planCard.getByRole("button", { name: "重试任务" }).click();
   await retryResponse;
   await expectPersistedPlanStatus(page, work, plan.id, "running");
+  const retriedSteps = await getPersistedPlanSteps(page, work, plan.id);
+  expect(retriedSteps.find((item) => item.key.endsWith(":draft"))?.status).toBe("succeeded");
+  expect(retriedSteps.find((item) => item.key.endsWith(":verify"))?.status).toBe("ready");
 });
 
 test("claims and rejects a persisted batch review item through production controls", async ({
@@ -427,20 +442,31 @@ test("claims and rejects a persisted batch review item through production contro
   const worker = await startWorker();
   try {
     await page.goto(`/workspace/${work.id}/batch`);
+    const planCard = page.locator(`[data-plan-id="${plan.id}"]`);
     const startResponse = page.waitForResponse(
       (response) =>
         response.url() === `${origin}${planControlApi(work, plan, "start")}` &&
         response.status() === 202,
     );
-    await page
-      .locator(`[data-plan-id="${plan.id}"]`)
-      .getByRole("button", { name: "开始任务" })
-      .click();
+    await planCard.getByRole("button", { name: "开始任务" }).click();
     await startResponse;
     await expectPersistedPlanStatus(page, work, plan.id, "waiting_review");
   } finally {
     await worker.stop();
   }
+
+  const reportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url() === `${origin}${planCostReportApi(work, plan)}` && response.status() === 200,
+  );
+  await page
+    .locator(`[data-plan-id="${plan.id}"]`)
+    .getByRole("button", { name: "查看报告" })
+    .click();
+  const reportResponse = await reportResponsePromise;
+  const report = batchCostReportResponseSchema.parse(await reportResponse.json()).data;
+  expect(report.totals.calls).toBeGreaterThan(0);
+  expect(report.totals.chapters).toBe(plan.counts.chapter);
 
   await page.getByRole("button", { name: "刷新队列" }).click();
   const reviewItem = page.locator(".batch-review-item").first();
