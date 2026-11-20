@@ -218,6 +218,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 `apps/web/e2e/parity/writing.spec.ts` 覆盖生成、新章节、续写、整章改写、扩写、缩写、改视角、补钩子、标题、摘要、选区改写、检查、事实确认/驳回、章节批准、事实提交、旧版恢复和版本保存。正常 PR Production CI [44710611123](https://github.com/ruifeng-y/novel-brain/actions/runs/44710611123) 的 `check` 与 `playwright`、Deployment Smoke [44710611232](https://github.com/ruifeng-y/novel-brain/actions/runs/44710611232) 均通过；`writing` 提升为 `parity-verified`。
 
+## 2026-11-20 export-publish 逐动作持久化与最终 CI 签收
+
+沿用作者在 2026-11-17 对 `export-publish` 四档 Linux/Chromium Golden 的视觉签收。本次 #232 不改变页面布局，只补齐七个必需动作的真实 API 与持久化证据。
+
+`apps/web/e2e/parity/export-publish.spec.ts` 覆盖导出 receipt/manifest、真实文件下载与文件名/响应头/内容哈希校验、固定发布预览、读者预览、发布文案复制、worker 过期清理、内容安全申诉与重新导出。过期动作显式调用生产维护周期使用的同一 cleanup processor，并回读对象键和来源描述已清空、下载返回 `410`、历史记录仍保留。targeted Playwright 2/2、作者语言、prototype-only 扫描和四档结构断言均通过。
+
+正常 PR Production CI [44763155194](https://github.com/ruifeng-y/novel-brain/actions/runs/44763155194) 的 `check` 与 `playwright`、Deployment Smoke [44763153754](https://github.com/ruifeng-y/novel-brain/actions/runs/44763153754) 均通过，现有四档 Golden 无需更新；`export-publish` 提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
