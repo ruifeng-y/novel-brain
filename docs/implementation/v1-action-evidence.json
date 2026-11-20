@@ -516,8 +516,84 @@
       ]
     },
     "foreshadows": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "6fe3f16bf9ebbd2bceb029b539960b93c17fde16",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44694419586",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44694419654",
+      "actions": [
+        {
+          "id": "create-entry",
+          "name": "从生产表单创建伏笔并回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger/entries",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedCreate?.title).toBe(\"父母之死\");"
+        },
+        {
+          "id": "edit-entry",
+          "name": "从编辑表单保存摘要并回读",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger/entries/${createdId}",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedEdit?.summary).toBe(\"旧信里的两种死因必须由后续真相揭开。\");"
+        },
+        {
+          "id": "plant-entry",
+          "name": "从生产控件埋设伏笔并回读状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger/entries/${createdId}/transitions",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedPlant?.status).toBe(\"planted\");"
+        },
+        {
+          "id": "advance-entry",
+          "name": "从生产控件推进伏笔并回读状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger/entries/${createdId}/transitions",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedAdvance?.status).toBe(\"progressed\");"
+        },
+        {
+          "id": "recover-entry",
+          "name": "从生产控件回收伏笔并回读状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger/entries/${createdId}/transitions",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedRecover?.status).toBe(\"paid_off\");"
+        },
+        {
+          "id": "failed-recovery",
+          "name": "从生产控件标记失败回收并回读状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger/entries/${failedEntry.id}/transitions",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedFailedRecovery?.status).toBe(\"failed_payoff\");"
+        },
+        {
+          "id": "abandon-entry",
+          "name": "从生产控件放弃伏笔并回读状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger/entries/${abandonedEntry.id}/transitions",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedAbandon?.status).toBe(\"abandoned\");"
+        },
+        {
+          "id": "postpone-entry",
+          "name": "从生产控件延期伏笔并回读状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger/entries/${deferredEntry.id}/transitions",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedPostpone?.status).toBe(\"deferred\");"
+        },
+        {
+          "id": "check-foreshadows",
+          "name": "从生产控件重新检查并绑定持久化风险记录",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/ledger",
+          "spec": "apps/web/e2e/parity/foreshadows.spec.ts",
+          "test": "persists all nine foreshadows page actions through the production API",
+          "assertion": "expect(persistedOverdue?.entryId).toBe(overdueEntries[0]!.id);"
+        }
+      ]
     },
     "writing": {
       "status": "pending",
