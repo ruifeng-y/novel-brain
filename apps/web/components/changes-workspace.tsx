@@ -8,19 +8,27 @@ import {
   Play,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   X,
 } from "lucide-react";
 import {
   apiErrorSchema,
   branchComparisonResponseSchema,
+  branchCreateRequestSchema,
   branchCreateResponseSchema,
   changeAnalysisResponseSchema,
+  changeApplyRequestSchema,
   changeApplyResponseSchema,
+  changeRequestCreateRequestSchema,
   changeRequestListResponseSchema,
   changeRequestResponseSchema,
+  mergeApplyRequestSchema,
   mergeApplyResponseSchema,
+  mergeItemDecisionRequestSchema,
   mergeItemDecisionResponseSchema,
+  versionRollbackRequestSchema,
+  versionRollbackResponseSchema,
   type ChangeImpact,
   type ChangeRequest,
   type ChangeRisk,
@@ -91,6 +99,17 @@ const targetTypeLabels: Record<ChangeRequest["targetType"], string> = {
 
 const objectTypeOptions = ["entity", "chapter", "outline", "fact", "ledger"] as const;
 
+type RevertCandidate = {
+  branchId: string;
+  targetNodeId: string;
+  expectedHeadNodeId: string;
+  changeTitle: string;
+};
+
+type ContractSchema<T> = {
+  safeParse(input: unknown): { success: true; data: T } | { success: false };
+};
+
 export function ChangesWorkspace({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverview | null>(null);
   const [activeBranchId, setActiveBranchId] = useState("");
@@ -112,6 +131,7 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
   const [sourceNodeId, setSourceNodeId] = useState("");
   const [confirmChangeHighRisk, setConfirmChangeHighRisk] = useState(false);
   const [confirmMergeHighRisk, setConfirmMergeHighRisk] = useState(false);
+  const [revertCandidate, setRevertCandidate] = useState<RevertCandidate | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -136,7 +156,13 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
       if (!changesResponse.ok) {
         throw new Error(await readError(changesResponse));
       }
-      setChanges(changeRequestListResponseSchema.parse(await changesResponse.json()).data);
+      setChanges(
+        parseContract(
+          changeRequestListResponseSchema,
+          await changesResponse.json(),
+          "修改记录格式异常，请刷新后重试",
+        ).data,
+      );
       const comparisonBranch = workData.branches.find((entry) => entry.id !== branch.id);
       setSourceBranchId((current) => current || comparisonBranch?.id || "");
     } catch (loadError) {
@@ -150,6 +176,27 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
     void load();
   }, [load]);
 
+  async function postJson(
+    path: string,
+    body: unknown = {},
+    additionalHeaders: Record<string, string> = {},
+  ) {
+    const csrfToken = await getCsrfToken();
+    const response = await fetch(path, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-csrf-token": csrfToken,
+        ...additionalHeaders,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(await readError(response));
+    }
+    return response;
+  }
+
   async function createChange() {
     if (!activeBranch) {
       return;
@@ -157,31 +204,33 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
     setBusy("create");
     setError("");
     try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch(`/api/v1/works/${workId}/branches/${activeBranch.id}/changes`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": csrfToken,
+      const response = await postJson(
+        `/api/v1/works/${workId}/branches/${activeBranch.id}/changes`,
+        parseContract(
+          changeRequestCreateRequestSchema,
+          {
+            title,
+            reason,
+            targetVersion,
+            targetType,
+            targetId,
+            objectType,
+            before: parseObject(beforeText),
+            after: parseObject(afterText),
+            risk,
+            source: "author",
+          },
+          "请检查修改请求的标题、目标、原因和前后值",
+        ),
+        {
           "Idempotency-Key": crypto.randomUUID(),
         },
-        body: JSON.stringify({
-          title,
-          reason,
-          targetVersion,
-          targetType,
-          targetId,
-          objectType,
-          before: parseObject(beforeText),
-          after: parseObject(afterText),
-          risk,
-          source: "author",
-        }),
-      });
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-      changeRequestResponseSchema.parse(await response.json());
+      );
+      parseContract(
+        changeRequestResponseSchema,
+        await response.json(),
+        "修改请求已提交，但返回结果异常，请刷新确认",
+      );
       setTitle("");
       setReason("");
       setBeforeText("{}");
@@ -213,7 +262,11 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
       if (!response.ok) {
         throw new Error(await readError(response));
       }
-      const result = changeAnalysisResponseSchema.parse(await response.json()).data;
+      const result = parseContract(
+        changeAnalysisResponseSchema,
+        await response.json(),
+        "影响分析结果异常，请刷新后重试",
+      ).data;
       setImpacts(result.impacts);
       setChanges((current) =>
         current.map((item) => (item.id === result.change.id ? result.change : item)),
@@ -227,37 +280,76 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
   }
 
   async function apply(change: ChangeRequest) {
-    if (!activeBranch) {
+    if (!activeBranch?.headNodeId) {
       return;
     }
+    const previousHeadNodeId = activeBranch.headNodeId;
     setBusy(`apply:${change.id}`);
     setError("");
     try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch(
+      const response = await postJson(
         `/api/v1/works/${workId}/branches/${activeBranch.id}/changes/${change.id}/apply`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-csrf-token": csrfToken,
-          },
-          body: JSON.stringify({
+        parseContract(
+          changeApplyRequestSchema,
+          {
             version: change.version,
             expectedTargetVersion: change.targetVersion,
             reason: change.reason,
             confirmHighRisk: confirmChangeHighRisk,
-          }),
-        },
+          },
+          "请检查高风险确认和修改状态",
+        ),
       );
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-      changeApplyResponseSchema.parse(await response.json());
-      setNotice("修改已应用并生成新版本节点");
+      const applied = parseContract(
+        changeApplyResponseSchema,
+        await response.json(),
+        "修改已提交，但返回结果异常，请刷新确认",
+      ).data;
+      setRevertCandidate({
+        branchId: activeBranch.id,
+        targetNodeId: previousHeadNodeId,
+        expectedHeadNodeId: applied.versionNodeId,
+        changeTitle: change.title,
+      });
+      setConfirmChangeHighRisk(false);
+      setNotice("修改已应用，并保留新的历史版本");
       await load();
     } catch (applyError) {
       setError(applyError instanceof Error ? applyError.message : "应用修改失败");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function revertLastChange() {
+    if (!revertCandidate) {
+      return;
+    }
+    setBusy("revert");
+    setError("");
+    try {
+      const response = await postJson(
+        `/api/v1/works/${workId}/branches/${revertCandidate.branchId}/rollback`,
+        parseContract(
+          versionRollbackRequestSchema,
+          {
+            targetNodeId: revertCandidate.targetNodeId,
+            expectedHeadNodeId: revertCandidate.expectedHeadNodeId,
+            reason: `撤销修改：${revertCandidate.changeTitle}`,
+          },
+          "无法撤销此次修改，请刷新后重试",
+        ),
+      );
+      parseContract(
+        versionRollbackResponseSchema,
+        await response.json(),
+        "撤销已提交，但返回结果异常，请刷新确认",
+      );
+      setRevertCandidate(null);
+      setNotice("最近一次修改已撤销，并保留完整历史");
+      await load();
+    } catch (revertError) {
+      setError(revertError instanceof Error ? revertError.message : "撤销修改失败");
     } finally {
       setBusy("");
     }
@@ -270,23 +362,23 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
     setBusy("branch");
     setError("");
     try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch(`/api/v1/works/${workId}/branches`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": csrfToken,
-        },
-        body: JSON.stringify({
-          name: branchName,
-          sourceNodeId: sourceNodeId || activeBranch.headNodeId,
-          reason: branchReason,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-      const branch = branchCreateResponseSchema.parse(await response.json()).data;
+      const response = await postJson(
+        `/api/v1/works/${workId}/branches`,
+        parseContract(
+          branchCreateRequestSchema,
+          {
+            name: branchName,
+            sourceNodeId: sourceNodeId || activeBranch.headNodeId,
+            reason: branchReason,
+          },
+          "请检查平行版本名称、来源版本和原因",
+        ),
+      );
+      const branch = parseContract(
+        branchCreateResponseSchema,
+        await response.json(),
+        "平行版本已提交，但返回结果异常，请刷新确认",
+      ).data;
       setBranchName("");
       setBranchReason("");
       setNotice("平行版本已创建");
@@ -312,7 +404,13 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
       if (!response.ok) {
         throw new Error(await readError(response));
       }
-      setMergeItems(branchComparisonResponseSchema.parse(await response.json()).data.items);
+      setMergeItems(
+        parseContract(
+          branchComparisonResponseSchema,
+          await response.json(),
+          "比较结果异常，请重新比较",
+        ).data.items,
+      );
       setNotice("逐对象比较已完成");
     } catch (compareError) {
       setError(compareError instanceof Error ? compareError.message : "比较失败");
@@ -328,26 +426,23 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
     setBusy(`decide:${item.id}`);
     setError("");
     try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch(
+      const response = await postJson(
         `/api/v1/works/${workId}/branches/${activeBranch.id}/merge-items/${item.id}/decision`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-csrf-token": csrfToken,
-          },
-          body: JSON.stringify({
+        parseContract(
+          mergeItemDecisionRequestSchema,
+          {
             version: item.version,
             action,
             reason: action === "accept" ? "作者选择摘取该对象" : "作者拒绝摘取该对象",
-          }),
-        },
+          },
+          "请检查摘取决策",
+        ),
       );
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-      const updated = mergeItemDecisionResponseSchema.parse(await response.json()).data;
+      const updated = parseContract(
+        mergeItemDecisionResponseSchema,
+        await response.json(),
+        "摘取决策已提交，但返回结果异常，请刷新确认",
+      ).data;
       setMergeItems((current) =>
         current.map((entry) => (entry.id === updated.id ? updated : entry)),
       );
@@ -370,26 +465,24 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
     setBusy("apply-merge");
     setError("");
     try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch(
+      const response = await postJson(
         `/api/v1/works/${workId}/branches/${activeBranch.id}/merge-items/apply`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-csrf-token": csrfToken,
-          },
-          body: JSON.stringify({
+        parseContract(
+          mergeApplyRequestSchema,
+          {
             itemIds,
             expectedTargetHeadNodeId: activeBranch.headNodeId,
             confirmHighRisk: confirmMergeHighRisk,
-          }),
-        },
+          },
+          "请检查已接受的摘取项和高风险确认",
+        ),
       );
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
-      mergeApplyResponseSchema.parse(await response.json());
+      parseContract(
+        mergeApplyResponseSchema,
+        await response.json(),
+        "摘取已提交，但返回结果异常，请刷新确认",
+      );
+      setConfirmMergeHighRisk(false);
       setNotice("选择性摘取已应用并记录合并通知");
       await compare();
     } catch (mergeError) {
@@ -648,6 +741,27 @@ export function ChangesWorkspace({ workId }: { workId: string }) {
             ))}
           </div>
         ) : null}
+        {revertCandidate ? (
+          <div className="change-revert" role="status">
+            <div>
+              <strong>最近应用：{revertCandidate.changeTitle}</strong>
+              <span>撤销后仍可找回当前内容。</span>
+            </div>
+            <button
+              className="btn small"
+              disabled={busy === "revert"}
+              onClick={() => void revertLastChange()}
+              type="button"
+            >
+              {busy === "revert" ? (
+                <LoaderCircle className="spin" size={14} />
+              ) : (
+                <RotateCcw size={14} aria-hidden="true" />
+              )}
+              撤销最近一次修改
+            </button>
+          </div>
+        ) : null}
         <label className="check-row">
           <input
             checked={confirmChangeHighRisk}
@@ -727,6 +841,14 @@ function parseObject(value: string): Record<string, unknown> {
     throw new Error("前后值必须是 JSON 对象");
   }
   return parsed as Record<string, unknown>;
+}
+
+function parseContract<T>(schema: ContractSchema<T>, input: unknown, message: string): T {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new Error(message);
+  }
+  return result.data;
 }
 
 async function readError(response: Response): Promise<string> {

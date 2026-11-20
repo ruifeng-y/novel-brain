@@ -813,7 +813,65 @@
     },
     "changes": {
       "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "rationale": "The seven production actions and persisted reads pass locally; normal PR CI evidence is still required.",
+      "actions": [
+        {
+          "id": "create-change",
+          "name": "从修改中心创建请求并回读记录",
+          "api": "/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/changes",
+          "spec": "apps/web/e2e/parity/changes.spec.ts",
+          "test": "creates, analyzes, applies and reverts a change through production controls",
+          "assertion": "expect(created).toBeDefined();"
+        },
+        {
+          "id": "analyze-impact",
+          "name": "分析影响并回读待确认状态",
+          "api": "/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/changes/${created!.id}/analyze",
+          "spec": "apps/web/e2e/parity/changes.spec.ts",
+          "test": "creates, analyzes, applies and reverts a change through production controls",
+          "assertion": "expect(persistedAnalysis?.status).toBe(\"awaiting_confirmation\");"
+        },
+        {
+          "id": "apply-change",
+          "name": "应用修改并回读目标对象",
+          "api": "/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/changes/${created!.id}/apply",
+          "spec": "apps/web/e2e/parity/changes.spec.ts",
+          "test": "creates, analyzes, applies and reverts a change through production controls",
+          "assertion": "expect(headAfterApply).toBe(applied.versionNodeId);"
+        },
+        {
+          "id": "revert-change",
+          "name": "追加回滚节点并恢复修改前对象",
+          "api": "/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/rollback",
+          "spec": "apps/web/e2e/parity/changes.spec.ts",
+          "test": "creates, analyzes, applies and reverts a change through production controls",
+          "assertion": "expect(headAfterRevert).toBe(reverted.versionNodeId);"
+        },
+        {
+          "id": "create-branch",
+          "name": "创建平行版本并回读作品分支",
+          "api": "/api/v1/works/${seeded.workId}/branches",
+          "spec": "apps/web/e2e/parity/changes.spec.ts",
+          "test": "creates a parallel version through the production control",
+          "assertion": "expect(persistedWork.branches.map((candidate) => candidate.name)).toContain(\"验收平行线\");"
+        },
+        {
+          "id": "branch-compare",
+          "name": "逐对象比较并识别目标冲突",
+          "api": "/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/compare/${sourceBranch.id}",
+          "spec": "apps/web/e2e/parity/changes.spec.ts",
+          "test": "compares branches and applies a selected object through production controls",
+          "assertion": "expect(decision.id).toBe(item!.id);"
+        },
+        {
+          "id": "merge-selection",
+          "name": "接受并摘取单个对象后回读版本头",
+          "api": "/api/v1/works/${seeded.workId}/branches/${seeded.branchId}/merge-items/apply",
+          "spec": "apps/web/e2e/parity/changes.spec.ts",
+          "test": "compares branches and applies a selected object through production controls",
+          "assertion": "expect(headAfterMerge).toBe(applied.versionNodeId);"
+        }
+      ]
     },
     "export-publish": {
       "status": "pending",

@@ -750,7 +750,8 @@ a:focus-visible {
 }
 
 .change-row,
-.merge-row {
+.merge-row,
+.change-revert {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -763,6 +764,7 @@ a:focus-visible {
 
 .change-row > div:first-child,
 .merge-row > div:first-child,
+.change-revert > div,
 .impact-list > div {
   display: grid;
   gap: 3px;
@@ -771,6 +773,7 @@ a:focus-visible {
 
 .change-row strong,
 .merge-row strong,
+.change-revert strong,
 .impact-list strong {
   color: var(--ink);
   font-size: 13px;
@@ -778,6 +781,7 @@ a:focus-visible {
 
 .change-row span,
 .merge-row span,
+.change-revert span,
 .impact-list span {
   color: var(--ink-2);
   font-size: 12px;
@@ -808,6 +812,23 @@ a:focus-visible {
   border-radius: 6px;
 }
 
+.change-revert {
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 10px 12px;
+}
+
+.change-revert strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.change-revert span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .merge-list {
   margin-top: 12px;
 }
@@ -829,7 +850,8 @@ a:focus-visible {
 
   .compare-row,
   .change-row,
-  .merge-row {
+  .merge-row,
+  .change-revert {
     flex-direction: column;
     align-items: stretch;
   }
