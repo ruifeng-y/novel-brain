@@ -317,6 +317,15 @@ describe("character domain HTTP integration", () => {
       "UPDATE chapter_versions SET content = '仇家趁夜潜入村庄。' WHERE chapter_id = $1",
       [fact.chapterId],
     );
+    const plannedChapterId = uuidv7();
+    await databasePool.query(
+      `INSERT INTO chapters
+        (id, work_id, branch_id, user_id, number, title, status, version, current_version_id,
+         word_count, brief)
+       VALUES ($1, $2, $3, $4, 2, '一只手也能结印', 'planned', 1, NULL, 0,
+         jsonb_build_object('pov', $5::text))`,
+      [plannedChapterId, work.id, work.mainBranch.id, userId, shen.id],
+    );
     const references = characterReferenceListResponseSchema.parse(
       (await owner.get(`${base}/characters/${shen.id}/references`).expect(200)).body,
     ).data;
@@ -327,6 +336,11 @@ describe("character domain HTTP integration", () => {
           sourceChapter: expect.objectContaining({ chapterId: fact.chapterId, number: 1 }),
         }),
         expect.objectContaining({ kind: "fact", id: fact.id }),
+        expect.objectContaining({
+          kind: "chapter",
+          sourceChapter: expect.objectContaining({ chapterId: plannedChapterId, number: 2 }),
+          summary: "计划章节引用。",
+        }),
       ]),
     );
     const firstReferencePage = characterReferenceListResponseSchema.parse(

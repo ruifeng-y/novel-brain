@@ -934,11 +934,11 @@ export class CharactersRepository implements OnModuleDestroy {
             id: chapters.id,
             number: chapters.number,
             title: chapters.title,
-            content: chapterVersions.content,
+            content: sql<string>`coalesce(${chapterVersions.content}, '')`,
             updatedAt: chapters.updatedAt,
           })
           .from(chapters)
-          .innerJoin(chapterVersions, eq(chapters.currentVersionId, chapterVersions.id))
+          .leftJoin(chapterVersions, eq(chapters.currentVersionId, chapterVersions.id))
           .where(
             and(
               eq(chapters.userId, userId),
@@ -1107,7 +1107,7 @@ export class CharactersRepository implements OnModuleDestroy {
             id: row.id,
             kind: "chapter" as const,
             title: `第 ${row.number} 章 · ${row.title}`,
-            summary: referenceSnippet(row.content, terms),
+            summary: row.content ? referenceSnippet(row.content, terms) : "计划章节引用。",
             sourceChapter: { chapterId: row.id, number: row.number, title: row.title },
           },
           sortAt: row.updatedAt,
