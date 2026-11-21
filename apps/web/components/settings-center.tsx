@@ -3212,7 +3212,11 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
-            {entity.type === "character" && !locked && !proposed && !discarded ? (
+            {activeSection === "references" &&
+            entity.type === "character" &&
+            !locked &&
+            !proposed &&
+            !discarded ? (
               <div className="settings-detail-block settings-relationship-editor">
                 <h3>编辑角色认知</h3>
                 {factOptions.length > 0 ? (
