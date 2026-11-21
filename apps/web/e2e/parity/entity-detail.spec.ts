@@ -112,9 +112,10 @@ async function createKnowledgeFact(
     process.env.E2E_DATABASE_URL ??
     "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
   const pool = new Pool({ connectionString: databaseUrl });
+  const client = await pool.connect();
   try {
-    await pool.query("BEGIN");
-    await pool.query(
+    await client.query("BEGIN");
+    await client.query(
       `INSERT INTO fact_proposals
          (id, work_id, branch_id, user_id, chapter_id, source_version_id, extraction_key,
           subject, predicate, object, source_sentence, status, confidence, risk, required)
@@ -131,7 +132,7 @@ async function createKnowledgeFact(
         object,
       ],
     );
-    await pool.query(
+    await client.query(
       `INSERT INTO fact_decisions
          (id, work_id, branch_id, user_id, chapter_id, fact_proposal_id, action, actor_id,
           actor_name, reason, original_payload, resulting_payload)
@@ -139,7 +140,7 @@ async function createKnowledgeFact(
          '{}'::jsonb, '{}'::jsonb)`,
       [decisionId, work.id, work.mainBranch.id, me.id, chapter.id, proposalId, me.displayName],
     );
-    await pool.query(
+    await client.query(
       `INSERT INTO canon_commits
          (id, work_id, branch_id, user_id, chapter_id, chapter_version_id, version_node_id,
           idempotency_key, decision_snapshot, summary, actor_id)
@@ -155,7 +156,7 @@ async function createKnowledgeFact(
         `knowledge-fixture-${commitId}`,
       ],
     );
-    await pool.query(
+    await client.query(
       `INSERT INTO facts
          (id, work_id, branch_id, user_id, chapter_id, fact_proposal_id, decision_id,
           source_version_id, canon_commit_id, subject, predicate, object, risk, required,
@@ -175,11 +176,12 @@ async function createKnowledgeFact(
         object,
       ],
     );
-    await pool.query("COMMIT");
+    await client.query("COMMIT");
   } catch (error) {
-    await pool.query("ROLLBACK").catch(() => undefined);
+    await client.query("ROLLBACK").catch(() => undefined);
     throw error;
   } finally {
+    client.release();
     await pool.end();
   }
   return {
@@ -901,6 +903,7 @@ test("loads the dedicated character profile, relationships, state history and he
     validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
     sourceChapterId: null,
   });
+  await createKnowledgeFact(page, work, "沈砚父母的死因被记录在忘川书的第一页。");
   await freezeApiTimestamps(page);
 
   for (const width of viewports) {
@@ -922,6 +925,20 @@ test("loads the dedicated character profile, relationships, state history and he
     await expect(detail.getByText("角色认知与引用")).toBeVisible();
     await expect(detail.getByText("还没有角色认知记录。")).toBeVisible();
     await expect(detail.getByText("设定体检")).toBeVisible();
+    await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
+    await expect(detail.getByRole("heading", { name: "编辑角色认知" })).toBeVisible();
+    await expect(detail.getByLabel("客观事实")).toBeVisible();
+    await expect(detail.getByLabel("生效章节")).toBeVisible();
+    await expect(detail.getByLabel("失效章节")).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+    const referencesPrototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
+    await testInfo.attach(`entity-detail-references-prototype-only-scan-${width}`, {
+      body: JSON.stringify(referencesPrototypeOnlyScan, null, 2),
+      contentType: "application/json",
+    });
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-knowledge-editor-${width}`);
+    await detail.locator(".entity-page-nav-item", { hasText: "基本信息" }).click();
     await expectAuthorFacingLanguage(page);
     const prototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
     await testInfo.attach(`entity-detail-prototype-only-scan-${width}`, {
@@ -1018,6 +1035,8 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
     await page.getByLabel("客观事实").selectOption(fact.factId);
     await page.getByLabel("认知状态").selectOption("knowledge");
+    await page.getByLabel("生效章节").fill("2");
+    await page.getByLabel("失效章节").fill("3");
     await page.getByLabel("认知内容").fill(fact.object);
     await page.getByLabel("信息来源").selectOption("told");
     const knowledgeResponsePromise = waitForApiResponse(page, "POST", knowledgeApi);
@@ -1026,19 +1045,32 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
       await (await knowledgeResponsePromise).json(),
     ).data;
     expect(knowledge.objectiveFactId).toBe(fact.factId);
+    expect(knowledge.state).toBe("knowledge");
+    expect(knowledge.sourceKind).toBe("told");
     expect(knowledge.claimedContent).toBe(fact.object);
+    expect(knowledge.validity).toMatchObject({ fromChapter: 2, toChapter: 3 });
     const persisted = await persistedCharacter(page, characterApi);
-    expect(
-      persisted.knowledgeStates.some(
-        (item) => item.objectiveFactId === fact.factId && item.claimedContent === fact.object,
-      ),
-    ).toBe(true);
+    const persistedKnowledge = persisted.knowledgeStates.find(
+      (item) => item.objectiveFactId === fact.factId,
+    );
+    expect(persistedKnowledge).toMatchObject({
+      claimedContent: fact.object,
+      sourceKind: "told",
+      state: "knowledge",
+      validity: { fromChapter: 2, toChapter: 3 },
+    });
   });
 
   await test.step("view references", async () => {
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
     const references = await persistedCharacter(page, characterApi);
-    expect(references.knowledgeStates[0]?.claimedContent).toBe(fact.object);
+    expect(references.knowledgeStates[0]).toMatchObject({
+      claimedContent: fact.object,
+      objectiveFactId: fact.factId,
+      sourceKind: "told",
+      state: "knowledge",
+      validity: { fromChapter: 2, toChapter: 3 },
+    });
     await expect(detail.getByText("角色认知与引用")).toBeVisible();
     await expect(detail.getByText(fact.object, { exact: true })).toBeVisible();
     await expect(detail.getByText(/客观事实引用已保留/u)).toBeVisible();

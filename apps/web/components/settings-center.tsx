@@ -85,6 +85,7 @@ interface KnowledgeStateInput {
   state: CharacterDetail["knowledgeStates"][number]["state"];
   claimedContent: string | null;
   sourceKind: CharacterDetail["knowledgeStates"][number]["sourceKind"];
+  validity: CharacterDetail["knowledgeStates"][number]["validity"];
 }
 
 type ViewMode = "columns" | "confirmed" | "fields";
@@ -1269,12 +1270,7 @@ export function SettingsCenter({
         state: input.state,
         claimedContent: input.state === "unknown" ? null : input.claimedContent,
         sourceKind: input.sourceKind,
-        validity: {
-          fromChapter: 1,
-          toChapter: null,
-          fromStoryTime: null,
-          toStoryTime: null,
-        },
+        validity: input.validity,
         sourceChapterId: null,
       });
       const csrfToken = await getCsrfToken();
@@ -2716,6 +2712,8 @@ function EntityDetail({
   const [knowledgeContent, setKnowledgeContent] = useState("");
   const [knowledgeSourceKind, setKnowledgeSourceKind] =
     useState<CharacterDetail["knowledgeStates"][number]["sourceKind"]>("told");
+  const [knowledgeFromChapterInput, setKnowledgeFromChapterInput] = useState("1");
+  const [knowledgeToChapterInput, setKnowledgeToChapterInput] = useState("");
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [restoreReason, setRestoreReason] = useState("恢复到作者确认的过去版本");
   const restorableVersions = versions.filter((version) => version.version < entity.version);
@@ -2743,6 +2741,14 @@ function EntityDetail({
   const blockerCount = findings.filter((finding) => finding.severity === "blocker").length;
   const warningCount = findings.filter((finding) => finding.severity === "warning").length;
   const restoring = busy === `restore-${entity.id}`;
+  const knowledgeFromChapter = Number(knowledgeFromChapterInput);
+  const knowledgeToChapter =
+    knowledgeToChapterInput.trim() === "" ? null : Number(knowledgeToChapterInput);
+  const knowledgeValidityInvalid =
+    !Number.isInteger(knowledgeFromChapter) ||
+    knowledgeFromChapter < 1 ||
+    (knowledgeToChapter !== null &&
+      (!Number.isInteger(knowledgeToChapter) || knowledgeToChapter < knowledgeFromChapter));
 
   async function submitRestore() {
     if (selectedVersion === null) {
@@ -2767,7 +2773,11 @@ function EntityDetail({
   }
 
   async function submitKnowledge() {
-    if (!knowledgeFactId || (knowledgeState !== "unknown" && !knowledgeContent.trim())) {
+    if (
+      !knowledgeFactId ||
+      knowledgeValidityInvalid ||
+      (knowledgeState !== "unknown" && !knowledgeContent.trim())
+    ) {
       return;
     }
     const saved = await onCreateKnowledge({
@@ -2775,12 +2785,20 @@ function EntityDetail({
       state: knowledgeState,
       claimedContent: knowledgeContent.trim(),
       sourceKind: knowledgeSourceKind,
+      validity: {
+        fromChapter: knowledgeFromChapter,
+        toChapter: knowledgeToChapter,
+        fromStoryTime: null,
+        toStoryTime: null,
+      },
     });
     if (saved) {
       setKnowledgeFactId("");
       setKnowledgeState("knowledge");
       setKnowledgeContent("");
       setKnowledgeSourceKind("told");
+      setKnowledgeFromChapterInput("1");
+      setKnowledgeToChapterInput("");
     }
   }
 
@@ -3256,6 +3274,29 @@ function EntityDetail({
                           ))}
                         </select>
                       </label>
+                      <label className="settings-field">
+                        <span>生效章节</span>
+                        <input
+                          aria-label="生效章节"
+                          inputMode="numeric"
+                          min={1}
+                          onChange={(event) => setKnowledgeFromChapterInput(event.target.value)}
+                          type="number"
+                          value={knowledgeFromChapterInput}
+                        />
+                      </label>
+                      <label className="settings-field">
+                        <span>失效章节</span>
+                        <input
+                          aria-label="失效章节"
+                          inputMode="numeric"
+                          min={knowledgeFromChapter || 1}
+                          onChange={(event) => setKnowledgeToChapterInput(event.target.value)}
+                          placeholder="留空表示持续有效"
+                          type="number"
+                          value={knowledgeToChapterInput}
+                        />
+                      </label>
                       <label className="settings-field settings-field-wide">
                         <span>认知内容</span>
                         <textarea
@@ -3292,6 +3333,7 @@ function EntityDetail({
                       disabled={
                         busy === `knowledge-${entity.id}` ||
                         !knowledgeFactId ||
+                        knowledgeValidityInvalid ||
                         (knowledgeState !== "unknown" && !knowledgeContent.trim())
                       }
                       onClick={() => void submitKnowledge()}
