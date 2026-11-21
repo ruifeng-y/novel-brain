@@ -841,7 +841,7 @@ export function SettingsCenter({
 
   async function refreshProjection() {
     if (!work) {
-      return;
+      return [];
     }
     const basePath = settingsPath(work);
     const [entityData, confirmedData, fieldData] = await Promise.all([
@@ -864,6 +864,7 @@ export function SettingsCenter({
     setEntities(entityData);
     setConfirmed(confirmedData);
     setCustomFields(fieldData);
+    return entityData;
   }
 
   async function createEntity() {
@@ -1324,7 +1325,15 @@ export function SettingsCenter({
       }
       characterKnowledgeStateResponseSchema.parse(await response.json());
       setNotice("角色认知已保存。");
-      await refreshProjection();
+      const refreshedEntities = await refreshProjection();
+      const refreshedEntity = refreshedEntities.find((candidate) => candidate.id === entity.id);
+      if (refreshedEntity) {
+        setEditor((current) =>
+          current?.entityId === entity.id
+            ? { ...current, version: refreshedEntity.version }
+            : current,
+        );
+      }
       await refreshDetail(entity.id, entity.type);
       return true;
     } catch (caught) {
@@ -1481,7 +1490,7 @@ export function SettingsCenter({
           onRetryVersionHistory={() => refreshDetail(selected.id, selected.type)}
           onRestore={(targetVersion, reason) => restoreEntity(selected, targetVersion, reason)}
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
-          onViewReferences={() => refreshCharacterReferences(selected.id)}
+          onRefreshReferences={() => refreshCharacterReferences(selected.id)}
           powerLevelLabel={powerLevelLabel}
           proposals={proposals}
           relationshipTargets={entities.filter(
@@ -2869,7 +2878,7 @@ function EntityDetail({
   onRetryVersionHistory,
   onRestore,
   onRetryWorldDetail,
-  onViewReferences,
+  onRefreshReferences,
   powerLevelLabel,
   proposals,
   relationshipTargets,
@@ -2913,7 +2922,7 @@ function EntityDetail({
   onRetryVersionHistory: () => void;
   onRestore: (targetVersion: number, reason: string) => Promise<boolean>;
   onRetryWorldDetail: () => void;
-  onViewReferences: () => void;
+  onRefreshReferences: () => void;
   powerLevelLabel: string;
   proposals: SettingProposal[];
   relationshipTargets: SettingEntity[];
@@ -3127,7 +3136,7 @@ function EntityDetail({
               key={tab.key}
               onClick={() => {
                 if (tab.key === "references" && entity.type === "character") {
-                  void onViewReferences();
+                  void onRefreshReferences();
                 }
                 scrollToSection(tab.key);
               }}

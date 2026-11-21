@@ -1077,7 +1077,13 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
       state: "misbelief",
       validity: { fromChapter: 2, toChapter: 3 },
     });
-    await editor.getByRole("button", { name: "取消" }).first().click();
+    await editor.getByLabel("人物目标").fill("进入天门并找回全部记忆。");
+    const profileSaveResponse = waitForApiResponse(page, "PATCH", characterApi);
+    await editor.getByRole("button", { name: "保存修改" }).click();
+    const profileSaved = characterDetailResponseSchema.parse(
+      await (await profileSaveResponse).json(),
+    ).data;
+    expect(profileSaved.profile.goal).toBe("进入天门并找回全部记忆。");
   });
 
   await test.step("view references", async () => {

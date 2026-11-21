@@ -309,6 +309,14 @@ describe("character domain HTTP integration", () => {
       confirmed.data.find((entry) => entry.kind === "fact" && entry.object === "被仇家杀死"),
     ).toBeTruthy();
 
+    await databasePool.query(
+      "UPDATE chapters SET brief = jsonb_build_object('pov', $1::text) WHERE id = $2",
+      [shen.id, fact.chapterId],
+    );
+    await databasePool.query(
+      "UPDATE chapter_versions SET content = '仇家趁夜潜入村庄。' WHERE chapter_id = $1",
+      [fact.chapterId],
+    );
     const references = characterReferenceListResponseSchema.parse(
       (await owner.get(`${base}/characters/${shen.id}/references`).expect(200)).body,
     ).data;
@@ -336,6 +344,10 @@ describe("character domain HTTP integration", () => {
       ).body,
     );
     expect(secondReferencePage.data[0]?.id).not.toBe(firstReferencePage.data[0]?.id);
+    expect(
+      (await owner.get(`${base}/characters/${shen.id}/references?cursor=${uuidv7()}`).expect(400))
+        .body.error.code,
+    ).toBe("VALIDATION_INVALID");
   });
 
   it("requires a change request once the character is locked and enforces tenant isolation", async () => {

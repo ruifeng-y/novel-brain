@@ -47,7 +47,7 @@ import {
 } from "@novel-brain/contracts";
 import { resolveCustomFieldWrite, writeCustomFieldValues } from "../settings/settings.repository";
 import { projectCharacterKnowledgeAtChapter } from "@novel-brain/core";
-import { and, asc, desc, eq, gt, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -856,6 +856,78 @@ export class CharactersRepository implements OnModuleDestroy {
         .map((term) => term.trim())
         .filter(Boolean);
       const knowledgeFactIds = aggregate.knowledgeStates.map((state) => state.objectiveFactId);
+      const patterns = terms.map(likePattern);
+      const characterPattern = likePattern(characterId);
+      let cursorSortAt: Date | undefined;
+      if (query.cursor) {
+        const cursorResult = await transaction.execute(sql`
+          SELECT refs.sort_at
+          FROM (
+            SELECT c.id, c.updated_at AS sort_at FROM chapters c
+            WHERE c.user_id = ${userId}::uuid
+              AND c.work_id = ${context.workId}::uuid
+              AND c.branch_id = ${context.branchId}::uuid
+            UNION ALL
+            SELECT o.id, o.updated_at FROM outline_nodes o
+            WHERE o.user_id = ${userId}::uuid
+              AND o.work_id = ${context.workId}::uuid
+              AND o.branch_id = ${context.branchId}::uuid
+            UNION ALL
+            SELECT f.id, f.updated_at FROM foreshadows f
+            WHERE f.user_id = ${userId}::uuid
+              AND f.work_id = ${context.workId}::uuid
+              AND f.branch_id = ${context.branchId}::uuid
+            UNION ALL
+            SELECT sb.id, sb.updated_at FROM story_bibles sb
+            WHERE sb.user_id = ${userId}::uuid
+              AND sb.work_id = ${context.workId}::uuid
+              AND sb.branch_id = ${context.branchId}::uuid
+            UNION ALL
+            SELECT f.id, f.created_at FROM facts f
+            WHERE f.user_id = ${userId}::uuid
+              AND f.work_id = ${context.workId}::uuid
+              AND f.branch_id = ${context.branchId}::uuid
+              AND f.status = 'active'
+          ) refs
+          WHERE refs.id = ${query.cursor}::uuid
+          LIMIT 1
+        `);
+        const cursorRow = cursorResult.rows[0] as { sort_at: Date | string } | undefined;
+        if (!cursorRow) {
+          return "invalid_cursor";
+        }
+        cursorSortAt = new Date(cursorRow.sort_at);
+      }
+      const afterChapterCursor = cursorSortAt
+        ? or(
+            lt(chapters.updatedAt, cursorSortAt),
+            and(eq(chapters.updatedAt, cursorSortAt), lt(chapters.id, query.cursor!)),
+          )
+        : undefined;
+      const afterOutlineCursor = cursorSortAt
+        ? or(
+            lt(outlineNodes.updatedAt, cursorSortAt),
+            and(eq(outlineNodes.updatedAt, cursorSortAt), lt(outlineNodes.id, query.cursor!)),
+          )
+        : undefined;
+      const afterForeshadowCursor = cursorSortAt
+        ? or(
+            lt(foreshadows.updatedAt, cursorSortAt),
+            and(eq(foreshadows.updatedAt, cursorSortAt), lt(foreshadows.id, query.cursor!)),
+          )
+        : undefined;
+      const afterBibleCursor = cursorSortAt
+        ? or(
+            lt(storyBibles.updatedAt, cursorSortAt),
+            and(eq(storyBibles.updatedAt, cursorSortAt), lt(storyBibles.id, query.cursor!)),
+          )
+        : undefined;
+      const afterFactCursor = cursorSortAt
+        ? or(
+            lt(facts.createdAt, cursorSortAt),
+            and(eq(facts.createdAt, cursorSortAt), lt(facts.id, query.cursor!)),
+          )
+        : undefined;
       const [chapterRows, outlineRows, foreshadowRows, bibleRows, factRows] = await Promise.all([
         transaction
           .select({
@@ -863,6 +935,7 @@ export class CharactersRepository implements OnModuleDestroy {
             number: chapters.number,
             title: chapters.title,
             content: chapterVersions.content,
+            updatedAt: chapters.updatedAt,
           })
           .from(chapters)
           .innerJoin(chapterVersions, eq(chapters.currentVersionId, chapterVersions.id))
@@ -871,11 +944,32 @@ export class CharactersRepository implements OnModuleDestroy {
               eq(chapters.userId, userId),
               eq(chapters.workId, context.workId),
               eq(chapters.branchId, context.branchId),
-              matchesAny(terms, [chapters.title, chapterVersions.content]),
+              or(
+                matchesAny(terms, [chapters.title, chapterVersions.content]),
+                sql`${chapters.brief}::text ILIKE ${characterPattern}`,
+                sql`EXISTS (
+                  SELECT 1
+                  FROM scene_cards sc
+                  INNER JOIN outline_nodes scene_node ON scene_node.id = sc.node_id
+                  LEFT JOIN outline_nodes chapter_node ON chapter_node.id = scene_node.parent_id
+                  WHERE sc.user_id = ${userId}::uuid
+                    AND sc.work_id = ${context.workId}::uuid
+                    AND sc.branch_id = ${context.branchId}::uuid
+                    AND (
+                      (scene_node.level = 'chapter' AND scene_node.chapter_id = ${chapters.id})
+                      OR (chapter_node.level = 'chapter' AND chapter_node.chapter_id = ${chapters.id})
+                    )
+                    AND (
+                      sc.pov_id = ${characterId}::uuid
+                      OR sc.pov_label ILIKE ${characterPattern}
+                    )
+                )`,
+              ),
+              afterChapterCursor,
             ),
           )
-          .orderBy(asc(chapters.number), desc(chapterVersions.createdAt))
-          .limit(100),
+          .orderBy(desc(chapters.updatedAt), desc(chapters.id))
+          .limit(query.limit + 1),
         transaction
           .select({
             id: outlineNodes.id,
@@ -884,6 +978,7 @@ export class CharactersRepository implements OnModuleDestroy {
             chapterId: outlineNodes.chapterId,
             chapterNumber: chapters.number,
             chapterTitle: chapters.title,
+            updatedAt: outlineNodes.updatedAt,
           })
           .from(outlineNodes)
           .leftJoin(
@@ -900,11 +995,26 @@ export class CharactersRepository implements OnModuleDestroy {
               eq(outlineNodes.userId, userId),
               eq(outlineNodes.workId, context.workId),
               eq(outlineNodes.branchId, context.branchId),
-              matchesAny(terms, [outlineNodes.title, outlineNodes.summary]),
+              or(
+                matchesAny(terms, [outlineNodes.title, outlineNodes.summary]),
+                sql`EXISTS (
+                  SELECT 1
+                  FROM scene_cards sc
+                  WHERE sc.node_id = ${outlineNodes.id}
+                    AND sc.user_id = ${userId}::uuid
+                    AND sc.work_id = ${context.workId}::uuid
+                    AND sc.branch_id = ${context.branchId}::uuid
+                    AND (
+                      sc.pov_id = ${characterId}::uuid
+                      OR sc.pov_label ILIKE ${characterPattern}
+                    )
+                )`,
+              ),
+              afterOutlineCursor,
             ),
           )
-          .orderBy(asc(outlineNodes.sortOrder), asc(outlineNodes.id))
-          .limit(100),
+          .orderBy(desc(outlineNodes.updatedAt), desc(outlineNodes.id))
+          .limit(query.limit + 1),
         transaction
           .select({
             id: foreshadows.id,
@@ -912,6 +1022,7 @@ export class CharactersRepository implements OnModuleDestroy {
             summary: foreshadows.summary,
             targetFromChapter: foreshadows.targetFromChapter,
             targetToChapter: foreshadows.targetToChapter,
+            updatedAt: foreshadows.updatedAt,
           })
           .from(foreshadows)
           .where(
@@ -924,20 +1035,33 @@ export class CharactersRepository implements OnModuleDestroy {
                 matchesAny(terms, [foreshadows.title, foreshadows.summary]),
                 sql`${foreshadows.relatedCharacterIds} @> ${JSON.stringify([characterId])}::jsonb`,
               ),
+              afterForeshadowCursor,
             ),
           )
-          .orderBy(asc(foreshadows.targetFromChapter), asc(foreshadows.id))
-          .limit(100),
+          .orderBy(desc(foreshadows.updatedAt), desc(foreshadows.id))
+          .limit(query.limit + 1),
         transaction
-          .select({ id: storyBibles.id, cards: storyBibles.cards })
+          .select({
+            id: storyBibles.id,
+            cards: storyBibles.cards,
+            updatedAt: storyBibles.updatedAt,
+          })
           .from(storyBibles)
           .where(
             and(
               eq(storyBibles.userId, userId),
               eq(storyBibles.workId, context.workId),
               eq(storyBibles.branchId, context.branchId),
+              sql`EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements(${storyBibles.cards}) card
+                WHERE concat(card->>'title', ' ', card->>'content')
+                  ILIKE ANY(${sql.param(patterns)}::text[])
+              )`,
+              afterBibleCursor,
             ),
           )
+          .orderBy(desc(storyBibles.updatedAt), desc(storyBibles.id))
           .limit(1),
         transaction
           .select({
@@ -948,6 +1072,7 @@ export class CharactersRepository implements OnModuleDestroy {
             chapterId: facts.chapterId,
             chapterNumber: chapters.number,
             chapterTitle: chapters.title,
+            updatedAt: facts.createdAt,
           })
           .from(facts)
           .leftJoin(
@@ -969,91 +1094,104 @@ export class CharactersRepository implements OnModuleDestroy {
                 matchesAny(terms, [facts.subject, facts.predicate, facts.object]),
                 knowledgeFactIds.length > 0 ? inArray(facts.id, knowledgeFactIds) : undefined,
               ),
+              afterFactCursor,
             ),
           )
-          .orderBy(desc(facts.createdAt), asc(facts.id))
-          .limit(100),
+          .orderBy(desc(facts.createdAt), desc(facts.id))
+          .limit(query.limit + 1),
       ]);
 
-      const references: CharacterReference[] = [
+      const references = [
         ...chapterRows.map((row) => ({
-          id: row.id,
-          kind: "chapter" as const,
-          title: `第 ${row.number} 章 · ${row.title}`,
-          summary: referenceSnippet(row.content, terms),
-          sourceChapter: { chapterId: row.id, number: row.number, title: row.title },
+          reference: {
+            id: row.id,
+            kind: "chapter" as const,
+            title: `第 ${row.number} 章 · ${row.title}`,
+            summary: referenceSnippet(row.content, terms),
+            sourceChapter: { chapterId: row.id, number: row.number, title: row.title },
+          },
+          sortAt: row.updatedAt,
         })),
         ...outlineRows.map((row) => ({
-          id: row.id,
-          kind: "outline" as const,
-          title: row.title,
-          summary:
-            row.summary ||
-            (row.chapterNumber
-              ? `关联第 ${row.chapterNumber} 章「${row.chapterTitle ?? "未命名章节"}」`
-              : "关联章节规划。"),
-          sourceChapter:
-            row.chapterId && row.chapterNumber && row.chapterTitle
-              ? {
-                  chapterId: row.chapterId,
-                  number: row.chapterNumber,
-                  title: row.chapterTitle,
-                }
-              : null,
+          reference: {
+            id: row.id,
+            kind: "outline" as const,
+            title: row.title,
+            summary:
+              row.summary ||
+              (row.chapterNumber
+                ? `关联第 ${row.chapterNumber} 章「${row.chapterTitle ?? "未命名章节"}」`
+                : "关联章节规划。"),
+            sourceChapter:
+              row.chapterId && row.chapterNumber && row.chapterTitle
+                ? {
+                    chapterId: row.chapterId,
+                    number: row.chapterNumber,
+                    title: row.chapterTitle,
+                  }
+                : null,
+          },
+          sortAt: row.updatedAt,
         })),
         ...foreshadowRows.map((row) => ({
-          id: row.id,
-          kind: "foreshadow" as const,
-          title: row.title,
-          summary:
-            row.summary ||
-            `计划在第 ${row.targetFromChapter}–${row.targetToChapter} 章推进或回收。`,
-          sourceChapter: null,
+          reference: {
+            id: row.id,
+            kind: "foreshadow" as const,
+            title: row.title,
+            summary:
+              row.summary ||
+              `计划在第 ${row.targetFromChapter}–${row.targetToChapter} 章推进或回收。`,
+            sourceChapter: null,
+          },
+          sortAt: row.updatedAt,
         })),
-        ...bibleRows.flatMap((row): CharacterReference[] => {
+        ...bibleRows.flatMap((row) => {
           const cards = row.cards.filter((card) => matchesText([card.title, card.content], terms));
           if (cards.length === 0) {
             return [];
           }
           return [
             {
-              id: row.id,
-              kind: "story_bible",
-              title: `故事圣经 · ${cards.map((card) => card.title).join("、")}`,
-              summary: cards.map((card) => referenceSnippet(card.content, terms)).join(" / "),
-              sourceChapter: null,
+              reference: {
+                id: row.id,
+                kind: "story_bible" as const,
+                title: `故事圣经 · ${cards.map((card) => card.title).join("、")}`,
+                summary: cards.map((card) => referenceSnippet(card.content, terms)).join(" / "),
+                sourceChapter: null,
+              },
+              sortAt: row.updatedAt,
             },
           ];
         }),
         ...factRows.map((row) => ({
-          id: row.id,
-          kind: "fact" as const,
-          title: `已确认事实 · ${row.subject} · ${row.predicate}`,
-          summary: row.object,
-          sourceChapter:
-            row.chapterId && row.chapterNumber && row.chapterTitle
-              ? {
-                  chapterId: row.chapterId,
-                  number: row.chapterNumber,
-                  title: row.chapterTitle,
-                }
-              : null,
+          reference: {
+            id: row.id,
+            kind: "fact" as const,
+            title: `已确认事实 · ${row.subject} · ${row.predicate}`,
+            summary: row.object,
+            sourceChapter:
+              row.chapterId && row.chapterNumber && row.chapterTitle
+                ? {
+                    chapterId: row.chapterId,
+                    number: row.chapterNumber,
+                    title: row.chapterTitle,
+                  }
+                : null,
+          },
+          sortAt: row.updatedAt,
         })),
-      ];
-      let start = 0;
-      if (query.cursor) {
-        const cursorIndex = references.findIndex((reference) => reference.id === query.cursor);
-        if (cursorIndex < 0) {
-          return "invalid_cursor";
-        }
-        start = cursorIndex + 1;
-      }
-      const page = references.slice(start, start + query.limit);
+      ].sort(
+        (left, right) =>
+          right.sortAt.getTime() - left.sortAt.getTime() ||
+          right.reference.id.localeCompare(left.reference.id),
+      );
+      const hasMore = references.length > query.limit;
+      const page = references.slice(0, query.limit).map((item) => item.reference);
       return {
         kind: "ok",
         value: {
           data: page,
-          nextCursor: start + query.limit < references.length ? (page.at(-1)?.id ?? null) : null,
+          nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
         },
       };
     });
@@ -1921,9 +2059,13 @@ function parseCharacterSnapshot(
 
 function matchesAny(terms: string[], columns: Array<Parameters<typeof ilike>[0]>): SQL {
   const conditions = columns.flatMap((column) =>
-    terms.map((term) => ilike(column, `%${term.replace(/[\\%_]/gu, "\\$&")}%`)),
+    terms.map((term) => ilike(column, likePattern(term))),
   );
   return or(...conditions) ?? sql`false`;
+}
+
+function likePattern(value: string): string {
+  return `%${value.replace(/[\\%_]/gu, "\\$&")}%`;
 }
 
 function matchesText(values: string[], terms: string[]): boolean {
