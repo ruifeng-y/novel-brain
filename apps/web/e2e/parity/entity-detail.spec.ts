@@ -931,10 +931,6 @@ test("loads the dedicated character profile, relationships, state history and he
     await expect(detail.getByRole("heading", { name: "引用与反向引用" })).toBeVisible();
     await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible();
     await expect(detail.getByText(/已确认事实 · 沈砚父母 · 死因/u)).toBeVisible();
-    await expect(detail.getByRole("heading", { name: "编辑角色认知" })).toBeVisible();
-    await expect(detail.getByLabel("客观事实")).toBeVisible();
-    await expect(detail.getByLabel("生效章节")).toBeVisible();
-    await expect(detail.getByLabel("失效章节")).toBeVisible();
     await expectAuthorFacingLanguage(page);
     const referencesPrototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
     await testInfo.attach(`entity-detail-references-prototype-only-scan-${width}`, {
@@ -942,8 +938,23 @@ test("loads the dedicated character profile, relationships, state history and he
       contentType: "application/json",
     });
     await expectNoOverflow(page);
-    await capture(page, testInfo, `entity-detail-knowledge-editor-${width}`);
+    await capture(page, testInfo, `entity-detail-references-${width}`);
     await detail.locator(".entity-page-nav-item", { hasText: "基本信息" }).click();
+    await detail.getByRole("button", { name: "编辑设定", exact: true }).click();
+    const editor = page.locator(".settings-editor");
+    await expect(editor.getByRole("heading", { name: "编辑角色认知" })).toBeVisible();
+    await expect(editor.getByLabel("客观事实")).toBeVisible();
+    await expect(editor.getByLabel("生效章节")).toBeVisible();
+    await expect(editor.getByLabel("失效章节")).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+    const editorPrototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
+    await testInfo.attach(`entity-detail-knowledge-editor-prototype-only-scan-${width}`, {
+      body: JSON.stringify(editorPrototypeOnlyScan, null, 2),
+      contentType: "application/json",
+    });
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-knowledge-editor-${width}`);
+    await editor.getByRole("button", { name: "取消" }).first().click();
     await expectAuthorFacingLanguage(page);
     const prototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
     await testInfo.attach(`entity-detail-prototype-only-scan-${width}`, {
@@ -1038,15 +1049,16 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
   });
 
   await test.step("edit knowledge", async () => {
-    await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
-    await page.getByLabel("客观事实").selectOption(fact.factId);
-    await page.getByLabel("认知状态").selectOption("misbelief");
-    await page.getByLabel("生效章节").fill("2");
-    await page.getByLabel("失效章节").fill("3");
-    await page.getByLabel("认知内容").fill("沈砚以为父母是自尽。");
-    await page.getByLabel("信息来源").selectOption("told");
+    await detail.getByRole("button", { name: "编辑设定", exact: true }).click();
+    const editor = page.locator(".settings-editor");
+    await editor.getByLabel("客观事实").selectOption(fact.factId);
+    await editor.getByLabel("认知状态").selectOption("misbelief");
+    await editor.getByLabel("生效章节").fill("2");
+    await editor.getByLabel("失效章节").fill("3");
+    await editor.getByLabel("认知内容").fill("沈砚以为父母是自尽。");
+    await editor.getByLabel("信息来源").selectOption("told");
     const knowledgeResponsePromise = waitForApiResponse(page, "POST", knowledgeApi);
-    await page.getByRole("button", { name: "保存认知" }).click();
+    await editor.getByRole("button", { name: "保存认知" }).click();
     const knowledge = characterKnowledgeStateResponseSchema.parse(
       await (await knowledgeResponsePromise).json(),
     ).data;
@@ -1065,11 +1077,13 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
       state: "misbelief",
       validity: { fromChapter: 2, toChapter: 3 },
     });
+    await editor.getByRole("button", { name: "取消" }).first().click();
   });
 
   await test.step("view references", async () => {
+    const referencesResponsePromise = waitForApiResponse(page, "GET", referencesApi);
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
-    const referencesResponse = await page.request.get(referencesApi);
+    const referencesResponse = await referencesResponsePromise;
     expect(referencesResponse.status()).toBe(200);
     const references = characterReferenceListResponseSchema.parse(
       await referencesResponse.json(),
