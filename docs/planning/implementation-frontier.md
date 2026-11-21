@@ -22,12 +22,12 @@
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
 - #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207. `legal` and `export-publish` have formal Linux Golden evidence, but current release status is matrix-owned: only `legal` is `parity-verified`, and #104 removed the earlier `help` verification because no real route-level error-boundary evidence exists.
 - Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142, #138, #139 and #140 are closed; #98–#103 package parents are closed with child evidence; #137/#102 are explicitly deferred from V1 and the V1 capacity claim is excluded.
-- #104 is in implementation through #234 and its child tickets: `auth`, `help`, `legal`, dashboard, new-project, work-overview, bible, settings, outline, foreshadows, writing, batch, changes, export-publish, work-settings and entity-detail are currently `parity-verified`. The other 1 non-static page remains `production-built` until the per-action API/persistence audit and final Linux/Chromium PR CI pass. The release checklist records the remaining capability/UI/action/human/provider blockers.
+- #104 is in implementation through #235 and its child tickets: all 17 non-static production pages are currently `parity-verified`. The page-level per-action API/persistence audit is complete; the release checklist records the remaining capability/human/provider/final-CI blockers.
 - PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.
 
 ## 2. Immediate frontier
 
-1. Finish #104 UI/release closeout, including the per-action API/persistence audit in `docs/implementation/v1-action-evidence.json`, and merge only after the final Production CI passes.
+1. Finish #104 release closeout through #236/#238 and the final CI/release decision; the 17-page per-action API/persistence audit in `docs/implementation/v1-action-evidence.json` is complete.
 2. Do not treat automated quality gates as release approval: real blind-human evidence and the approved inter-rater variance threshold remain outstanding.
 3. Run the manual `provider-smoke` workflow with the protected environment secret and attach redacted evidence before claiming real-provider validation.
 4. #137/#102 remain deferred outside V1; resuming the 10M capacity claim requires a new explicit decision and a fresh benchmark.

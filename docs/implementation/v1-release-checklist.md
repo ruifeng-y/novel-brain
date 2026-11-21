@@ -2,7 +2,7 @@
 
 > Owner: M3-07 #104
 > Status: **BLOCKED** - this checklist does not itself authorize a V1 release claim.
-> Updated: 2026-11-18.
+> Updated: 2026-11-21.
 
 Machine-readable release evidence and waiver ownership live in `docs/implementation/v1-release-evidence.json`; authorized scope deferrals live in `docs/planning/v1-deferrals.json`; page deviations live in `docs/ui/v1-ui-deviations.json`; the required action IDs live in `docs/ui/v1-action-contract.json`; per-action API/persistence evidence lives in `docs/implementation/v1-action-evidence.json`. `pnpm release:check` rejects unknown gates, unregistered deferrals, empty local evidence, unsuccessful GitHub Actions runs, P0 failures, invalid waivers, unapproved deviations, pending action audits and any production page that is not release-approved.
 
@@ -17,10 +17,10 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 | Gate | Evidence | Status |
 | --- | --- | --- |
 | Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`; `node scripts/validate-readiness.mjs` | structure pass; UI release remains blocked |
-| UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | blocked: `auth`, `help`, `legal`, dashboard, new-project, work-overview, bible, settings, outline, foreshadows, writing, batch, changes, export-publish, work-settings and entity-detail are `parity-verified`; 1 non-static page remains `production-built` |
+| UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | all 17 non-static production pages are `parity-verified`; global release evidence remains blocked |
 | Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | existing Golden baseline evidence pass; final normal PR CI pending |
 | Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | implemented; final normal PR CI pending |
-| Per-action API and persistence evidence | `docs/ui/v1-action-contract.json` + `docs/implementation/v1-action-evidence.json`; every required action must bind to its owner spec, `/api/v1/*` and persisted-result Playwright assertions | blocked / 1 page pending |
+| Per-action API and persistence evidence | `docs/ui/v1-action-contract.json` + `docs/implementation/v1-action-evidence.json`; every required action must bind to its owner spec, `/api/v1/*` and persisted-result Playwright assertions | pass / no pending pages |
 | Auth, password and session lifecycle | `docs/implementation/m0-02-email-auth-sessions.md`, `docs/implementation/m1-141-account-security.md`, `apps/web/e2e/parity/auth.spec.ts` | pass |
 | Account export, deletion and purge | `docs/implementation/m3-03c-account-lifecycle.md`, tenant RLS audit and lifecycle integration tests | pass |
 | Export, publish, reader preview and moderation | `docs/implementation/m3-01a-work-export.md`, `docs/implementation/m3-02a-publish-preview.md`, `docs/implementation/m3-02b-help-legal-moderation.md` | pass |
@@ -58,10 +58,9 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 ## 4. Remaining blockers
 
 1. Complete the capability-by-capability evidence audit and move applicable V1 traceability rows from `mapped`/`implemented` to `verified`; `pnpm release:check` currently reports 116 unresolved V1 capabilities.
-2. Complete the per-action API/persistence audit for the remaining 1 non-static production page and replace its pending action-evidence ledger entry with reproducible Playwright evidence.
-3. Keep `help` parity status bound to the recorded Production CI run; rerun normal CI after any further help-page change.
-4. Record actual human blind-review scores for the frozen quality packet.
-5. Approve and record the inter-rater variance threshold with an owner and rationale.
+2. Keep `help` parity status bound to the recorded Production CI run; rerun normal CI after any further help-page change.
+3. Record actual human blind-review scores for the frozen quality packet.
+4. Approve and record the inter-rater variance threshold with an owner and rationale.
 6. Run the manual real-provider smoke against the approved commit/config and attach its redacted evidence.
 7. Run the final #104 Production CI and update the `final-production-ci` evidence gate with the green run URL.
 

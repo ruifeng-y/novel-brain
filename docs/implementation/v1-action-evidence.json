@@ -1084,8 +1084,10 @@
       ]
     },
     "account-settings": {
-      "status": "pending",
-      "rationale": "All 13 required actions now have owner-spec API calls and persistence assertions; final normal PR CI is still required before verification.",
+      "status": "verified",
+      "headSha": "b0a0c089e15f78d82aa93e2fc0550ac982453a02",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44899778462",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44899778435",
       "actions": [
         {
           "id": "create-model-config",
