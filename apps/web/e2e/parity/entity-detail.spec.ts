@@ -189,6 +189,10 @@ async function createKnowledgeFact(
   };
 }
 
+async function persistedCharacter(page: Page, api: string) {
+  return characterDetailResponseSchema.parse(await (await page.request.get(api)).json()).data;
+}
+
 async function createMap(
   page: Page,
   work: { id: string; mainBranch: { id: string } },
@@ -953,15 +957,14 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
   const shen = await createCharacter(page, work, "沈砚");
   const gu = await createCharacter(page, work, "顾青");
   const fact = await createKnowledgeFact(page, work, "被仇家杀死");
-  const editEntityApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}`;
-  const referencesApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}`;
+  const characterApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}`;
   const relationshipApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/relationships`;
   const knowledgeApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/knowledge-states`;
   const lockApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}/lock`;
   const historyApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}/versions`;
   const settingsEntityApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}`;
   const proposalApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${gu.character.id}/proposals`;
-  const detailResponsePromise = waitForApiResponse(page, "GET", editEntityApi);
+  const detailResponsePromise = waitForApiResponse(page, "GET", characterApi);
   const versionsResponsePromise = waitForApiResponse(page, "GET", historyApi);
   const detail = await openCharacter(page, work);
   const initialCharacter = characterDetailResponseSchema.parse(
@@ -975,16 +978,14 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
   await test.step("edit entity", async () => {
     await detail.getByRole("button", { name: "编辑设定", exact: true }).click();
     await page.getByLabel("人物欲望").fill("找回被忘川书抹去的全部记忆。");
-    const editResponsePromise = waitForApiResponse(page, "PATCH", editEntityApi);
+    const editResponsePromise = waitForApiResponse(page, "PATCH", characterApi);
     const refreshedVersionsResponsePromise = waitForApiResponse(page, "GET", historyApi);
     await page.getByRole("button", { name: "保存修改" }).click();
     const edited = characterDetailResponseSchema.parse(
       await (await editResponsePromise).json(),
     ).data;
     expect(edited.profile.desire).toBe("找回被忘川书抹去的全部记忆。");
-    const persisted = characterDetailResponseSchema.parse(
-      await (await page.request.get(editEntityApi)).json(),
-    ).data;
+    const persisted = await persistedCharacter(page, characterApi);
     expect(persisted.profile.desire).toBe("找回被忘川书抹去的全部记忆。");
     const refreshedVersions = settingEntityVersionListResponseSchema.parse(
       await (await refreshedVersionsResponsePromise).json(),
@@ -1005,9 +1006,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
     ).data;
     expect(relationship.target.id).toBe(gu.character.id);
     expect(relationship.relationType).toBe("enemy");
-    const persisted = characterDetailResponseSchema.parse(
-      await (await page.request.get(editEntityApi)).json(),
-    ).data;
+    const persisted = await persistedCharacter(page, characterApi);
     expect(
       persisted.relationships.some(
         (item) => item.target.id === gu.character.id && item.relationType === "enemy",
@@ -1028,9 +1027,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
     ).data;
     expect(knowledge.objectiveFactId).toBe(fact.factId);
     expect(knowledge.claimedContent).toBe(fact.object);
-    const persisted = characterDetailResponseSchema.parse(
-      await (await page.request.get(editEntityApi)).json(),
-    ).data;
+    const persisted = await persistedCharacter(page, characterApi);
     expect(
       persisted.knowledgeStates.some(
         (item) => item.objectiveFactId === fact.factId && item.claimedContent === fact.object,
@@ -1040,9 +1037,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
 
   await test.step("view references", async () => {
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
-    const references = characterDetailResponseSchema.parse(
-      await (await page.request.get(referencesApi)).json(),
-    ).data;
+    const references = await persistedCharacter(page, characterApi);
     expect(references.knowledgeStates[0]?.claimedContent).toBe(fact.object);
     await expect(detail.getByText("角色认知与引用")).toBeVisible();
     await expect(detail.getByText(fact.object, { exact: true })).toBeVisible();
