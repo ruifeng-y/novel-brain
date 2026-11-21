@@ -1021,9 +1021,9 @@
     },
     "entity-detail": {
       "status": "verified",
-      "headSha": "149bd01cb6bb6e6e38d381ce87e85179dfd333e9",
-      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44880787355",
-      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44880787339",
+      "headSha": "d69be90649b710b16ae9f6fcd02f8cb7de199499",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44882398716",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44882398740",
       "actions": [
         {
           "id": "edit-entity",
