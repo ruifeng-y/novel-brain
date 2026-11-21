@@ -857,6 +857,7 @@ export class CharactersRepository implements OnModuleDestroy {
         .filter(Boolean);
       const knowledgeFactIds = aggregate.knowledgeStates.map((state) => state.objectiveFactId);
       const patterns = terms.map(likePattern);
+      const characterIdPattern = likePattern(characterId);
       let cursorSortAt: Date | undefined;
       if (query.cursor) {
         const cursorResult = await transaction.execute(sql`
@@ -945,6 +946,7 @@ export class CharactersRepository implements OnModuleDestroy {
               eq(chapters.branchId, context.branchId),
               or(
                 matchesAny(terms, [chapters.title, chapterVersions.content]),
+                sql`${chapters.brief}::text ILIKE ${characterIdPattern}`,
                 sql`${chapters.brief}::text ILIKE ANY(${sql.param(patterns)}::text[])`,
                 sql`EXISTS (
                   SELECT 1
