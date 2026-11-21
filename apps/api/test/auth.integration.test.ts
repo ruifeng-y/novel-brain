@@ -751,10 +751,27 @@ describe("auth HTTP integration", () => {
       .expect(200);
 
     expect(replayed.body.data.id).toBe(created.body.data.id);
-    const listed = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    const listedBeforeDelete = await owner.get("/api/v1/users/me/pen-names").expect(200);
     expect(
-      listed.body.data.filter((penName: { name: string }) => penName.name === "青舟"),
+      listedBeforeDelete.body.data.filter((penName: { name: string }) => penName.name === "青舟"),
     ).toHaveLength(1);
+    await owner
+      .delete(`/api/v1/users/me/pen-names/${created.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(200);
+    const replayAfterDelete = await owner
+      .post("/api/v1/users/me/pen-names")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("idempotency-key", "pen-name-create-1")
+      .send(payload)
+      .expect(200);
+    expect(replayAfterDelete.body.data.id).toBe(created.body.data.id);
+    const listedAfterDelete = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    expect(
+      listedAfterDelete.body.data.filter((penName: { name: string }) => penName.name === "青舟"),
+    ).toHaveLength(0);
   });
 
   it("keeps exactly one default pen name when updates are attempted", async () => {

@@ -96658,14 +96658,6 @@
         "operationId": "UsersController_createPenName",
         "parameters": [
           {
-            "name": "idempotency-key",
-            "required": true,
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "Idempotency-Key",
             "in": "header",
             "schema": {

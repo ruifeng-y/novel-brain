@@ -525,11 +525,23 @@ test("manages profile, multiple pen names and device sessions", async ({
     await page.reload();
     await expect(page.locator(".account-session-row")).toHaveCount(2);
 
+    const currentSessionRequest = await playwrightRequest.newContext({
+      baseURL: origin,
+      storageState: {
+        cookies: await context.cookies(origin),
+        origins: [],
+      },
+    });
     const logoutAllResponsePromise = waitForApiResponse(page, "POST", "/api/v1/auth/logout-all");
-    await page.getByRole("button", { name: "退出所有设备" }).click();
-    expect((await logoutAllResponsePromise).status()).toBe(200);
-    await expect(page).toHaveURL(/\/login$/);
-    expect((await otherRequest.get("/api/v1/auth/me")).status()).toBe(401);
+    try {
+      await page.getByRole("button", { name: "退出所有设备" }).click();
+      expect((await logoutAllResponsePromise).status()).toBe(200);
+      await expect(page).toHaveURL(/\/login$/);
+      expect((await currentSessionRequest.get("/api/v1/auth/me")).status()).toBe(401);
+      expect((await otherRequest.get("/api/v1/auth/me")).status()).toBe(401);
+    } finally {
+      await currentSessionRequest.dispose();
+    }
   } finally {
     await otherRequest.dispose();
   }
@@ -541,6 +553,24 @@ test("exports before deletion and recovers inside the approved window", async ({
   request,
 }) => {
   const { email } = await authenticatedPage(page, context, request);
+  const modelCsrf = await getCsrf(page.request);
+  const excludedModel = await page.request.post("/api/v1/model-configs", {
+    headers: {
+      Origin: origin,
+      "Idempotency-Key": crypto.randomUUID(),
+      "X-CSRF-Token": modelCsrf,
+    },
+    data: {
+      provider: "deepseek",
+      label: "导出排除 Key",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "sk-export-secret-1234",
+      purposes: ["writing"],
+      isDefault: true,
+    },
+  });
+  expect(excludedModel.status(), await excludedModel.text()).toBe(200);
   const deleteButton = page.getByRole("button", { name: "先导出再删除" });
   await expect(deleteButton).toBeDisabled();
 

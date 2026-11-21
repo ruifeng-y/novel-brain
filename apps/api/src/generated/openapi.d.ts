@@ -35276,8 +35276,7 @@ export interface operations {
   UsersController_createPenName: {
     parameters: {
       query?: never;
-      header: {
-        "idempotency-key": string;
+      header?: {
         "Idempotency-Key"?: string;
       };
       path?: never;

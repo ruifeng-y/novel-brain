@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   HttpCode,
   Param,
   Patch,
@@ -95,17 +94,15 @@ export class UsersController {
   @ApiHeader({ name: "Idempotency-Key" })
   @ApiBody({ schema: penNameCreateBodySchema })
   @ApiOkResponse({ description: "Created pen name", schema: penNameResponseJsonSchema })
-  async createPenName(
-    @Req() request: AuthenticatedRequest,
-    @Body() body: unknown,
-    @Headers("idempotency-key") idempotencyKey?: string,
-  ) {
+  async createPenName(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
     const requestId = createRequestId();
     const penName = await this.service.createPenName(
       this.userId(request),
       authorPenNameCreateRequestSchema.parse(body),
       this.auditContext(request, requestId),
-      idempotencyKey?.trim() || undefined,
+      typeof request.headers["idempotency-key"] === "string"
+        ? request.headers["idempotency-key"].trim() || undefined
+        : undefined,
     );
     return authorPenNameResponseSchema.parse(envelope(penName, requestId));
   }

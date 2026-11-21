@@ -155,13 +155,7 @@ export class UsersRepository implements OnModuleDestroy {
           const [existing] = await transaction
             .select()
             .from(penNames)
-            .where(
-              and(
-                eq(penNames.id, replay.resourceId),
-                eq(penNames.userId, input.userId),
-                isNull(penNames.deletedAt),
-              ),
-            )
+            .where(and(eq(penNames.id, replay.resourceId), eq(penNames.userId, input.userId)))
             .limit(1);
           if (existing) {
             return existing;
