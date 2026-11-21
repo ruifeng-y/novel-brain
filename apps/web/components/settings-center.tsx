@@ -664,9 +664,6 @@ export function SettingsCenter({
       setCharacterDetail(null);
       setCharacterDetailError("");
       setCharacterDetailLoading(false);
-      setCharacterReferences([]);
-      setCharacterReferencesError("");
-      setCharacterReferencesLoading(false);
       setWorldDetail(null);
       setWorldDetailError("");
       setWorldDetailLoading(false);
