@@ -40,4 +40,4 @@ The tests cover:
 
 - `apps/web/e2e/parity/entity-detail.spec.ts`
 
-Playwright runs loading, empty, error, locked, proposal and long states at `390`, `900`, `1180` and `1440` CSS pixels. Attachments use `entity-detail-{profile|empty|error|locked|proposal|long}-{width}` names. Production golden screenshots remain pending author sign-off under `docs/ui/production-visual-regression.md`.
+Playwright runs loading, empty, error, locked, proposal and long states at `390`, `900`, `1180` and `1440` CSS pixels. Attachments use `entity-detail-{profile|references|knowledge-editor|empty|error|locked|proposal|long}-{width}` names. The four production Golden files and the #234 action evidence are covered by `docs/ui/v1-ui-parity-matrix.md` and `docs/ui/v1-prototype-signoff.md`; the page is `parity-verified`.

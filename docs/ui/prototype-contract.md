@@ -21,7 +21,7 @@
 | changes | `/workspace/[workId]/changes` | 新建/分析/应用/撤销/分支/比较/合并 | loading/error/conflict/partial/disabled/stale-version | 逐对象比较/摘取 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，修改生命周期、回滚、平行版本、逐对象摘取、高风险门禁、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | export-publish | `/workspace/[workId]/export` | 导出/下载/发布检查/预览/文案 | loading/empty/error/partial/expired/long | 任务报告 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，下载响应头/哈希、固定预览、文案复制、过期清理、申诉和重新导出均已回读，四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/permission/readonly/confirmation | 无 | parity-verified；9 个必需动作均通过真实 API 与持久化断言，保守复制、归档恢复、回收站、导出后永久删除、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
-| entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | production-built；七类档案、题材化层级文案、引用/历史和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
+| entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，认知有效期、正文/章纲/POV/伏笔/故事圣经/事实反向引用和版本历史均已回读，四档 Golden 与正常 PR CI 通过 |
 | account-settings | `/workspace/settings`、`/workspace/settings/account` | 资料/笔名/会话/模型/导出/注销 | loading/error/invalid-key/disabled/partial/rate-limit | 无 | production-built；常规态、Key 错误态、导出/注销恢复和四档 Golden 已实现，等待动作审计和最终正常 PR CI |
 | help | `/help` | 快捷键/术语/FAQ | static/empty/error | 无 | parity-verified；FAQ、空搜索、四档 Golden、真实路由错误态/重试恢复和正常 PR Production CI 均已通过 |
 | legal | `/legal/*` | 协议/隐私/AI 标识 | static/error | 无 | parity-verified；隐私、条款、AI 标识和四档 Golden 已签收 |

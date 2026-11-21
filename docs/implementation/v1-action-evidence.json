@@ -1020,8 +1020,68 @@
       ]
     },
     "entity-detail": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "5b775ae062c9fd226c51eb8487a2e1acdd8826fd",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44877240725",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44877240730",
+      "actions": [
+        {
+          "id": "edit-entity",
+          "name": "编辑人物档案并回读持久化版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}",
+          "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
+          "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
+          "assertion": "expect(persisted.profile.desire).toBe(\"找回被忘川书抹去的全部记忆。\");"
+        },
+        {
+          "id": "create-relationship",
+          "name": "创建类型化人物关系并回读关系图",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/relationships",
+          "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
+          "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
+          "assertion": "expect(relationship.relationType).toBe(\"enemy\");"
+        },
+        {
+          "id": "edit-knowledge",
+          "name": "记录带有效期的角色认知并区分客观事实",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/knowledge-states",
+          "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
+          "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
+          "assertion": "expect(knowledge.validity).toMatchObject({ fromChapter: 2, toChapter: 3 });"
+        },
+        {
+          "id": "view-references",
+          "name": "点击引用页并回读正文与事实反向引用",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/references",
+          "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
+          "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
+          "assertion": "expect(references.some((reference) => reference.kind === \"chapter\")).toBe(true);"
+        },
+        {
+          "id": "create-proposal",
+          "name": "提交人物提案并回读待裁决记录",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${gu.character.id}/proposals",
+          "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
+          "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
+          "assertion": "expect(proposal.entityId).toBe(gu.character.id);"
+        },
+        {
+          "id": "lock-entity",
+          "name": "锁定人物档案并回读锁定状态",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}/lock",
+          "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
+          "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
+          "assertion": "expect(persisted.status).toBe(\"locked\");"
+        },
+        {
+          "id": "view-history",
+          "name": "查看版本历史并定位最新持久化版本",
+          "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}/versions",
+          "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
+          "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
+          "assertion": "const latestHistoryVersion = Math.max(...history.map((version) => version.version));"
+        }
+      ]
     },
     "account-settings": {
       "status": "pending",
