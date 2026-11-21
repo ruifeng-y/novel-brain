@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
-import { posix } from "node:path";
 
 import { runCli } from "./cli-entry.mjs";
 import { validateNonUiCapabilityEvidence } from "./v1-capability-evidence.mjs";
@@ -10,6 +9,7 @@ import {
   STATIC_PRODUCTION_PAGE_IDS,
   expandGoldenPaths,
   isValidGoldenImage,
+  normalizeRepositoryPath,
   parseTraceabilityRows,
   parseUiMatrix,
 } from "./v1-ledger.mjs";
@@ -38,19 +38,13 @@ const DEVIATION_DOCUMENTS = [
   "docs/ui/v1-prototype-signoff.md",
 ];
 
-function normalizeRepositoryPath(reference) {
-  if (typeof reference !== "string" || GITHUB_ACTIONS_RUN_URL.test(reference)) {
-    return reference;
-  }
-  const normalized = posix.normalize(reference.replace(/\\/gu, "/")).replace(/^\.\//u, "");
-  if (posix.isAbsolute(normalized) || normalized === ".." || normalized.startsWith("../")) {
-    return null;
-  }
-  return normalized;
+function normalizeReleaseReference(reference) {
+  if (typeof reference === "string" && GITHUB_ACTIONS_RUN_URL.test(reference)) return reference;
+  return normalizeRepositoryPath(reference);
 }
 
 function canonicalRepositoryPath(reference) {
-  return normalizeRepositoryPath(reference)?.toLowerCase() ?? null;
+  return normalizeReleaseReference(reference)?.toLowerCase() ?? null;
 }
 
 function isReproducibleReference(
@@ -61,7 +55,7 @@ function isReproducibleReference(
   if (GITHUB_ACTIONS_RUN_URL.test(reference)) {
     return githubRunIsSuccessful(reference, runContext);
   }
-  const normalized = normalizeRepositoryPath(reference);
+  const normalized = normalizeReleaseReference(reference);
   return Boolean(normalized) && evidenceExists(normalized);
 }
 
@@ -296,7 +290,7 @@ function validateDeviationApprovals(
       }
     }
     const [baselinePath, baselineMarker] = approval.replacementBaseline.split("#", 2);
-    const normalizedBaselinePath = normalizeRepositoryPath(baselinePath);
+    const normalizedBaselinePath = normalizeReleaseReference(baselinePath);
     if (
       !normalizedBaselinePath ||
       !baselineMarker?.trim() ||

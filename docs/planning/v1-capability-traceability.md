@@ -1,6 +1,6 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-21。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 101 个已有可执行证据并标为 `verified`，6 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
+> 状态：V1 delivery ledger，2026-11-21。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 100 个已有可执行证据并标为 `verified`，7 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
 > `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
 
 ## 状态定义
@@ -135,7 +135,7 @@
 | EVAL-001 | 三题材 + 长线基准集 | V1 | verified | #139 | #79 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-001` | M3 |
 | EVAL-002 | 评分 rubric/阈值/回归 | V1 | implemented | #139 | — | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-002`; gap #240 | M3 |
 | EVAL-003 | 真实 DeepSeek smoke | V1 | implemented | #140 | #79 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-003`; gap #241 | M3 |
-| EVAL-004 | Prompt/模型灰度与回滚 | V1 | verified | #140 | — | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-004` | M3 |
+| EVAL-004 | Prompt/模型灰度与回滚 | V1 | implemented | #140 | — | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-004`; gap #241 | M3 |
 | PERF-001 | 1000 万字容量/性能/恢复基准 | 后续 | deferred | — | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 产品决定 V1 不声明 10M 容量；未来重启需重新认证 | Post-V1 |
 | CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | implemented | #138 | #106–#119/#86/#90/#115 | ADR 0017/0019/0022; #138 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CONT-001`; gap #239 | M3 |
 

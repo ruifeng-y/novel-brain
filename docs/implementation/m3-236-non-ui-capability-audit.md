@@ -3,7 +3,7 @@
 > Issue: #236
 > Audited: 2026-11-21
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
-> Result: 101 / 107 non-UI V1 capabilities verified; 6 retained as implemented with bounded gaps.
+> Result: 100 / 107 non-UI V1 capabilities verified; 7 retained as implemented with bounded gaps.
 
 ## 1. Audit Rule
 
@@ -24,11 +24,11 @@ The release gate now validates:
 
 | Status | Count |
 | --- | ---: |
-| Verified | 101 |
-| Blocked by a bounded gap | 6 |
+| Verified | 100 |
+| Blocked by a bounded gap | 7 |
 | Missing audit record | 0 |
 
-The six blocked capabilities are:
+The seven blocked capabilities are:
 
 | Capability | Gap | Follow-up |
 | --- | --- | --- |
@@ -37,6 +37,7 @@ The six blocked capabilities are:
 | IO-003 | No generated 10M-character, bounded-memory and crash-resume evidence. | #262 |
 | EVAL-002 | The release-level inter-rater variance threshold is not approved. | #240 |
 | EVAL-003 | The protected real DeepSeek smoke has not run for the release candidate. | #241 |
+| EVAL-004 | Canary/rollback tests pass, but release use still requires real-provider and approved quality evidence. | #241 |
 | CONT-001 | Deterministic continuity evaluation passes, but real human blind review is absent. | #239 |
 
 `PERF-001`, `AGENT-007` and `QUALITY-009` remain authorized post-V1 deferrals and are not
@@ -69,8 +70,8 @@ Expected release result after this audit:
 
 ```text
 V1 RELEASE BLOCKED
-- capability-verification:15
-  WORK-002, IO-001, IO-003, UI-001..UI-009, EVAL-002, EVAL-003, CONT-001
+- capability-verification:16
+  WORK-002, IO-001, IO-003, UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
 ```
 
 The remaining non-UI blockers are tracked by #240, #241, #261 and #262. UI capability

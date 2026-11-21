@@ -153,6 +153,10 @@
       "kind": "integration",
       "path": "apps/api/test/m2-04-06.integration.test.ts"
     },
+    "chunked-import-http": {
+      "kind": "integration",
+      "path": "apps/api/test/m2-04-06.integration.test.ts"
+    },
     "notifications-http": {
       "kind": "integration",
       "path": "apps/api/test/notifications.integration.test.ts"
@@ -214,6 +218,10 @@
       "kind": "unit",
       "path": "packages/quality-benchmark/test/canary.test.ts"
     },
+    "provider-smoke-workflow": {
+      "kind": "guardrail",
+      "path": "scripts/test/provider-smoke-workflow.test.mjs"
+    },
     "continuity-evaluator": {
       "kind": "unit",
       "path": "packages/continuity-benchmark/test/evaluator.test.ts"
@@ -243,7 +251,8 @@
       "evidence": ["works-http", "settings-import-http", "manuscript-http", "new-project-e2e"]
     },
     "WORK-002": {
-      "status": "blocked",
+      "status": "implemented",
+      "evidence": ["manuscript-http", "chunked-import-http"],
       "reason": "小文件 TXT/Markdown 解析已有证据，但 #126 要求的大文件分块与断点恢复没有复现证据。",
       "gapIssue": "#262"
     },
@@ -353,13 +362,15 @@
     "CHANGE-008": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-009": { "status": "verified", "evidence": ["changes-http", "work-overview-e2e"] },
     "IO-001": {
-      "status": "blocked",
+      "status": "implemented",
+      "evidence": ["manuscript-http", "settings-import-http"],
       "reason": "TXT/Markdown 已实现，但 DOCX 旧稿导入与 DOCX 设定导入仍被生产代码和测试明确拒绝。",
       "gapIssue": "#261"
     },
     "IO-002": { "status": "verified", "evidence": ["settings-import-http"] },
     "IO-003": {
-      "status": "blocked",
+      "status": "implemented",
+      "evidence": ["chunked-import-http"],
       "reason": "分块接口只有小夹具证据；千万字、受限内存、崩溃续传和 UI 恢复状态尚无复现证据。",
       "gapIssue": "#262"
     },
@@ -396,18 +407,26 @@
     },
     "EVAL-001": { "status": "verified", "evidence": ["quality-registry"] },
     "EVAL-002": {
-      "status": "blocked",
+      "status": "implemented",
+      "evidence": ["quality-regression", "quality-eval-http"],
       "reason": "rubric 与回归门禁已实现，但正式 inter-rater variance threshold 尚未批准。",
       "gapIssue": "#240"
     },
     "EVAL-003": {
-      "status": "blocked",
+      "status": "implemented",
+      "evidence": ["provider-smoke-workflow"],
       "reason": "真实 provider smoke workflow 已实现，但受保护环境下的正式 run 和绑定提交的证据尚未执行。",
       "gapIssue": "#241"
     },
-    "EVAL-004": { "status": "verified", "evidence": ["provider-canary", "quality-regression"] },
+    "EVAL-004": {
+      "status": "implemented",
+      "evidence": ["provider-canary", "quality-regression"],
+      "reason": "canary/rollback 实现已有自动化证据，但真实 Provider smoke 和已批准质量阈值仍是发布条件。",
+      "gapIssue": "#241"
+    },
     "CONT-001": {
-      "status": "blocked",
+      "status": "implemented",
+      "evidence": ["continuity-evaluator"],
       "reason": "确定性与最大规模 fixture/evaluator 已通过，但真实人工盲评证据和已批准阈值仍缺失。",
       "gapIssue": "#239"
     }

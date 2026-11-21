@@ -32,7 +32,8 @@ const completeAudit = {
       evidence: ["auth"],
     },
     "IO-001": {
-      status: "blocked",
+      status: "implemented",
+      evidence: ["import"],
       reason: "DOCX 导入尚未实现。",
       gapIssue: "#300",
     },
@@ -56,7 +57,7 @@ describe("non-UI capability evidence audit", () => {
     const audit = structuredClone(completeAudit);
     delete audit.capabilities["ACCT-001"];
     audit.capabilities["WORK-999"] = {
-      status: "blocked",
+      status: "implemented",
       reason: "Unknown capability.",
       gapIssue: "#301",
     };
@@ -72,7 +73,7 @@ describe("non-UI capability evidence audit", () => {
   it("rejects status drift between the audit and traceability ledger", () => {
     const audit = structuredClone(completeAudit);
     audit.capabilities["ACCT-001"] = {
-      status: "blocked",
+      status: "implemented",
       reason: "Status mismatch.",
       gapIssue: "#302",
     };
@@ -111,11 +112,18 @@ describe("non-UI capability evidence audit", () => {
   it("requires a bounded follow-up issue for every blocked capability", () => {
     const audit = structuredClone(completeAudit);
     audit.capabilities["IO-001"] = {
-      status: "blocked",
+      status: "implemented",
       reason: "Missing evidence.",
     };
 
     expect(validate(audit)).toContain("capability-audit:gap-issue-missing:IO-001");
+  });
+
+  it("requires existing partial evidence for every implemented capability", () => {
+    const audit = structuredClone(completeAudit);
+    delete audit.capabilities["IO-001"].evidence;
+
+    expect(validate(audit)).toContain("capability-audit:evidence-empty:IO-001");
   });
 
   it("rejects evidence paths that escape the repository", () => {
@@ -123,5 +131,12 @@ describe("non-UI capability evidence audit", () => {
     audit.evidence.auth.path = "../outside-repository.txt";
 
     expect(validate(audit)).toContain("capability-audit:evidence-missing:ACCT-001:auth");
+  });
+
+  it("rejects evidence kinds that do not match the referenced file type", () => {
+    const audit = structuredClone(completeAudit);
+    audit.evidence.auth.path = "docs/implementation/example.md";
+
+    expect(validate(audit)).toContain("capability-audit:evidence-kind-path-mismatch:ACCT-001:auth");
   });
 });

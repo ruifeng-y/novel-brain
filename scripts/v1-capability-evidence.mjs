@@ -1,6 +1,4 @@
-import { posix } from "node:path";
-
-import { parseTraceabilityRows } from "./v1-ledger.mjs";
+import { normalizeRepositoryPath, parseTraceabilityRows } from "./v1-ledger.mjs";
 
 export const EXECUTABLE_EVIDENCE_KINDS = new Set([
   "contract",
@@ -12,20 +10,52 @@ export const EXECUTABLE_EVIDENCE_KINDS = new Set([
 ]);
 
 const EVIDENCE_KINDS = new Set([...EXECUTABLE_EVIDENCE_KINDS, "manual_signoff"]);
-const CAPABILITY_STATUSES = new Set(["verified", "blocked"]);
+const CAPABILITY_STATUSES = new Set(["verified", "implemented"]);
 const GAP_ISSUE = /^#\d+$/u;
-
-function normalizePath(reference) {
-  if (typeof reference !== "string" || !reference.trim()) return null;
-  const normalized = posix.normalize(reference.replace(/\\/gu, "/")).replace(/^\.\//u, "");
-  if (posix.isAbsolute(normalized) || normalized === ".." || normalized.startsWith("../")) {
-    return null;
-  }
-  return normalized;
-}
+const EVIDENCE_PATH_PATTERNS = {
+  contract: /\.test\.(?:ts|mjs)$/u,
+  unit: /\.test\.(?:ts|mjs)$/u,
+  integration: /\.integration\.test\.ts$/u,
+  e2e: /^apps\/web\/e2e\/.*\.spec\.ts$/u,
+  benchmark: /(?:^|\/)test\/.*\.test\.(?:ts|mjs)$/u,
+  guardrail: /^scripts\/test\/.*\.test\.mjs$/u,
+  manual_signoff: /\.(?:md|json)$/u,
+};
 
 function isNonUiV1Capability(row) {
   return row.scope === "V1" && !row.id.startsWith("UI-");
+}
+
+function validateEvidenceReferences(id, record, evidence, evidenceExists, blockers) {
+  const references = Array.isArray(record.evidence) ? record.evidence : [];
+  if (references.length === 0) {
+    blockers.push(`capability-audit:evidence-empty:${id}`);
+    return;
+  }
+  let executable = false;
+  for (const key of references) {
+    const item = evidence?.[key];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      blockers.push(`capability-audit:evidence-unknown:${id}:${key}`);
+      continue;
+    }
+    if (!EVIDENCE_KINDS.has(item.kind)) {
+      blockers.push(`capability-audit:evidence-kind-invalid:${id}:${key}`);
+      continue;
+    }
+    if (EXECUTABLE_EVIDENCE_KINDS.has(item.kind)) executable = true;
+    const path = normalizeRepositoryPath(item.path);
+    if (!path || !evidenceExists(path)) {
+      blockers.push(`capability-audit:evidence-missing:${id}:${key}`);
+      continue;
+    }
+    if (!EVIDENCE_PATH_PATTERNS[item.kind].test(path)) {
+      blockers.push(`capability-audit:evidence-kind-path-mismatch:${id}:${key}`);
+    }
+  }
+  if (!executable) {
+    blockers.push(`capability-audit:non-executable:${id}`);
+  }
 }
 
 export function validateNonUiCapabilityEvidence(
@@ -70,34 +100,11 @@ export function validateNonUiCapabilityEvidence(
       if (row.status !== "verified") {
         blockers.push(`capability-audit:trace-mismatch:${row.id}`);
       }
-      const references = Array.isArray(record.evidence) ? record.evidence : [];
-      if (references.length === 0) {
-        blockers.push(`capability-audit:evidence-empty:${row.id}`);
-        continue;
-      }
-      let executable = false;
-      for (const key of references) {
-        const item = evidence?.[key];
-        if (!item || typeof item !== "object" || Array.isArray(item)) {
-          blockers.push(`capability-audit:evidence-unknown:${row.id}:${key}`);
-          continue;
-        }
-        if (!EVIDENCE_KINDS.has(item.kind)) {
-          blockers.push(`capability-audit:evidence-kind-invalid:${row.id}:${key}`);
-          continue;
-        }
-        if (EXECUTABLE_EVIDENCE_KINDS.has(item.kind)) executable = true;
-        const path = normalizePath(item.path);
-        if (!path || !evidenceExists(path)) {
-          blockers.push(`capability-audit:evidence-missing:${row.id}:${key}`);
-        }
-      }
-      if (!executable) {
-        blockers.push(`capability-audit:non-executable:${row.id}`);
-      }
+      validateEvidenceReferences(row.id, record, evidence, evidenceExists, blockers);
       continue;
     }
 
+    validateEvidenceReferences(row.id, record, evidence, evidenceExists, blockers);
     if (row.status === "verified") {
       blockers.push(`capability-audit:trace-mismatch:${row.id}`);
     }
