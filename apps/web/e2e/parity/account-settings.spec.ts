@@ -1,23 +1,34 @@
-import { createHash, randomBytes } from "node:crypto";
-
 import {
   expect,
+  request as playwrightRequest,
   test,
   type APIRequestContext,
   type BrowserContext,
   type Page,
 } from "@playwright/test";
+import {
+  accountDeletionResponseSchema,
+  accountExportReceiptResponseSchema,
+  authDeviceSessionsResponseSchema,
+  authSessionResponseSchema,
+  authorPenNameListResponseSchema,
+  authorPenNameResponseSchema,
+  modelConfigResponseSchema,
+  modelConfigsResponseSchema,
+  profileResponseSchema,
+} from "@novel-brain/contracts";
 import { Pool } from "pg";
 
-import { registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import {
   expectAuthorFacingLanguage,
   expectNoPrototypeOnlyLeakage,
   freezeApiTimestamps,
   productionScreenshotOptions,
+  waitForApiResponse,
 } from "../helpers/ui";
-import { uuidV7 } from "../helpers/uuid";
 
+const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440] as const;
 
 async function authenticatedPage(
@@ -56,20 +67,60 @@ test("account settings supports create, test, edit and delete", async ({
   await page.getByLabel("配置名称").fill("DeepSeek 正文");
   await page.getByLabel("API Key").fill("sk-secret-value-1234");
   await page.getByRole("checkbox", { name: "规划" }).check();
+  const createResponsePromise = waitForApiResponse(page, "POST", "/api/v1/model-configs");
   await page.getByRole("button", { name: "新增配置" }).click();
+  const createdConfig = modelConfigResponseSchema.parse(
+    await (await createResponsePromise).json(),
+  ).data;
   await expect(page.getByText("模型配置已保存。")).toBeVisible();
   await expect(page.getByText("****1234")).toBeVisible();
   await expect(page.getByText(/规划、正文/)).toBeVisible();
   await expect(page.getByText("sk-secret-value-1234")).toHaveCount(0);
+  const persistedConfigs = modelConfigsResponseSchema.parse(
+    await (await page.request.get("/api/v1/model-configs?limit=100")).json(),
+  ).data;
+  const persistedConfig = persistedConfigs.find((config) => config.id === createdConfig.id);
+  expect(persistedConfig).toMatchObject({
+    label: "DeepSeek 正文",
+    keyMasked: "****1234",
+  });
+  expect(persistedConfig?.purposes).toEqual(expect.arrayContaining(["planning", "writing"]));
 
+  const testResponsePromise = waitForApiResponse(
+    page,
+    "POST",
+    `/api/v1/model-configs/${createdConfig.id}/test`,
+  );
   await page.getByRole("button", { name: "测试连接" }).click();
+  expect((await testResponsePromise).status()).toBe(200);
   await expect(page.getByText("连接正常。")).toBeVisible();
+  const testedConfigs = modelConfigsResponseSchema.parse(
+    await (await page.request.get("/api/v1/model-configs?limit=100")).json(),
+  ).data;
+  expect(testedConfigs.find((config) => config.id === createdConfig.id)?.lastTestStatus).toBe(
+    "success",
+  );
 
   await page.getByRole("button", { name: "编辑 DeepSeek 正文" }).click();
   await expect(page.getByRole("combobox", { name: "服务商" })).toBeDisabled();
   await page.getByLabel("配置名称").fill("DeepSeek 主模型");
+  const editResponsePromise = waitForApiResponse(
+    page,
+    "PATCH",
+    `/api/v1/model-configs/${createdConfig.id}`,
+  );
   await page.getByRole("button", { name: "保存修改" }).click();
+  const editedConfig = modelConfigResponseSchema.parse(
+    await (await editResponsePromise).json(),
+  ).data;
+  expect(editedConfig.label).toBe("DeepSeek 主模型");
   await expect(page.getByText("DeepSeek 主模型")).toBeVisible();
+  const editedConfigs = modelConfigsResponseSchema.parse(
+    await (await page.request.get("/api/v1/model-configs?limit=100")).json(),
+  ).data;
+  expect(editedConfigs.find((config) => config.id === createdConfig.id)?.label).toBe(
+    "DeepSeek 主模型",
+  );
 
   await page.getByRole("button", { name: "删除 DeepSeek 主模型" }).click();
   await expect(page.getByText("至少保留一套默认配置")).toBeVisible();
@@ -79,12 +130,25 @@ test("account settings supports create, test, edit and delete", async ({
   await page.getByLabel("API Key").fill("sk-backup-value-5678");
   await page.getByRole("checkbox", { name: "检查" }).check();
   await page.getByRole("checkbox", { name: "正文" }).uncheck();
+  const backupCreateResponsePromise = waitForApiResponse(page, "POST", "/api/v1/model-configs");
   await page.getByRole("button", { name: "新增配置" }).click();
+  modelConfigResponseSchema.parse(await (await backupCreateResponsePromise).json());
   await expect(page.getByText("备用检查模型")).toBeVisible();
 
+  const deleteResponsePromise = waitForApiResponse(
+    page,
+    "DELETE",
+    `/api/v1/model-configs/${createdConfig.id}`,
+  );
   await page.getByRole("button", { name: "删除 DeepSeek 主模型" }).click();
+  expect((await deleteResponsePromise).status()).toBe(200);
   await expect(page.getByText("DeepSeek 主模型")).toHaveCount(0);
   await expect(page.getByText("备用检查模型")).toBeVisible();
+  const remainingConfigs = modelConfigsResponseSchema.parse(
+    await (await page.request.get("/api/v1/model-configs?limit=100")).json(),
+  ).data;
+  expect(remainingConfigs.some((config) => config.id === createdConfig.id)).toBe(false);
+  expect(remainingConfigs.some((config) => config.label === "备用检查模型")).toBe(true);
   await expectNoInternalTerms(page);
 });
 
@@ -243,6 +307,48 @@ test("create retries reuse the idempotency key", async ({ page, context, request
   expect(idempotencyKeys[0]).toBe(idempotencyKeys[1]);
 });
 
+test("pen name retries reuse the idempotency key", async ({ page, context, request }) => {
+  const idempotencyKeys: string[] = [];
+  await page.route(
+    (url) => url.pathname === "/api/v1/users/me/pen-names",
+    async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      const key = route.request().headers()["idempotency-key"];
+      if (key) {
+        idempotencyKeys.push(key);
+      }
+      if (idempotencyKeys.length === 1) {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({
+            error: {
+              code: "INTERNAL_ERROR",
+              message: "笔名创建失败。",
+              details: {},
+              requestId: "req_e2e_pen_retry",
+            },
+          }),
+        });
+        return;
+      }
+      await route.continue();
+    },
+  );
+
+  await authenticatedPage(page, context, request);
+  await page.getByLabel("新笔名", { exact: true }).fill("幂等笔名");
+  await page.getByRole("button", { name: "新增笔名" }).click();
+  await expect(page.getByText("笔名创建失败。")).toBeVisible();
+  await page.getByRole("button", { name: "新增笔名" }).click();
+  await expect(page.getByText("笔名已创建。")).toBeVisible();
+  expect(idempotencyKeys).toHaveLength(2);
+  expect(idempotencyKeys[0]).toBe(idempotencyKeys[1]);
+});
+
 test("loading and error states are visible", async ({ page, context, request }) => {
   let releaseConfigs: (() => void) | undefined;
   const configsGate = new Promise<void>((resolve) => {
@@ -284,65 +390,161 @@ test("manages profile, multiple pen names and device sessions", async ({
   await page.getByLabel("显示名称").fill("青舟作者");
   await page.getByLabel("个人简介").fill("写仙侠长篇，也写短篇。");
   await page.getByLabel("头像链接").fill("https://example.com/avatar.png");
+  const profileResponsePromise = waitForApiResponse(page, "PATCH", "/api/v1/users/me");
   await page.getByRole("button", { name: "保存资料" }).click();
+  const savedProfile = profileResponseSchema.parse(
+    await (await profileResponsePromise).json(),
+  ).data;
+  expect(savedProfile).toMatchObject({
+    displayName: "青舟作者",
+    bio: "写仙侠长篇，也写短篇。",
+    avatarUrl: "https://example.com/avatar.png",
+  });
   await expect(page.getByText("账号资料已保存。")).toBeVisible();
   await expect(page.getByRole("heading", { name: "青舟作者" })).toBeVisible();
+  const persistedProfile = authSessionResponseSchema.parse(
+    await (await page.request.get("/api/v1/auth/me")).json(),
+  ).data.user;
+  expect(persistedProfile).toMatchObject({
+    displayName: "青舟作者",
+    bio: "写仙侠长篇，也写短篇。",
+    version: savedProfile.version,
+  });
 
   await page.getByLabel("新笔名", { exact: true }).fill("青舟");
   await page.getByLabel("新笔名简介").fill("仙侠长篇署名");
+  const penCreateResponsePromise = waitForApiResponse(page, "POST", "/api/v1/users/me/pen-names");
   await page.getByRole("button", { name: "新增笔名" }).click();
+  const createdPenName = authorPenNameResponseSchema.parse(
+    await (await penCreateResponsePromise).json(),
+  ).data;
   await expect(page.getByText("笔名已创建。")).toBeVisible();
   const penNameRow = page.locator(".pen-name-row").filter({ hasText: "青舟" });
   await expect(penNameRow).toBeVisible();
   await expect(penNameRow.getByText("默认", { exact: true })).toBeVisible();
+  let persistedPenNames = authorPenNameListResponseSchema.parse(
+    await (await page.request.get("/api/v1/users/me/pen-names?limit=100")).json(),
+  ).data;
+  expect(persistedPenNames).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: createdPenName.id,
+        name: "青舟",
+        bio: "仙侠长篇署名",
+        isDefault: true,
+      }),
+    ]),
+  );
 
   await page.getByRole("button", { name: "编辑笔名 青舟" }).click();
   await page.getByLabel("笔名名称").fill("青舟子");
+  const penEditResponsePromise = waitForApiResponse(
+    page,
+    "PATCH",
+    `/api/v1/users/me/pen-names/${createdPenName.id}`,
+  );
   await page.getByRole("button", { name: "保存笔名" }).click();
+  const editedPenName = authorPenNameResponseSchema.parse(
+    await (await penEditResponsePromise).json(),
+  ).data;
+  expect(editedPenName.name).toBe("青舟子");
   await expect(page.getByText("笔名已保存。")).toBeVisible();
   await expect(page.locator(".pen-name-row").filter({ hasText: "青舟子" })).toBeVisible();
+  persistedPenNames = authorPenNameListResponseSchema.parse(
+    await (await page.request.get("/api/v1/users/me/pen-names?limit=100")).json(),
+  ).data;
+  expect(persistedPenNames.find((penName) => penName.id === createdPenName.id)?.name).toBe(
+    "青舟子",
+  );
 
   page.once("dialog", (dialog) => {
     void dialog.accept();
   });
+  const penDeleteResponsePromise = waitForApiResponse(
+    page,
+    "DELETE",
+    `/api/v1/users/me/pen-names/${createdPenName.id}`,
+  );
   await page.getByRole("button", { name: "删除笔名 青舟子" }).click();
+  expect((await penDeleteResponsePromise).status()).toBe(200);
   await expect(page.getByText("笔名已删除。")).toBeVisible();
   await expect(page.getByText("还没有笔名")).toBeVisible();
+  persistedPenNames = authorPenNameListResponseSchema.parse(
+    await (await page.request.get("/api/v1/users/me/pen-names?limit=100")).json(),
+  ).data;
+  expect(persistedPenNames.some((penName) => penName.id === createdPenName.id)).toBe(false);
 
-  const pool = new Pool({
-    connectionString:
-      process.env.E2E_DATABASE_URL ??
-      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e",
-  });
+  const otherRequest = await playwrightRequest.newContext({ baseURL: origin });
   try {
-    const owner = await pool.query<{ id: string }>("SELECT id FROM users WHERE email = $1", [
-      email,
-    ]);
-    await pool.query(
-      `INSERT INTO sessions (id, user_id, token_hash, user_agent, ip, expires_at)
-       VALUES ($1, $2, $3, $4, $5, now() + interval '1 day')`,
-      [
-        uuidV7(),
-        owner.rows[0]?.id,
-        createHash("sha256").update(randomBytes(32).toString("hex")).digest("hex"),
-        "Second Device",
-        "203.0.113.20",
-      ],
+    const otherCsrf = await getCsrf(otherRequest);
+    const otherLogin = await otherRequest.post("/api/v1/auth/login", {
+      headers: {
+        Origin: origin,
+        "User-Agent": "Second Device",
+        "X-CSRF-Token": otherCsrf,
+      },
+      data: { email, password: "StrongPassword123" },
+    });
+    expect(otherLogin.status()).toBe(200);
+
+    await page.reload();
+    await expect(page.locator(".account-session-row")).toHaveCount(2);
+    const listedSessions = authDeviceSessionsResponseSchema.parse(
+      await (await page.request.get("/api/v1/auth/sessions?limit=100")).json(),
+    ).data;
+    const otherSession = listedSessions.find((session) => !session.current);
+    if (!otherSession) {
+      throw new Error("Expected a second persisted device session");
+    }
+    const revokeResponsePromise = waitForApiResponse(
+      page,
+      "DELETE",
+      `/api/v1/auth/sessions/${otherSession.id}`,
     );
+    const otherDevice = page.locator(".account-session-row").filter({ hasNotText: "当前设备" });
+    await otherDevice.getByRole("button", { name: /退出设备/ }).click();
+    expect((await revokeResponsePromise).status()).toBe(200);
+    await expect(page.getByText("已退出该设备。")).toBeVisible();
+    await expect(page.locator(".account-session-row")).toHaveCount(1);
+    const sessionsAfterRevoke = authDeviceSessionsResponseSchema.parse(
+      await (await page.request.get("/api/v1/auth/sessions?limit=100")).json(),
+    ).data;
+    expect(sessionsAfterRevoke.some((session) => session.id === otherSession.id)).toBe(false);
+    expect((await otherRequest.get("/api/v1/auth/me")).status()).toBe(401);
+
+    const thirdCsrf = await getCsrf(otherRequest);
+    const thirdLogin = await otherRequest.post("/api/v1/auth/login", {
+      headers: {
+        Origin: origin,
+        "User-Agent": "Third Device",
+        "X-CSRF-Token": thirdCsrf,
+      },
+      data: { email, password: "StrongPassword123" },
+    });
+    expect(thirdLogin.status()).toBe(200);
+    await page.reload();
+    await expect(page.locator(".account-session-row")).toHaveCount(2);
+
+    const currentSessionRequest = await playwrightRequest.newContext({
+      baseURL: origin,
+      storageState: {
+        cookies: await context.cookies(origin),
+        origins: [],
+      },
+    });
+    const logoutAllResponsePromise = waitForApiResponse(page, "POST", "/api/v1/auth/logout-all");
+    try {
+      await page.getByRole("button", { name: "退出所有设备" }).click();
+      expect((await logoutAllResponsePromise).status()).toBe(200);
+      await expect(page).toHaveURL(/\/login$/);
+      expect((await currentSessionRequest.get("/api/v1/auth/me")).status()).toBe(401);
+      expect((await otherRequest.get("/api/v1/auth/me")).status()).toBe(401);
+    } finally {
+      await currentSessionRequest.dispose();
+    }
   } finally {
-    await pool.end();
+    await otherRequest.dispose();
   }
-
-  await page.reload();
-  await expect(page.locator(".account-session-row")).toHaveCount(2);
-  const otherDevice = page.locator(".account-session-row").filter({ hasNotText: "当前设备" });
-  await expect(otherDevice).toHaveCount(1);
-  await otherDevice.getByRole("button", { name: /退出设备/ }).click();
-  await expect(page.getByText("已退出该设备。")).toBeVisible();
-  await expect(page.locator(".account-session-row")).toHaveCount(1);
-
-  await page.getByRole("button", { name: "退出所有设备" }).click();
-  await expect(page).toHaveURL(/\/login$/);
 });
 
 test("exports before deletion and recovers inside the approved window", async ({
@@ -351,22 +553,77 @@ test("exports before deletion and recovers inside the approved window", async ({
   request,
 }) => {
   const { email } = await authenticatedPage(page, context, request);
+  const modelCsrf = await getCsrf(page.request);
+  const excludedModel = await page.request.post("/api/v1/model-configs", {
+    headers: {
+      Origin: origin,
+      "Idempotency-Key": crypto.randomUUID(),
+      "X-CSRF-Token": modelCsrf,
+    },
+    data: {
+      provider: "deepseek",
+      label: "导出排除 Key",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "sk-export-secret-1234",
+      purposes: ["writing"],
+      isDefault: true,
+    },
+  });
+  expect(excludedModel.status(), await excludedModel.text()).toBe(200);
   const deleteButton = page.getByRole("button", { name: "先导出再删除" });
   await expect(deleteButton).toBeDisabled();
 
   const downloadPromise = page.waitForEvent("download");
+  const exportResponsePromise = waitForApiResponse(page, "POST", "/api/v1/users/me/export");
+  const exportDownloadResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === "GET" &&
+      /^\/api\/v1\/users\/me\/export\/[^/]+\/download$/u.test(url.pathname)
+    );
+  });
   await page.getByRole("button", { name: "导出", exact: true }).click();
+  const exportReceipt = accountExportReceiptResponseSchema.parse(
+    await (await exportResponsePromise).json(),
+  ).data;
+  const exportDownloadResponse = await exportDownloadResponsePromise;
+  expect(exportDownloadResponse.status()).toBe(200);
+  expect(exportDownloadResponse.headers()["x-export-checksum"]).toBe(exportReceipt.checksum);
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^novel-brain-account-\d{4}-\d{2}-\d{2}\.json$/);
+  const persistedDownload = await page.request.get(
+    `/api/v1/users/me/export/${exportReceipt.id}/download`,
+  );
+  expect(persistedDownload.status()).toBe(200);
+  const exportBody = await persistedDownload.text();
+  expect(exportBody).not.toContain("encryptedKey");
+  expect(exportBody).not.toContain("sk-");
   await expect(page.getByText("账号数据已导出，核对无误后即可申请注销。")).toBeVisible();
   await expect(page.getByRole("button", { name: "申请注销" })).toBeEnabled();
 
   page.on("dialog", (dialog) => {
     void dialog.accept();
   });
+  const deleteResponsePromise = waitForApiResponse(page, "POST", "/api/v1/users/me/delete");
   await page.getByRole("button", { name: "申请注销" }).click();
+  const deletion = accountDeletionResponseSchema.parse(
+    await (await deleteResponsePromise).json(),
+  ).data;
+  expect(deletion).toMatchObject({
+    status: "recovery_pending",
+    exportReceiptId: exportReceipt.id,
+  });
   await expect(page.getByRole("heading", { name: "账号正在注销流程中" })).toBeVisible();
   await expect(page.getByRole("button", { name: "恢复账号" })).toBeVisible();
+  const persistedDeletion = accountDeletionResponseSchema.parse(
+    await (await page.request.get("/api/v1/users/me/deletion")).json(),
+  ).data;
+  expect(persistedDeletion).toMatchObject({
+    id: deletion.id,
+    status: "recovery_pending",
+    exportReceiptId: exportReceipt.id,
+  });
 
   await context.clearCookies();
   await page.goto("/login");
@@ -388,25 +645,23 @@ test("exports before deletion and recovers inside the approved window", async ({
   }
 
   await page.setViewportSize({ width: 1440, height: 900 });
+  const recoverResponsePromise = waitForApiResponse(
+    page,
+    "POST",
+    "/api/v1/users/me/deletion/recover",
+  );
   await page.getByRole("button", { name: "恢复账号" }).click();
+  const recovered = accountDeletionResponseSchema.parse(
+    await (await recoverResponsePromise).json(),
+  ).data;
+  expect(recovered.status).toBe("recovered");
   await expect(page.getByText("账号已恢复，作品和数据保持原样。")).toBeVisible();
   await expect(page.getByRole("heading", { name: "把写作环境准备好" })).toBeVisible();
   await expect(page.getByRole("button", { name: "先导出再删除" })).toBeDisabled();
-
-  const pool = new Pool({
-    connectionString:
-      process.env.E2E_DATABASE_URL ??
-      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e",
-  });
-  try {
-    const status = await pool.query<{ status: string }>(
-      "SELECT status FROM users WHERE email = $1",
-      [email],
-    );
-    expect(status.rows[0]?.status).toBe("active");
-  } finally {
-    await pool.end();
-  }
+  const activeSession = authSessionResponseSchema.parse(
+    await (await page.request.get("/api/v1/auth/me")).json(),
+  ).data;
+  expect(activeSession.user.status).toBe("active");
 });
 
 test("shows a partial deletion failure without exposing internal store names", async ({

@@ -3,7 +3,9 @@ import {
   auditLogs,
   createDatabaseClient,
   createDatabasePool,
+  findIdempotentResource,
   penNames,
+  rememberIdempotentResource,
   users,
   type DatabaseClient,
 } from "@novel-brain/db";
@@ -32,6 +34,7 @@ export interface CreatePenNameInput {
   avatarUrl: string | null;
   isDefault: boolean;
   audit: ProfileAuditContext;
+  idempotencyKey?: string;
 }
 
 export interface UpdatePenNameInput {
@@ -141,6 +144,24 @@ export class UsersRepository implements OnModuleDestroy {
   async createPenName(input: CreatePenNameInput): Promise<PenNameRecord> {
     return this.db.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.userId}))`);
+      if (input.idempotencyKey) {
+        const replay = await findIdempotentResource(
+          transaction,
+          input.userId,
+          "pen-names",
+          input.idempotencyKey,
+        );
+        if (replay) {
+          const [existing] = await transaction
+            .select()
+            .from(penNames)
+            .where(and(eq(penNames.id, replay.resourceId), eq(penNames.userId, input.userId)))
+            .limit(1);
+          if (existing) {
+            return existing;
+          }
+        }
+      }
       const existing = await transaction
         .select({ id: penNames.id })
         .from(penNames)
@@ -181,6 +202,15 @@ export class UsersRepository implements OnModuleDestroy {
         ip: input.audit.ip,
         userAgent: input.audit.userAgent,
       });
+      if (input.idempotencyKey) {
+        await rememberIdempotentResource(
+          transaction,
+          input.userId,
+          "pen-names",
+          input.idempotencyKey,
+          { resourceType: "pen_name", resourceId: penName.id },
+        );
+      }
       return penName;
     });
   }
