@@ -28,6 +28,9 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import {
   apiErrorSchema,
   characterDetailResponseSchema,
+  characterKnowledgeStateCreateRequestSchema,
+  characterKnowledgeStateResponseSchema,
+  characterReferenceListResponseSchema,
   characterRelationshipCreateRequestSchema,
   characterRelationshipResponseSchema,
   confirmedSettingListResponseSchema,
@@ -50,8 +53,11 @@ import {
   timelineEventResponseSchema,
   worldTimelineResponseSchema,
   workResponseSchema,
+  type CharacterKnowledgeStateCreateRequest,
   type ConfirmedSetting,
   type CharacterDetail,
+  type CharacterReference,
+  type CharacterReferenceKind,
   type CustomFieldDefinition,
   type CustomFieldValue,
   type FactionDetail,
@@ -329,12 +335,40 @@ const characterStateLabels: Record<
   disguise: "伪装",
 };
 
+const characterStateKeyLabels: Record<string, string> = {
+  overall: "整体状态",
+  current_location: "当前位置",
+  left_arm: "左臂状态",
+  right_arm: "右臂状态",
+  appearance: "外貌状态",
+  identity_disguise: "身份伪装",
+};
+
 const knowledgeStateLabels: Record<CharacterDetail["knowledgeStates"][number]["state"], string> = {
   knowledge: "已知",
   belief: "相信",
   suspicion: "怀疑",
   misbelief: "误信",
   unknown: "未知",
+};
+
+const knowledgeSourceLabels: Record<
+  CharacterDetail["knowledgeStates"][number]["sourceKind"],
+  string
+> = {
+  observed: "亲眼所见",
+  told: "他人告知",
+  inferred: "自行推断",
+  read: "文字记录",
+  assumed: "默认假设",
+};
+
+const characterReferenceLabels: Record<CharacterReferenceKind, string> = {
+  chapter: "正文引用",
+  outline: "章纲引用",
+  foreshadow: "伏笔引用",
+  story_bible: "故事圣经引用",
+  fact: "已确认事实",
 };
 
 const factionRelationLabels: Record<
@@ -441,6 +475,9 @@ export function SettingsCenter({
   const [characterDetail, setCharacterDetail] = useState<CharacterDetail | null>(null);
   const [characterDetailLoading, setCharacterDetailLoading] = useState(false);
   const [characterDetailError, setCharacterDetailError] = useState("");
+  const [characterReferences, setCharacterReferences] = useState<CharacterReference[]>([]);
+  const [characterReferencesLoading, setCharacterReferencesLoading] = useState(false);
+  const [characterReferencesError, setCharacterReferencesError] = useState("");
   const [worldDetail, setWorldDetail] = useState<WorldDomainDetail | null>(null);
   const [worldDetailLoading, setWorldDetailLoading] = useState(false);
   const [worldDetailError, setWorldDetailError] = useState("");
@@ -568,6 +605,55 @@ export function SettingsCenter({
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  const refreshCharacterReferences = useCallback(
+    async (entityId: string) => {
+      if (!work) {
+        return;
+      }
+      setCharacterReferencesLoading(true);
+      setCharacterReferencesError("");
+      try {
+        const references = await fetchAllCursorPages(
+          `${settingsPath(work)}/characters/${entityId}/references`,
+          characterReferenceListResponseSchema.parse,
+          "来源引用加载失败。",
+        );
+        setCharacterReferences(references);
+      } catch (caught) {
+        setCharacterReferencesError(
+          caught instanceof Error ? caught.message : "来源引用加载失败。",
+        );
+      } finally {
+        setCharacterReferencesLoading(false);
+      }
+    },
+    [work],
+  );
+
+  const refreshVersionHistory = useCallback(
+    async (entityId: string) => {
+      if (!work) {
+        return;
+      }
+      setVersionHistoryLoading(true);
+      setVersionHistoryError("");
+      try {
+        setVersions(
+          await fetchAllCursorPages(
+            `${settingsPath(work)}/entities/${entityId}/versions`,
+            settingEntityVersionListResponseSchema.parse,
+            "版本历史加载失败。",
+          ),
+        );
+      } catch (caught) {
+        setVersionHistoryError(caught instanceof Error ? caught.message : "版本历史加载失败。");
+      } finally {
+        setVersionHistoryLoading(false);
+      }
+    },
+    [work],
+  );
 
   const refreshDetail = useCallback(
     async (entityId: string, entityType: SettingEntityType) => {
@@ -718,6 +804,9 @@ export function SettingsCenter({
       setCharacterDetail(null);
       setCharacterDetailError("");
       setCharacterDetailLoading(false);
+      setCharacterReferences([]);
+      setCharacterReferencesError("");
+      setCharacterReferencesLoading(false);
       setWorldDetail(null);
       setWorldDetailError("");
       setWorldDetailLoading(false);
@@ -782,7 +871,7 @@ export function SettingsCenter({
 
   async function refreshProjection() {
     if (!work) {
-      return;
+      return [];
     }
     const basePath = settingsPath(work);
     const [entityData, confirmedData, fieldData] = await Promise.all([
@@ -805,6 +894,7 @@ export function SettingsCenter({
     setEntities(entityData);
     setConfirmed(confirmedData);
     setCustomFields(fieldData);
+    return entityData;
   }
 
   async function createEntity() {
@@ -1222,10 +1312,63 @@ export function SettingsCenter({
       }
       characterRelationshipResponseSchema.parse(await response.json());
       setNotice("关系已保存。");
+      await refreshProjection();
       await refreshDetail(entity.id, entity.type);
       return true;
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "关系保存失败。");
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function createCharacterKnowledge(
+    entity: SettingEntity,
+    input: CharacterKnowledgeStateCreateRequest,
+  ): Promise<boolean> {
+    if (!work || entity.type !== "character") {
+      return false;
+    }
+    setBusy(`knowledge-${entity.id}`);
+    setActionError("");
+    setNotice("");
+    try {
+      const payload = characterKnowledgeStateCreateRequestSchema.parse({
+        ...input,
+        claimedContent: input.state === "unknown" ? null : input.claimedContent,
+      });
+      const csrfToken = await getCsrfToken();
+      const response = await fetch(
+        `${settingsPath(work)}/characters/${entity.id}/knowledge-states`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
+            "x-csrf-token": csrfToken,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "角色认知保存失败。"));
+      }
+      characterKnowledgeStateResponseSchema.parse(await response.json());
+      setNotice("角色认知已保存。");
+      const refreshedEntities = await refreshProjection();
+      const refreshedEntity = refreshedEntities.find((candidate) => candidate.id === entity.id);
+      if (refreshedEntity) {
+        setEditor((current) =>
+          current?.entityId === entity.id
+            ? { ...current, version: refreshedEntity.version }
+            : current,
+        );
+      }
+      await refreshDetail(entity.id, entity.type);
+      return true;
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "角色认知保存失败。");
       return false;
     } finally {
       setBusy("");
@@ -1353,8 +1496,12 @@ export function SettingsCenter({
           characterDetail={characterDetail}
           characterDetailError={characterDetailError}
           characterDetailLoading={characterDetailLoading}
+          characterReferences={characterReferences}
+          characterReferencesError={characterReferencesError}
+          characterReferencesLoading={characterReferencesLoading}
           customFieldDefinitions={customFields}
           entity={selected}
+          factOptions={confirmed.filter((item) => item.kind === "fact")}
           key={selected.id}
           onBack={closeEntityDetail}
           onChangeRequest={() => beginChangeRequest(selected)}
@@ -1370,9 +1517,12 @@ export function SettingsCenter({
           onEditAlias={() => beginEdit(selected, "alias")}
           onLock={() => lockEntity(selected)}
           onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
-          onRetryVersionHistory={() => refreshDetail(selected.id, selected.type)}
+          onRetryCharacterReferences={() => refreshCharacterReferences(selected.id)}
+          onRetryVersionHistory={() => refreshVersionHistory(selected.id)}
           onRestore={(targetVersion, reason) => restoreEntity(selected, targetVersion, reason)}
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
+          onRefreshReferences={() => refreshCharacterReferences(selected.id)}
+          onRefreshVersionHistory={() => refreshVersionHistory(selected.id)}
           powerLevelLabel={powerLevelLabel}
           proposals={proposals}
           relationshipTargets={entities.filter(
@@ -1381,6 +1531,7 @@ export function SettingsCenter({
           versionHistoryError={versionHistoryError}
           versionHistoryLoading={versionHistoryLoading}
           versions={versions}
+          workId={work.id}
           worldDetail={worldDetail}
           worldDetailError={worldDetailError}
           worldDetailLoading={worldDetailLoading}
@@ -1607,8 +1758,14 @@ export function SettingsCenter({
               customFieldDefinitions={customFields}
               editor={editor}
               entities={entities}
+              factOptions={confirmed.filter((item) => item.kind === "fact")}
+              knowledgeBusy={busy.startsWith("knowledge-")}
               onCancel={() => setEditor(null)}
               onChange={setEditor}
+              onCreateKnowledge={(input) => {
+                const entity = entities.find((candidate) => candidate.id === editor.entityId);
+                return entity ? createCharacterKnowledge(entity, input) : Promise.resolve(false);
+              }}
               onSave={() => (editor.mode === "create" ? createEntity() : saveEntity())}
               powerLevelLabel={powerLevelLabel}
             />
@@ -1679,8 +1836,11 @@ function SettingEditor({
   customFieldDefinitions,
   editor,
   entities,
+  factOptions,
+  knowledgeBusy,
   onCancel,
   onChange,
+  onCreateKnowledge,
   onSave,
   powerLevelLabel,
 }: {
@@ -1688,8 +1848,11 @@ function SettingEditor({
   customFieldDefinitions: CustomFieldDefinition[];
   editor: EditorState;
   entities: SettingEntity[];
+  factOptions: ConfirmedSetting[];
+  knowledgeBusy: boolean;
   onCancel: () => void;
   onChange: (editor: EditorState) => void;
+  onCreateKnowledge: (input: CharacterKnowledgeStateCreateRequest) => Promise<boolean>;
   onSave: () => void;
   powerLevelLabel: string;
 }) {
@@ -1702,6 +1865,56 @@ function SettingEditor({
       (definition.appliesTo === "all" || definition.appliesTo === editor.type),
   );
   const changeMode = editor.mode === "change";
+  const [knowledgeFactId, setKnowledgeFactId] = useState("");
+  const [knowledgeState, setKnowledgeState] =
+    useState<CharacterDetail["knowledgeStates"][number]["state"]>("knowledge");
+  const [knowledgeContent, setKnowledgeContent] = useState("");
+  const [knowledgeSourceKind, setKnowledgeSourceKind] =
+    useState<CharacterDetail["knowledgeStates"][number]["sourceKind"]>("told");
+  const [knowledgeFromChapterInput, setKnowledgeFromChapterInput] = useState("1");
+  const [knowledgeToChapterInput, setKnowledgeToChapterInput] = useState("");
+  const knowledgeFromChapter = Number(knowledgeFromChapterInput);
+  const knowledgeToChapter =
+    knowledgeToChapterInput.trim() === "" ? null : Number(knowledgeToChapterInput);
+  const knowledgeValidityInvalid =
+    !Number.isInteger(knowledgeFromChapter) ||
+    knowledgeFromChapter < 1 ||
+    (knowledgeToChapter !== null &&
+      (!Number.isInteger(knowledgeToChapter) || knowledgeToChapter < knowledgeFromChapter));
+  const knowledgeContentRequired = knowledgeState !== "unknown";
+  const knowledgeContentMissing = knowledgeContentRequired && !knowledgeContent.trim();
+
+  async function submitKnowledge() {
+    if (
+      editor.mode !== "edit" ||
+      !knowledgeFactId ||
+      knowledgeValidityInvalid ||
+      knowledgeContentMissing
+    ) {
+      return;
+    }
+    const saved = await onCreateKnowledge({
+      objectiveFactId: knowledgeFactId,
+      state: knowledgeState,
+      claimedContent: knowledgeContent.trim(),
+      sourceKind: knowledgeSourceKind,
+      validity: {
+        fromChapter: knowledgeFromChapter,
+        toChapter: knowledgeToChapter,
+        fromStoryTime: null,
+        toStoryTime: null,
+      },
+      sourceChapterId: null,
+    });
+    if (saved) {
+      setKnowledgeFactId("");
+      setKnowledgeState("knowledge");
+      setKnowledgeContent("");
+      setKnowledgeSourceKind("told");
+      setKnowledgeFromChapterInput("1");
+      setKnowledgeToChapterInput("");
+    }
+  }
 
   return (
     <section className="panel settings-editor" aria-labelledby="settings-editor-title">
@@ -1836,56 +2049,176 @@ function SettingEditor({
             />
           </label>
         ) : editor.type === "character" ? (
-          <div className="settings-form-grid">
-            <label className="settings-field settings-field-wide">
-              <span>人物欲望</span>
-              <textarea
-                onChange={(event) => update("desire", event.target.value)}
-                rows={3}
-                value={editor.desire}
-              />
-            </label>
-            <label className="settings-field settings-field-wide">
-              <span>人物恐惧</span>
-              <textarea
-                onChange={(event) => update("fear", event.target.value)}
-                rows={3}
-                value={editor.fear}
-              />
-            </label>
-            <label className="settings-field settings-field-wide">
-              <span>人物目标</span>
-              <textarea
-                onChange={(event) => update("goal", event.target.value)}
-                rows={3}
-                value={editor.goal}
-              />
-            </label>
-            <label className="settings-field settings-field-wide">
-              <span>声纹样本</span>
-              <textarea
-                onChange={(event) => update("voiceSample", event.target.value)}
-                rows={3}
-                value={editor.voiceSample}
-              />
-            </label>
-            <label className="settings-field settings-field-wide">
-              <span>声线指南</span>
-              <textarea
-                onChange={(event) => update("voiceGuide", event.target.value)}
-                rows={3}
-                value={editor.voiceGuide}
-              />
-            </label>
-            <label className="settings-field settings-field-wide">
-              <span>伪装</span>
-              <textarea
-                onChange={(event) => update("disguise", event.target.value)}
-                rows={3}
-                value={editor.disguise}
-              />
-            </label>
-          </div>
+          <>
+            <div className="settings-form-grid">
+              <label className="settings-field settings-field-wide">
+                <span>人物欲望</span>
+                <textarea
+                  onChange={(event) => update("desire", event.target.value)}
+                  rows={3}
+                  value={editor.desire}
+                />
+              </label>
+              <label className="settings-field settings-field-wide">
+                <span>人物恐惧</span>
+                <textarea
+                  onChange={(event) => update("fear", event.target.value)}
+                  rows={3}
+                  value={editor.fear}
+                />
+              </label>
+              <label className="settings-field settings-field-wide">
+                <span>人物目标</span>
+                <textarea
+                  onChange={(event) => update("goal", event.target.value)}
+                  rows={3}
+                  value={editor.goal}
+                />
+              </label>
+              <label className="settings-field settings-field-wide">
+                <span>声纹样本</span>
+                <textarea
+                  onChange={(event) => update("voiceSample", event.target.value)}
+                  rows={3}
+                  value={editor.voiceSample}
+                />
+              </label>
+              <label className="settings-field settings-field-wide">
+                <span>声线指南</span>
+                <textarea
+                  onChange={(event) => update("voiceGuide", event.target.value)}
+                  rows={3}
+                  value={editor.voiceGuide}
+                />
+              </label>
+              <label className="settings-field settings-field-wide">
+                <span>伪装</span>
+                <textarea
+                  onChange={(event) => update("disguise", event.target.value)}
+                  rows={3}
+                  value={editor.disguise}
+                />
+              </label>
+            </div>
+            {editor.mode === "edit" ? (
+              <div className="settings-detail-block">
+                <h3>编辑角色认知</h3>
+                {factOptions.length > 0 ? (
+                  <>
+                    <div className="settings-relationship-form">
+                      <label className="settings-field">
+                        <span>客观事实</span>
+                        <select
+                          aria-label="客观事实"
+                          onChange={(event) => setKnowledgeFactId(event.target.value)}
+                          value={knowledgeFactId}
+                        >
+                          <option value="">请选择事实</option>
+                          {factOptions.map((fact) => (
+                            <option key={fact.id} value={fact.id}>
+                              {formatConfirmedFactLabel(fact)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="settings-field">
+                        <span>认知状态</span>
+                        <select
+                          aria-label="认知状态"
+                          onChange={(event) =>
+                            setKnowledgeState(
+                              event.target
+                                .value as CharacterDetail["knowledgeStates"][number]["state"],
+                            )
+                          }
+                          value={knowledgeState}
+                        >
+                          {Object.entries(knowledgeStateLabels).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="settings-field">
+                        <span>生效章节</span>
+                        <input
+                          aria-label="生效章节"
+                          inputMode="numeric"
+                          min={1}
+                          onChange={(event) => setKnowledgeFromChapterInput(event.target.value)}
+                          type="number"
+                          value={knowledgeFromChapterInput}
+                        />
+                      </label>
+                      <label className="settings-field">
+                        <span>失效章节</span>
+                        <input
+                          aria-label="失效章节"
+                          inputMode="numeric"
+                          min={knowledgeFromChapter || 1}
+                          onChange={(event) => setKnowledgeToChapterInput(event.target.value)}
+                          placeholder="留空表示持续有效"
+                          type="number"
+                          value={knowledgeToChapterInput}
+                        />
+                      </label>
+                      <label className="settings-field settings-field-wide">
+                        <span>认知内容</span>
+                        <textarea
+                          aria-label="认知内容"
+                          disabled={!knowledgeContentRequired}
+                          onChange={(event) => setKnowledgeContent(event.target.value)}
+                          placeholder="记录这个角色在故事中实际知道、相信或怀疑的内容。"
+                          rows={3}
+                          value={knowledgeContent}
+                        />
+                      </label>
+                      <label className="settings-field">
+                        <span>信息来源</span>
+                        <select
+                          aria-label="信息来源"
+                          onChange={(event) =>
+                            setKnowledgeSourceKind(
+                              event.target
+                                .value as CharacterDetail["knowledgeStates"][number]["sourceKind"],
+                            )
+                          }
+                          value={knowledgeSourceKind}
+                        >
+                          {Object.entries(knowledgeSourceLabels).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-primary btn-small"
+                      disabled={
+                        knowledgeBusy ||
+                        !knowledgeFactId ||
+                        knowledgeValidityInvalid ||
+                        knowledgeContentMissing
+                      }
+                      onClick={() => void submitKnowledge()}
+                      type="button"
+                    >
+                      {knowledgeBusy ? (
+                        <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                      ) : (
+                        <Plus size={14} aria-hidden="true" />
+                      )}
+                      保存认知
+                    </button>
+                  </>
+                ) : (
+                  <p>还没有可引用的客观事实。先提交本章事实后再记录角色认知。</p>
+                )}
+              </div>
+            ) : null}
+          </>
         ) : editor.type === "faction" || editor.type === "map" ? (
           <label className="settings-field">
             <span>{settingTypeLabels[editor.type]}</span>
@@ -2557,8 +2890,12 @@ function EntityDetail({
   characterDetail,
   characterDetailError,
   characterDetailLoading,
+  characterReferences,
+  characterReferencesError,
+  characterReferencesLoading,
   customFieldDefinitions,
   entity,
+  factOptions,
   onBack,
   onChangeRequest,
   onCreateProposal,
@@ -2569,15 +2906,19 @@ function EntityDetail({
   onEditAlias,
   onLock,
   onRetryCharacterDetail,
+  onRetryCharacterReferences,
   onRetryVersionHistory,
+  onRefreshVersionHistory,
   onRestore,
   onRetryWorldDetail,
+  onRefreshReferences,
   powerLevelLabel,
   proposals,
   relationshipTargets,
   versionHistoryError,
   versionHistoryLoading,
   versions,
+  workId,
   worldDetail,
   worldDetailError,
   worldDetailLoading,
@@ -2587,8 +2928,12 @@ function EntityDetail({
   characterDetail: CharacterDetail | null;
   characterDetailError: string;
   characterDetailLoading: boolean;
+  characterReferences: CharacterReference[];
+  characterReferencesError: string;
+  characterReferencesLoading: boolean;
   customFieldDefinitions: CustomFieldDefinition[];
   entity: SettingEntity;
+  factOptions: ConfirmedSetting[];
   onBack: () => void;
   onChangeRequest: () => void;
   onCreateProposal: (input: ProposalInput) => void;
@@ -2606,15 +2951,19 @@ function EntityDetail({
   onEditAlias: () => void;
   onLock: () => void;
   onRetryCharacterDetail: () => void;
+  onRetryCharacterReferences: () => void;
   onRetryVersionHistory: () => void;
+  onRefreshVersionHistory: () => void;
   onRestore: (targetVersion: number, reason: string) => Promise<boolean>;
   onRetryWorldDetail: () => void;
+  onRefreshReferences: () => void;
   powerLevelLabel: string;
   proposals: SettingProposal[];
   relationshipTargets: SettingEntity[];
   versionHistoryError: string;
   versionHistoryLoading: boolean;
   versions: SettingEntityVersion[];
+  workId: string;
   worldDetail: WorldDomainDetail | null;
   worldDetailError: string;
   worldDetailLoading: boolean;
@@ -2819,7 +3168,15 @@ function EntityDetail({
               aria-current={activeSection === tab.key ? "true" : undefined}
               className={`entity-page-nav-item${activeSection === tab.key ? " active" : ""}`}
               key={tab.key}
-              onClick={() => scrollToSection(tab.key)}
+              onClick={() => {
+                if (tab.key === "references" && entity.type === "character") {
+                  void onRefreshReferences();
+                }
+                if (tab.key === "history") {
+                  void onRefreshVersionHistory();
+                }
+                scrollToSection(tab.key);
+              }}
               type="button"
             >
               <span>{tabLabels[tab.key] ?? tab.label}</span>
@@ -2893,6 +3250,7 @@ function EntityDetail({
               characterDetailError={characterDetailError}
               characterDetailLoading={characterDetailLoading}
               entity={entity}
+              factOptions={factOptions}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
               powerLevelLabel={powerLevelLabel}
@@ -2909,6 +3267,7 @@ function EntityDetail({
               characterDetailError={characterDetailError}
               characterDetailLoading={characterDetailLoading}
               entity={entity}
+              factOptions={factOptions}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
               powerLevelLabel={powerLevelLabel}
@@ -2989,6 +3348,7 @@ function EntityDetail({
               characterDetailError={characterDetailError}
               characterDetailLoading={characterDetailLoading}
               entity={entity}
+              factOptions={factOptions}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
               powerLevelLabel={powerLevelLabel}
@@ -3101,6 +3461,7 @@ function EntityDetail({
               characterDetailError={characterDetailError}
               characterDetailLoading={characterDetailLoading}
               entity={entity}
+              factOptions={factOptions}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
               powerLevelLabel={powerLevelLabel}
@@ -3109,6 +3470,53 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
+            {activeSection === "references" && entity.type === "character" ? (
+              <div className="settings-detail-block">
+                <h3>来源引用</h3>
+                {characterReferencesLoading ? (
+                  <p>正在加载来源引用。</p>
+                ) : characterReferencesError ? (
+                  <div className="settings-character-error" role="alert">
+                    <span>{characterReferencesError}</span>
+                    <button
+                      className="text-btn small"
+                      onClick={onRetryCharacterReferences}
+                      type="button"
+                    >
+                      重试
+                    </button>
+                  </div>
+                ) : characterReferences.length === 0 ? (
+                  <p>还没有正文、大纲、伏笔或故事圣经来源。</p>
+                ) : (
+                  <ul className="settings-character-records">
+                    {characterReferences.map((reference) => {
+                      const href = referenceHref(workId, reference);
+                      return (
+                        <li key={`${reference.kind}:${reference.id}`}>
+                          <div>
+                            <strong>
+                              {characterReferenceLabels[reference.kind]} · {reference.title}
+                            </strong>
+                            <span>
+                              {reference.sourceChapter
+                                ? `第 ${reference.sourceChapter.number} 章`
+                                : "来源页面"}
+                            </span>
+                          </div>
+                          <p>{reference.summary || "尚未补充引用摘要。"}</p>
+                          {href ? (
+                            <Link className="text-btn small" href={href}>
+                              打开来源
+                            </Link>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            ) : null}
             {applicableFields.length > 0 ? (
               <div className="settings-detail-block">
                 <h3>自定义字段</h3>
@@ -3383,6 +3791,7 @@ function DomainDetailSections({
   characterDetailError,
   characterDetailLoading,
   entity,
+  factOptions,
   onRetryCharacterDetail,
   onRetryWorldDetail,
   powerLevelLabel,
@@ -3395,6 +3804,7 @@ function DomainDetailSections({
   characterDetailError: string;
   characterDetailLoading: boolean;
   entity: SettingEntity;
+  factOptions: ConfirmedSetting[];
   onRetryCharacterDetail: () => void;
   onRetryWorldDetail: () => void;
   powerLevelLabel: string;
@@ -3427,6 +3837,7 @@ function DomainDetailSections({
         detail={characterDetail}
         entity={entity}
         error={characterDetailError}
+        facts={factOptions}
         loading={characterDetailLoading}
         onRetry={onRetryCharacterDetail}
         section={section}
@@ -3511,6 +3922,7 @@ function CharacterDomainView({
   detail,
   entity,
   error,
+  facts,
   loading,
   onRetry,
   section,
@@ -3518,10 +3930,13 @@ function CharacterDomainView({
   detail: CharacterDetail | null;
   entity: Extract<SettingEntity, { type: "character" }>;
   error: string;
+  facts: ConfirmedSetting[];
   loading: boolean;
   onRetry: () => void;
   section: EntityDetailSection;
 }) {
+  const factsById = new Map(facts.map((fact) => [fact.id, fact] as const));
+
   if (section === "health") {
     return null;
   }
@@ -3633,7 +4048,8 @@ function CharacterDomainView({
                 <li key={state.id}>
                   <div>
                     <strong>
-                      {characterStateLabels[state.stateKind]} · {state.stateKey}
+                      {characterStateLabels[state.stateKind]} ·{" "}
+                      {characterStateKeyLabels[state.stateKey] ?? "状态记录"}
                     </strong>
                     <span>{formatValidity(state.validity)}</span>
                   </div>
@@ -3664,7 +4080,15 @@ function CharacterDomainView({
                 </div>
                 <p>{state.claimedContent || "明确记录为未知。"}</p>
                 <small>
-                  {state.sourceChapterId ? "来源：章节记录" : "来源：作者补录"} · 客观事实引用已保留
+                  客观事实：
+                  {(() => {
+                    const fact = factsById.get(state.objectiveFactId);
+                    return fact ? formatConfirmedFactLabel(fact) : "引用已保留";
+                  })()}
+                </small>
+                <small>
+                  信息来源：{knowledgeSourceLabels[state.sourceKind]} ·{" "}
+                  {state.sourceChapterId ? "章节记录" : "作者补录"}
                 </small>
               </li>
             ))}
@@ -5414,6 +5838,26 @@ function worldDetailErrorLabel(type: SettingEntityType): string {
     return "物品功法加载失败。";
   }
   return "世界设定加载失败。";
+}
+
+function referenceHref(workId: string, reference: CharacterReference): string | null {
+  if (reference.kind === "chapter" && reference.sourceChapter) {
+    return `/workspace/${workId}/write?chapterId=${reference.sourceChapter.chapterId}`;
+  }
+  if (reference.kind === "outline") {
+    return `/workspace/${workId}/outline`;
+  }
+  if (reference.kind === "foreshadow") {
+    return `/workspace/${workId}/foreshadows`;
+  }
+  if (reference.kind === "story_bible") {
+    return `/workspace/${workId}/bible`;
+  }
+  return null;
+}
+
+function formatConfirmedFactLabel(fact: ConfirmedSetting): string {
+  return [fact.name, fact.predicate, fact.object].filter(Boolean).join(" · ");
 }
 
 function settingsPath(work: WorkOverview): string {

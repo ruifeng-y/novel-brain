@@ -13,6 +13,7 @@ import {
   characterKnowledgeProjectionQuerySchema,
   characterKnowledgeStateCreateRequestSchema,
   characterProfileUpdateRequestSchema,
+  characterReferenceListResponseSchema,
   characterRelationshipCreateRequestSchema,
   characterStateTransitionCreateRequestSchema,
   chapterBriefSchema,
@@ -2007,6 +2008,31 @@ describe("character domain contracts", () => {
         sourceChapterId: null,
       }),
     ).toThrow();
+  });
+
+  it("types character references from source surfaces", () => {
+    const references = characterReferenceListResponseSchema.parse({
+      data: [
+        {
+          id: versionNodeId,
+          kind: "chapter",
+          title: "第 47 章 · 断臂之后",
+          summary: "沈砚在追兵围堵中断臂。",
+          sourceChapter: { chapterId: versionNodeId, number: 47, title: "断臂之后" },
+        },
+        {
+          id: factId,
+          kind: "story_bible",
+          title: "故事圣经 · 主角卡",
+          summary: "沈砚是故事主角。",
+          sourceChapter: null,
+        },
+      ],
+      requestId: "req_character_references",
+      meta: { nextCursor: null },
+    });
+    expect(references.data[0]?.kind).toBe("chapter");
+    expect(references.data[1]?.sourceChapter).toBeNull();
   });
 
   it("types profile, relationship, state and locked-content change requests", () => {

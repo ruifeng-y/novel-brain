@@ -6,11 +6,18 @@ import {
   characterProfiles,
   characterRelationships,
   characterStateTransitions,
+  chapterVersions,
+  chapters,
   createDatabaseClient,
   createDatabasePool,
   entities,
   entityVersions,
   facts,
+  findIdempotentResource,
+  foreshadows,
+  outlineNodes,
+  rememberIdempotentResource,
+  storyBibles,
   versionNodes,
   workBranches,
   works,
@@ -30,6 +37,8 @@ import {
   type CharacterKnowledgeStateCreateRequest,
   type CharacterListQuery,
   type CharacterProfileUpdateRequest,
+  type CharacterReference,
+  type CharacterReferenceListQuery,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
   type CharacterStateTransition,
@@ -40,7 +49,7 @@ import {
 } from "@novel-brain/contracts";
 import { resolveCustomFieldWrite, writeCustomFieldValues } from "../settings/settings.repository";
 import { projectCharacterKnowledgeAtChapter } from "@novel-brain/core";
-import { and, asc, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -579,9 +588,37 @@ export class CharactersRepository implements OnModuleDestroy {
     characterId: string,
     input: CharacterKnowledgeStateCreateRequest,
     audit: CharacterAuditContext,
+    idempotencyKey?: string,
   ): Promise<CharacterWriteResult<CharacterKnowledgeState>> {
     return this.withTenant(userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
+      const idempotencyScope = `characters/${context.workId}/${context.branchId}/${characterId}/knowledge-states`;
+      if (idempotencyKey) {
+        const existing = await findIdempotentResource(
+          transaction,
+          userId,
+          idempotencyScope,
+          idempotencyKey,
+        );
+        if (existing) {
+          const [knowledge] = await transaction
+            .select()
+            .from(characterKnowledgeStates)
+            .where(
+              and(
+                eq(characterKnowledgeStates.id, existing.resourceId),
+                eq(characterKnowledgeStates.userId, userId),
+                eq(characterKnowledgeStates.workId, context.workId),
+                eq(characterKnowledgeStates.branchId, context.branchId),
+                eq(characterKnowledgeStates.characterId, characterId),
+              ),
+            )
+            .limit(1);
+          if (knowledge) {
+            return { kind: "ok", value: toKnowledgeContract(knowledge) };
+          }
+        }
+      }
       const current = await findWritableCharacter(transaction, userId, context, characterId, null);
       if (current.kind !== "ok") {
         return current;
@@ -654,6 +691,12 @@ export class CharactersRepository implements OnModuleDestroy {
         versionNodeId,
         audit,
       );
+      if (idempotencyKey) {
+        await rememberIdempotentResource(transaction, userId, idempotencyScope, idempotencyKey, {
+          resourceType: "character_knowledge_state",
+          resourceId: knowledge.id,
+        });
+      }
       return { kind: "ok", value: toKnowledgeContract(knowledge) };
     });
   }
@@ -828,6 +871,366 @@ export class CharactersRepository implements OnModuleDestroy {
         chapterNumber,
       );
       return { kind: "ok", value: projection };
+    });
+  }
+
+  async references(
+    userId: string,
+    context: CharacterWorkContext,
+    characterId: string,
+    query: CharacterReferenceListQuery,
+  ): Promise<
+    | CharacterWriteResult<{ data: CharacterReference[]; nextCursor: string | null }>
+    | "invalid_cursor"
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      const aggregate = await this.readAggregate(transaction, userId, context, characterId);
+      if (!aggregate) {
+        return { kind: "not_found" };
+      }
+      const terms = [...new Set([aggregate.entity.name, ...aggregate.entity.aliases])]
+        .map((term) => term.trim())
+        .filter(Boolean);
+      const knowledgeFactIds = aggregate.knowledgeStates.map((state) => state.objectiveFactId);
+      const patterns = terms.map(likePattern);
+      const characterIdPattern = likePattern(characterId);
+      let cursorSortAt: Date | undefined;
+      if (query.cursor) {
+        const cursorResult = await transaction.execute(sql`
+          SELECT refs.sort_at
+          FROM (
+            SELECT c.id, c.updated_at AS sort_at FROM chapters c
+            WHERE c.user_id = ${userId}::uuid
+              AND c.work_id = ${context.workId}::uuid
+              AND c.branch_id = ${context.branchId}::uuid
+            UNION ALL
+            SELECT o.id, o.updated_at FROM outline_nodes o
+            WHERE o.user_id = ${userId}::uuid
+              AND o.work_id = ${context.workId}::uuid
+              AND o.branch_id = ${context.branchId}::uuid
+            UNION ALL
+            SELECT f.id, f.updated_at FROM foreshadows f
+            WHERE f.user_id = ${userId}::uuid
+              AND f.work_id = ${context.workId}::uuid
+              AND f.branch_id = ${context.branchId}::uuid
+            UNION ALL
+            SELECT sb.id, sb.updated_at FROM story_bibles sb
+            WHERE sb.user_id = ${userId}::uuid
+              AND sb.work_id = ${context.workId}::uuid
+              AND sb.branch_id = ${context.branchId}::uuid
+            UNION ALL
+            SELECT f.id, f.created_at FROM facts f
+            WHERE f.user_id = ${userId}::uuid
+              AND f.work_id = ${context.workId}::uuid
+              AND f.branch_id = ${context.branchId}::uuid
+              AND f.status = 'active'
+          ) refs
+          WHERE refs.id = ${query.cursor}::uuid
+          LIMIT 1
+        `);
+        const cursorRow = cursorResult.rows[0] as { sort_at: Date | string } | undefined;
+        if (!cursorRow) {
+          return "invalid_cursor";
+        }
+        cursorSortAt = new Date(cursorRow.sort_at);
+      }
+      const afterChapterCursor = cursorSortAt
+        ? or(
+            lt(chapters.updatedAt, cursorSortAt),
+            and(eq(chapters.updatedAt, cursorSortAt), lt(chapters.id, query.cursor!)),
+          )
+        : undefined;
+      const afterOutlineCursor = cursorSortAt
+        ? or(
+            lt(outlineNodes.updatedAt, cursorSortAt),
+            and(eq(outlineNodes.updatedAt, cursorSortAt), lt(outlineNodes.id, query.cursor!)),
+          )
+        : undefined;
+      const afterForeshadowCursor = cursorSortAt
+        ? or(
+            lt(foreshadows.updatedAt, cursorSortAt),
+            and(eq(foreshadows.updatedAt, cursorSortAt), lt(foreshadows.id, query.cursor!)),
+          )
+        : undefined;
+      const afterBibleCursor = cursorSortAt
+        ? or(
+            lt(storyBibles.updatedAt, cursorSortAt),
+            and(eq(storyBibles.updatedAt, cursorSortAt), lt(storyBibles.id, query.cursor!)),
+          )
+        : undefined;
+      const afterFactCursor = cursorSortAt
+        ? or(
+            lt(facts.createdAt, cursorSortAt),
+            and(eq(facts.createdAt, cursorSortAt), lt(facts.id, query.cursor!)),
+          )
+        : undefined;
+      const [chapterRows, outlineRows, foreshadowRows, bibleRows, factRows] = await Promise.all([
+        transaction
+          .select({
+            id: chapters.id,
+            number: chapters.number,
+            title: chapters.title,
+            content: sql<string>`coalesce(${chapterVersions.content}, '')`,
+            updatedAt: chapters.updatedAt,
+          })
+          .from(chapters)
+          .leftJoin(chapterVersions, eq(chapters.currentVersionId, chapterVersions.id))
+          .where(
+            and(
+              eq(chapters.userId, userId),
+              eq(chapters.workId, context.workId),
+              eq(chapters.branchId, context.branchId),
+              or(
+                matchesAny(terms, [chapters.title, chapterVersions.content]),
+                sql`${chapters.brief}::text ILIKE ${characterIdPattern}`,
+                sql`${chapters.brief}::text ILIKE ANY(${sql.param(patterns)}::text[])`,
+                sql`EXISTS (
+                  SELECT 1
+                  FROM scene_cards sc
+                  INNER JOIN outline_nodes scene_node ON scene_node.id = sc.node_id
+                  LEFT JOIN outline_nodes chapter_node ON chapter_node.id = scene_node.parent_id
+                  WHERE sc.user_id = ${userId}::uuid
+                    AND sc.work_id = ${context.workId}::uuid
+                    AND sc.branch_id = ${context.branchId}::uuid
+                    AND (
+                      (scene_node.level = 'chapter' AND scene_node.chapter_id = ${chapters.id})
+                      OR (chapter_node.level = 'chapter' AND chapter_node.chapter_id = ${chapters.id})
+                    )
+                    AND (
+                      sc.pov_id = ${characterId}::uuid
+                      OR sc.pov_label ILIKE ANY(${sql.param(patterns)}::text[])
+                    )
+                )`,
+              ),
+              afterChapterCursor,
+            ),
+          )
+          .orderBy(desc(chapters.updatedAt), desc(chapters.id))
+          .limit(query.limit + 1),
+        transaction
+          .select({
+            id: outlineNodes.id,
+            title: outlineNodes.title,
+            summary: outlineNodes.summary,
+            chapterId: outlineNodes.chapterId,
+            chapterNumber: chapters.number,
+            chapterTitle: chapters.title,
+            updatedAt: outlineNodes.updatedAt,
+          })
+          .from(outlineNodes)
+          .leftJoin(
+            chapters,
+            and(
+              eq(outlineNodes.chapterId, chapters.id),
+              eq(chapters.userId, userId),
+              eq(chapters.workId, context.workId),
+              eq(chapters.branchId, context.branchId),
+            ),
+          )
+          .where(
+            and(
+              eq(outlineNodes.userId, userId),
+              eq(outlineNodes.workId, context.workId),
+              eq(outlineNodes.branchId, context.branchId),
+              or(
+                matchesAny(terms, [outlineNodes.title, outlineNodes.summary]),
+                sql`EXISTS (
+                  SELECT 1
+                  FROM scene_cards sc
+                  WHERE sc.node_id = ${outlineNodes.id}
+                    AND sc.user_id = ${userId}::uuid
+                    AND sc.work_id = ${context.workId}::uuid
+                    AND sc.branch_id = ${context.branchId}::uuid
+                    AND (
+                      sc.pov_id = ${characterId}::uuid
+                      OR sc.pov_label ILIKE ANY(${sql.param(patterns)}::text[])
+                    )
+                )`,
+              ),
+              afterOutlineCursor,
+            ),
+          )
+          .orderBy(desc(outlineNodes.updatedAt), desc(outlineNodes.id))
+          .limit(query.limit + 1),
+        transaction
+          .select({
+            id: foreshadows.id,
+            title: foreshadows.title,
+            summary: foreshadows.summary,
+            targetFromChapter: foreshadows.targetFromChapter,
+            targetToChapter: foreshadows.targetToChapter,
+            updatedAt: foreshadows.updatedAt,
+          })
+          .from(foreshadows)
+          .where(
+            and(
+              eq(foreshadows.userId, userId),
+              eq(foreshadows.workId, context.workId),
+              eq(foreshadows.branchId, context.branchId),
+              isNull(foreshadows.deletedAt),
+              or(
+                matchesAny(terms, [foreshadows.title, foreshadows.summary]),
+                sql`${foreshadows.relatedCharacterIds} @> ${JSON.stringify([characterId])}::jsonb`,
+              ),
+              afterForeshadowCursor,
+            ),
+          )
+          .orderBy(desc(foreshadows.updatedAt), desc(foreshadows.id))
+          .limit(query.limit + 1),
+        transaction
+          .select({
+            id: storyBibles.id,
+            cards: storyBibles.cards,
+            updatedAt: storyBibles.updatedAt,
+          })
+          .from(storyBibles)
+          .where(
+            and(
+              eq(storyBibles.userId, userId),
+              eq(storyBibles.workId, context.workId),
+              eq(storyBibles.branchId, context.branchId),
+              sql`EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements(${storyBibles.cards}) card
+                WHERE concat(card->>'title', ' ', card->>'content')
+                  ILIKE ANY(${sql.param(patterns)}::text[])
+              )`,
+              afterBibleCursor,
+            ),
+          )
+          .orderBy(desc(storyBibles.updatedAt), desc(storyBibles.id))
+          .limit(1),
+        transaction
+          .select({
+            id: facts.id,
+            subject: facts.subject,
+            predicate: facts.predicate,
+            object: facts.object,
+            chapterId: facts.chapterId,
+            chapterNumber: chapters.number,
+            chapterTitle: chapters.title,
+            updatedAt: facts.createdAt,
+          })
+          .from(facts)
+          .leftJoin(
+            chapters,
+            and(
+              eq(facts.chapterId, chapters.id),
+              eq(chapters.userId, userId),
+              eq(chapters.workId, context.workId),
+              eq(chapters.branchId, context.branchId),
+            ),
+          )
+          .where(
+            and(
+              eq(facts.userId, userId),
+              eq(facts.workId, context.workId),
+              eq(facts.branchId, context.branchId),
+              eq(facts.status, "active"),
+              or(
+                matchesAny(terms, [facts.subject, facts.predicate, facts.object]),
+                knowledgeFactIds.length > 0 ? inArray(facts.id, knowledgeFactIds) : undefined,
+              ),
+              afterFactCursor,
+            ),
+          )
+          .orderBy(desc(facts.createdAt), desc(facts.id))
+          .limit(query.limit + 1),
+      ]);
+
+      const references = [
+        ...chapterRows.map((row) => ({
+          reference: {
+            id: row.id,
+            kind: "chapter" as const,
+            title: `第 ${row.number} 章 · ${row.title}`,
+            summary: row.content ? referenceSnippet(row.content, terms) : "计划章节引用。",
+            sourceChapter: { chapterId: row.id, number: row.number, title: row.title },
+          },
+          sortAt: row.updatedAt,
+        })),
+        ...outlineRows.map((row) => ({
+          reference: {
+            id: row.id,
+            kind: "outline" as const,
+            title: row.title,
+            summary:
+              row.summary ||
+              (row.chapterNumber
+                ? `关联第 ${row.chapterNumber} 章「${row.chapterTitle ?? "未命名章节"}」`
+                : "关联章节规划。"),
+            sourceChapter:
+              row.chapterId && row.chapterNumber && row.chapterTitle
+                ? {
+                    chapterId: row.chapterId,
+                    number: row.chapterNumber,
+                    title: row.chapterTitle,
+                  }
+                : null,
+          },
+          sortAt: row.updatedAt,
+        })),
+        ...foreshadowRows.map((row) => ({
+          reference: {
+            id: row.id,
+            kind: "foreshadow" as const,
+            title: row.title,
+            summary:
+              row.summary ||
+              `计划在第 ${row.targetFromChapter}–${row.targetToChapter} 章推进或回收。`,
+            sourceChapter: null,
+          },
+          sortAt: row.updatedAt,
+        })),
+        ...bibleRows.flatMap((row) => {
+          const cards = row.cards.filter((card) => matchesText([card.title, card.content], terms));
+          if (cards.length === 0) {
+            return [];
+          }
+          return [
+            {
+              reference: {
+                id: row.id,
+                kind: "story_bible" as const,
+                title: `故事圣经 · ${cards.map((card) => card.title).join("、")}`,
+                summary: cards.map((card) => referenceSnippet(card.content, terms)).join(" / "),
+                sourceChapter: null,
+              },
+              sortAt: row.updatedAt,
+            },
+          ];
+        }),
+        ...factRows.map((row) => ({
+          reference: {
+            id: row.id,
+            kind: "fact" as const,
+            title: `${row.subject} · ${row.predicate}`,
+            summary: row.object,
+            sourceChapter:
+              row.chapterId && row.chapterNumber && row.chapterTitle
+                ? {
+                    chapterId: row.chapterId,
+                    number: row.chapterNumber,
+                    title: row.chapterTitle,
+                  }
+                : null,
+          },
+          sortAt: row.updatedAt,
+        })),
+      ].sort(
+        (left, right) =>
+          right.sortAt.getTime() - left.sortAt.getTime() ||
+          right.reference.id.localeCompare(left.reference.id),
+      );
+      const hasMore = references.length > query.limit;
+      const page = references.slice(0, query.limit).map((item) => item.reference);
+      return {
+        kind: "ok",
+        value: {
+          data: page,
+          nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+        },
+      };
     });
   }
 
@@ -1689,6 +2092,38 @@ function parseCharacterSnapshot(
       ? ((domain?.knowledgeStates ?? value.knowledgeStates) as CharacterKnowledgeState[])
       : [],
   };
+}
+
+function matchesAny(terms: string[], columns: Array<Parameters<typeof ilike>[0]>): SQL {
+  const conditions = columns.flatMap((column) =>
+    terms.map((term) => ilike(column, likePattern(term))),
+  );
+  return or(...conditions) ?? sql`false`;
+}
+
+function likePattern(value: string): string {
+  return `%${value.replace(/[\\%_]/gu, "\\$&")}%`;
+}
+
+function matchesText(values: string[], terms: string[]): boolean {
+  const normalizedValues = values.map(normalizeIdentifier);
+  return terms.some((term) => {
+    const normalizedTerm = normalizeIdentifier(term);
+    return (
+      normalizedTerm.length > 0 && normalizedValues.some((value) => value.includes(normalizedTerm))
+    );
+  });
+}
+
+function referenceSnippet(value: string, terms: string[]): string {
+  const normalizedValue = normalizeIdentifier(value);
+  const match = terms
+    .map((term) => normalizedValue.indexOf(normalizeIdentifier(term)))
+    .filter((index) => index >= 0)
+    .sort((left, right) => left - right)[0];
+  const start = Math.max(0, (match ?? 0) - 40);
+  const end = Math.min(value.length, start + 180);
+  return `${start > 0 ? "..." : ""}${value.slice(start, end).trim()}${end < value.length ? "..." : ""}`;
 }
 
 function normalizeIdentifier(value: string): string {

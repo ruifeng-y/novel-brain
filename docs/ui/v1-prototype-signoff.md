@@ -234,6 +234,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正常 PR Production CI [44773690891](https://github.com/ruifeng-y/novel-brain/actions/runs/44773690891) 的 `check` 与 `playwright`、Deployment Smoke [44773691156](https://github.com/ruifeng-y/novel-brain/actions/runs/44773691156) 均通过，现有四档 Golden 无需更新；`work-settings` 提升为 `parity-verified`。
 
+## 2026-11-21 entity-detail 逐动作持久化与最终 CI 签收
+
+沿用作者在 M1 对 `entity-detail` 四档 Linux/Chromium Golden 的视觉签收。本次 #234 保持已签收默认布局与既有 Golden，不引入新的视觉偏差；引用来源和认知编辑作为页面动作状态提供独立四档截图附件。
+
+`apps/web/e2e/parity/entity-detail.spec.ts` 覆盖人物编辑、关系、带章节有效期的角色认知、正文/章纲/POV/伏笔/故事圣经/事实反向引用、提案、锁定和版本历史。事实准备使用 fake worker 生成章节，再经事实决策、质量检查、章节审核和 canon commit 产生持久化事实；来源引用读取使用游标分页，页面在点击“引用”时发起真实 API 并支持失败重试；页面点击“状态历史”会刷新真实版本接口。角色认知在“编辑设定”流程中写入，支持 `Idempotency-Key` 重放，客观事实、主观内容、来源和有效期均有持久化回读；原始状态键只保留在 API 合同和代码中，作者界面显示中文标签。完整 owner spec 14/14、characters integration 4/4、全量 Vitest 607/607、作者语言、prototype-only 扫描和四档结构断言均通过。
+
+正常 PR Production CI [44892673559](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673559) 的 `check` 与 `playwright`、Prototype Parity [44892673586](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673586) 和 Deployment Smoke [44892673403](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673403) 均通过；现有四档 Golden 在该文本修正下仍满足正式比较容差，无需更新，`entity-detail` 提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

@@ -6,6 +6,7 @@ import {
   characterDetailResponseSchema,
   characterHistoryResponseSchema,
   characterKnowledgeProjectionResponseSchema,
+  characterReferenceListResponseSchema,
   confirmedSettingListResponseSchema,
 } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
@@ -234,19 +235,30 @@ describe("character domain HTTP integration", () => {
     });
     const shen = await createCharacter(owner, token, base, "沈砚");
 
-    await owner
+    const unknownKnowledge = {
+      objectiveFactId: fact.id,
+      state: "unknown",
+      claimedContent: null,
+      sourceKind: "assumed",
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      sourceChapterId: null,
+    };
+    const unknownIdempotencyKey = crypto.randomUUID();
+    const unknownResponse = await owner
       .post(`${base}/characters/${shen.id}/knowledge-states`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
-      .send({
-        objectiveFactId: fact.id,
-        state: "unknown",
-        claimedContent: null,
-        sourceKind: "assumed",
-        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
-        sourceChapterId: null,
-      })
+      .set("Idempotency-Key", unknownIdempotencyKey)
+      .send(unknownKnowledge)
       .expect(201);
+    const replayedUnknown = await owner
+      .post(`${base}/characters/${shen.id}/knowledge-states`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", unknownIdempotencyKey)
+      .send(unknownKnowledge)
+      .expect(201);
+    expect(replayedUnknown.body.data.id).toBe(unknownResponse.body.data.id);
 
     const hidden = characterKnowledgeProjectionResponseSchema.parse(
       (await owner.get(`${base}/characters/${shen.id}/knowledge?chapterNumber=5`).expect(200)).body,
@@ -307,6 +319,60 @@ describe("character domain HTTP integration", () => {
     expect(
       confirmed.data.find((entry) => entry.kind === "fact" && entry.object === "被仇家杀死"),
     ).toBeTruthy();
+
+    await databasePool.query(
+      "UPDATE chapters SET brief = jsonb_build_object('pov', $1::text) WHERE id = $2",
+      [shen.id, fact.chapterId],
+    );
+    await databasePool.query(
+      "UPDATE chapter_versions SET content = '仇家趁夜潜入村庄。' WHERE chapter_id = $1",
+      [fact.chapterId],
+    );
+    const plannedChapterId = uuidv7();
+    await databasePool.query(
+      `INSERT INTO chapters
+        (id, work_id, branch_id, user_id, number, title, status, version, current_version_id,
+         word_count, brief)
+       VALUES ($1, $2, $3, $4, 2, '一只手也能结印', 'planned', 1, NULL, 0,
+         jsonb_build_object('pov', $5::text))`,
+      [plannedChapterId, work.id, work.mainBranch.id, userId, shen.id],
+    );
+    const references = characterReferenceListResponseSchema.parse(
+      (await owner.get(`${base}/characters/${shen.id}/references`).expect(200)).body,
+    ).data;
+    expect(references).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "chapter",
+          sourceChapter: expect.objectContaining({ chapterId: fact.chapterId, number: 1 }),
+        }),
+        expect.objectContaining({ kind: "fact", id: fact.id }),
+        expect.objectContaining({
+          kind: "chapter",
+          sourceChapter: expect.objectContaining({ chapterId: plannedChapterId, number: 2 }),
+          summary: "计划章节引用。",
+        }),
+      ]),
+    );
+    const firstReferencePage = characterReferenceListResponseSchema.parse(
+      (await owner.get(`${base}/characters/${shen.id}/references?limit=1`).expect(200)).body,
+    );
+    expect(firstReferencePage.data).toHaveLength(1);
+    expect(firstReferencePage.meta.nextCursor).toBeTruthy();
+    const secondReferencePage = characterReferenceListResponseSchema.parse(
+      (
+        await owner
+          .get(
+            `${base}/characters/${shen.id}/references?limit=1&cursor=${firstReferencePage.meta.nextCursor}`,
+          )
+          .expect(200)
+      ).body,
+    );
+    expect(secondReferencePage.data[0]?.id).not.toBe(firstReferencePage.data[0]?.id);
+    expect(
+      (await owner.get(`${base}/characters/${shen.id}/references?cursor=${uuidv7()}`).expect(400))
+        .body.error.code,
+    ).toBe("VALIDATION_INVALID");
   });
 
   it("requires a change request once the character is locked and enforces tenant isolation", async () => {
@@ -365,6 +431,10 @@ describe("character domain HTTP integration", () => {
     expect((await other.get(`${base}/characters`).expect(403)).body.error.code).toBe(
       "FORBIDDEN_TENANT_ACCESS",
     );
+    expect(
+      (await other.get(`${base}/characters/${character.id}/references`).expect(403)).body.error
+        .code,
+    ).toBe("FORBIDDEN_TENANT_ACCESS");
     expect(
       (
         await other
@@ -539,7 +609,7 @@ async function createCanonFact(
     branchId: string;
     object: string;
   },
-): Promise<{ id: string }> {
+): Promise<{ id: string; chapterId: string }> {
   const chapterId = uuidv7();
   const versionNodeId = uuidv7();
   const chapterVersionId = uuidv7();
@@ -591,6 +661,10 @@ async function createCanonFact(
       versionNodeId,
       now,
     ],
+  );
+  await pool.query(
+    "UPDATE chapters SET current_version_id = $1, word_count = $2, updated_at = $3 WHERE id = $4",
+    [chapterVersionId, "沈砚父母被仇家杀死。".length, now, chapterId],
   );
   await pool.query("UPDATE work_branches SET head_node_id = $1, updated_at = $2 WHERE id = $3", [
     versionNodeId,
@@ -662,7 +736,7 @@ async function createCanonFact(
       now,
     ],
   );
-  return { id: factId };
+  return { id: factId, chapterId };
 }
 
 async function ensureDatabaseExists(databaseUrl: string): Promise<void> {

@@ -12,6 +12,8 @@ import {
   type CharacterKnowledgeStateCreateRequest,
   type CharacterListQuery,
   type CharacterProfileUpdateRequest,
+  type CharacterReference,
+  type CharacterReferenceListQuery,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
   type CharacterStateTransition,
@@ -119,10 +121,18 @@ export class CharactersService {
     characterId: string,
     input: CharacterKnowledgeStateCreateRequest,
     audit: CharacterAuditContext,
+    idempotencyKey?: string,
   ): Promise<CharacterKnowledgeState> {
     const context = await this.requireContext(userId, workId, branchId);
     return unwrap(
-      await this.repository.addKnowledgeState(userId, context, characterId, input, audit),
+      await this.repository.addKnowledgeState(
+        userId,
+        context,
+        characterId,
+        input,
+        audit,
+        idempotencyKey,
+      ),
     );
   }
 
@@ -160,6 +170,21 @@ export class CharactersService {
     return unwrap(
       await this.repository.knowledgeAtChapter(userId, context, characterId, chapterNumber),
     );
+  }
+
+  async references(
+    userId: string,
+    workId: string,
+    branchId: string,
+    characterId: string,
+    query: CharacterReferenceListQuery,
+  ): Promise<CursorPageResult<CharacterReference>> {
+    const context = await this.requireContext(userId, workId, branchId);
+    const result = await this.repository.references(userId, context, characterId, query);
+    if (result === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return unwrap(result);
   }
 
   async listChangeRequests(

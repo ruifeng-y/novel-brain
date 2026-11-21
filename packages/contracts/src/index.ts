@@ -2448,6 +2448,30 @@ export const characterKnowledgeStateResponseSchema = apiEnvelopeSchema(
   characterKnowledgeStateSchema,
 );
 
+export const characterReferenceKindSchema = z.enum([
+  "chapter",
+  "outline",
+  "foreshadow",
+  "story_bible",
+  "fact",
+]);
+export type CharacterReferenceKind = z.infer<typeof characterReferenceKindSchema>;
+
+export const characterReferenceSchema = z.object({
+  id: uuidV7Schema,
+  kind: characterReferenceKindSchema,
+  title: z.string().trim().min(1),
+  summary: z.string(),
+  sourceChapter: retrievalSourceChapterSchema.nullable(),
+});
+export type CharacterReference = z.infer<typeof characterReferenceSchema>;
+
+export const characterReferenceListQuerySchema = cursorPageQuerySchema;
+export type CharacterReferenceListQuery = z.infer<typeof characterReferenceListQuerySchema>;
+export const characterReferenceListResponseSchema = cursorListResponseSchema(
+  z.array(characterReferenceSchema),
+);
+
 export const characterHealthFindingSchema = z.object({
   code: z.string().min(1),
   severity: z.enum(["info", "warning", "blocker"]),

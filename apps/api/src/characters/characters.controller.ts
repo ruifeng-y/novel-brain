@@ -14,6 +14,7 @@ import {
 import {
   ApiBody,
   ApiCreatedResponse,
+  ApiHeader,
   ApiOkResponse,
   ApiTags,
   type SchemaObject,
@@ -34,6 +35,8 @@ import {
   characterListQuerySchema,
   characterListResponseSchema,
   characterProfileUpdateRequestSchema,
+  characterReferenceListQuerySchema,
+  characterReferenceListResponseSchema,
   characterRelationshipCreateRequestSchema,
   characterRelationshipResponseSchema,
   characterStateTransitionCreateRequestSchema,
@@ -73,6 +76,7 @@ const knowledgeProjectionResponseJsonSchema = schemaOf(
   characterKnowledgeProjectionResponseSchema,
   "output",
 );
+const referenceListResponseJsonSchema = schemaOf(characterReferenceListResponseSchema, "output");
 const historyResponseJsonSchema = schemaOf(characterHistoryResponseSchema, "output");
 const changeRequestResponseJsonSchema = schemaOf(characterChangeRequestResponseSchema, "output");
 const changeRequestListResponseJsonSchema = schemaOf(
@@ -265,6 +269,7 @@ export class CharactersController {
 
   @Post(":characterId/knowledge-states")
   @HttpCode(201)
+  @ApiHeader({ name: "Idempotency-Key" })
   @ApiBody({ schema: knowledgeBodyJsonSchema })
   @ApiCreatedResponse({
     description: "Created character knowledge state",
@@ -276,6 +281,7 @@ export class CharactersController {
     @Param("branchId") branchId: string,
     @Param("characterId") characterId: string,
     @Body() body: unknown,
+    @Headers("idempotency-key") idempotencyKey?: string,
   ) {
     const requestId = createRequestId();
     return characterKnowledgeStateResponseSchema.parse({
@@ -286,6 +292,7 @@ export class CharactersController {
         uuidV7Schema.parse(characterId),
         characterKnowledgeStateCreateRequestSchema.parse(body),
         this.auditContext(request, requestId),
+        idempotencyKey?.trim() || undefined,
       ),
       requestId,
       meta: {},
@@ -315,6 +322,33 @@ export class CharactersController {
       ),
       requestId: createRequestId(),
       meta: {},
+    });
+  }
+
+  @Get(":characterId/references")
+  @ApiQuerySchema(characterReferenceListQuerySchema)
+  @ApiOkResponse({
+    description: "Backlinks from chapters, outline, foreshadows, story bible and facts",
+    schema: referenceListResponseJsonSchema,
+  })
+  async references(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("characterId") characterId: string,
+    @Query() query: unknown,
+  ) {
+    const page = await this.service.references(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(characterId),
+      characterReferenceListQuerySchema.parse(query ?? {}),
+    );
+    return characterReferenceListResponseSchema.parse({
+      data: page.data,
+      meta: { nextCursor: page.nextCursor },
+      requestId: createRequestId(),
     });
   }
 
