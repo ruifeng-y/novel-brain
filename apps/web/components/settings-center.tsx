@@ -3283,51 +3283,53 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
-            <div className="settings-detail-block">
-              <h3>引用与反向引用</h3>
-              {characterReferencesLoading ? (
-                <p>正在加载引用与反向引用。</p>
-              ) : characterReferencesError ? (
-                <div className="settings-character-error" role="alert">
-                  <span>{characterReferencesError}</span>
-                  <button
-                    className="text-btn small"
-                    onClick={onRetryCharacterReferences}
-                    type="button"
-                  >
-                    重试
-                  </button>
-                </div>
-              ) : characterReferences.length === 0 ? (
-                <p>还没有正文、大纲、伏笔或故事圣经引用。</p>
-              ) : (
-                <ul className="settings-character-records">
-                  {characterReferences.map((reference) => {
-                    const href = referenceHref(workId, reference);
-                    return (
-                      <li key={`${reference.kind}:${reference.id}`}>
-                        <div>
-                          <strong>
-                            {characterReferenceLabels[reference.kind]} · {reference.title}
-                          </strong>
-                          <span>
-                            {reference.sourceChapter
-                              ? `第 ${reference.sourceChapter.number} 章`
-                              : "来源页面"}
-                          </span>
-                        </div>
-                        <p>{reference.summary || "尚未补充引用摘要。"}</p>
-                        {href ? (
-                          <Link className="text-btn small" href={href}>
-                            打开来源
-                          </Link>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+            {activeSection === "references" ? (
+              <div className="settings-detail-block">
+                <h3>引用与反向引用</h3>
+                {characterReferencesLoading ? (
+                  <p>正在加载引用与反向引用。</p>
+                ) : characterReferencesError ? (
+                  <div className="settings-character-error" role="alert">
+                    <span>{characterReferencesError}</span>
+                    <button
+                      className="text-btn small"
+                      onClick={onRetryCharacterReferences}
+                      type="button"
+                    >
+                      重试
+                    </button>
+                  </div>
+                ) : characterReferences.length === 0 ? (
+                  <p>还没有正文、大纲、伏笔或故事圣经引用。</p>
+                ) : (
+                  <ul className="settings-character-records">
+                    {characterReferences.map((reference) => {
+                      const href = referenceHref(workId, reference);
+                      return (
+                        <li key={`${reference.kind}:${reference.id}`}>
+                          <div>
+                            <strong>
+                              {characterReferenceLabels[reference.kind]} · {reference.title}
+                            </strong>
+                            <span>
+                              {reference.sourceChapter
+                                ? `第 ${reference.sourceChapter.number} 章`
+                                : "来源页面"}
+                            </span>
+                          </div>
+                          <p>{reference.summary || "尚未补充引用摘要。"}</p>
+                          {href ? (
+                            <Link className="text-btn small" href={href}>
+                              打开来源
+                            </Link>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            ) : null}
             {activeSection === "references" &&
             entity.type === "character" &&
             !locked &&
