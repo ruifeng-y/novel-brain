@@ -121,10 +121,18 @@ export class CharactersService {
     characterId: string,
     input: CharacterKnowledgeStateCreateRequest,
     audit: CharacterAuditContext,
+    idempotencyKey?: string,
   ): Promise<CharacterKnowledgeState> {
     const context = await this.requireContext(userId, workId, branchId);
     return unwrap(
-      await this.repository.addKnowledgeState(userId, context, characterId, input, audit),
+      await this.repository.addKnowledgeState(
+        userId,
+        context,
+        characterId,
+        input,
+        audit,
+        idempotencyKey,
+      ),
     );
   }
 

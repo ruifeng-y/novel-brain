@@ -335,6 +335,15 @@ const characterStateLabels: Record<
   disguise: "伪装",
 };
 
+const characterStateKeyLabels: Record<string, string> = {
+  overall: "整体状态",
+  current_location: "当前位置",
+  left_arm: "左臂状态",
+  right_arm: "右臂状态",
+  appearance: "外貌状态",
+  identity_disguise: "身份伪装",
+};
+
 const knowledgeStateLabels: Record<CharacterDetail["knowledgeStates"][number]["state"], string> = {
   knowledge: "已知",
   belief: "相信",
@@ -608,15 +617,39 @@ export function SettingsCenter({
         const references = await fetchAllCursorPages(
           `${settingsPath(work)}/characters/${entityId}/references`,
           characterReferenceListResponseSchema.parse,
-          "引用与反向引用加载失败。",
+          "来源引用加载失败。",
         );
         setCharacterReferences(references);
       } catch (caught) {
         setCharacterReferencesError(
-          caught instanceof Error ? caught.message : "引用与反向引用加载失败。",
+          caught instanceof Error ? caught.message : "来源引用加载失败。",
         );
       } finally {
         setCharacterReferencesLoading(false);
+      }
+    },
+    [work],
+  );
+
+  const refreshVersionHistory = useCallback(
+    async (entityId: string) => {
+      if (!work) {
+        return;
+      }
+      setVersionHistoryLoading(true);
+      setVersionHistoryError("");
+      try {
+        setVersions(
+          await fetchAllCursorPages(
+            `${settingsPath(work)}/entities/${entityId}/versions`,
+            settingEntityVersionListResponseSchema.parse,
+            "版本历史加载失败。",
+          ),
+        );
+      } catch (caught) {
+        setVersionHistoryError(caught instanceof Error ? caught.message : "版本历史加载失败。");
+      } finally {
+        setVersionHistoryLoading(false);
       }
     },
     [work],
@@ -1312,6 +1345,7 @@ export function SettingsCenter({
           method: "POST",
           headers: {
             "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
             "x-csrf-token": csrfToken,
           },
           body: JSON.stringify(payload),
@@ -1484,10 +1518,11 @@ export function SettingsCenter({
           onLock={() => lockEntity(selected)}
           onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
           onRetryCharacterReferences={() => refreshCharacterReferences(selected.id)}
-          onRetryVersionHistory={() => refreshDetail(selected.id, selected.type)}
+          onRetryVersionHistory={() => refreshVersionHistory(selected.id)}
           onRestore={(targetVersion, reason) => restoreEntity(selected, targetVersion, reason)}
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
           onRefreshReferences={() => refreshCharacterReferences(selected.id)}
+          onRefreshVersionHistory={() => refreshVersionHistory(selected.id)}
           powerLevelLabel={powerLevelLabel}
           proposals={proposals}
           relationshipTargets={entities.filter(
@@ -2873,6 +2908,7 @@ function EntityDetail({
   onRetryCharacterDetail,
   onRetryCharacterReferences,
   onRetryVersionHistory,
+  onRefreshVersionHistory,
   onRestore,
   onRetryWorldDetail,
   onRefreshReferences,
@@ -2917,6 +2953,7 @@ function EntityDetail({
   onRetryCharacterDetail: () => void;
   onRetryCharacterReferences: () => void;
   onRetryVersionHistory: () => void;
+  onRefreshVersionHistory: () => void;
   onRestore: (targetVersion: number, reason: string) => Promise<boolean>;
   onRetryWorldDetail: () => void;
   onRefreshReferences: () => void;
@@ -3134,6 +3171,9 @@ function EntityDetail({
               onClick={() => {
                 if (tab.key === "references" && entity.type === "character") {
                   void onRefreshReferences();
+                }
+                if (tab.key === "history") {
+                  void onRefreshVersionHistory();
                 }
                 scrollToSection(tab.key);
               }}
@@ -3432,9 +3472,9 @@ function EntityDetail({
             />
             {activeSection === "references" && entity.type === "character" ? (
               <div className="settings-detail-block">
-                <h3>引用与反向引用</h3>
+                <h3>来源引用</h3>
                 {characterReferencesLoading ? (
-                  <p>正在加载引用与反向引用。</p>
+                  <p>正在加载来源引用。</p>
                 ) : characterReferencesError ? (
                   <div className="settings-character-error" role="alert">
                     <span>{characterReferencesError}</span>
@@ -3447,7 +3487,7 @@ function EntityDetail({
                     </button>
                   </div>
                 ) : characterReferences.length === 0 ? (
-                  <p>还没有正文、大纲、伏笔或故事圣经引用。</p>
+                  <p>还没有正文、大纲、伏笔或故事圣经来源。</p>
                 ) : (
                   <ul className="settings-character-records">
                     {characterReferences.map((reference) => {
@@ -4008,7 +4048,8 @@ function CharacterDomainView({
                 <li key={state.id}>
                   <div>
                     <strong>
-                      {characterStateLabels[state.stateKind]} · {state.stateKey}
+                      {characterStateLabels[state.stateKind]} ·{" "}
+                      {characterStateKeyLabels[state.stateKey] ?? "状态记录"}
                     </strong>
                     <span>{formatValidity(state.validity)}</span>
                   </div>

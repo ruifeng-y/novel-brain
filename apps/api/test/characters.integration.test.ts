@@ -235,19 +235,30 @@ describe("character domain HTTP integration", () => {
     });
     const shen = await createCharacter(owner, token, base, "沈砚");
 
-    await owner
+    const unknownKnowledge = {
+      objectiveFactId: fact.id,
+      state: "unknown",
+      claimedContent: null,
+      sourceKind: "assumed",
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      sourceChapterId: null,
+    };
+    const unknownIdempotencyKey = crypto.randomUUID();
+    const unknownResponse = await owner
       .post(`${base}/characters/${shen.id}/knowledge-states`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
-      .send({
-        objectiveFactId: fact.id,
-        state: "unknown",
-        claimedContent: null,
-        sourceKind: "assumed",
-        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
-        sourceChapterId: null,
-      })
+      .set("Idempotency-Key", unknownIdempotencyKey)
+      .send(unknownKnowledge)
       .expect(201);
+    const replayedUnknown = await owner
+      .post(`${base}/characters/${shen.id}/knowledge-states`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", unknownIdempotencyKey)
+      .send(unknownKnowledge)
+      .expect(201);
+    expect(replayedUnknown.body.data.id).toBe(unknownResponse.body.data.id);
 
     const hidden = characterKnowledgeProjectionResponseSchema.parse(
       (await owner.get(`${base}/characters/${shen.id}/knowledge?chapterNumber=5`).expect(200)).body,

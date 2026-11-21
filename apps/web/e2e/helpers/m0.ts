@@ -32,6 +32,7 @@ export async function seedM0Work(
 export async function createM0Chapter(
   request: APIRequestContext,
   work: M0WorkFixture,
+  options: { pov?: string } = {},
 ): Promise<{ id: string }> {
   const token = await getCsrf(request);
   const response = await request.post(
@@ -43,7 +44,7 @@ export async function createM0Chapter(
         title: "一只手也能结印",
         brief: {
           goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",
-          pov: "沈砚",
+          pov: options.pov ?? "沈砚",
           location: "荒寺外山道",
           sceneBeats: [
             "沈砚藏起断臂，被顾青撞见。",

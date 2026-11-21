@@ -14,6 +14,7 @@ import {
 import {
   ApiBody,
   ApiCreatedResponse,
+  ApiHeader,
   ApiOkResponse,
   ApiTags,
   type SchemaObject,
@@ -268,6 +269,7 @@ export class CharactersController {
 
   @Post(":characterId/knowledge-states")
   @HttpCode(201)
+  @ApiHeader({ name: "Idempotency-Key" })
   @ApiBody({ schema: knowledgeBodyJsonSchema })
   @ApiCreatedResponse({
     description: "Created character knowledge state",
@@ -279,6 +281,7 @@ export class CharactersController {
     @Param("branchId") branchId: string,
     @Param("characterId") characterId: string,
     @Body() body: unknown,
+    @Headers("idempotency-key") idempotencyKey?: string,
   ) {
     const requestId = createRequestId();
     return characterKnowledgeStateResponseSchema.parse({
@@ -289,6 +292,7 @@ export class CharactersController {
         uuidV7Schema.parse(characterId),
         characterKnowledgeStateCreateRequestSchema.parse(body),
         this.auditContext(request, requestId),
+        idempotencyKey?.trim() || undefined,
       ),
       requestId,
       meta: {},

@@ -1,19 +1,21 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 import {
+  canonCommitResponseSchema,
+  chapterWorkspaceResponseSchema,
   characterDetailResponseSchema,
   characterKnowledgeStateResponseSchema,
   characterReferenceListResponseSchema,
   characterRelationshipResponseSchema,
+  factProposalListResponseSchema,
   type PowerSystemCreateRequest,
   settingEntityResponseSchema,
   settingEntityVersionListResponseSchema,
   settingProposalListResponseSchema,
   settingProposalResponseSchema,
 } from "@novel-brain/contracts";
-import { Pool } from "pg";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { createM0Chapter } from "../helpers/m0";
+import { createM0Chapter, createModelConfig, lockStoryBible } from "../helpers/m0";
 import {
   expectAuthorFacingLanguage,
   expectNoPrototypeOnlyLeakage,
@@ -21,7 +23,7 @@ import {
   productionScreenshotOptions,
   waitForApiResponse,
 } from "../helpers/ui";
-import { uuidV7 } from "../helpers/uuid";
+import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
@@ -81,115 +83,150 @@ async function createCharacter(
 async function createKnowledgeFact(
   page: Page,
   work: { id: string; title: string; mainBranch: { id: string } },
-  object: string,
 ) {
   const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
-  const chapter = await createM0Chapter(page.request, work);
-  const chapterResponse = await page.request.get(`${branchPath}/chapters/${chapter.id}`);
-  expect(chapterResponse.status()).toBe(200);
-  const chapterData = (await chapterResponse.json()).data as { version: number };
+  await createModelConfig(page.request);
+  await lockStoryBible(page.request, branchPath);
+  const povCharacter = await createCharacter(page, work, "陈渡");
   const token = await getCsrf(page.request);
-  const versionResponse = await page.request.post(`${branchPath}/chapters/${chapter.id}/versions`, {
-    headers: { Origin: origin, "X-CSRF-Token": token },
-    data: {
-      version: chapterData.version,
-      content: "沈砚父母的死因被记录在忘川书的第一页。",
+  const lockedPov = await page.request.post(
+    `${branchPath}/entities/${povCharacter.character.id}/lock`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: { version: povCharacter.version },
     },
-  });
-  expect(versionResponse.status()).toBe(201);
-  const chapterVersion = (await versionResponse.json()).data.version as {
-    id: string;
-    versionNodeId: string;
-  };
-  const meResponse = await page.request.get("/api/v1/auth/me");
-  expect(meResponse.status()).toBe(200);
-  const me = (await meResponse.json()).data.user as { id: string; displayName: string };
-
-  const proposalId = uuidV7();
-  const decisionId = uuidV7();
-  const commitId = uuidV7();
-  const factId = uuidV7();
-  const databaseUrl =
-    process.env.E2E_DATABASE_URL ??
-    "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
-  // Chapter and version are created through production APIs above; isolate the knowledge action from generation.
-  const pool = new Pool({ connectionString: databaseUrl });
-  const client = await pool.connect();
+  );
+  expect(lockedPov.status(), await lockedPov.text()).toBe(200);
+  for (const setting of [
+    {
+      type: "world_rule",
+      name: "天门只认完整记忆",
+      aliases: [],
+      summary: "失去关键记忆的人无法通过天门。",
+      description: "",
+      tags: [],
+      data: { rule: "主动抹除关键记忆会导致天门通行失败。" },
+    },
+    {
+      type: "golden_finger",
+      name: "忘川书",
+      aliases: [],
+      summary: "以记忆换取前人经验。",
+      description: "",
+      tags: [],
+      data: {
+        rules: "每次只能借用一位前人的经验。",
+        cost: "永久失去一段重要记忆。",
+        limits: "每次使用消耗一页。",
+        growth: "缺失记忆会拼成完整人格。",
+      },
+    },
+  ] as const) {
+    const created = await page.request.post(`${branchPath}/entities`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: setting,
+    });
+    expect(created.status(), await created.text()).toBe(201);
+    const createdSetting = (await created.json()).data as { id: string; version: number };
+    const locked = await page.request.post(`${branchPath}/entities/${createdSetting.id}/lock`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: { version: createdSetting.version },
+    });
+    expect(locked.status(), await locked.text()).toBe(200);
+  }
+  const chapter = await createM0Chapter(page.request, work, { pov: "陈渡" });
+  const actionToken = await getCsrf(page.request);
+  const worker = await startWorker();
   try {
-    await client.query("BEGIN");
-    await client.query(
-      `INSERT INTO fact_proposals
-         (id, work_id, branch_id, user_id, chapter_id, source_version_id, extraction_key,
-          subject, predicate, object, source_sentence, status, confidence, risk, required)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, '沈砚父母', '死因', $8,
-         '沈砚父母的死因被记录在忘川书的第一页。', 'confirmed', 0.95, 'high', true)`,
-      [
-        proposalId,
-        work.id,
-        work.mainBranch.id,
-        me.id,
-        chapter.id,
-        chapterVersion.id,
-        `knowledge-fixture-${proposalId}`,
-        object,
-      ],
+    const generationResponse = await page.request.post(
+      `${branchPath}/chapters/${chapter.id}/generate`,
+      {
+        headers: {
+          Origin: origin,
+          "Idempotency-Key": crypto.randomUUID(),
+          "X-CSRF-Token": actionToken,
+        },
+        data: {
+          budget: {
+            maxCostCny: 2.5,
+            maxTokens: 12_000,
+            maxRevisionRounds: 0,
+          },
+        },
+      },
     );
-    await client.query(
-      `INSERT INTO fact_decisions
-         (id, work_id, branch_id, user_id, chapter_id, fact_proposal_id, action, actor_id,
-          actor_name, reason, original_payload, resulting_payload)
-       VALUES ($1, $2, $3, $4, $5, $6, 'confirm', $4, $7, '验收夹具',
-         '{}'::jsonb, '{}'::jsonb)`,
-      [decisionId, work.id, work.mainBranch.id, me.id, chapter.id, proposalId, me.displayName],
-    );
-    await client.query(
-      `INSERT INTO canon_commits
-         (id, work_id, branch_id, user_id, chapter_id, chapter_version_id, version_node_id,
-          idempotency_key, decision_snapshot, summary, actor_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '[]'::jsonb, '{}'::jsonb, $4)`,
-      [
-        commitId,
-        work.id,
-        work.mainBranch.id,
-        me.id,
-        chapter.id,
-        chapterVersion.id,
-        chapterVersion.versionNodeId,
-        `knowledge-fixture-${commitId}`,
-      ],
-    );
-    await client.query(
-      `INSERT INTO facts
-         (id, work_id, branch_id, user_id, chapter_id, fact_proposal_id, decision_id,
-          source_version_id, canon_commit_id, subject, predicate, object, risk, required,
-          status, valid_from_chapter)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '沈砚父母', '死因', $10,
-         'high', true, 'active', 1)`,
-      [
-        factId,
-        work.id,
-        work.mainBranch.id,
-        me.id,
-        chapter.id,
-        proposalId,
-        decisionId,
-        chapterVersion.id,
-        commitId,
-        object,
-      ],
-    );
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
-    throw error;
+    expect(generationResponse.status(), await generationResponse.text()).toBe(202);
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get(`${branchPath}/chapters/${chapter.id}`);
+          return chapterWorkspaceResponseSchema.parse(await response.json()).data.status;
+        },
+        { timeout: 15_000 },
+      )
+      .toBe("waiting_review");
   } finally {
-    client.release();
-    await pool.end();
+    await worker.stop();
+  }
+  const versionedChapter = chapterWorkspaceResponseSchema.parse(
+    await (await page.request.get(`${branchPath}/chapters/${chapter.id}`)).json(),
+  ).data;
+  const proposalResponse = await page.request.get(
+    `${branchPath}/chapters/${chapter.id}/fact-proposals`,
+  );
+  expect(proposalResponse.status(), await proposalResponse.text()).toBe(200);
+  const proposals = factProposalListResponseSchema.parse(await proposalResponse.json()).data;
+  for (const proposal of proposals) {
+    const decisionResponse = await page.request.post(
+      `${branchPath}/fact-proposals/${proposal.id}/decision`,
+      {
+        headers: { Origin: origin, "X-CSRF-Token": actionToken },
+        data: { action: "confirm", reason: "人物认知验收使用已确认事实" },
+      },
+    );
+    expect(decisionResponse.status(), await decisionResponse.text()).toBe(200);
+  }
+  const proposal = proposals.find((candidate) => candidate.risk === "high");
+  if (!proposal) {
+    throw new Error("Expected the production worker to extract a high-risk fact proposal");
+  }
+  const verifyResponse = await page.request.post(`${branchPath}/chapters/${chapter.id}/verify`, {
+    headers: {
+      Origin: origin,
+      "Idempotency-Key": crypto.randomUUID(),
+      "X-CSRF-Token": actionToken,
+    },
+    data: { chapterVersionId: versionedChapter.currentVersionId },
+  });
+  expect(verifyResponse.status(), await verifyResponse.text()).toBe(200);
+  const reviewResponse = await page.request.post(`${branchPath}/chapters/${chapter.id}/review`, {
+    headers: { Origin: origin, "X-CSRF-Token": actionToken },
+    data: { action: "approve", version: versionedChapter.version },
+  });
+  expect(reviewResponse.status(), await reviewResponse.text()).toBe(200);
+  const commitResponse = await page.request.post(
+    `${branchPath}/chapters/${chapter.id}/canon/commit`,
+    {
+      headers: {
+        Origin: origin,
+        "Idempotency-Key": crypto.randomUUID(),
+        "X-CSRF-Token": actionToken,
+      },
+      data: { chapterVersionId: versionedChapter.currentVersionId },
+    },
+  );
+  expect(commitResponse.status(), await commitResponse.text()).toBe(200);
+  const committedFact = canonCommitResponseSchema
+    .parse(await commitResponse.json())
+    .data.facts.find((candidate) => candidate.proposalId === proposal.id);
+  if (!committedFact) {
+    throw new Error("Expected the production canon commit to persist the confirmed fact");
   }
   return {
-    factId,
-    label: `沈砚父母 · 死因 · ${object}`,
-    object,
+    factId: committedFact.id,
+    label: `${committedFact.subject} · ${committedFact.predicate}`,
+    objectiveLabel: `${committedFact.subject} · ${committedFact.predicate} · ${committedFact.object}`,
+    object: committedFact.object,
   };
 }
 
@@ -919,9 +956,11 @@ test("loads the dedicated character profile, relationships, state history and he
     await expect(detail.getByText("找回被抹去的记忆")).toBeVisible();
     await expect(detail.getByText("成为忘川书的下一个祭品")).toBeVisible();
     await expect(detail.getByText("敌对 · 顾青")).toBeVisible();
-    await expect(detail.getByText("身体 · overall")).toBeVisible();
+    await expect(detail.getByText("身体 · 整体状态")).toBeVisible();
     await expect(detail.getByText("左臂骨折，不能双手结印。")).toBeVisible();
-    await expect(detail.getByText("位置 · current_location")).toBeVisible();
+    await expect(detail.getByText("位置 · 当前位置")).toBeVisible();
+    await expect(detail.getByText("overall")).toHaveCount(0);
+    await expect(detail.getByText("current_location")).toHaveCount(0);
     await expect(detail.getByText("地点：太玄门山门")).toBeVisible();
     await expect(detail.getByText("角色认知与引用")).toBeVisible();
     await expect(detail.getByText("还没有角色认知记录。")).toBeVisible();
@@ -958,7 +997,7 @@ test("shows reference sources and the knowledge editor at all four viewports", a
     chapterLengthTarget: 3000,
   });
   const shen = await createCharacter(page, work, "沈砚");
-  await createKnowledgeFact(page, work, "沈砚父母的死因被记录在忘川书的第一页。");
+  const fact = await createKnowledgeFact(page, work);
   await freezeApiTimestamps(page);
   const referencesApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/references`;
 
@@ -967,9 +1006,9 @@ test("shows reference sources and the knowledge editor at all four viewports", a
     const detail = await openCharacter(page, work);
     const referencesResponse = waitForApiResponse(page, "GET", referencesApi);
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
-    await expect(detail.getByRole("heading", { name: "引用与反向引用" })).toBeVisible();
+    await expect(detail.getByRole("heading", { name: "来源引用" })).toBeVisible();
     await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible({ timeout: 10_000 });
-    await expect(detail.getByText(/已确认事实 · 沈砚父母 · 死因/u)).toBeVisible();
+    await expect(detail.getByText(`已确认事实 · ${fact.label}`)).toBeVisible();
     await referencesResponse;
     await expectAuthorFacingLanguage(page);
     const referencesPrototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
@@ -1015,7 +1054,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
   });
   const shen = await createCharacter(page, work, "沈砚");
   const gu = await createCharacter(page, work, "顾青");
-  const fact = await createKnowledgeFact(page, work, "被仇家杀死");
+  const fact = await createKnowledgeFact(page, work);
   const characterApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}`;
   const relationshipApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/relationships`;
   const knowledgeApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/knowledge-states`;
@@ -1129,11 +1168,11 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
     expect(
       references.some((reference) => reference.kind === "fact" && reference.id === fact.factId),
     ).toBe(true);
-    await expect(detail.getByRole("heading", { name: "引用与反向引用" })).toBeVisible();
+    await expect(detail.getByRole("heading", { name: "来源引用" })).toBeVisible();
     await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible({ timeout: 10_000 });
-    await expect(detail.getByText(/已确认事实 · 沈砚父母 · 死因/u)).toBeVisible();
+    await expect(detail.getByText(`已确认事实 · ${fact.label}`)).toBeVisible();
     await expect(detail.getByText("沈砚以为父母是自尽。", { exact: true })).toBeVisible();
-    await expect(detail.getByText(/客观事实：沈砚父母 · 死因 · 被仇家杀死/u)).toBeVisible();
+    await expect(detail.getByText(`客观事实：${fact.objectiveLabel}`)).toBeVisible();
     await expect(detail.getByText(/信息来源：他人告知/u)).toBeVisible();
   });
 
@@ -1146,7 +1185,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
         body: JSON.stringify({
           error: {
             code: "INTERNAL_ERROR",
-            message: "引用与反向引用加载失败。",
+            message: "来源引用加载失败。",
             details: {},
             requestId: "req_entity_detail_references_error",
           },
@@ -1155,19 +1194,20 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
     });
     await detail.locator(".entity-page-nav-item", { hasText: "关系" }).click();
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
-    await expect(detail.getByText("引用与反向引用加载失败。")).toBeVisible();
+    await expect(detail.getByText("来源引用加载失败。")).toBeVisible();
     await page.unroute(referencesRoute);
     const recoveredResponse = waitForApiResponse(page, "GET", referencesApi);
     await detail.getByRole("button", { name: "重试" }).click();
     expect((await recoveredResponse).status()).toBe(200);
-    await expect(detail.getByText("引用与反向引用加载失败。")).toHaveCount(0);
+    await expect(detail.getByText("来源引用加载失败。")).toHaveCount(0);
     await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible();
   });
 
   await test.step("view history", async () => {
+    const historyResponsePromise = waitForApiResponse(page, "GET", historyApi);
     await detail.locator(".entity-page-nav-item", { hasText: "状态历史" }).click();
     const history = settingEntityVersionListResponseSchema.parse(
-      await (await page.request.get(historyApi)).json(),
+      await (await historyResponsePromise).json(),
     ).data;
     await expect(detail.getByText("版本历史")).toBeVisible();
     const latestHistoryVersion = Math.max(...history.map((version) => version.version));
@@ -1381,7 +1421,8 @@ test("holds long relationships and state history at all four viewports", async (
     await page.setViewportSize({ width, height: 1000 });
     const detail = await openCharacter(page, work);
     await expect(detail.getByText("同盟 · 顾青").first()).toBeVisible();
-    await expect(detail.getByText("能力 · seal_7")).toBeVisible();
+    await expect(detail.getByText("能力 · 状态记录").first()).toBeVisible();
+    await expect(detail.getByText("seal_7")).toHaveCount(0);
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-long-${width}`);
   }

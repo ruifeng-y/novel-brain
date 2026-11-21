@@ -13,8 +13,10 @@ import {
   entities,
   entityVersions,
   facts,
+  findIdempotentResource,
   foreshadows,
   outlineNodes,
+  rememberIdempotentResource,
   storyBibles,
   versionNodes,
   workBranches,
@@ -586,9 +588,37 @@ export class CharactersRepository implements OnModuleDestroy {
     characterId: string,
     input: CharacterKnowledgeStateCreateRequest,
     audit: CharacterAuditContext,
+    idempotencyKey?: string,
   ): Promise<CharacterWriteResult<CharacterKnowledgeState>> {
     return this.withTenant(userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
+      const idempotencyScope = `characters/${context.workId}/${context.branchId}/${characterId}/knowledge-states`;
+      if (idempotencyKey) {
+        const existing = await findIdempotentResource(
+          transaction,
+          userId,
+          idempotencyScope,
+          idempotencyKey,
+        );
+        if (existing) {
+          const [knowledge] = await transaction
+            .select()
+            .from(characterKnowledgeStates)
+            .where(
+              and(
+                eq(characterKnowledgeStates.id, existing.resourceId),
+                eq(characterKnowledgeStates.userId, userId),
+                eq(characterKnowledgeStates.workId, context.workId),
+                eq(characterKnowledgeStates.branchId, context.branchId),
+                eq(characterKnowledgeStates.characterId, characterId),
+              ),
+            )
+            .limit(1);
+          if (knowledge) {
+            return { kind: "ok", value: toKnowledgeContract(knowledge) };
+          }
+        }
+      }
       const current = await findWritableCharacter(transaction, userId, context, characterId, null);
       if (current.kind !== "ok") {
         return current;
@@ -661,6 +691,12 @@ export class CharactersRepository implements OnModuleDestroy {
         versionNodeId,
         audit,
       );
+      if (idempotencyKey) {
+        await rememberIdempotentResource(transaction, userId, idempotencyScope, idempotencyKey, {
+          resourceType: "character_knowledge_state",
+          resourceId: knowledge.id,
+        });
+      }
       return { kind: "ok", value: toKnowledgeContract(knowledge) };
     });
   }
@@ -1168,7 +1204,7 @@ export class CharactersRepository implements OnModuleDestroy {
           reference: {
             id: row.id,
             kind: "fact" as const,
-            title: `已确认事实 · ${row.subject} · ${row.predicate}`,
+            title: `${row.subject} · ${row.predicate}`,
             summary: row.object,
             sourceChapter:
               row.chapterId && row.chapterNumber && row.chapterTitle

@@ -9966,7 +9966,10 @@ export interface operations {
   CharactersController_addKnowledgeState: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "idempotency-key": string;
+        "Idempotency-Key"?: string;
+      };
       path: {
         workId: string;
         branchId: string;
