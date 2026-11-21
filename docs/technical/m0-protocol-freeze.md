@@ -204,6 +204,10 @@ M0 关键错误：
 | DELETE | `/api/v1/works/:workId/branches/:branchId/story-bible/cards/:cardKey` | 固定九卡不可直接删除；锁定后返回 `BIBLE_LOCKED` |
 | GET/POST | `/api/v1/works/:workId/branches/:branchId/entities` | 最小世界/人物/金手指实体 |
 | GET/PATCH | `/api/v1/works/:workId/branches/:branchId/entities/:entityId` | 实体详情 |
+| GET/POST | `/api/v1/works/:workId/branches/:branchId/characters` | 人物专用档案列表与创建 |
+| GET/PATCH | `/api/v1/works/:workId/branches/:branchId/characters/:characterId` | 人物专用档案与版本化写入 |
+| POST | `/api/v1/works/:workId/branches/:branchId/characters/:characterId/knowledge-states` | 记录角色认知，区分客观事实引用与主观状态，并携带章节有效期 |
+| GET | `/api/v1/works/:workId/branches/:branchId/characters/:characterId/references` | 游标分页的正文、章纲、伏笔、故事圣经与事实反向引用 |
 | GET | `/api/v1/works/:workId/branches/:branchId/facts` | 已确认设定投影 |
 | GET | `/api/v1/genre-packs` | 可用题材包及版本化规则/UI hints |
 | POST | `/api/v1/works/:workId/genre-pack/version` | 幂等升级/回滚作品题材包版本 |
