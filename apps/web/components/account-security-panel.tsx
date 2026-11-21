@@ -13,7 +13,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   authorPenNameDeleteResponseSchema,
   authorPenNameListResponseSchema,
@@ -49,6 +49,7 @@ export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser })
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState("");
+  const createPenNameIdempotencyKey = useRef<string | null>(null);
 
   const handleAuthFailure = useCallback(
     (response: Response) => {
@@ -161,9 +162,16 @@ export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser })
     setNotice("");
     try {
       const csrfToken = await getCsrfToken();
+      if (!createPenNameIdempotencyKey.current) {
+        createPenNameIdempotencyKey.current = crypto.randomUUID();
+      }
       const response = await fetch("/api/v1/users/me/pen-names", {
         method: "POST",
-        headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": createPenNameIdempotencyKey.current,
+          "x-csrf-token": csrfToken,
+        },
         body: JSON.stringify({
           name: newPenName.trim(),
           bio: newPenBio.trim(),
@@ -180,6 +188,7 @@ export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser })
       setNewPenName("");
       setNewPenBio("");
       setNewPenDefault(false);
+      createPenNameIdempotencyKey.current = null;
       await loadPenNames();
       setNotice("笔名已创建。");
     } catch (caught) {

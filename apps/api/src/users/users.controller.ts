@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   Param,
   Patch,
@@ -23,7 +24,7 @@ import {
   uuidV7Schema,
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
-import { ApiBody, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
+import { ApiBody, ApiHeader, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
 import { z } from "zod";
 
 import { ApiQuerySchema } from "../common/zod-openapi";
@@ -91,14 +92,20 @@ export class UsersController {
 
   @Post("me/pen-names")
   @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key" })
   @ApiBody({ schema: penNameCreateBodySchema })
   @ApiOkResponse({ description: "Created pen name", schema: penNameResponseJsonSchema })
-  async createPenName(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+  async createPenName(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+    @Headers("idempotency-key") idempotencyKey?: string,
+  ) {
     const requestId = createRequestId();
     const penName = await this.service.createPenName(
       this.userId(request),
       authorPenNameCreateRequestSchema.parse(body),
       this.auditContext(request, requestId),
+      idempotencyKey?.trim() || undefined,
     );
     return authorPenNameResponseSchema.parse(envelope(penName, requestId));
   }
