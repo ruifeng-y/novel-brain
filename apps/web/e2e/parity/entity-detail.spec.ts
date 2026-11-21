@@ -955,6 +955,7 @@ test("loads the dedicated character profile, relationships, state history and he
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-knowledge-editor-${width}`);
     await editor.getByRole("button", { name: "取消" }).first().click();
+    await page.evaluate(() => window.scrollTo({ top: 0 }));
     await expectAuthorFacingLanguage(page);
     const prototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
     await testInfo.attach(`entity-detail-prototype-only-scan-${width}`, {
