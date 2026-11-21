@@ -30,6 +30,7 @@ import {
   characterDetailResponseSchema,
   characterKnowledgeStateCreateRequestSchema,
   characterKnowledgeStateResponseSchema,
+  characterReferenceListResponseSchema,
   characterRelationshipCreateRequestSchema,
   characterRelationshipResponseSchema,
   confirmedSettingListResponseSchema,
@@ -52,8 +53,11 @@ import {
   timelineEventResponseSchema,
   worldTimelineResponseSchema,
   workResponseSchema,
+  type CharacterKnowledgeStateCreateRequest,
   type ConfirmedSetting,
   type CharacterDetail,
+  type CharacterReference,
+  type CharacterReferenceKind,
   type CustomFieldDefinition,
   type CustomFieldValue,
   type FactionDetail,
@@ -79,14 +83,6 @@ import { fetchWorkOverview } from "../lib/work-api";
 import { settingTypeLabels } from "../lib/setting-labels";
 
 type ColumnKey = "world" | "characters" | "factions" | "map" | "power" | "items" | "timeline";
-
-interface KnowledgeStateInput {
-  objectiveFactId: string;
-  state: CharacterDetail["knowledgeStates"][number]["state"];
-  claimedContent: string | null;
-  sourceKind: CharacterDetail["knowledgeStates"][number]["sourceKind"];
-  validity: CharacterDetail["knowledgeStates"][number]["validity"];
-}
 
 type ViewMode = "columns" | "confirmed" | "fields";
 type EditorMode = "create" | "edit" | "change";
@@ -358,6 +354,14 @@ const knowledgeSourceLabels: Record<
   assumed: "默认假设",
 };
 
+const characterReferenceLabels: Record<CharacterReferenceKind, string> = {
+  chapter: "正文引用",
+  outline: "章纲引用",
+  foreshadow: "伏笔引用",
+  story_bible: "故事圣经引用",
+  fact: "已确认事实",
+};
+
 const factionRelationLabels: Record<
   FactionDetail["relationships"][number]["relationType"],
   string
@@ -462,6 +466,9 @@ export function SettingsCenter({
   const [characterDetail, setCharacterDetail] = useState<CharacterDetail | null>(null);
   const [characterDetailLoading, setCharacterDetailLoading] = useState(false);
   const [characterDetailError, setCharacterDetailError] = useState("");
+  const [characterReferences, setCharacterReferences] = useState<CharacterReference[]>([]);
+  const [characterReferencesLoading, setCharacterReferencesLoading] = useState(false);
+  const [characterReferencesError, setCharacterReferencesError] = useState("");
   const [worldDetail, setWorldDetail] = useState<WorldDomainDetail | null>(null);
   const [worldDetailLoading, setWorldDetailLoading] = useState(false);
   const [worldDetailError, setWorldDetailError] = useState("");
@@ -632,24 +639,53 @@ export function SettingsCenter({
       setCharacterDetail(null);
       setCharacterDetailError("");
       setCharacterDetailLoading(false);
+      setCharacterReferences([]);
+      setCharacterReferencesError("");
+      setCharacterReferencesLoading(false);
       setWorldDetail(null);
       setWorldDetailError("");
       setWorldDetailLoading(false);
       if (entityType === "character") {
         setCharacterDetailLoading(true);
-        try {
-          const response = await fetch(`${basePath}/characters/${entityId}`, {
-            cache: "no-store",
-          });
-          if (!response.ok) {
-            throw new Error(await readError(response, "人物档案加载失败。"));
-          }
-          setCharacterDetail(characterDetailResponseSchema.parse(await response.json()).data);
-        } catch (caught) {
-          setCharacterDetailError(caught instanceof Error ? caught.message : "人物档案加载失败。");
-        } finally {
-          setCharacterDetailLoading(false);
-        }
+        setCharacterReferencesLoading(true);
+        await Promise.all([
+          (async () => {
+            try {
+              const response = await fetch(`${basePath}/characters/${entityId}`, {
+                cache: "no-store",
+              });
+              if (!response.ok) {
+                throw new Error(await readError(response, "人物档案加载失败。"));
+              }
+              setCharacterDetail(characterDetailResponseSchema.parse(await response.json()).data);
+            } catch (caught) {
+              setCharacterDetailError(
+                caught instanceof Error ? caught.message : "人物档案加载失败。",
+              );
+            } finally {
+              setCharacterDetailLoading(false);
+            }
+          })(),
+          (async () => {
+            try {
+              const response = await fetch(`${basePath}/characters/${entityId}/references`, {
+                cache: "no-store",
+              });
+              if (!response.ok) {
+                throw new Error(await readError(response, "引用与反向引用加载失败。"));
+              }
+              setCharacterReferences(
+                characterReferenceListResponseSchema.parse(await response.json()).data,
+              );
+            } catch (caught) {
+              setCharacterReferencesError(
+                caught instanceof Error ? caught.message : "引用与反向引用加载失败。",
+              );
+            } finally {
+              setCharacterReferencesLoading(false);
+            }
+          })(),
+        ]);
         return;
       }
       if (
@@ -739,6 +775,9 @@ export function SettingsCenter({
       setCharacterDetail(null);
       setCharacterDetailError("");
       setCharacterDetailLoading(false);
+      setCharacterReferences([]);
+      setCharacterReferencesError("");
+      setCharacterReferencesLoading(false);
       setWorldDetail(null);
       setWorldDetailError("");
       setWorldDetailLoading(false);
@@ -1256,7 +1295,7 @@ export function SettingsCenter({
 
   async function createCharacterKnowledge(
     entity: SettingEntity,
-    input: KnowledgeStateInput,
+    input: CharacterKnowledgeStateCreateRequest,
   ): Promise<boolean> {
     if (!work || entity.type !== "character") {
       return false;
@@ -1266,12 +1305,8 @@ export function SettingsCenter({
     setNotice("");
     try {
       const payload = characterKnowledgeStateCreateRequestSchema.parse({
-        objectiveFactId: input.objectiveFactId,
-        state: input.state,
+        ...input,
         claimedContent: input.state === "unknown" ? null : input.claimedContent,
-        sourceKind: input.sourceKind,
-        validity: input.validity,
-        sourceChapterId: null,
       });
       const csrfToken = await getCsrfToken();
       const response = await fetch(
@@ -1422,6 +1457,9 @@ export function SettingsCenter({
           characterDetail={characterDetail}
           characterDetailError={characterDetailError}
           characterDetailLoading={characterDetailLoading}
+          characterReferences={characterReferences}
+          characterReferencesError={characterReferencesError}
+          characterReferencesLoading={characterReferencesLoading}
           customFieldDefinitions={customFields}
           entity={selected}
           factOptions={confirmed.filter((item) => item.kind === "fact")}
@@ -1441,6 +1479,7 @@ export function SettingsCenter({
           onEditAlias={() => beginEdit(selected, "alias")}
           onLock={() => lockEntity(selected)}
           onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
+          onRetryCharacterReferences={() => refreshDetail(selected.id, selected.type)}
           onRetryVersionHistory={() => refreshDetail(selected.id, selected.type)}
           onRestore={(targetVersion, reason) => restoreEntity(selected, targetVersion, reason)}
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
@@ -1452,6 +1491,7 @@ export function SettingsCenter({
           versionHistoryError={versionHistoryError}
           versionHistoryLoading={versionHistoryLoading}
           versions={versions}
+          workId={work.id}
           worldDetail={worldDetail}
           worldDetailError={worldDetailError}
           worldDetailLoading={worldDetailLoading}
@@ -2628,6 +2668,9 @@ function EntityDetail({
   characterDetail,
   characterDetailError,
   characterDetailLoading,
+  characterReferences,
+  characterReferencesError,
+  characterReferencesLoading,
   customFieldDefinitions,
   entity,
   factOptions,
@@ -2642,6 +2685,7 @@ function EntityDetail({
   onEditAlias,
   onLock,
   onRetryCharacterDetail,
+  onRetryCharacterReferences,
   onRetryVersionHistory,
   onRestore,
   onRetryWorldDetail,
@@ -2651,6 +2695,7 @@ function EntityDetail({
   versionHistoryError,
   versionHistoryLoading,
   versions,
+  workId,
   worldDetail,
   worldDetailError,
   worldDetailLoading,
@@ -2660,12 +2705,15 @@ function EntityDetail({
   characterDetail: CharacterDetail | null;
   characterDetailError: string;
   characterDetailLoading: boolean;
+  characterReferences: CharacterReference[];
+  characterReferencesError: string;
+  characterReferencesLoading: boolean;
   customFieldDefinitions: CustomFieldDefinition[];
   entity: SettingEntity;
   factOptions: ConfirmedSetting[];
   onBack: () => void;
   onChangeRequest: () => void;
-  onCreateKnowledge: (input: KnowledgeStateInput) => Promise<boolean>;
+  onCreateKnowledge: (input: CharacterKnowledgeStateCreateRequest) => Promise<boolean>;
   onCreateProposal: (input: ProposalInput) => void;
   onCreateRelationship: (
     targetId: string,
@@ -2681,6 +2729,7 @@ function EntityDetail({
   onEditAlias: () => void;
   onLock: () => void;
   onRetryCharacterDetail: () => void;
+  onRetryCharacterReferences: () => void;
   onRetryVersionHistory: () => void;
   onRestore: (targetVersion: number, reason: string) => Promise<boolean>;
   onRetryWorldDetail: () => void;
@@ -2690,6 +2739,7 @@ function EntityDetail({
   versionHistoryError: string;
   versionHistoryLoading: boolean;
   versions: SettingEntityVersion[];
+  workId: string;
   worldDetail: WorldDomainDetail | null;
   worldDetailError: string;
   worldDetailLoading: boolean;
@@ -2749,6 +2799,8 @@ function EntityDetail({
     knowledgeFromChapter < 1 ||
     (knowledgeToChapter !== null &&
       (!Number.isInteger(knowledgeToChapter) || knowledgeToChapter < knowledgeFromChapter));
+  const knowledgeContentRequired = knowledgeState !== "unknown";
+  const knowledgeContentMissing = knowledgeContentRequired && !knowledgeContent.trim();
 
   async function submitRestore() {
     if (selectedVersion === null) {
@@ -2773,11 +2825,7 @@ function EntityDetail({
   }
 
   async function submitKnowledge() {
-    if (
-      !knowledgeFactId ||
-      knowledgeValidityInvalid ||
-      (knowledgeState !== "unknown" && !knowledgeContent.trim())
-    ) {
+    if (!knowledgeFactId || knowledgeValidityInvalid || knowledgeContentMissing) {
       return;
     }
     const saved = await onCreateKnowledge({
@@ -2791,6 +2839,7 @@ function EntityDetail({
         fromStoryTime: null,
         toStoryTime: null,
       },
+      sourceChapterId: null,
     });
     if (saved) {
       setKnowledgeFactId("");
@@ -3014,6 +3063,7 @@ function EntityDetail({
               characterDetailError={characterDetailError}
               characterDetailLoading={characterDetailLoading}
               entity={entity}
+              factOptions={factOptions}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
               powerLevelLabel={powerLevelLabel}
@@ -3030,6 +3080,7 @@ function EntityDetail({
               characterDetailError={characterDetailError}
               characterDetailLoading={characterDetailLoading}
               entity={entity}
+              factOptions={factOptions}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
               powerLevelLabel={powerLevelLabel}
@@ -3110,6 +3161,7 @@ function EntityDetail({
               characterDetailError={characterDetailError}
               characterDetailLoading={characterDetailLoading}
               entity={entity}
+              factOptions={factOptions}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
               powerLevelLabel={powerLevelLabel}
@@ -3222,6 +3274,7 @@ function EntityDetail({
               characterDetailError={characterDetailError}
               characterDetailLoading={characterDetailLoading}
               entity={entity}
+              factOptions={factOptions}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
               powerLevelLabel={powerLevelLabel}
@@ -3230,6 +3283,51 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
+            <div className="settings-detail-block">
+              <h3>引用与反向引用</h3>
+              {characterReferencesLoading ? (
+                <p>正在加载引用与反向引用。</p>
+              ) : characterReferencesError ? (
+                <div className="settings-character-error" role="alert">
+                  <span>{characterReferencesError}</span>
+                  <button
+                    className="text-btn small"
+                    onClick={onRetryCharacterReferences}
+                    type="button"
+                  >
+                    重试
+                  </button>
+                </div>
+              ) : characterReferences.length === 0 ? (
+                <p>还没有正文、大纲、伏笔或故事圣经引用。</p>
+              ) : (
+                <ul className="settings-character-records">
+                  {characterReferences.map((reference) => {
+                    const href = referenceHref(workId, reference);
+                    return (
+                      <li key={`${reference.kind}:${reference.id}`}>
+                        <div>
+                          <strong>
+                            {characterReferenceLabels[reference.kind]} · {reference.title}
+                          </strong>
+                          <span>
+                            {reference.sourceChapter
+                              ? `第 ${reference.sourceChapter.number} 章`
+                              : "来源页面"}
+                          </span>
+                        </div>
+                        <p>{reference.summary || "尚未补充引用摘要。"}</p>
+                        {href ? (
+                          <Link className="text-btn small" href={href}>
+                            打开来源
+                          </Link>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
             {activeSection === "references" &&
             entity.type === "character" &&
             !locked &&
@@ -3301,7 +3399,7 @@ function EntityDetail({
                         <span>认知内容</span>
                         <textarea
                           aria-label="认知内容"
-                          disabled={knowledgeState === "unknown"}
+                          disabled={!knowledgeContentRequired}
                           onChange={(event) => setKnowledgeContent(event.target.value)}
                           placeholder="记录这个角色在故事中实际知道、相信或怀疑的内容。"
                           rows={3}
@@ -3334,7 +3432,7 @@ function EntityDetail({
                         busy === `knowledge-${entity.id}` ||
                         !knowledgeFactId ||
                         knowledgeValidityInvalid ||
-                        (knowledgeState !== "unknown" && !knowledgeContent.trim())
+                        knowledgeContentMissing
                       }
                       onClick={() => void submitKnowledge()}
                       type="button"
@@ -3626,6 +3724,7 @@ function DomainDetailSections({
   characterDetailError,
   characterDetailLoading,
   entity,
+  factOptions,
   onRetryCharacterDetail,
   onRetryWorldDetail,
   powerLevelLabel,
@@ -3638,6 +3737,7 @@ function DomainDetailSections({
   characterDetailError: string;
   characterDetailLoading: boolean;
   entity: SettingEntity;
+  factOptions: ConfirmedSetting[];
   onRetryCharacterDetail: () => void;
   onRetryWorldDetail: () => void;
   powerLevelLabel: string;
@@ -3670,6 +3770,7 @@ function DomainDetailSections({
         detail={characterDetail}
         entity={entity}
         error={characterDetailError}
+        facts={factOptions}
         loading={characterDetailLoading}
         onRetry={onRetryCharacterDetail}
         section={section}
@@ -3754,6 +3855,7 @@ function CharacterDomainView({
   detail,
   entity,
   error,
+  facts,
   loading,
   onRetry,
   section,
@@ -3761,10 +3863,13 @@ function CharacterDomainView({
   detail: CharacterDetail | null;
   entity: Extract<SettingEntity, { type: "character" }>;
   error: string;
+  facts: ConfirmedSetting[];
   loading: boolean;
   onRetry: () => void;
   section: EntityDetailSection;
 }) {
+  const factsById = new Map(facts.map((fact) => [fact.id, fact] as const));
+
   if (section === "health") {
     return null;
   }
@@ -3907,8 +4012,15 @@ function CharacterDomainView({
                 </div>
                 <p>{state.claimedContent || "明确记录为未知。"}</p>
                 <small>
-                  {state.sourceChapterId ? "来源：章节记录" : "来源：作者补录"} · 客观事实引用已保留
+                  客观事实：
+                  {(() => {
+                    const fact = factsById.get(state.objectiveFactId);
+                    return fact
+                      ? [fact.name, fact.predicate, fact.object].filter(Boolean).join(" · ")
+                      : "引用已保留";
+                  })()}
                 </small>
+                <small>{state.sourceChapterId ? "来源：章节记录" : "来源：作者补录"}</small>
               </li>
             ))}
           </ul>
@@ -5657,6 +5769,22 @@ function worldDetailErrorLabel(type: SettingEntityType): string {
     return "物品功法加载失败。";
   }
   return "世界设定加载失败。";
+}
+
+function referenceHref(workId: string, reference: CharacterReference): string | null {
+  if (reference.kind === "chapter" && reference.sourceChapter) {
+    return `/workspace/${workId}/write?chapterId=${reference.sourceChapter.chapterId}`;
+  }
+  if (reference.kind === "outline") {
+    return `/workspace/${workId}/outline`;
+  }
+  if (reference.kind === "foreshadow") {
+    return `/workspace/${workId}/foreshadows`;
+  }
+  if (reference.kind === "story_bible") {
+    return `/workspace/${workId}/bible`;
+  }
+  return null;
 }
 
 function settingsPath(work: WorkOverview): string {

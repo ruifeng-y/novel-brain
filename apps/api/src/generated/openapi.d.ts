@@ -900,6 +900,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/references": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_references"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/history": {
     parameters: {
       query?: never;
@@ -10079,6 +10095,49 @@ export interface operations {
               }[];
               hiddenFactIds: string[];
             };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_references: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Backlinks from chapters, outline, foreshadows, story bible and facts */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              kind: "chapter" | "outline" | "foreshadow" | "story_bible" | "fact";
+              title: string;
+              summary: string;
+              sourceChapter: {
+                chapterId: string;
+                number: number;
+                title: string;
+              } | null;
+            }[];
             /** Format: starts_with */
             requestId: string;
             /** @default {} */

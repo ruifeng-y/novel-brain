@@ -2,6 +2,7 @@ import { expect, test, type BrowserContext, type Page, type TestInfo } from "@pl
 import {
   characterDetailResponseSchema,
   characterKnowledgeStateResponseSchema,
+  characterReferenceListResponseSchema,
   characterRelationshipResponseSchema,
   type PowerSystemCreateRequest,
   settingEntityResponseSchema,
@@ -111,6 +112,7 @@ async function createKnowledgeFact(
   const databaseUrl =
     process.env.E2E_DATABASE_URL ??
     "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
+  // Chapter and version are created through production APIs above; isolate the knowledge action from generation.
   const pool = new Pool({ connectionString: databaseUrl });
   const client = await pool.connect();
   try {
@@ -926,6 +928,9 @@ test("loads the dedicated character profile, relationships, state history and he
     await expect(detail.getByText("还没有角色认知记录。")).toBeVisible();
     await expect(detail.getByText("设定体检")).toBeVisible();
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
+    await expect(detail.getByRole("heading", { name: "引用与反向引用" })).toBeVisible();
+    await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible();
+    await expect(detail.getByText(/已确认事实 · 沈砚父母 · 死因/u)).toBeVisible();
     await expect(detail.getByRole("heading", { name: "编辑角色认知" })).toBeVisible();
     await expect(detail.getByLabel("客观事实")).toBeVisible();
     await expect(detail.getByLabel("生效章节")).toBeVisible();
@@ -977,6 +982,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
   const characterApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}`;
   const relationshipApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/relationships`;
   const knowledgeApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/knowledge-states`;
+  const referencesApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/references`;
   const lockApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}/lock`;
   const historyApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}/versions`;
   const settingsEntityApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}`;
@@ -1034,10 +1040,10 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
   await test.step("edit knowledge", async () => {
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
     await page.getByLabel("客观事实").selectOption(fact.factId);
-    await page.getByLabel("认知状态").selectOption("knowledge");
+    await page.getByLabel("认知状态").selectOption("misbelief");
     await page.getByLabel("生效章节").fill("2");
     await page.getByLabel("失效章节").fill("3");
-    await page.getByLabel("认知内容").fill(fact.object);
+    await page.getByLabel("认知内容").fill("沈砚以为父母是自尽。");
     await page.getByLabel("信息来源").selectOption("told");
     const knowledgeResponsePromise = waitForApiResponse(page, "POST", knowledgeApi);
     await page.getByRole("button", { name: "保存认知" }).click();
@@ -1045,35 +1051,38 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
       await (await knowledgeResponsePromise).json(),
     ).data;
     expect(knowledge.objectiveFactId).toBe(fact.factId);
-    expect(knowledge.state).toBe("knowledge");
+    expect(knowledge.state).toBe("misbelief");
     expect(knowledge.sourceKind).toBe("told");
-    expect(knowledge.claimedContent).toBe(fact.object);
+    expect(knowledge.claimedContent).toBe("沈砚以为父母是自尽。");
     expect(knowledge.validity).toMatchObject({ fromChapter: 2, toChapter: 3 });
     const persisted = await persistedCharacter(page, characterApi);
     const persistedKnowledge = persisted.knowledgeStates.find(
       (item) => item.objectiveFactId === fact.factId,
     );
     expect(persistedKnowledge).toMatchObject({
-      claimedContent: fact.object,
+      claimedContent: "沈砚以为父母是自尽。",
       sourceKind: "told",
-      state: "knowledge",
+      state: "misbelief",
       validity: { fromChapter: 2, toChapter: 3 },
     });
   });
 
   await test.step("view references", async () => {
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
-    const references = await persistedCharacter(page, characterApi);
-    expect(references.knowledgeStates[0]).toMatchObject({
-      claimedContent: fact.object,
-      objectiveFactId: fact.factId,
-      sourceKind: "told",
-      state: "knowledge",
-      validity: { fromChapter: 2, toChapter: 3 },
-    });
-    await expect(detail.getByText("角色认知与引用")).toBeVisible();
-    await expect(detail.getByText(fact.object, { exact: true })).toBeVisible();
-    await expect(detail.getByText(/客观事实引用已保留/u)).toBeVisible();
+    const referencesResponse = await page.request.get(referencesApi);
+    expect(referencesResponse.status()).toBe(200);
+    const references = characterReferenceListResponseSchema.parse(
+      await referencesResponse.json(),
+    ).data;
+    expect(references.some((reference) => reference.kind === "chapter")).toBe(true);
+    expect(
+      references.some((reference) => reference.kind === "fact" && reference.id === fact.factId),
+    ).toBe(true);
+    await expect(detail.getByRole("heading", { name: "引用与反向引用" })).toBeVisible();
+    await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible();
+    await expect(detail.getByText(/已确认事实 · 沈砚父母 · 死因/u)).toBeVisible();
+    await expect(detail.getByText("沈砚以为父母是自尽。", { exact: true })).toBeVisible();
+    await expect(detail.getByText(/客观事实：沈砚父母 · 死因 · 被仇家杀死/u)).toBeVisible();
   });
 
   await test.step("view history", async () => {
@@ -1082,10 +1091,13 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
       await (await page.request.get(historyApi)).json(),
     ).data;
     await expect(detail.getByText("版本历史")).toBeVisible();
-    await expect(detail.locator(".settings-version-card").first()).toBeVisible();
-    expect(Math.max(...history.map((version) => version.version))).toBeGreaterThan(
+    const latestHistoryVersion = Math.max(...history.map((version) => version.version));
+    expect(latestHistoryVersion).toBeGreaterThan(
       Math.max(...versions.map((version) => version.version)),
     );
+    await expect(
+      detail.locator(".settings-version-card").filter({ hasText: `第 ${latestHistoryVersion} 版` }),
+    ).toBeVisible();
   });
 
   await test.step("lock entity", async () => {
@@ -1152,9 +1164,17 @@ test("shows loading, empty and recoverable error states at all four viewports", 
   }
 
   await page.setViewportSize({ width: 900, height: 1000 });
-  await page.route(`**${detailPath}`, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    await route.continue();
+  const detailResponse = await page.request.get(detailPath);
+  expect(detailResponse.status()).toBe(200);
+  const detailBody = await detailResponse.text();
+  let releaseDetail!: () => void;
+  const detailGate = new Promise<void>((resolve) => {
+    releaseDetail = resolve;
+  });
+  const detailRoute = (url: URL) => url.pathname === detailPath;
+  await page.route(detailRoute, async (route) => {
+    await detailGate;
+    await route.fulfill({ status: 200, contentType: "application/json", body: detailBody });
   });
   const detailLoaded = page.waitForResponse(
     (response) =>
@@ -1164,12 +1184,13 @@ test("shows loading, empty and recoverable error states at all four viewports", 
   );
   await openCharacter(page, work);
   await expect(page.getByText("正在加载人物档案")).toBeVisible();
+  releaseDetail();
   await detailLoaded;
-  await page.unroute(`**${detailPath}`);
+  await page.unroute(detailRoute);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 1000 });
-    await page.route(`**${detailPath}`, async (route) => {
+    await page.route(detailRoute, async (route) => {
       await route.fulfill({
         status: 500,
         contentType: "application/json",
@@ -1188,7 +1209,7 @@ test("shows loading, empty and recoverable error states at all four viewports", 
     await expect(detail.getByRole("button", { name: "重试" })).toBeEnabled();
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-error-${width}`);
-    await page.unroute(`**${detailPath}`);
+    await page.unroute(detailRoute);
   }
 });
 

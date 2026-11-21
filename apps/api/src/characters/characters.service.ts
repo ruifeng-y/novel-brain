@@ -12,6 +12,7 @@ import {
   type CharacterKnowledgeStateCreateRequest,
   type CharacterListQuery,
   type CharacterProfileUpdateRequest,
+  type CharacterReference,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
   type CharacterStateTransition,
@@ -160,6 +161,16 @@ export class CharactersService {
     return unwrap(
       await this.repository.knowledgeAtChapter(userId, context, characterId, chapterNumber),
     );
+  }
+
+  async references(
+    userId: string,
+    workId: string,
+    branchId: string,
+    characterId: string,
+  ): Promise<CharacterReference[]> {
+    const context = await this.requireContext(userId, workId, branchId);
+    return unwrap(await this.repository.references(userId, context, characterId));
   }
 
   async listChangeRequests(

@@ -6,6 +6,7 @@ import {
   characterDetailResponseSchema,
   characterHistoryResponseSchema,
   characterKnowledgeProjectionResponseSchema,
+  characterReferenceListResponseSchema,
   confirmedSettingListResponseSchema,
 } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
@@ -307,6 +308,19 @@ describe("character domain HTTP integration", () => {
     expect(
       confirmed.data.find((entry) => entry.kind === "fact" && entry.object === "被仇家杀死"),
     ).toBeTruthy();
+
+    const references = characterReferenceListResponseSchema.parse(
+      (await owner.get(`${base}/characters/${shen.id}/references`).expect(200)).body,
+    ).data;
+    expect(references).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "chapter",
+          sourceChapter: expect.objectContaining({ chapterId: fact.chapterId, number: 1 }),
+        }),
+        expect.objectContaining({ kind: "fact", id: fact.id }),
+      ]),
+    );
   });
 
   it("requires a change request once the character is locked and enforces tenant isolation", async () => {
@@ -365,6 +379,10 @@ describe("character domain HTTP integration", () => {
     expect((await other.get(`${base}/characters`).expect(403)).body.error.code).toBe(
       "FORBIDDEN_TENANT_ACCESS",
     );
+    expect(
+      (await other.get(`${base}/characters/${character.id}/references`).expect(403)).body.error
+        .code,
+    ).toBe("FORBIDDEN_TENANT_ACCESS");
     expect(
       (
         await other
@@ -539,7 +557,7 @@ async function createCanonFact(
     branchId: string;
     object: string;
   },
-): Promise<{ id: string }> {
+): Promise<{ id: string; chapterId: string }> {
   const chapterId = uuidv7();
   const versionNodeId = uuidv7();
   const chapterVersionId = uuidv7();
@@ -591,6 +609,10 @@ async function createCanonFact(
       versionNodeId,
       now,
     ],
+  );
+  await pool.query(
+    "UPDATE chapters SET current_version_id = $1, word_count = $2, updated_at = $3 WHERE id = $4",
+    [chapterVersionId, "沈砚父母被仇家杀死。".length, now, chapterId],
   );
   await pool.query("UPDATE work_branches SET head_node_id = $1, updated_at = $2 WHERE id = $3", [
     versionNodeId,
@@ -662,7 +684,7 @@ async function createCanonFact(
       now,
     ],
   );
-  return { id: factId };
+  return { id: factId, chapterId };
 }
 
 async function ensureDatabaseExists(databaseUrl: string): Promise<void> {

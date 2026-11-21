@@ -34,6 +34,7 @@ import {
   characterListQuerySchema,
   characterListResponseSchema,
   characterProfileUpdateRequestSchema,
+  characterReferenceListResponseSchema,
   characterRelationshipCreateRequestSchema,
   characterRelationshipResponseSchema,
   characterStateTransitionCreateRequestSchema,
@@ -73,6 +74,7 @@ const knowledgeProjectionResponseJsonSchema = schemaOf(
   characterKnowledgeProjectionResponseSchema,
   "output",
 );
+const referenceListResponseJsonSchema = schemaOf(characterReferenceListResponseSchema, "output");
 const historyResponseJsonSchema = schemaOf(characterHistoryResponseSchema, "output");
 const changeRequestResponseJsonSchema = schemaOf(characterChangeRequestResponseSchema, "output");
 const changeRequestListResponseJsonSchema = schemaOf(
@@ -312,6 +314,29 @@ export class CharactersController {
         uuidV7Schema.parse(branchId),
         uuidV7Schema.parse(characterId),
         input.chapterNumber,
+      ),
+      requestId: createRequestId(),
+      meta: {},
+    });
+  }
+
+  @Get(":characterId/references")
+  @ApiOkResponse({
+    description: "Backlinks from chapters, outline, foreshadows, story bible and facts",
+    schema: referenceListResponseJsonSchema,
+  })
+  async references(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("characterId") characterId: string,
+  ) {
+    return characterReferenceListResponseSchema.parse({
+      data: await this.service.references(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(characterId),
       ),
       requestId: createRequestId(),
       meta: {},
