@@ -2773,7 +2773,7 @@ function EntityDetail({
     const saved = await onCreateKnowledge({
       objectiveFactId: knowledgeFactId,
       state: knowledgeState,
-      claimedContent: knowledgeState === "unknown" ? null : knowledgeContent.trim(),
+      claimedContent: knowledgeContent.trim(),
       sourceKind: knowledgeSourceKind,
     });
     if (saved) {
