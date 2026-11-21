@@ -34,6 +34,7 @@ import {
   characterListQuerySchema,
   characterListResponseSchema,
   characterProfileUpdateRequestSchema,
+  characterReferenceListQuerySchema,
   characterReferenceListResponseSchema,
   characterRelationshipCreateRequestSchema,
   characterRelationshipResponseSchema,
@@ -321,6 +322,7 @@ export class CharactersController {
   }
 
   @Get(":characterId/references")
+  @ApiQuerySchema(characterReferenceListQuerySchema)
   @ApiOkResponse({
     description: "Backlinks from chapters, outline, foreshadows, story bible and facts",
     schema: referenceListResponseJsonSchema,
@@ -330,16 +332,19 @@ export class CharactersController {
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("characterId") characterId: string,
+    @Query() query: unknown,
   ) {
+    const page = await this.service.references(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(characterId),
+      characterReferenceListQuerySchema.parse(query ?? {}),
+    );
     return characterReferenceListResponseSchema.parse({
-      data: await this.service.references(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        uuidV7Schema.parse(characterId),
-      ),
+      data: page.data,
+      meta: { nextCursor: page.nextCursor },
       requestId: createRequestId(),
-      meta: {},
     });
   }
 

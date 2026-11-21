@@ -2458,7 +2458,7 @@ export const characterReferenceKindSchema = z.enum([
 export type CharacterReferenceKind = z.infer<typeof characterReferenceKindSchema>;
 
 export const characterReferenceSchema = z.object({
-  id: z.string().trim().min(1),
+  id: uuidV7Schema,
   kind: characterReferenceKindSchema,
   title: z.string().trim().min(1),
   summary: z.string(),
@@ -2466,7 +2466,9 @@ export const characterReferenceSchema = z.object({
 });
 export type CharacterReference = z.infer<typeof characterReferenceSchema>;
 
-export const characterReferenceListResponseSchema = apiEnvelopeSchema(
+export const characterReferenceListQuerySchema = cursorPageQuerySchema;
+export type CharacterReferenceListQuery = z.infer<typeof characterReferenceListQuerySchema>;
+export const characterReferenceListResponseSchema = cursorListResponseSchema(
   z.array(characterReferenceSchema),
 );
 

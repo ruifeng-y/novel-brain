@@ -13,6 +13,7 @@ import {
   type CharacterListQuery,
   type CharacterProfileUpdateRequest,
   type CharacterReference,
+  type CharacterReferenceListQuery,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
   type CharacterStateTransition,
@@ -168,9 +169,14 @@ export class CharactersService {
     workId: string,
     branchId: string,
     characterId: string,
-  ): Promise<CharacterReference[]> {
+    query: CharacterReferenceListQuery,
+  ): Promise<CursorPageResult<CharacterReference>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return unwrap(await this.repository.references(userId, context, characterId));
+    const result = await this.repository.references(userId, context, characterId, query);
+    if (result === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return unwrap(result);
   }
 
   async listChangeRequests(

@@ -1097,6 +1097,34 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
     await expect(detail.getByText(/已确认事实 · 沈砚父母 · 死因/u)).toBeVisible();
     await expect(detail.getByText("沈砚以为父母是自尽。", { exact: true })).toBeVisible();
     await expect(detail.getByText(/客观事实：沈砚父母 · 死因 · 被仇家杀死/u)).toBeVisible();
+    await expect(detail.getByText(/信息来源：他人告知/u)).toBeVisible();
+  });
+
+  await test.step("recovers references after an API error", async () => {
+    const referencesRoute = (url: URL) => url.pathname === referencesApi;
+    await page.route(referencesRoute, async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "引用与反向引用加载失败。",
+            details: {},
+            requestId: "req_entity_detail_references_error",
+          },
+        }),
+      });
+    });
+    await detail.locator(".entity-page-nav-item", { hasText: "关系" }).click();
+    await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
+    await expect(detail.getByText("引用与反向引用加载失败。")).toBeVisible();
+    await page.unroute(referencesRoute);
+    const recoveredResponse = waitForApiResponse(page, "GET", referencesApi);
+    await detail.getByRole("button", { name: "重试" }).click();
+    expect((await recoveredResponse).status()).toBe(200);
+    await expect(detail.getByText("引用与反向引用加载失败。")).toHaveCount(0);
+    await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible();
   });
 
   await test.step("view history", async () => {

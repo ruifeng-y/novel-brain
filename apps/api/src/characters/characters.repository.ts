@@ -36,6 +36,7 @@ import {
   type CharacterListQuery,
   type CharacterProfileUpdateRequest,
   type CharacterReference,
+  type CharacterReferenceListQuery,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
   type CharacterStateTransition,
@@ -841,7 +842,11 @@ export class CharactersRepository implements OnModuleDestroy {
     userId: string,
     context: CharacterWorkContext,
     characterId: string,
-  ): Promise<CharacterWriteResult<CharacterReference[]>> {
+    query: CharacterReferenceListQuery,
+  ): Promise<
+    | CharacterWriteResult<{ data: CharacterReference[]; nextCursor: string | null }>
+    | "invalid_cursor"
+  > {
     return this.withTenant(userId, async (transaction) => {
       const aggregate = await this.readAggregate(transaction, userId, context, characterId);
       if (!aggregate) {
@@ -870,7 +875,7 @@ export class CharactersRepository implements OnModuleDestroy {
             ),
           )
           .orderBy(asc(chapters.number), desc(chapterVersions.createdAt))
-          .limit(20),
+          .limit(100),
         transaction
           .select({
             id: outlineNodes.id,
@@ -899,7 +904,7 @@ export class CharactersRepository implements OnModuleDestroy {
             ),
           )
           .orderBy(asc(outlineNodes.sortOrder), asc(outlineNodes.id))
-          .limit(20),
+          .limit(100),
         transaction
           .select({
             id: foreshadows.id,
@@ -922,7 +927,7 @@ export class CharactersRepository implements OnModuleDestroy {
             ),
           )
           .orderBy(asc(foreshadows.targetFromChapter), asc(foreshadows.id))
-          .limit(20),
+          .limit(100),
         transaction
           .select({ id: storyBibles.id, cards: storyBibles.cards })
           .from(storyBibles)
@@ -967,7 +972,7 @@ export class CharactersRepository implements OnModuleDestroy {
             ),
           )
           .orderBy(desc(facts.createdAt), asc(facts.id))
-          .limit(20),
+          .limit(100),
       ]);
 
       const references: CharacterReference[] = [
@@ -1005,17 +1010,21 @@ export class CharactersRepository implements OnModuleDestroy {
             `计划在第 ${row.targetFromChapter}–${row.targetToChapter} 章推进或回收。`,
           sourceChapter: null,
         })),
-        ...bibleRows.flatMap((row) =>
-          row.cards
-            .filter((card) => matchesText([card.title, card.content], terms))
-            .map((card) => ({
-              id: `${row.id}:${card.key}`,
-              kind: "story_bible" as const,
-              title: `故事圣经 · ${card.title}`,
-              summary: referenceSnippet(card.content, terms),
+        ...bibleRows.flatMap((row): CharacterReference[] => {
+          const cards = row.cards.filter((card) => matchesText([card.title, card.content], terms));
+          if (cards.length === 0) {
+            return [];
+          }
+          return [
+            {
+              id: row.id,
+              kind: "story_bible",
+              title: `故事圣经 · ${cards.map((card) => card.title).join("、")}`,
+              summary: cards.map((card) => referenceSnippet(card.content, terms)).join(" / "),
               sourceChapter: null,
-            })),
-        ),
+            },
+          ];
+        }),
         ...factRows.map((row) => ({
           id: row.id,
           kind: "fact" as const,
@@ -1031,7 +1040,22 @@ export class CharactersRepository implements OnModuleDestroy {
               : null,
         })),
       ];
-      return { kind: "ok", value: references.slice(0, 50) };
+      let start = 0;
+      if (query.cursor) {
+        const cursorIndex = references.findIndex((reference) => reference.id === query.cursor);
+        if (cursorIndex < 0) {
+          return "invalid_cursor";
+        }
+        start = cursorIndex + 1;
+      }
+      const page = references.slice(start, start + query.limit);
+      return {
+        kind: "ok",
+        value: {
+          data: page,
+          nextCursor: start + query.limit < references.length ? (page.at(-1)?.id ?? null) : null,
+        },
+      };
     });
   }
 

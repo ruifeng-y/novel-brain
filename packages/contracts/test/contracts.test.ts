@@ -2021,7 +2021,7 @@ describe("character domain contracts", () => {
           sourceChapter: { chapterId: versionNodeId, number: 47, title: "断臂之后" },
         },
         {
-          id: `${factId}:protagonist`,
+          id: factId,
           kind: "story_bible",
           title: "故事圣经 · 主角卡",
           summary: "沈砚是故事主角。",
@@ -2029,7 +2029,7 @@ describe("character domain contracts", () => {
         },
       ],
       requestId: "req_character_references",
-      meta: {},
+      meta: { nextCursor: null },
     });
     expect(references.data[0]?.kind).toBe("chapter");
     expect(references.data[1]?.sourceChapter).toBeNull();

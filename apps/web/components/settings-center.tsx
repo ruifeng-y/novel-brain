@@ -605,15 +605,12 @@ export function SettingsCenter({
       setCharacterReferencesLoading(true);
       setCharacterReferencesError("");
       try {
-        const response = await fetch(`${settingsPath(work)}/characters/${entityId}/references`, {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          throw new Error(await readError(response, "引用与反向引用加载失败。"));
-        }
-        setCharacterReferences(
-          characterReferenceListResponseSchema.parse(await response.json()).data,
+        const references = await fetchAllCursorPages(
+          `${settingsPath(work)}/characters/${entityId}/references`,
+          characterReferenceListResponseSchema.parse,
+          "引用与反向引用加载失败。",
         );
+        setCharacterReferences(references);
       } catch (caught) {
         setCharacterReferencesError(
           caught instanceof Error ? caught.message : "引用与反向引用加载失败。",
@@ -1480,7 +1477,7 @@ export function SettingsCenter({
           onEditAlias={() => beginEdit(selected, "alias")}
           onLock={() => lockEntity(selected)}
           onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
-          onRetryCharacterReferences={() => refreshDetail(selected.id, selected.type)}
+          onRetryCharacterReferences={() => refreshCharacterReferences(selected.id)}
           onRetryVersionHistory={() => refreshDetail(selected.id, selected.type)}
           onRestore={(targetVersion, reason) => restoreEntity(selected, targetVersion, reason)}
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
@@ -4042,7 +4039,10 @@ function CharacterDomainView({
                     return fact ? formatConfirmedFactLabel(fact) : "引用已保留";
                   })()}
                 </small>
-                <small>{state.sourceChapterId ? "来源：章节记录" : "来源：作者补录"}</small>
+                <small>
+                  信息来源：{knowledgeSourceLabels[state.sourceKind]} ·{" "}
+                  {state.sourceChapterId ? "章节记录" : "作者补录"}
+                </small>
               </li>
             ))}
           </ul>

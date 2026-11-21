@@ -321,6 +321,21 @@ describe("character domain HTTP integration", () => {
         expect.objectContaining({ kind: "fact", id: fact.id }),
       ]),
     );
+    const firstReferencePage = characterReferenceListResponseSchema.parse(
+      (await owner.get(`${base}/characters/${shen.id}/references?limit=1`).expect(200)).body,
+    );
+    expect(firstReferencePage.data).toHaveLength(1);
+    expect(firstReferencePage.meta.nextCursor).toBeTruthy();
+    const secondReferencePage = characterReferenceListResponseSchema.parse(
+      (
+        await owner
+          .get(
+            `${base}/characters/${shen.id}/references?limit=1&cursor=${firstReferencePage.meta.nextCursor}`,
+          )
+          .expect(200)
+      ).body,
+    );
+    expect(secondReferencePage.data[0]?.id).not.toBe(firstReferencePage.data[0]?.id);
   });
 
   it("requires a change request once the character is locked and enforces tenant isolation", async () => {
