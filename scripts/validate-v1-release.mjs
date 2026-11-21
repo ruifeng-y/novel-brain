@@ -3,6 +3,7 @@ import { readFileSync, statSync } from "node:fs";
 import { posix } from "node:path";
 
 import { runCli } from "./cli-entry.mjs";
+import { validateNonUiCapabilityEvidence } from "./v1-capability-evidence.mjs";
 import {
   GOLDEN_VIEWPORTS,
   PRODUCTION_PAGE_IDS,
@@ -412,6 +413,7 @@ function validateActionEvidence(
 export function evaluateV1Release({
   evidence,
   traceability,
+  capabilityEvidence = { schemaVersion: 1, evidence: {}, capabilities: {} },
   uiMatrix,
   deferrals,
   deviationApprovals,
@@ -434,6 +436,7 @@ export function evaluateV1Release({
       evidenceExists,
       githubRunIsSuccessful,
     }),
+    ...validateNonUiCapabilityEvidence(traceability, capabilityEvidence, { evidenceExists }),
     ...validateUiMatrix(uiMatrix, { goldenIsValid }),
     ...validateDeviationApprovals(uiMatrix, deviationApprovals, {
       evidenceExists,
@@ -519,6 +522,9 @@ function main() {
   const result = evaluateV1Release({
     evidence: JSON.parse(readFileSync("docs/implementation/v1-release-evidence.json", "utf8")),
     traceability: readFileSync("docs/planning/v1-capability-traceability.md", "utf8"),
+    capabilityEvidence: JSON.parse(
+      readFileSync("docs/implementation/m3-236-non-ui-capability-evidence.json", "utf8"),
+    ),
     uiMatrix: readFileSync("docs/ui/v1-ui-parity-matrix.md", "utf8"),
     deferrals: JSON.parse(readFileSync("docs/planning/v1-deferrals.json", "utf8")),
     deviationApprovals: JSON.parse(readFileSync("docs/ui/v1-ui-deviations.json", "utf8")),

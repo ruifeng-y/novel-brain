@@ -347,6 +347,26 @@ describe("V1 release gate", () => {
     expect(result.blockers).toContain("auth:deviation-evidence-self-referential");
   });
 
+  it("propagates non-UI capability audit blockers through the release gate", () => {
+    const blockedTraceability = [
+      "| ID | Capability | Scope | Status | Primary issue | Supporting | Design | Evidence | Milestone |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      traceRow("UI-001", "V1", "verified", "#104"),
+      traceRow("IO-001", "V1", "implemented", "#126"),
+      traceRow("PERF-001", "后续", "deferred", "—"),
+    ].join("\n");
+    const result = evaluate({
+      traceability: blockedTraceability,
+      capabilityEvidence: {
+        schemaVersion: 1,
+        evidence: {},
+        capabilities: {},
+      },
+    });
+
+    expect(result.blockers).toContain("capability-audit:missing:IO-001");
+  });
+
   it("requires action evidence to cover the declared required action IDs", () => {
     const actionContract = passingActionContract();
     actionContract.pages.auth.push("secondary");

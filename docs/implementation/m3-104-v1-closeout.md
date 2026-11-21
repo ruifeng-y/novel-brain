@@ -25,8 +25,8 @@
 
 自动化完成不等于 V1 release approved。以下证据仍缺失：
 
-- 116 个仍为 `mapped`/`implemented` 的 V1 capability 逐项证据审计；
-- 4 个非静态生产页的逐动作 API 与持久化结果证据；
+- Non-UI capability 审计已完成：107 项中 101 项 `verified`，WORK-002、IO-001、IO-003、EVAL-002、EVAL-003、CONT-001 仍有有界缺口；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
+- UI-001..UI-009 的总 traceability 收口仍由 #238 负责；
 - 真实 human blind review 记录；
 - 已批准的 inter-rater variance threshold；
 - `provider-smoke` environment 的手动真实 Provider smoke 结果；

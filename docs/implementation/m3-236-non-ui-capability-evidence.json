@@ -1,0 +1,415 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-11-21",
+  "issue": "#236",
+  "evidence": {
+    "auth-http": { "kind": "integration", "path": "apps/api/test/auth.integration.test.ts" },
+    "auth-e2e": { "kind": "e2e", "path": "apps/web/e2e/parity/auth.spec.ts" },
+    "account-settings-e2e": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/account-settings.spec.ts"
+    },
+    "account-lifecycle-http": {
+      "kind": "integration",
+      "path": "apps/api/test/account-lifecycle.integration.test.ts"
+    },
+    "account-purge-worker": {
+      "kind": "integration",
+      "path": "apps/worker/test/account-purge.integration.test.ts"
+    },
+    "works-http": { "kind": "integration", "path": "apps/api/test/works.integration.test.ts" },
+    "work-settings-e2e": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/work-settings.spec.ts"
+    },
+    "work-overview-e2e": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/work-overview.spec.ts"
+    },
+    "dashboard-e2e": { "kind": "e2e", "path": "apps/web/e2e/parity/dashboard.spec.ts" },
+    "new-project-e2e": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/new-project.spec.ts"
+    },
+    "manuscript-http": {
+      "kind": "integration",
+      "path": "apps/api/test/manuscript-import.integration.test.ts"
+    },
+    "settings-import-http": {
+      "kind": "integration",
+      "path": "apps/api/test/settings-import.integration.test.ts"
+    },
+    "story-bible-http": {
+      "kind": "integration",
+      "path": "apps/api/test/story-bible.integration.test.ts"
+    },
+    "genre-pack-contract": {
+      "kind": "contract",
+      "path": "packages/contracts/test/genre-pack.test.ts"
+    },
+    "characters-http": {
+      "kind": "integration",
+      "path": "apps/api/test/characters.integration.test.ts"
+    },
+    "world-http": {
+      "kind": "integration",
+      "path": "apps/api/test/factions-maps-timeline.integration.test.ts"
+    },
+    "power-items-http": {
+      "kind": "integration",
+      "path": "apps/api/test/power-items.integration.test.ts"
+    },
+    "settings-http": {
+      "kind": "integration",
+      "path": "apps/api/test/settings.integration.test.ts"
+    },
+    "outline-http": {
+      "kind": "integration",
+      "path": "apps/api/test/outline.integration.test.ts"
+    },
+    "story-ledger-http": {
+      "kind": "integration",
+      "path": "apps/api/test/story-ledger.integration.test.ts"
+    },
+    "golden-three-http": {
+      "kind": "integration",
+      "path": "apps/api/test/golden-three.integration.test.ts"
+    },
+    "readiness-http": {
+      "kind": "integration",
+      "path": "apps/api/test/readiness.integration.test.ts"
+    },
+    "readiness-core": { "kind": "unit", "path": "packages/core/test/readiness.test.ts" },
+    "agent-runtime-core": {
+      "kind": "unit",
+      "path": "packages/core/test/agent-runtime.test.ts"
+    },
+    "agent-runtime-http": {
+      "kind": "integration",
+      "path": "apps/api/test/agent-runtime.integration.test.ts"
+    },
+    "orchestrator-http": {
+      "kind": "integration",
+      "path": "apps/api/test/agent-orchestrator.integration.test.ts"
+    },
+    "context-compiler-core": {
+      "kind": "unit",
+      "path": "packages/core/test/context-compiler.test.ts"
+    },
+    "retrieval-http": {
+      "kind": "integration",
+      "path": "apps/api/test/retrieval.integration.test.ts"
+    },
+    "summaries-http": {
+      "kind": "integration",
+      "path": "apps/api/test/summaries.integration.test.ts"
+    },
+    "generation-http": {
+      "kind": "integration",
+      "path": "apps/api/test/generation.integration.test.ts"
+    },
+    "agent-trace-contract": {
+      "kind": "contract",
+      "path": "packages/contracts/test/agent-trace.test.ts"
+    },
+    "recovery-core": { "kind": "unit", "path": "packages/core/test/recovery.test.ts" },
+    "writing-actions-http": {
+      "kind": "integration",
+      "path": "apps/api/test/writing-actions.integration.test.ts"
+    },
+    "quality-http": {
+      "kind": "integration",
+      "path": "apps/api/test/quality.integration.test.ts"
+    },
+    "revisions-http": {
+      "kind": "integration",
+      "path": "apps/api/test/revisions.integration.test.ts"
+    },
+    "style-http": {
+      "kind": "integration",
+      "path": "apps/api/test/style-drift.integration.test.ts"
+    },
+    "volume-audit-http": {
+      "kind": "integration",
+      "path": "apps/api/test/volume-audit.integration.test.ts"
+    },
+    "volume-audit-signoff": {
+      "kind": "manual_signoff",
+      "path": "docs/implementation/m1-90-volume-audit-and-sample.md"
+    },
+    "batch-plan-http": {
+      "kind": "integration",
+      "path": "apps/api/test/batch-plan.integration.test.ts"
+    },
+    "changes-http": {
+      "kind": "integration",
+      "path": "apps/api/test/m2-04-06.integration.test.ts"
+    },
+    "changes-contract": {
+      "kind": "contract",
+      "path": "packages/contracts/test/changes-search.test.ts"
+    },
+    "search-http": {
+      "kind": "integration",
+      "path": "apps/api/test/m2-04-06.integration.test.ts"
+    },
+    "notifications-http": {
+      "kind": "integration",
+      "path": "apps/api/test/notifications.integration.test.ts"
+    },
+    "work-export-http": {
+      "kind": "integration",
+      "path": "apps/api/test/work-export.integration.test.ts"
+    },
+    "work-export-core": {
+      "kind": "unit",
+      "path": "packages/core/test/work-export.test.ts"
+    },
+    "tenant-rls-http": {
+      "kind": "integration",
+      "path": "apps/api/test/tenant-rls.integration.test.ts"
+    },
+    "logging-core": { "kind": "unit", "path": "packages/core/test/logging.test.ts" },
+    "observability-http": {
+      "kind": "integration",
+      "path": "apps/api/test/observability.integration.test.ts"
+    },
+    "deployment-guardrail": {
+      "kind": "guardrail",
+      "path": "scripts/test/deployment-guardrails.test.mjs"
+    },
+    "observability-guardrail": {
+      "kind": "guardrail",
+      "path": "scripts/test/observability-guardrails.test.mjs"
+    },
+    "backup-filesystem": {
+      "kind": "guardrail",
+      "path": "scripts/test/backup-filesystem.test.mjs"
+    },
+    "backup-policy": {
+      "kind": "guardrail",
+      "path": "scripts/test/backup-policy.test.mjs"
+    },
+    "backup-database-target": {
+      "kind": "guardrail",
+      "path": "scripts/test/backup-database-target.test.mjs"
+    },
+    "backup-evidence": {
+      "kind": "manual_signoff",
+      "path": "docs/implementation/evidence/m3-04b-backup-restore-2026-11-16.json"
+    },
+    "quality-registry": {
+      "kind": "unit",
+      "path": "packages/quality-benchmark/test/registry.test.ts"
+    },
+    "quality-regression": {
+      "kind": "unit",
+      "path": "packages/quality-benchmark/test/regression.test.ts"
+    },
+    "quality-eval-http": {
+      "kind": "integration",
+      "path": "apps/api/test/eval.integration.test.ts"
+    },
+    "provider-canary": {
+      "kind": "unit",
+      "path": "packages/quality-benchmark/test/canary.test.ts"
+    },
+    "continuity-evaluator": {
+      "kind": "unit",
+      "path": "packages/continuity-benchmark/test/evaluator.test.ts"
+    }
+  },
+  "capabilities": {
+    "ACCT-001": { "status": "verified", "evidence": ["auth-http", "auth-e2e"] },
+    "ACCT-002": { "status": "verified", "evidence": ["auth-http", "auth-e2e"] },
+    "ACCT-003": { "status": "verified", "evidence": ["auth-http", "account-settings-e2e"] },
+    "ACCT-004": { "status": "verified", "evidence": ["auth-http", "account-settings-e2e"] },
+    "ACCT-005": {
+      "status": "verified",
+      "evidence": ["account-lifecycle-http", "account-settings-e2e"]
+    },
+    "ACCT-006": {
+      "status": "verified",
+      "evidence": ["account-lifecycle-http", "account-purge-worker", "account-settings-e2e"]
+    },
+    "ACCT-007": { "status": "verified", "evidence": ["auth-http", "account-settings-e2e"] },
+    "ACCT-008": { "status": "verified", "evidence": ["auth-http", "account-settings-e2e"] },
+    "ACCT-009": {
+      "status": "verified",
+      "evidence": ["auth-http", "tenant-rls-http", "auth-e2e"]
+    },
+    "WORK-001": {
+      "status": "verified",
+      "evidence": ["works-http", "settings-import-http", "manuscript-http", "new-project-e2e"]
+    },
+    "WORK-002": {
+      "status": "blocked",
+      "reason": "小文件 TXT/Markdown 解析已有证据，但 #126 要求的大文件分块与断点恢复没有复现证据。",
+      "gapIssue": "#262"
+    },
+    "WORK-003": { "status": "verified", "evidence": ["settings-import-http", "new-project-e2e"] },
+    "WORK-004": { "status": "verified", "evidence": ["works-http", "dashboard-e2e"] },
+    "WORK-005": { "status": "verified", "evidence": ["works-http", "work-overview-e2e"] },
+    "WORK-006": { "status": "verified", "evidence": ["works-http", "work-settings-e2e"] },
+    "WORK-007": { "status": "verified", "evidence": ["works-http", "work-settings-e2e"] },
+    "WORK-008": { "status": "verified", "evidence": ["works-http", "work-settings-e2e"] },
+    "WORK-009": { "status": "verified", "evidence": ["works-http", "work-overview-e2e"] },
+    "ONBOARD-001": { "status": "verified", "evidence": ["story-bible-http"] },
+    "ONBOARD-002": { "status": "verified", "evidence": ["story-bible-http"] },
+    "ONBOARD-003": {
+      "status": "verified",
+      "evidence": ["genre-pack-contract", "story-bible-http", "works-http"]
+    },
+    "ONBOARD-004": { "status": "verified", "evidence": ["story-bible-http", "readiness-http"] },
+    "ONBOARD-005": {
+      "status": "verified",
+      "evidence": ["characters-http", "story-ledger-http"]
+    },
+    "ONBOARD-006": { "status": "verified", "evidence": ["story-ledger-http"] },
+    "ONBOARD-007": { "status": "verified", "evidence": ["outline-http"] },
+    "ONBOARD-008": { "status": "verified", "evidence": ["readiness-http", "readiness-core"] },
+    "SET-001": { "status": "verified", "evidence": ["settings-http", "world-http"] },
+    "SET-002": { "status": "verified", "evidence": ["settings-http"] },
+    "SET-003": { "status": "verified", "evidence": ["characters-http", "settings-http"] },
+    "SET-004": { "status": "verified", "evidence": ["world-http"] },
+    "SET-005": { "status": "verified", "evidence": ["world-http"] },
+    "SET-006": { "status": "verified", "evidence": ["power-items-http"] },
+    "SET-007": { "status": "verified", "evidence": ["power-items-http", "settings-http"] },
+    "SET-008": { "status": "verified", "evidence": ["power-items-http"] },
+    "SET-009": { "status": "verified", "evidence": ["world-http"] },
+    "SET-010": { "status": "verified", "evidence": ["characters-http"] },
+    "SET-011": { "status": "verified", "evidence": ["settings-http"] },
+    "SET-012": { "status": "verified", "evidence": ["settings-http"] },
+    "PLAN-001": { "status": "verified", "evidence": ["outline-http"] },
+    "PLAN-002": { "status": "verified", "evidence": ["outline-http"] },
+    "PLAN-003": { "status": "verified", "evidence": ["golden-three-http"] },
+    "PLAN-004": { "status": "verified", "evidence": ["story-ledger-http"] },
+    "PLAN-005": { "status": "verified", "evidence": ["readiness-http", "readiness-core"] },
+    "PLAN-006": { "status": "verified", "evidence": ["outline-http"] },
+    "PLAN-007": { "status": "verified", "evidence": ["outline-http"] },
+    "AGENT-001": {
+      "status": "verified",
+      "evidence": ["agent-runtime-core", "agent-runtime-http"]
+    },
+    "AGENT-002": {
+      "status": "verified",
+      "evidence": ["orchestrator-http", "recovery-core"]
+    },
+    "AGENT-003": {
+      "status": "verified",
+      "evidence": ["agent-runtime-core", "agent-runtime-http"]
+    },
+    "AGENT-004": {
+      "status": "verified",
+      "evidence": ["context-compiler-core", "generation-http"]
+    },
+    "AGENT-005": {
+      "status": "verified",
+      "evidence": ["context-compiler-core", "generation-http"]
+    },
+    "AGENT-006": { "status": "verified", "evidence": ["retrieval-http", "search-http"] },
+    "AGENT-008": { "status": "verified", "evidence": ["summaries-http"] },
+    "AGENT-009": {
+      "status": "verified",
+      "evidence": ["agent-trace-contract", "generation-http"]
+    },
+    "AGENT-010": {
+      "status": "verified",
+      "evidence": ["agent-trace-contract", "generation-http"]
+    },
+    "AGENT-011": { "status": "verified", "evidence": ["recovery-core", "generation-http"] },
+    "GEN-001": { "status": "verified", "evidence": ["generation-http"] },
+    "GEN-002": { "status": "verified", "evidence": ["writing-actions-http", "generation-http"] },
+    "GEN-003": { "status": "verified", "evidence": ["generation-http", "quality-http"] },
+    "GEN-004": { "status": "verified", "evidence": ["quality-http"] },
+    "GEN-005": { "status": "verified", "evidence": ["revisions-http"] },
+    "GEN-006": { "status": "verified", "evidence": ["generation-http", "quality-http"] },
+    "GEN-007": { "status": "verified", "evidence": ["batch-plan-http"] },
+    "GEN-008": { "status": "verified", "evidence": ["batch-plan-http", "recovery-core"] },
+    "GEN-009": { "status": "verified", "evidence": ["golden-three-http"] },
+    "GEN-010": { "status": "verified", "evidence": ["batch-plan-http"] },
+    "GEN-011": { "status": "verified", "evidence": ["batch-plan-http"] },
+    "QUALITY-001": { "status": "verified", "evidence": ["quality-http"] },
+    "QUALITY-002": { "status": "verified", "evidence": ["quality-http"] },
+    "QUALITY-003": { "status": "verified", "evidence": ["generation-http", "quality-http"] },
+    "QUALITY-004": { "status": "verified", "evidence": ["batch-plan-http"] },
+    "QUALITY-005": {
+      "status": "verified",
+      "evidence": ["volume-audit-http", "volume-audit-signoff"]
+    },
+    "QUALITY-006": {
+      "status": "verified",
+      "evidence": ["quality-registry", "quality-regression", "quality-eval-http"]
+    },
+    "QUALITY-007": { "status": "verified", "evidence": ["revisions-http"] },
+    "QUALITY-008": { "status": "verified", "evidence": ["style-http"] },
+    "CHANGE-001": { "status": "verified", "evidence": ["changes-http", "changes-contract"] },
+    "CHANGE-002": { "status": "verified", "evidence": ["changes-http"] },
+    "CHANGE-003": { "status": "verified", "evidence": ["changes-http"] },
+    "CHANGE-004": { "status": "verified", "evidence": ["changes-http"] },
+    "CHANGE-005": { "status": "verified", "evidence": ["changes-http", "changes-contract"] },
+    "CHANGE-006": { "status": "verified", "evidence": ["changes-http", "changes-contract"] },
+    "CHANGE-007": { "status": "verified", "evidence": ["changes-http"] },
+    "CHANGE-008": { "status": "verified", "evidence": ["changes-http"] },
+    "CHANGE-009": { "status": "verified", "evidence": ["changes-http", "work-overview-e2e"] },
+    "IO-001": {
+      "status": "blocked",
+      "reason": "TXT/Markdown 已实现，但 DOCX 旧稿导入与 DOCX 设定导入仍被生产代码和测试明确拒绝。",
+      "gapIssue": "#261"
+    },
+    "IO-002": { "status": "verified", "evidence": ["settings-import-http"] },
+    "IO-003": {
+      "status": "blocked",
+      "reason": "分块接口只有小夹具证据；千万字、受限内存、崩溃续传和 UI 恢复状态尚无复现证据。",
+      "gapIssue": "#262"
+    },
+    "IO-004": { "status": "verified", "evidence": ["work-export-http", "work-export-core"] },
+    "IO-005": { "status": "verified", "evidence": ["work-export-http"] },
+    "IO-006": { "status": "verified", "evidence": ["account-lifecycle-http"] },
+    "IO-007": {
+      "status": "verified",
+      "evidence": ["backup-filesystem", "backup-policy", "backup-database-target", "backup-evidence"]
+    },
+    "SEARCH-001": { "status": "verified", "evidence": ["search-http", "retrieval-http"] },
+    "SEARCH-002": { "status": "verified", "evidence": ["search-http", "retrieval-http"] },
+    "NOTIFY-001": { "status": "verified", "evidence": ["notifications-http", "changes-http"] },
+    "SEC-001": { "status": "verified", "evidence": ["auth-http", "account-settings-e2e"] },
+    "SEC-002": { "status": "verified", "evidence": ["tenant-rls-http", "settings-http"] },
+    "SEC-003": { "status": "verified", "evidence": ["logging-core", "observability-http"] },
+    "SEC-004": {
+      "status": "verified",
+      "evidence": ["account-lifecycle-http", "account-purge-worker", "backup-policy"]
+    },
+    "SEC-005": { "status": "verified", "evidence": ["work-export-http"] },
+    "SEC-006": { "status": "verified", "evidence": ["auth-http", "tenant-rls-http"] },
+    "OPS-001": {
+      "status": "verified",
+      "evidence": ["observability-http", "deployment-guardrail"]
+    },
+    "OPS-002": {
+      "status": "verified",
+      "evidence": ["backup-filesystem", "backup-database-target", "backup-evidence"]
+    },
+    "OPS-003": {
+      "status": "verified",
+      "evidence": ["observability-http", "observability-guardrail", "deployment-guardrail"]
+    },
+    "EVAL-001": { "status": "verified", "evidence": ["quality-registry"] },
+    "EVAL-002": {
+      "status": "blocked",
+      "reason": "rubric 与回归门禁已实现，但正式 inter-rater variance threshold 尚未批准。",
+      "gapIssue": "#240"
+    },
+    "EVAL-003": {
+      "status": "blocked",
+      "reason": "真实 provider smoke workflow 已实现，但受保护环境下的正式 run 和绑定提交的证据尚未执行。",
+      "gapIssue": "#241"
+    },
+    "EVAL-004": { "status": "verified", "evidence": ["provider-canary", "quality-regression"] },
+    "CONT-001": {
+      "status": "blocked",
+      "reason": "确定性与最大规模 fixture/evaluator 已通过，但真实人工盲评证据和已批准阈值仍缺失。",
+      "gapIssue": "#239"
+    }
+  }
+}
