@@ -125,6 +125,14 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 这 8 张 Golden 覆盖数据与隐私 panel、账号导出入口和导出前删除禁用；30 天恢复页、partial failure、恢复后再次注销和 fresh-login 恢复由同一 Playwright spec 的语义断言覆盖。8 张正式 Golden 已复制到 `artifacts/ui/golden/account-settings/`。Linux 生成证据为 [Production CI #43836291876](https://github.com/ruifeng-y/novel-brain/actions/runs/43836291876) 的 `update_golden` Playwright artifact；最终正常 PR CI 必须再次通过四档 `toHaveScreenshot`、作者语言、无横向溢出和真实行为测试后才合并。
 
+## 2026-11-21 account-settings 逐动作持久化与最终 CI 签收
+
+沿用作者在 #134/#174/#177 对 `account-settings` 四档 Golden 的视觉签收。本次 #235 不改变页面布局，正式 Golden 无需更新。
+
+`apps/web/e2e/parity/account-settings.spec.ts` 覆盖模型配置创建、测试、编辑、删除，资料保存，笔名创建/编辑/删除，单设备退出、全部设备退出，账号导出、注销和恢复。每个必需动作均通过真实 API 并回读持久化结果；第二设备由真实登录 API 创建，`revoke-all-sessions` 同时验证当前与其他会话返回 `401`；导出测试先创建含 dummy Key 的模型配置，再确认下载包排除秘密字段。笔名创建支持 `Idempotency-Key` 重放，包括软删除后的同 key 回放。完整 owner spec 语义测试通过，auth HTTP integration 24/24、全量 Vitest 607/607、作者语言、prototype-only 扫描和四档结构断言通过。
+
+正常 PR Production CI [44899778462](https://github.com/ruifeng-y/novel-brain/actions/runs/44899778462) 的 `check` 与 `playwright`、Deployment Smoke [44899778435](https://github.com/ruifeng-y/novel-brain/actions/runs/44899778435) 均通过；现有四档 Golden 无需更新，`account-settings` 提升为 `parity-verified`。
+
 ## 2026-11-17 export-publish 视觉签收
 
 签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m3-130-export-publish/` 中导出与发布页的 390 / 900 / 1180 / 1440 四档候选截图，并同意将其作为正式 Golden。

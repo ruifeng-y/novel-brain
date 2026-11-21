@@ -722,6 +722,58 @@ describe("auth HTTP integration", () => {
     expect(remaining.body.data[0]).toMatchObject({ name: "砚秋新笔名", isDefault: true });
   });
 
+  it("replays pen name creation with the same idempotency key", async () => {
+    const owner = await createAuthenticatedAgent(
+      "pen-idempotency@example.com",
+      "StrongPassword123",
+      "笔名幂等作者",
+    );
+    const csrfToken = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+    const payload = {
+      name: "青舟",
+      bio: "写仙侠长篇。",
+      isDefault: true,
+    };
+
+    const created = await owner
+      .post("/api/v1/users/me/pen-names")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("idempotency-key", "pen-name-create-1")
+      .send(payload)
+      .expect(200);
+    const replayed = await owner
+      .post("/api/v1/users/me/pen-names")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("idempotency-key", "pen-name-create-1")
+      .send(payload)
+      .expect(200);
+
+    expect(replayed.body.data.id).toBe(created.body.data.id);
+    const listedBeforeDelete = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    expect(
+      listedBeforeDelete.body.data.filter((penName: { name: string }) => penName.name === "青舟"),
+    ).toHaveLength(1);
+    await owner
+      .delete(`/api/v1/users/me/pen-names/${created.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(200);
+    const replayAfterDelete = await owner
+      .post("/api/v1/users/me/pen-names")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .set("idempotency-key", "pen-name-create-1")
+      .send(payload)
+      .expect(200);
+    expect(replayAfterDelete.body.data.id).toBe(created.body.data.id);
+    const listedAfterDelete = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    expect(
+      listedAfterDelete.body.data.filter((penName: { name: string }) => penName.name === "青舟"),
+    ).toHaveLength(0);
+  });
+
   it("keeps exactly one default pen name when updates are attempted", async () => {
     const owner = await createAuthenticatedAgent(
       "pen-defaults@example.com",

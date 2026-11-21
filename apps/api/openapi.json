@@ -96656,7 +96656,15 @@
       },
       "post": {
         "operationId": "UsersController_createPenName",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {

@@ -1084,8 +1084,116 @@
       ]
     },
     "account-settings": {
-      "status": "pending",
-      "rationale": "Per-action API and persistence evidence has not completed the #104 audit."
+      "status": "verified",
+      "headSha": "b0a0c089e15f78d82aa93e2fc0550ac982453a02",
+      "ciRun": "https://github.com/ruifeng-y/novel-brain/actions/runs/44899778462",
+      "deploymentSmoke": "https://github.com/ruifeng-y/novel-brain/actions/runs/44899778435",
+      "actions": [
+        {
+          "id": "create-model-config",
+          "name": "创建模型配置并回读持久化记录",
+          "api": "/api/v1/model-configs",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "account settings supports create, test, edit and delete",
+          "assertion": "expect(persistedConfig).toMatchObject({"
+        },
+        {
+          "id": "test-model-config",
+          "name": "测试模型连接并回读测试状态",
+          "api": "/api/v1/model-configs/${createdConfig.id}/test",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "account settings supports create, test, edit and delete",
+          "assertion": "expect(testedConfigs.find((config) => config.id === createdConfig.id)?.lastTestStatus).toBe("
+        },
+        {
+          "id": "edit-model-config",
+          "name": "编辑模型配置并回读新名称",
+          "api": "/api/v1/model-configs/${createdConfig.id}",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "account settings supports create, test, edit and delete",
+          "assertion": "expect(editedConfigs.find((config) => config.id === createdConfig.id)?.label).toBe("
+        },
+        {
+          "id": "delete-model-config",
+          "name": "删除非默认模型配置并确认记录消失",
+          "api": "/api/v1/model-configs/${createdConfig.id}",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "account settings supports create, test, edit and delete",
+          "assertion": "expect(remainingConfigs.some((config) => config.id === createdConfig.id)).toBe(false);"
+        },
+        {
+          "id": "save-profile",
+          "name": "保存作者资料并回读账号资料",
+          "api": "/api/v1/users/me",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "manages profile, multiple pen names and device sessions",
+          "assertion": "expect(persistedProfile).toMatchObject({"
+        },
+        {
+          "id": "create-pen-name",
+          "name": "创建笔名并回读笔名列表",
+          "api": "/api/v1/users/me/pen-names",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "manages profile, multiple pen names and device sessions",
+          "assertion": "expect(persistedPenNames).toEqual("
+        },
+        {
+          "id": "edit-pen-name",
+          "name": "编辑笔名并回读新名称",
+          "api": "/api/v1/users/me/pen-names/${createdPenName.id}",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "manages profile, multiple pen names and device sessions",
+          "assertion": "expect(persistedPenNames.find((penName) => penName.id === createdPenName.id)?.name).toBe("
+        },
+        {
+          "id": "delete-pen-name",
+          "name": "删除笔名并确认记录消失",
+          "api": "/api/v1/users/me/pen-names/${createdPenName.id}",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "manages profile, multiple pen names and device sessions",
+          "assertion": "expect(persistedPenNames.some((penName) => penName.id === createdPenName.id)).toBe(false);"
+        },
+        {
+          "id": "revoke-session",
+          "name": "退出指定设备并确认会话立即失效",
+          "api": "/api/v1/auth/sessions/${otherSession.id}",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "manages profile, multiple pen names and device sessions",
+          "assertion": "expect(sessionsAfterRevoke.some((session) => session.id === otherSession.id)).toBe(false);"
+        },
+        {
+          "id": "revoke-all-sessions",
+          "name": "退出全部设备并确认当前与其他会话均失效",
+          "api": "/api/v1/auth/logout-all",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "manages profile, multiple pen names and device sessions",
+          "assertion": "expect((await currentSessionRequest.get(\"/api/v1/auth/me\")).status()).toBe(401);"
+        },
+        {
+          "id": "export-account",
+          "name": "导出账号数据并回读下载凭证",
+          "api": "/api/v1/users/me/export",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "exports before deletion and recovers inside the approved window",
+          "assertion": "expect(persistedDownload.status()).toBe(200);"
+        },
+        {
+          "id": "delete-account",
+          "name": "提交注销申请并回读恢复期状态",
+          "api": "/api/v1/users/me/delete",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "exports before deletion and recovers inside the approved window",
+          "assertion": "expect(persistedDeletion).toMatchObject({"
+        },
+        {
+          "id": "recover-account",
+          "name": "恢复账号并回读 active 状态",
+          "api": "/api/v1/users/me/deletion/recover",
+          "spec": "apps/web/e2e/parity/account-settings.spec.ts",
+          "test": "exports before deletion and recovers inside the approved window",
+          "assertion": "expect(activeSession.user.status).toBe(\"active\");"
+        }
+      ]
     }
   }
 }

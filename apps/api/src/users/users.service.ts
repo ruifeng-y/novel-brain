@@ -61,6 +61,7 @@ export class UsersService {
     userId: string,
     input: AuthorPenNameCreateRequest,
     audit: ProfileAuditContext,
+    idempotencyKey?: string,
   ): Promise<AuthorPenName> {
     try {
       const penName = await this.repository.createPenName({
@@ -71,6 +72,7 @@ export class UsersService {
         avatarUrl: input.avatarUrl ?? null,
         isDefault: input.isDefault,
         audit,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
       });
       return toPenNameContract(penName);
     } catch (error) {
