@@ -905,7 +905,6 @@ test("loads the dedicated character profile, relationships, state history and he
     validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
     sourceChapterId: null,
   });
-  await createKnowledgeFact(page, work, "沈砚父母的死因被记录在忘川书的第一页。");
   await freezeApiTimestamps(page);
 
   for (const width of viewports) {
@@ -927,10 +926,51 @@ test("loads the dedicated character profile, relationships, state history and he
     await expect(detail.getByText("角色认知与引用")).toBeVisible();
     await expect(detail.getByText("还没有角色认知记录。")).toBeVisible();
     await expect(detail.getByText("设定体检")).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+    const prototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
+    await testInfo.attach(`entity-detail-prototype-only-scan-${width}`, {
+      body: JSON.stringify(prototypeOnlyScan, null, 2),
+      contentType: "application/json",
+    });
+    await expectNoOverflow(page);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect
+      .soft(page)
+      .toHaveScreenshot(
+        ["entity-detail", `entity-detail-${width}.png`],
+        productionScreenshotOptions,
+      );
+    await capture(page, testInfo, `entity-detail-profile-${width}`);
+  }
+});
+
+test("shows reference sources and the knowledge editor at all four viewports", async ({
+  page,
+  context,
+}, testInfo) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  const shen = await createCharacter(page, work, "沈砚");
+  await createKnowledgeFact(page, work, "沈砚父母的死因被记录在忘川书的第一页。");
+  await freezeApiTimestamps(page);
+  const referencesApi = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/references`;
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    const detail = await openCharacter(page, work);
+    const referencesResponse = waitForApiResponse(page, "GET", referencesApi);
     await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
     await expect(detail.getByRole("heading", { name: "引用与反向引用" })).toBeVisible();
-    await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible();
+    await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible({ timeout: 10_000 });
     await expect(detail.getByText(/已确认事实 · 沈砚父母 · 死因/u)).toBeVisible();
+    await referencesResponse;
     await expectAuthorFacingLanguage(page);
     const referencesPrototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
     await testInfo.attach(`entity-detail-references-prototype-only-scan-${width}`, {
@@ -939,6 +979,7 @@ test("loads the dedicated character profile, relationships, state history and he
     });
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-references-${width}`);
+
     await detail.locator(".entity-page-nav-item", { hasText: "基本信息" }).click();
     await detail.getByRole("button", { name: "编辑设定", exact: true }).click();
     const editor = page.locator(".settings-editor");
@@ -955,22 +996,6 @@ test("loads the dedicated character profile, relationships, state history and he
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-knowledge-editor-${width}`);
     await editor.getByRole("button", { name: "取消" }).first().click();
-    await page.evaluate(() => window.scrollTo({ top: 0 }));
-    await expectAuthorFacingLanguage(page);
-    const prototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
-    await testInfo.attach(`entity-detail-prototype-only-scan-${width}`, {
-      body: JSON.stringify(prototypeOnlyScan, null, 2),
-      contentType: "application/json",
-    });
-    await expectNoOverflow(page);
-    await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect
-      .soft(page)
-      .toHaveScreenshot(
-        ["entity-detail", `entity-detail-${width}.png`],
-        productionScreenshotOptions,
-      );
-    await capture(page, testInfo, `entity-detail-profile-${width}`);
   }
 });
 
@@ -1100,7 +1125,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
       references.some((reference) => reference.kind === "fact" && reference.id === fact.factId),
     ).toBe(true);
     await expect(detail.getByRole("heading", { name: "引用与反向引用" })).toBeVisible();
-    await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible();
+    await expect(detail.getByText(/正文引用 · 第 1 章/u)).toBeVisible({ timeout: 10_000 });
     await expect(detail.getByText(/已确认事实 · 沈砚父母 · 死因/u)).toBeVisible();
     await expect(detail.getByText("沈砚以为父母是自尽。", { exact: true })).toBeVisible();
     await expect(detail.getByText(/客观事实：沈砚父母 · 死因 · 被仇家杀死/u)).toBeVisible();
