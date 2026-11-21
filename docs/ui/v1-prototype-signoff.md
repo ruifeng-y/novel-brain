@@ -240,7 +240,7 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 `apps/web/e2e/parity/entity-detail.spec.ts` 覆盖人物编辑、关系、带章节有效期的角色认知、正文/章纲/POV/伏笔/故事圣经/事实反向引用、提案、锁定和版本历史。引用读取使用游标分页，页面在点击“引用”时发起真实 API 并支持失败重试；角色认知在“编辑设定”流程中写入，客观事实、主观内容、来源和有效期均有持久化回读。完整 owner 语义测试 13/13、引用/编辑器四档测试、settings 15/15、characters integration 4/4、全量 Vitest 607/607、作者语言、prototype-only 扫描和四档结构断言均通过。
 
-正常 PR Production CI [44877240725](https://github.com/ruifeng-y/novel-brain/actions/runs/44877240725) 的 `check` 与 `playwright`、Deployment Smoke [44877240730](https://github.com/ruifeng-y/novel-brain/actions/runs/44877240730) 均通过，现有四档 Golden 无需更新；`entity-detail` 提升为 `parity-verified`。
+正常 PR Production CI [44880787355](https://github.com/ruifeng-y/novel-brain/actions/runs/44880787355) 的 `check` 与 `playwright`、Prototype Parity [44880787330](https://github.com/ruifeng-y/novel-brain/actions/runs/44880787330) 和 Deployment Smoke [44880787339](https://github.com/ruifeng-y/novel-brain/actions/runs/44880787339) 均通过，现有四档 Golden 无需更新；`entity-detail` 提升为 `parity-verified`。
 
 ## 变更规则
 
