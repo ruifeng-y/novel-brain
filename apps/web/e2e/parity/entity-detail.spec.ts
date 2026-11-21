@@ -1,16 +1,38 @@
+import { randomBytes } from "node:crypto";
+
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
-import type { PowerSystemCreateRequest } from "@novel-brain/contracts";
+import {
+  characterDetailResponseSchema,
+  characterKnowledgeStateResponseSchema,
+  characterRelationshipResponseSchema,
+  type PowerSystemCreateRequest,
+  settingEntityResponseSchema,
+  settingEntityVersionListResponseSchema,
+  settingProposalResponseSchema,
+} from "@novel-brain/contracts";
+import { Pool } from "pg";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { createM0Chapter } from "../helpers/m0";
 import {
   expectAuthorFacingLanguage,
   expectNoPrototypeOnlyLeakage,
   freezeApiTimestamps,
   productionScreenshotOptions,
+  waitForApiResponse,
 } from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
+
+function uuidV7(): string {
+  const hex = `${Date.now().toString(16).padStart(12, "0")}${randomBytes(10).toString("hex")}`;
+  const characters = [...hex];
+  characters[12] = "7";
+  characters[16] = ((Number.parseInt(characters[16]!, 16) & 0x3) | 0x8).toString(16);
+  const value = characters.join("");
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("entity-detail");
@@ -61,6 +83,118 @@ async function createCharacter(
     character: { id: string };
     version: number;
     latestVersionNodeId: string;
+  };
+}
+
+async function createKnowledgeFact(
+  page: Page,
+  work: { id: string; title: string; mainBranch: { id: string } },
+  object: string,
+) {
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const chapter = await createM0Chapter(page.request, work);
+  const chapterResponse = await page.request.get(`${branchPath}/chapters/${chapter.id}`);
+  expect(chapterResponse.status()).toBe(200);
+  const chapterData = (await chapterResponse.json()).data as { version: number };
+  const token = await getCsrf(page.request);
+  const versionResponse = await page.request.post(`${branchPath}/chapters/${chapter.id}/versions`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: {
+      version: chapterData.version,
+      content: "沈砚父母的死因被记录在忘川书的第一页。",
+    },
+  });
+  expect(versionResponse.status()).toBe(201);
+  const chapterVersion = (await versionResponse.json()).data.version as {
+    id: string;
+    versionNodeId: string;
+  };
+  const meResponse = await page.request.get("/api/v1/auth/me");
+  expect(meResponse.status()).toBe(200);
+  const me = (await meResponse.json()).data.user as { id: string; displayName: string };
+
+  const proposalId = uuidV7();
+  const decisionId = uuidV7();
+  const commitId = uuidV7();
+  const factId = uuidV7();
+  const databaseUrl =
+    process.env.E2E_DATABASE_URL ??
+    "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
+  const pool = new Pool({ connectionString: databaseUrl });
+  try {
+    await pool.query("BEGIN");
+    await pool.query(
+      `INSERT INTO fact_proposals
+         (id, work_id, branch_id, user_id, chapter_id, source_version_id, extraction_key,
+          subject, predicate, object, source_sentence, status, confidence, risk, required)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, '沈砚父母', '死因', $8,
+         '沈砚父母的死因被记录在忘川书的第一页。', 'confirmed', 0.95, 'high', true)`,
+      [
+        proposalId,
+        work.id,
+        work.mainBranch.id,
+        me.id,
+        chapter.id,
+        chapterVersion.id,
+        `knowledge-fixture-${proposalId}`,
+        object,
+      ],
+    );
+    await pool.query(
+      `INSERT INTO fact_decisions
+         (id, work_id, branch_id, user_id, chapter_id, fact_proposal_id, action, actor_id,
+          actor_name, reason, original_payload, resulting_payload)
+       VALUES ($1, $2, $3, $4, $5, $6, 'confirm', $4, $7, '验收夹具',
+         '{}'::jsonb, '{}'::jsonb)`,
+      [decisionId, work.id, work.mainBranch.id, me.id, chapter.id, proposalId, me.displayName],
+    );
+    await pool.query(
+      `INSERT INTO canon_commits
+         (id, work_id, branch_id, user_id, chapter_id, chapter_version_id, version_node_id,
+          idempotency_key, decision_snapshot, summary, actor_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '[]'::jsonb, '{}'::jsonb, $4)`,
+      [
+        commitId,
+        work.id,
+        work.mainBranch.id,
+        me.id,
+        chapter.id,
+        chapterVersion.id,
+        chapterVersion.versionNodeId,
+        `knowledge-fixture-${commitId}`,
+      ],
+    );
+    await pool.query(
+      `INSERT INTO facts
+         (id, work_id, branch_id, user_id, chapter_id, fact_proposal_id, decision_id,
+          source_version_id, canon_commit_id, subject, predicate, object, risk, required,
+          status, valid_from_chapter)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '沈砚父母', '死因', $10,
+         'high', true, 'active', 1)`,
+      [
+        factId,
+        work.id,
+        work.mainBranch.id,
+        me.id,
+        chapter.id,
+        proposalId,
+        decisionId,
+        chapterVersion.id,
+        commitId,
+        object,
+      ],
+    );
+    await pool.query("COMMIT");
+  } catch (error) {
+    await pool.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    await pool.end();
+  }
+  return {
+    factId,
+    label: `沈砚父母 · 死因 · ${object}`,
+    object,
   };
 }
 
@@ -809,6 +943,126 @@ test("loads the dedicated character profile, relationships, state history and he
       );
     await capture(page, testInfo, `entity-detail-profile-${width}`);
   }
+});
+
+test("edits entity, relationships, knowledge, references, proposal, lock and history through APIs", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(90_000);
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  const shen = await createCharacter(page, work, "沈砚");
+  const gu = await createCharacter(page, work, "顾青");
+  const fact = await createKnowledgeFact(page, work, "被仇家杀死");
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+  const characterApi = `${branchPath}/characters/${shen.character.id}`;
+  const versionsApi = `${branchPath}/entities/${shen.character.id}/versions`;
+  const detailResponsePromise = waitForApiResponse(page, "GET", characterApi);
+  const versionsResponsePromise = waitForApiResponse(page, "GET", versionsApi);
+  const detail = await openCharacter(page, work);
+  const initialCharacter = characterDetailResponseSchema.parse(
+    await (await detailResponsePromise).json(),
+  ).data;
+  const versions = settingEntityVersionListResponseSchema.parse(
+    await (await versionsResponsePromise).json(),
+  ).data;
+  expect(versions.length).toBeGreaterThan(0);
+
+  await test.step("edit entity", async () => {
+    await detail.getByRole("button", { name: "编辑设定", exact: true }).click();
+    await page.getByLabel("人物欲望").fill("找回被忘川书抹去的全部记忆。");
+    const editResponsePromise = waitForApiResponse(page, "PATCH", characterApi);
+    await page.getByRole("button", { name: "保存修改" }).click();
+    const edited = characterDetailResponseSchema.parse(
+      await (await editResponsePromise).json(),
+    ).data;
+    expect(edited.profile.desire).toBe("找回被忘川书抹去的全部记忆。");
+    const persisted = characterDetailResponseSchema.parse(
+      await (await page.request.get(characterApi)).json(),
+    ).data;
+    expect(persisted.profile.desire).toBe("找回被忘川书抹去的全部记忆。");
+  });
+
+  await test.step("create relationship", async () => {
+    await detail.locator(".entity-page-nav-item", { hasText: "关系" }).click();
+    await page.getByLabel("关系对象").selectOption(gu.character.id);
+    await page.getByLabel("关系类型").selectOption("enemy");
+    const relationshipApi = `${branchPath}/characters/${shen.character.id}/relationships`;
+    const relationshipResponsePromise = waitForApiResponse(page, "POST", relationshipApi);
+    await page.getByRole("button", { name: "保存关系" }).click();
+    const relationship = characterRelationshipResponseSchema.parse(
+      await (await relationshipResponsePromise).json(),
+    ).data;
+    expect(relationship.target.id).toBe(gu.character.id);
+    expect(relationship.relationType).toBe("enemy");
+  });
+
+  await test.step("edit knowledge", async () => {
+    await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
+    await page.getByLabel("客观事实").selectOption(fact.factId);
+    await page.getByLabel("认知状态").selectOption("knowledge");
+    await page.getByLabel("认知内容").fill(fact.object);
+    await page.getByLabel("信息来源").selectOption("told");
+    const knowledgeApi = `${branchPath}/characters/${shen.character.id}/knowledge-states`;
+    const knowledgeResponsePromise = waitForApiResponse(page, "POST", knowledgeApi);
+    await page.getByRole("button", { name: "保存认知" }).click();
+    const knowledge = characterKnowledgeStateResponseSchema.parse(
+      await (await knowledgeResponsePromise).json(),
+    ).data;
+    expect(knowledge.objectiveFactId).toBe(fact.factId);
+    expect(knowledge.claimedContent).toBe(fact.object);
+  });
+
+  await test.step("view references", async () => {
+    await detail.locator(".entity-page-nav-item", { hasText: "引用" }).click();
+    await expect(detail.getByText("角色认知与引用")).toBeVisible();
+    await expect(detail.getByText(fact.object, { exact: true })).toBeVisible();
+    await expect(detail.getByText(/客观事实引用已保留/u)).toBeVisible();
+  });
+
+  await test.step("view history", async () => {
+    await detail.locator(".entity-page-nav-item", { hasText: "状态历史" }).click();
+    await expect(detail.getByText("版本历史")).toBeVisible();
+    await expect(detail.locator(".settings-version-card").first()).toBeVisible();
+    expect(versions.length).toBeGreaterThan(0);
+  });
+
+  await test.step("lock entity", async () => {
+    const lockApi = `${branchPath}/entities/${shen.character.id}/lock`;
+    const lockResponsePromise = waitForApiResponse(page, "POST", lockApi);
+    await detail.getByRole("button", { name: "锁定设定" }).click();
+    const locked = settingEntityResponseSchema.parse(await (await lockResponsePromise).json()).data;
+    expect(locked.status).toBe("locked");
+    await expect(page.getByRole("button", { name: "已锁定 · 编辑需修改请求" })).toBeDisabled();
+  });
+
+  await test.step("create proposal", async () => {
+    const proposedDetail = await openCharacter(page, work, "顾青");
+    await proposedDetail.getByRole("button", { name: "提交提案" }).click();
+    const proposalForm = page.locator(".settings-proposal-form");
+    await proposalForm.getByLabel("提案理由").fill("这条人物关系需要作者确认后才能采用。");
+    await proposalForm.getByLabel("证据来源").fill("第 1 章");
+    await proposalForm.getByLabel("证据摘录").fill("顾青在门外听见了第二个名字。");
+    const proposalApi = `${branchPath}/entities/${gu.character.id}/proposals`;
+    const proposalResponsePromise = waitForApiResponse(page, "POST", proposalApi);
+    await proposalForm.getByRole("button", { name: "提交提案" }).click();
+    const proposal = settingProposalResponseSchema.parse(
+      await (await proposalResponsePromise).json(),
+    ).data;
+    expect(proposal.status).toBe("pending");
+    expect(proposal.entityId).toBe(gu.character.id);
+  });
+
+  expect(initialCharacter.character.id).toBe(shen.character.id);
 });
 
 test("shows loading, empty and recoverable error states at all four viewports", async ({

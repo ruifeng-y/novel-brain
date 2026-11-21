@@ -28,6 +28,8 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import {
   apiErrorSchema,
   characterDetailResponseSchema,
+  characterKnowledgeStateCreateRequestSchema,
+  characterKnowledgeStateResponseSchema,
   characterRelationshipCreateRequestSchema,
   characterRelationshipResponseSchema,
   confirmedSettingListResponseSchema,
@@ -77,6 +79,13 @@ import { fetchWorkOverview } from "../lib/work-api";
 import { settingTypeLabels } from "../lib/setting-labels";
 
 type ColumnKey = "world" | "characters" | "factions" | "map" | "power" | "items" | "timeline";
+
+interface KnowledgeStateInput {
+  objectiveFactId: string;
+  state: CharacterDetail["knowledgeStates"][number]["state"];
+  claimedContent: string | null;
+  sourceKind: CharacterDetail["knowledgeStates"][number]["sourceKind"];
+}
 
 type ViewMode = "columns" | "confirmed" | "fields";
 type EditorMode = "create" | "edit" | "change";
@@ -335,6 +344,17 @@ const knowledgeStateLabels: Record<CharacterDetail["knowledgeStates"][number]["s
   suspicion: "怀疑",
   misbelief: "误信",
   unknown: "未知",
+};
+
+const knowledgeSourceLabels: Record<
+  CharacterDetail["knowledgeStates"][number]["sourceKind"],
+  string
+> = {
+  observed: "亲眼所见",
+  told: "他人告知",
+  inferred: "自行推断",
+  read: "文字记录",
+  assumed: "默认假设",
 };
 
 const factionRelationLabels: Record<
@@ -1222,10 +1242,63 @@ export function SettingsCenter({
       }
       characterRelationshipResponseSchema.parse(await response.json());
       setNotice("关系已保存。");
+      await refreshProjection();
       await refreshDetail(entity.id, entity.type);
       return true;
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "关系保存失败。");
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function createCharacterKnowledge(
+    entity: SettingEntity,
+    input: KnowledgeStateInput,
+  ): Promise<boolean> {
+    if (!work || entity.type !== "character") {
+      return false;
+    }
+    setBusy(`knowledge-${entity.id}`);
+    setActionError("");
+    setNotice("");
+    try {
+      const payload = characterKnowledgeStateCreateRequestSchema.parse({
+        objectiveFactId: input.objectiveFactId,
+        state: input.state,
+        claimedContent: input.state === "unknown" ? null : input.claimedContent,
+        sourceKind: input.sourceKind,
+        validity: {
+          fromChapter: 1,
+          toChapter: null,
+          fromStoryTime: null,
+          toStoryTime: null,
+        },
+        sourceChapterId: null,
+      });
+      const csrfToken = await getCsrfToken();
+      const response = await fetch(
+        `${settingsPath(work)}/characters/${entity.id}/knowledge-states`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": csrfToken,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "角色认知保存失败。"));
+      }
+      characterKnowledgeStateResponseSchema.parse(await response.json());
+      setNotice("角色认知已保存。");
+      await refreshProjection();
+      await refreshDetail(entity.id, entity.type);
+      return true;
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "角色认知保存失败。");
       return false;
     } finally {
       setBusy("");
@@ -1355,10 +1428,12 @@ export function SettingsCenter({
           characterDetailLoading={characterDetailLoading}
           customFieldDefinitions={customFields}
           entity={selected}
+          factOptions={confirmed.filter((item) => item.kind === "fact")}
           key={selected.id}
           onBack={closeEntityDetail}
           onChangeRequest={() => beginChangeRequest(selected)}
           onCreateProposal={(input) => createProposal(selected, input)}
+          onCreateKnowledge={(input) => createCharacterKnowledge(selected, input)}
           onCreateRelationship={(targetId, relationType) =>
             createCharacterRelationship(selected, targetId, relationType)
           }
@@ -2559,8 +2634,10 @@ function EntityDetail({
   characterDetailLoading,
   customFieldDefinitions,
   entity,
+  factOptions,
   onBack,
   onChangeRequest,
+  onCreateKnowledge,
   onCreateProposal,
   onCreateRelationship,
   onDecideProposal,
@@ -2589,8 +2666,10 @@ function EntityDetail({
   characterDetailLoading: boolean;
   customFieldDefinitions: CustomFieldDefinition[];
   entity: SettingEntity;
+  factOptions: ConfirmedSetting[];
   onBack: () => void;
   onChangeRequest: () => void;
+  onCreateKnowledge: (input: KnowledgeStateInput) => Promise<boolean>;
   onCreateProposal: (input: ProposalInput) => void;
   onCreateRelationship: (
     targetId: string,
@@ -2631,6 +2710,12 @@ function EntityDetail({
   const [relationshipTargetId, setRelationshipTargetId] = useState("");
   const [relationshipType, setRelationshipType] =
     useState<CharacterDetail["relationships"][number]["relationType"]>("ally");
+  const [knowledgeFactId, setKnowledgeFactId] = useState("");
+  const [knowledgeState, setKnowledgeState] =
+    useState<CharacterDetail["knowledgeStates"][number]["state"]>("knowledge");
+  const [knowledgeContent, setKnowledgeContent] = useState("");
+  const [knowledgeSourceKind, setKnowledgeSourceKind] =
+    useState<CharacterDetail["knowledgeStates"][number]["sourceKind"]>("told");
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [restoreReason, setRestoreReason] = useState("恢复到作者确认的过去版本");
   const restorableVersions = versions.filter((version) => version.version < entity.version);
@@ -2678,6 +2763,24 @@ function EntityDetail({
     if (saved) {
       setRelationshipTargetId("");
       setRelationshipType("ally");
+    }
+  }
+
+  async function submitKnowledge() {
+    if (!knowledgeFactId || (knowledgeState !== "unknown" && !knowledgeContent.trim())) {
+      return;
+    }
+    const saved = await onCreateKnowledge({
+      objectiveFactId: knowledgeFactId,
+      state: knowledgeState,
+      claimedContent: knowledgeState === "unknown" ? null : knowledgeContent.trim(),
+      sourceKind: knowledgeSourceKind,
+    });
+    if (saved) {
+      setKnowledgeFactId("");
+      setKnowledgeState("knowledge");
+      setKnowledgeContent("");
+      setKnowledgeSourceKind("told");
     }
   }
 
@@ -3109,6 +3212,100 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
+            {entity.type === "character" && !locked && !proposed && !discarded ? (
+              <div className="settings-detail-block settings-relationship-editor">
+                <h3>编辑角色认知</h3>
+                {factOptions.length > 0 ? (
+                  <>
+                    <div className="settings-relationship-form">
+                      <label className="settings-field">
+                        <span>客观事实</span>
+                        <select
+                          aria-label="客观事实"
+                          onChange={(event) => setKnowledgeFactId(event.target.value)}
+                          value={knowledgeFactId}
+                        >
+                          <option value="">请选择事实</option>
+                          {factOptions.map((fact) => (
+                            <option key={fact.id} value={fact.id}>
+                              {[fact.name, fact.predicate, fact.object].filter(Boolean).join(" · ")}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="settings-field">
+                        <span>认知状态</span>
+                        <select
+                          aria-label="认知状态"
+                          onChange={(event) =>
+                            setKnowledgeState(
+                              event.target
+                                .value as CharacterDetail["knowledgeStates"][number]["state"],
+                            )
+                          }
+                          value={knowledgeState}
+                        >
+                          {Object.entries(knowledgeStateLabels).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="settings-field settings-field-wide">
+                        <span>认知内容</span>
+                        <textarea
+                          aria-label="认知内容"
+                          disabled={knowledgeState === "unknown"}
+                          onChange={(event) => setKnowledgeContent(event.target.value)}
+                          placeholder="记录这个角色在故事中实际知道、相信或怀疑的内容。"
+                          rows={3}
+                          value={knowledgeContent}
+                        />
+                      </label>
+                      <label className="settings-field">
+                        <span>信息来源</span>
+                        <select
+                          aria-label="信息来源"
+                          onChange={(event) =>
+                            setKnowledgeSourceKind(
+                              event.target
+                                .value as CharacterDetail["knowledgeStates"][number]["sourceKind"],
+                            )
+                          }
+                          value={knowledgeSourceKind}
+                        >
+                          {Object.entries(knowledgeSourceLabels).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <button
+                      className="btn btn-primary btn-small"
+                      disabled={
+                        busy === `knowledge-${entity.id}` ||
+                        !knowledgeFactId ||
+                        (knowledgeState !== "unknown" && !knowledgeContent.trim())
+                      }
+                      onClick={() => void submitKnowledge()}
+                      type="button"
+                    >
+                      {busy === `knowledge-${entity.id}` ? (
+                        <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                      ) : (
+                        <Plus size={14} aria-hidden="true" />
+                      )}
+                      保存认知
+                    </button>
+                  </>
+                ) : (
+                  <p>还没有可引用的客观事实。先提交本章事实后再记录角色认知。</p>
+                )}
+              </div>
+            ) : null}
             {applicableFields.length > 0 ? (
               <div className="settings-detail-block">
                 <h3>自定义字段</h3>
