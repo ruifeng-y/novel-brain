@@ -1072,6 +1072,10 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
         (item) => item.target.id === gu.character.id && item.relationType === "enemy",
       ),
     ).toBe(true);
+    const persistedRelationship = persisted.relationships.find(
+      (item) => item.target.id === gu.character.id,
+    );
+    expect(persistedRelationship?.relationType).toBe("enemy");
   });
 
   await test.step("edit knowledge", async () => {
@@ -1103,6 +1107,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
       state: "misbelief",
       validity: { fromChapter: 2, toChapter: 3 },
     });
+    expect(persistedKnowledge?.claimedContent).toBe("沈砚以为父母是自尽。");
     await editor.getByLabel("人物目标").fill("进入天门并找回全部记忆。");
     const profileSaveResponse = waitForApiResponse(page, "PATCH", characterApi);
     await editor.getByRole("button", { name: "保存修改" }).click();
@@ -1169,6 +1174,7 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
     expect(latestHistoryVersion).toBeGreaterThan(
       Math.max(...versions.map((version) => version.version)),
     );
+    expect(history.at(0)?.version).toBe(latestHistoryVersion);
     await expect(
       detail.locator(".settings-version-card").filter({ hasText: `第 ${latestHistoryVersion} 版` }),
     ).toBeVisible();
@@ -1206,6 +1212,8 @@ test("edits entity, relationships, knowledge, references, proposal, lock and his
     expect(proposalList.some((item) => item.id === proposal.id && item.status === "pending")).toBe(
       true,
     );
+    const persistedProposal = proposalList.find((item) => item.id === proposal.id);
+    expect(persistedProposal?.status).toBe("pending");
   });
 
   expect(initialCharacter.character.id).toBe(shen.character.id);

@@ -3433,7 +3433,7 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
-            {activeSection === "references" ? (
+            {activeSection === "references" && entity.type === "character" ? (
               <div className="settings-detail-block">
                 <h3>引用与反向引用</h3>
                 {characterReferencesLoading ? (

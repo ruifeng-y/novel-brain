@@ -1039,7 +1039,7 @@
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/relationships",
           "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
           "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
-          "assertion": "expect(relationship.relationType).toBe(\"enemy\");"
+          "assertion": "expect(persistedRelationship?.relationType).toBe(\"enemy\");"
         },
         {
           "id": "edit-knowledge",
@@ -1047,7 +1047,7 @@
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/characters/${shen.character.id}/knowledge-states",
           "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
           "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
-          "assertion": "expect(knowledge.validity).toMatchObject({ fromChapter: 2, toChapter: 3 });"
+          "assertion": "expect(persistedKnowledge?.claimedContent).toBe(\"沈砚以为父母是自尽。\");"
         },
         {
           "id": "view-references",
@@ -1063,7 +1063,7 @@
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${gu.character.id}/proposals",
           "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
           "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
-          "assertion": "expect(proposal.entityId).toBe(gu.character.id);"
+          "assertion": "expect(persistedProposal?.status).toBe(\"pending\");"
         },
         {
           "id": "lock-entity",
@@ -1079,7 +1079,7 @@
           "api": "/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${shen.character.id}/versions",
           "spec": "apps/web/e2e/parity/entity-detail.spec.ts",
           "test": "edits entity, relationships, knowledge, references, proposal, lock and history through APIs",
-          "assertion": "const latestHistoryVersion = Math.max(...history.map((version) => version.version));"
+          "assertion": "expect(history.at(0)?.version).toBe(latestHistoryVersion);"
         }
       ]
     },

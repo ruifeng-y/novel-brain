@@ -857,7 +857,6 @@ export class CharactersRepository implements OnModuleDestroy {
         .filter(Boolean);
       const knowledgeFactIds = aggregate.knowledgeStates.map((state) => state.objectiveFactId);
       const patterns = terms.map(likePattern);
-      const characterPattern = likePattern(characterId);
       let cursorSortAt: Date | undefined;
       if (query.cursor) {
         const cursorResult = await transaction.execute(sql`
@@ -946,7 +945,7 @@ export class CharactersRepository implements OnModuleDestroy {
               eq(chapters.branchId, context.branchId),
               or(
                 matchesAny(terms, [chapters.title, chapterVersions.content]),
-                sql`${chapters.brief}::text ILIKE ${characterPattern}`,
+                sql`${chapters.brief}::text ILIKE ANY(${sql.param(patterns)}::text[])`,
                 sql`EXISTS (
                   SELECT 1
                   FROM scene_cards sc
@@ -961,7 +960,7 @@ export class CharactersRepository implements OnModuleDestroy {
                     )
                     AND (
                       sc.pov_id = ${characterId}::uuid
-                      OR sc.pov_label ILIKE ${characterPattern}
+                      OR sc.pov_label ILIKE ANY(${sql.param(patterns)}::text[])
                     )
                 )`,
               ),
@@ -1006,7 +1005,7 @@ export class CharactersRepository implements OnModuleDestroy {
                     AND sc.branch_id = ${context.branchId}::uuid
                     AND (
                       sc.pov_id = ${characterId}::uuid
-                      OR sc.pov_label ILIKE ${characterPattern}
+                      OR sc.pov_label ILIKE ANY(${sql.param(patterns)}::text[])
                     )
                 )`,
               ),
