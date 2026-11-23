@@ -30,7 +30,9 @@ export const REQUIRED_GATE_IDS = [
 const REQUIRED_GATES = new Set(REQUIRED_GATE_IDS);
 const GATE_STATUSES = new Set(["pass", "blocked", "failed", "deferred"]);
 const GITHUB_ACTIONS_RUN_URL = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/actions\/runs\/(\d+)$/u;
+const GITHUB_ISSUE_REFERENCE = /^#(\d+)$/u;
 const EXPECTED_GITHUB_REPOSITORY = "ruifeng-y/novel-brain";
+const BOUNDED_GAP_LABELS = new Set(["ready-for-agent", "ready-for-human"]);
 const AUTHORIZED_DEFERRAL_IDS = new Set(["PERF-001", "AGENT-007", "QUALITY-009"]);
 const DEVIATION_DOCUMENTS = [
   "docs/ui/prototype-contract.md",
@@ -415,6 +417,7 @@ export function evaluateV1Release({
   actionEvidence,
   evidenceExists = () => false,
   githubRunIsSuccessful = () => false,
+  gapIssueIsValid = () => false,
   fileContains = () => false,
   goldenIsValid = () => false,
   expectedCommit,
@@ -430,7 +433,11 @@ export function evaluateV1Release({
       evidenceExists,
       githubRunIsSuccessful,
     }),
-    ...validateNonUiCapabilityEvidence(traceability, capabilityEvidence, { evidenceExists }),
+    ...validateNonUiCapabilityEvidence(traceability, capabilityEvidence, {
+      evidenceExists,
+      githubRunIsSuccessful,
+      gapIssueIsValid,
+    }),
     ...validateUiMatrix(uiMatrix, { goldenIsValid }),
     ...validateDeviationApprovals(uiMatrix, deviationApprovals, {
       evidenceExists,
@@ -509,6 +516,41 @@ export function isSuccessfulGithubActionsRun(reference, context = {}) {
   }
 }
 
+export function isValidGapIssueData(reference, issue) {
+  const match = reference.match(GITHUB_ISSUE_REFERENCE);
+  return Boolean(
+    match &&
+    issue?.state?.toUpperCase() === "OPEN" &&
+    issue.title?.trim() &&
+    Array.isArray(issue.labels) &&
+    issue.labels.some((label) => BOUNDED_GAP_LABELS.has(label)),
+  );
+}
+
+function isOpenBoundedGithubIssue(reference) {
+  const match = reference.match(GITHUB_ISSUE_REFERENCE);
+  if (!match) return false;
+  try {
+    const output = execFileSync(
+      "gh",
+      [
+        "api",
+        `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/${match[1]}`,
+        "--jq",
+        "{state: .state, title: .title, labels: [.labels[].name]}",
+      ],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 15_000,
+      },
+    );
+    return isValidGapIssueData(reference, JSON.parse(output));
+  } catch {
+    return false;
+  }
+}
+
 function main() {
   const expectedCommit = execFileSync("git", ["rev-parse", "HEAD"], {
     encoding: "utf8",
@@ -526,6 +568,7 @@ function main() {
     actionEvidence: JSON.parse(readFileSync("docs/implementation/v1-action-evidence.json", "utf8")),
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
+    gapIssueIsValid: isOpenBoundedGithubIssue,
     fileContains,
     goldenIsValid,
     expectedCommit,

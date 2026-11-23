@@ -108,6 +108,10 @@
       "kind": "integration",
       "path": "apps/api/test/generation.integration.test.ts"
     },
+    "facts-http": {
+      "kind": "integration",
+      "path": "apps/api/test/facts.integration.test.ts"
+    },
     "agent-trace-contract": {
       "kind": "contract",
       "path": "packages/contracts/test/agent-trace.test.ts"
@@ -182,6 +186,10 @@
       "kind": "guardrail",
       "path": "scripts/test/deployment-guardrails.test.mjs"
     },
+    "deployment-smoke-ci": {
+      "kind": "ci",
+      "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/44901050317"
+    },
     "observability-guardrail": {
       "kind": "guardrail",
       "path": "scripts/test/observability-guardrails.test.mjs"
@@ -253,8 +261,10 @@
     "WORK-002": {
       "status": "implemented",
       "evidence": ["manuscript-http", "chunked-import-http"],
-      "reason": "小文件 TXT/Markdown 解析已有证据，但 #126 要求的大文件分块与断点恢复没有复现证据。",
-      "gapIssue": "#262"
+      "gap": {
+        "reason": "小文件 TXT/Markdown 解析已有证据，但 #126 要求的大文件分块与断点恢复没有复现证据。",
+        "issue": "#262"
+      }
     },
     "WORK-003": { "status": "verified", "evidence": ["settings-import-http", "new-project-e2e"] },
     "WORK-004": { "status": "verified", "evidence": ["works-http", "dashboard-e2e"] },
@@ -329,10 +339,10 @@
     "AGENT-011": { "status": "verified", "evidence": ["recovery-core", "generation-http"] },
     "GEN-001": { "status": "verified", "evidence": ["generation-http"] },
     "GEN-002": { "status": "verified", "evidence": ["writing-actions-http", "generation-http"] },
-    "GEN-003": { "status": "verified", "evidence": ["generation-http", "quality-http"] },
+    "GEN-003": { "status": "verified", "evidence": ["facts-http", "generation-http"] },
     "GEN-004": { "status": "verified", "evidence": ["quality-http"] },
     "GEN-005": { "status": "verified", "evidence": ["revisions-http"] },
-    "GEN-006": { "status": "verified", "evidence": ["generation-http", "quality-http"] },
+    "GEN-006": { "status": "verified", "evidence": ["facts-http", "generation-http"] },
     "GEN-007": { "status": "verified", "evidence": ["batch-plan-http"] },
     "GEN-008": { "status": "verified", "evidence": ["batch-plan-http", "recovery-core"] },
     "GEN-009": { "status": "verified", "evidence": ["golden-three-http"] },
@@ -340,7 +350,7 @@
     "GEN-011": { "status": "verified", "evidence": ["batch-plan-http"] },
     "QUALITY-001": { "status": "verified", "evidence": ["quality-http"] },
     "QUALITY-002": { "status": "verified", "evidence": ["quality-http"] },
-    "QUALITY-003": { "status": "verified", "evidence": ["generation-http", "quality-http"] },
+    "QUALITY-003": { "status": "verified", "evidence": ["facts-http", "quality-http"] },
     "QUALITY-004": { "status": "verified", "evidence": ["batch-plan-http"] },
     "QUALITY-005": {
       "status": "verified",
@@ -364,15 +374,19 @@
     "IO-001": {
       "status": "implemented",
       "evidence": ["manuscript-http", "settings-import-http"],
-      "reason": "TXT/Markdown 已实现，但 DOCX 旧稿导入与 DOCX 设定导入仍被生产代码和测试明确拒绝。",
-      "gapIssue": "#261"
+      "gap": {
+        "reason": "TXT/Markdown 已实现，但 DOCX 旧稿导入与 DOCX 设定导入仍被生产代码和测试明确拒绝。",
+        "issue": "#261"
+      }
     },
     "IO-002": { "status": "verified", "evidence": ["settings-import-http"] },
     "IO-003": {
       "status": "implemented",
       "evidence": ["chunked-import-http"],
-      "reason": "分块接口只有小夹具证据；千万字、受限内存、崩溃续传和 UI 恢复状态尚无复现证据。",
-      "gapIssue": "#262"
+      "gap": {
+        "reason": "分块接口只有小夹具证据；千万字、受限内存、崩溃续传和 UI 恢复状态尚无复现证据。",
+        "issue": "#262"
+      }
     },
     "IO-004": { "status": "verified", "evidence": ["work-export-http", "work-export-core"] },
     "IO-005": { "status": "verified", "evidence": ["work-export-http"] },
@@ -395,7 +409,7 @@
     "SEC-006": { "status": "verified", "evidence": ["auth-http", "tenant-rls-http"] },
     "OPS-001": {
       "status": "verified",
-      "evidence": ["observability-http", "deployment-guardrail"]
+      "evidence": ["observability-http", "deployment-guardrail", "deployment-smoke-ci"]
     },
     "OPS-002": {
       "status": "verified",
@@ -409,26 +423,34 @@
     "EVAL-002": {
       "status": "implemented",
       "evidence": ["quality-regression", "quality-eval-http"],
-      "reason": "rubric 与回归门禁已实现，但正式 inter-rater variance threshold 尚未批准。",
-      "gapIssue": "#240"
+      "gap": {
+        "reason": "rubric 与回归门禁已实现，但正式 inter-rater variance threshold 尚未批准。",
+        "issue": "#240"
+      }
     },
     "EVAL-003": {
       "status": "implemented",
       "evidence": ["provider-smoke-workflow"],
-      "reason": "真实 provider smoke workflow 已实现，但受保护环境下的正式 run 和绑定提交的证据尚未执行。",
-      "gapIssue": "#241"
+      "gap": {
+        "reason": "真实 provider smoke workflow 已实现，但受保护环境下的正式 run 和绑定提交的证据尚未执行。",
+        "issue": "#241"
+      }
     },
     "EVAL-004": {
       "status": "implemented",
       "evidence": ["provider-canary", "quality-regression"],
-      "reason": "canary/rollback 实现已有自动化证据，但真实 Provider smoke 和已批准质量阈值仍是发布条件。",
-      "gapIssue": "#241"
+      "gap": {
+        "reason": "canary/rollback 实现已有自动化证据，但真实 Provider smoke 和已批准质量阈值仍是发布条件。",
+        "issue": "#241"
+      }
     },
     "CONT-001": {
       "status": "implemented",
       "evidence": ["continuity-evaluator"],
-      "reason": "确定性与最大规模 fixture/evaluator 已通过，但真实人工盲评证据和已批准阈值仍缺失。",
-      "gapIssue": "#239"
+      "gap": {
+        "reason": "确定性与最大规模 fixture/evaluator 已通过，但真实人工盲评证据和已批准阈值仍缺失。",
+        "issue": "#239"
+      }
     }
   }
 }

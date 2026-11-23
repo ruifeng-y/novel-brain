@@ -1,32 +1,37 @@
 import { normalizeRepositoryPath, parseTraceabilityRows } from "./v1-ledger.mjs";
 
-export const EXECUTABLE_EVIDENCE_KINDS = new Set([
-  "contract",
-  "unit",
-  "integration",
-  "e2e",
-  "benchmark",
-  "guardrail",
-]);
-
-const EVIDENCE_KINDS = new Set([...EXECUTABLE_EVIDENCE_KINDS, "manual_signoff"]);
+const EVIDENCE_KIND_DESCRIPTORS = {
+  contract: { executable: true, pathPattern: /\.test\.(?:ts|mjs)$/u },
+  unit: { executable: true, pathPattern: /\.test\.(?:ts|mjs)$/u },
+  integration: { executable: true, pathPattern: /\.integration\.test\.ts$/u },
+  e2e: { executable: true, pathPattern: /^apps\/web\/e2e\/.*\.spec\.ts$/u },
+  guardrail: { executable: true, pathPattern: /^scripts\/test\/.*\.test\.mjs$/u },
+  manual_signoff: { executable: false, pathPattern: /\.(?:md|json)$/u },
+  ci: {
+    executable: true,
+    external: true,
+    pathPattern: /^https:\/\/github\.com\/[^/]+\/[^/]+\/actions\/runs\/\d+$/u,
+  },
+};
+export const EXECUTABLE_EVIDENCE_KINDS = new Set(
+  Object.entries(EVIDENCE_KIND_DESCRIPTORS)
+    .filter(([, descriptor]) => descriptor.executable)
+    .map(([kind]) => kind),
+);
 const CAPABILITY_STATUSES = new Set(["verified", "implemented"]);
 const GAP_ISSUE = /^#\d+$/u;
-const EVIDENCE_PATH_PATTERNS = {
-  contract: /\.test\.(?:ts|mjs)$/u,
-  unit: /\.test\.(?:ts|mjs)$/u,
-  integration: /\.integration\.test\.ts$/u,
-  e2e: /^apps\/web\/e2e\/.*\.spec\.ts$/u,
-  benchmark: /(?:^|\/)test\/.*\.test\.(?:ts|mjs)$/u,
-  guardrail: /^scripts\/test\/.*\.test\.mjs$/u,
-  manual_signoff: /\.(?:md|json)$/u,
-};
 
 function isNonUiV1Capability(row) {
   return row.scope === "V1" && !row.id.startsWith("UI-");
 }
 
-function validateEvidenceReferences(id, record, evidence, evidenceExists, blockers) {
+function validateEvidenceReferences(
+  id,
+  record,
+  evidenceCatalog,
+  { evidenceExists, githubRunIsSuccessful },
+  blockers,
+) {
   const references = Array.isArray(record.evidence) ? record.evidence : [];
   if (references.length === 0) {
     blockers.push(`capability-audit:evidence-empty:${id}`);
@@ -34,22 +39,31 @@ function validateEvidenceReferences(id, record, evidence, evidenceExists, blocke
   }
   let executable = false;
   for (const key of references) {
-    const item = evidence?.[key];
+    const item = evidenceCatalog?.[key];
     if (!item || typeof item !== "object" || Array.isArray(item)) {
       blockers.push(`capability-audit:evidence-unknown:${id}:${key}`);
       continue;
     }
-    if (!EVIDENCE_KINDS.has(item.kind)) {
+    const descriptor = EVIDENCE_KIND_DESCRIPTORS[item.kind];
+    if (!descriptor) {
       blockers.push(`capability-audit:evidence-kind-invalid:${id}:${key}`);
       continue;
     }
-    if (EXECUTABLE_EVIDENCE_KINDS.has(item.kind)) executable = true;
+    if (descriptor.executable) executable = true;
+    if (descriptor.external) {
+      if (!descriptor.pathPattern.test(item.path ?? "")) {
+        blockers.push(`capability-audit:evidence-kind-path-mismatch:${id}:${key}`);
+      } else if (!githubRunIsSuccessful(item.path)) {
+        blockers.push(`capability-audit:evidence-missing:${id}:${key}`);
+      }
+      continue;
+    }
     const path = normalizeRepositoryPath(item.path);
     if (!path || !evidenceExists(path)) {
       blockers.push(`capability-audit:evidence-missing:${id}:${key}`);
       continue;
     }
-    if (!EVIDENCE_PATH_PATTERNS[item.kind].test(path)) {
+    if (!descriptor.pathPattern.test(path)) {
       blockers.push(`capability-audit:evidence-kind-path-mismatch:${id}:${key}`);
     }
   }
@@ -61,7 +75,11 @@ function validateEvidenceReferences(id, record, evidence, evidenceExists, blocke
 export function validateNonUiCapabilityEvidence(
   traceability,
   audit,
-  { evidenceExists = () => false } = {},
+  {
+    evidenceExists = () => false,
+    githubRunIsSuccessful = () => false,
+    gapIssueIsValid = () => false,
+  } = {},
 ) {
   const blockers = [];
   if (audit?.schemaVersion !== 1) {
@@ -96,23 +114,36 @@ export function validateNonUiCapabilityEvidence(
       continue;
     }
 
+    if (row.status !== record.status) {
+      blockers.push(`capability-audit:trace-mismatch:${row.id}`);
+    }
+
     if (record.status === "verified") {
-      if (row.status !== "verified") {
-        blockers.push(`capability-audit:trace-mismatch:${row.id}`);
-      }
-      validateEvidenceReferences(row.id, record, evidence, evidenceExists, blockers);
+      validateEvidenceReferences(
+        row.id,
+        record,
+        evidence,
+        { evidenceExists, githubRunIsSuccessful },
+        blockers,
+      );
       continue;
     }
 
-    validateEvidenceReferences(row.id, record, evidence, evidenceExists, blockers);
-    if (row.status === "verified") {
-      blockers.push(`capability-audit:trace-mismatch:${row.id}`);
-    }
-    if (!record.reason?.trim()) {
+    validateEvidenceReferences(
+      row.id,
+      record,
+      evidence,
+      { evidenceExists, githubRunIsSuccessful },
+      blockers,
+    );
+    const gap = record.gap;
+    if (!gap?.reason?.trim()) {
       blockers.push(`capability-audit:reason-missing:${row.id}`);
     }
-    if (!GAP_ISSUE.test(record.gapIssue ?? "")) {
+    if (!GAP_ISSUE.test(gap?.issue ?? "")) {
       blockers.push(`capability-audit:gap-issue-missing:${row.id}`);
+    } else if (!gapIssueIsValid(gap.issue)) {
+      blockers.push(`capability-audit:gap-issue-invalid:${row.id}:${gap.issue}`);
     }
   }
 

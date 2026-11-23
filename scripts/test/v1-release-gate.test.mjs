@@ -11,6 +11,7 @@ import {
 import {
   REQUIRED_GATE_IDS,
   evaluateV1Release,
+  isValidGapIssueData,
   isValidGithubActionsRunData,
   isSuccessfulGithubActionsRun,
 } from "../validate-v1-release.mjs";
@@ -434,6 +435,19 @@ describe("V1 release gate", () => {
         { gateId: "final-production-ci", expectedCommit: "abc123" },
       ),
     ).toBe(false);
+  });
+
+  it("accepts only open, bounded follow-up issues for capability gaps", () => {
+    const reference = "#261";
+    const issue = {
+      state: "open",
+      title: "补齐 DOCX 导入",
+      labels: ["ready-for-agent", "m3"],
+    };
+    expect(isValidGapIssueData(reference, issue)).toBe(true);
+    expect(isValidGapIssueData(reference, { ...issue, state: "CLOSED" })).toBe(false);
+    expect(isValidGapIssueData(reference, { ...issue, labels: ["m3"] })).toBe(false);
+    expect(isValidGapIssueData("999", issue)).toBe(false);
   });
 
   it("rejects truncated pseudo-PNG evidence", () => {

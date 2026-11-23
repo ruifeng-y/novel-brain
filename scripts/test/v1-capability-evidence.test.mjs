@@ -34,8 +34,10 @@ const completeAudit = {
     "IO-001": {
       status: "implemented",
       evidence: ["import"],
-      reason: "DOCX 导入尚未实现。",
-      gapIssue: "#300",
+      gap: {
+        reason: "DOCX 导入尚未实现。",
+        issue: "#300",
+      },
     },
   },
 };
@@ -43,6 +45,8 @@ const completeAudit = {
 const validate = (audit = completeAudit, overrides = {}) =>
   validateNonUiCapabilityEvidence(traceability, audit, {
     evidenceExists: () => true,
+    gapIssueIsValid: () => true,
+    githubRunIsSuccessful: () => true,
     ...overrides,
   });
 
@@ -58,8 +62,11 @@ describe("non-UI capability evidence audit", () => {
     delete audit.capabilities["ACCT-001"];
     audit.capabilities["WORK-999"] = {
       status: "implemented",
-      reason: "Unknown capability.",
-      gapIssue: "#301",
+      evidence: ["import"],
+      gap: {
+        reason: "Unknown capability.",
+        issue: "#301",
+      },
     };
 
     expect(validate(audit)).toEqual(
@@ -74,8 +81,11 @@ describe("non-UI capability evidence audit", () => {
     const audit = structuredClone(completeAudit);
     audit.capabilities["ACCT-001"] = {
       status: "implemented",
-      reason: "Status mismatch.",
-      gapIssue: "#302",
+      evidence: ["auth"],
+      gap: {
+        reason: "Status mismatch.",
+        issue: "#302",
+      },
     };
     audit.capabilities["IO-001"] = {
       status: "verified",
@@ -113,10 +123,32 @@ describe("non-UI capability evidence audit", () => {
     const audit = structuredClone(completeAudit);
     audit.capabilities["IO-001"] = {
       status: "implemented",
-      reason: "Missing evidence.",
+      evidence: ["import"],
     };
 
     expect(validate(audit)).toContain("capability-audit:gap-issue-missing:IO-001");
+  });
+
+  it("rejects mapped capabilities that claim implemented evidence", () => {
+    const mappedTraceability = traceability.replace(
+      "| IO-001 | 导入 | V1 | implemented",
+      "| IO-001 | 导入 | V1 | mapped",
+    );
+    const blockers = validateNonUiCapabilityEvidence(mappedTraceability, completeAudit, {
+      evidenceExists: () => true,
+      gapIssueIsValid: () => true,
+      githubRunIsSuccessful: () => true,
+    });
+
+    expect(blockers).toContain("capability-audit:trace-mismatch:IO-001");
+  });
+
+  it("requires the referenced follow-up issue to be open and bounded", () => {
+    expect(
+      validate(completeAudit, {
+        gapIssueIsValid: () => false,
+      }),
+    ).toContain("capability-audit:gap-issue-invalid:IO-001:#300");
   });
 
   it("requires existing partial evidence for every implemented capability", () => {
