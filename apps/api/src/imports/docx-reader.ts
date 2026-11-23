@@ -1,4 +1,4 @@
-import { Unzip, UnzipInflate, UnzipPassThrough, type UnzipFile, type UnzipFileInfo } from "fflate";
+import { Unzip, UnzipInflate, UnzipPassThrough, type UnzipFileInfo } from "fflate";
 import { SaxesParser } from "saxes";
 
 export type DocxImportKind = "manuscript" | "settings";
@@ -450,7 +450,7 @@ function blocksToText(blocks: Array<{ text: string; heading: boolean }>): DocxTe
 }
 
 function parseChapterNumbering(xml: string): Map<number, ChapterNumbering> {
-  const parser = new SaxesParser({ xmlns: false, position: false });
+  const parser = new SaxesParser({ xmlns: true, position: false });
   const abstractNumbers = new Map<
     number,
     { format: string; levelText: string; start: number } | undefined
@@ -463,12 +463,22 @@ function parseChapterNumbering(xml: string): Map<number, ChapterNumbering> {
   let start = 1;
   let numId: number | undefined;
   let mappedAbstractNumId: number | undefined;
+  let depth = 0;
+  let rootValid = false;
 
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
   parser.on("opentag", (tag) => {
-    const localName = localTagName(tag.name);
+    depth += 1;
+    const wordNamespace = WORD_PROCESSING_NAMESPACES.has(tag.uri);
+    const localName = tag.local.toLowerCase();
+    if (depth === 1) {
+      rootValid = wordNamespace && localName === "numbering";
+    }
+    if (!wordNamespace) {
+      return;
+    }
     if (localName === "abstractnum") {
       abstractNumId = numericAttribute(tag.attributes, "abstractnumid");
     } else if (localName === "lvl") {
@@ -489,17 +499,19 @@ function parseChapterNumbering(xml: string): Map<number, ChapterNumbering> {
     }
   });
   parser.on("closetag", (tag) => {
-    const localName = localTagName(tag.name);
+    const wordNamespace = WORD_PROCESSING_NAMESPACES.has(tag.uri);
+    const localName = tag.local.toLowerCase();
     if (
+      wordNamespace &&
       localName === "lvl" &&
       level === 0 &&
       abstractNumId !== undefined &&
       levelText.includes("%1")
     ) {
       abstractNumbers.set(abstractNumId, { format, levelText, start });
-    } else if (localName === "abstractnum") {
+    } else if (wordNamespace && localName === "abstractnum") {
       abstractNumId = undefined;
-    } else if (localName === "num") {
+    } else if (wordNamespace && localName === "num") {
       if (numId !== undefined && mappedAbstractNumId !== undefined) {
         const numbering = abstractNumbers.get(mappedAbstractNumId);
         if (numbering && numbering.levelText.includes("第") && numbering.levelText.includes("章")) {
@@ -509,8 +521,12 @@ function parseChapterNumbering(xml: string): Map<number, ChapterNumbering> {
       numId = undefined;
       mappedAbstractNumId = undefined;
     }
+    depth -= 1;
   });
   parseRelationshipLikeXml(parser, xml);
+  if (!rootValid) {
+    throw new DocxImportError("invalid");
+  }
   return result;
 }
 

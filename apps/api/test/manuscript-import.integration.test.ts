@@ -708,6 +708,28 @@ describe("manuscript import HTTP integration", () => {
       message: "DOCX 旧稿文件损坏或格式不受支持",
     });
 
+    const fakeNumbering = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          numberedParagraphs: [{ text: "第一章 伪编号", numId: 1 }],
+          numberingXml:
+            '<numbering xmlns="urn:fake"><num><numId w:val="1" xmlns:w="urn:word"/></num></numbering>',
+        }),
+        {
+          filename: "fake-numbering.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(fakeNumbering.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
     const encrypted = await owner
       .post("/api/v1/imports/manuscripts")
       .set("Origin", origin)
