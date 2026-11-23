@@ -1,4 +1,4 @@
-import { unzipSync, type UnzipFileInfo } from "fflate";
+import { Unzip, UnzipInflate, UnzipPassThrough, type UnzipFile, type UnzipFileInfo } from "fflate";
 import { SaxesParser } from "saxes";
 
 export type DocxImportKind = "manuscript" | "settings";
@@ -52,6 +52,14 @@ const CONTENT_TYPE_NAMESPACES = new Set([
 const RELATIONSHIP_NAMESPACES = new Set([
   "http://schemas.openxmlformats.org/package/2006/relationships",
   "http://purl.oclc.org/ooxml/package/relationships",
+]);
+const OFFICE_DOCUMENT_RELATIONSHIP_TYPES = new Set([
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
+  "http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument",
+]);
+const HYPERLINK_RELATIONSHIP_TYPES = new Set([
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
+  "http://purl.oclc.org/ooxml/officeDocument/relationships/hyperlink",
 ]);
 
 export function isDocxFileName(fileName: string): boolean {
@@ -143,37 +151,98 @@ function extractSafeEntries(
   maxUncompressedBytes: number,
 ): Record<string, Uint8Array> {
   let entryCount = 0;
-  let totalUncompressedBytes = 0;
+  let declaredUncompressedBytes = 0;
+  let actualUncompressedBytes = 0;
   const seen = new Set<string>();
+  const entries: Record<string, Uint8Array> = {};
+  let failure: DocxImportError | undefined;
+  let aborted = false;
 
   try {
-    return unzipSync(new Uint8Array(buffer), {
-      filter(file) {
-        entryCount += 1;
-        if (entryCount > MAX_ZIP_ENTRIES || seen.has(file.name)) {
-          throw new DocxImportError("unsafe");
+    const unzip = new Unzip((file) => {
+      if (aborted) {
+        return;
+      }
+      entryCount += 1;
+      if (entryCount > MAX_ZIP_ENTRIES || seen.has(file.name)) {
+        failure = new DocxImportError("unsafe");
+        aborted = true;
+        return;
+      }
+      seen.add(file.name);
+      validateEntryName(file as UnzipFileInfo);
+      declaredUncompressedBytes += file.originalSize ?? 0;
+      if (declaredUncompressedBytes > maxUncompressedBytes) {
+        failure = new DocxImportError("oversized");
+        aborted = true;
+        return;
+      }
+      if (!selectedDocxPart(file.name)) {
+        return;
+      }
+      const chunks: Uint8Array[] = [];
+      let fileBytes = 0;
+      file.ondata = (error, data, final) => {
+        if (failure) {
+          return;
         }
-        seen.add(file.name);
-        validateEntryName(file);
-        totalUncompressedBytes += file.originalSize;
-        if (totalUncompressedBytes > maxUncompressedBytes) {
-          throw new DocxImportError("oversized");
+        if (error) {
+          failure = new DocxImportError("invalid");
+          file.terminate();
+          return;
         }
-        return (
-          file.name === "[Content_Types].xml" ||
-          file.name === "_rels/.rels" ||
-          file.name === "word/document.xml" ||
-          file.name === "word/numbering.xml" ||
-          file.name.toLowerCase().endsWith(".rels")
-        );
-      },
+        actualUncompressedBytes += data.length;
+        fileBytes += data.length;
+        if (actualUncompressedBytes > maxUncompressedBytes) {
+          failure = new DocxImportError("oversized");
+          file.terminate();
+          return;
+        }
+        if (data.length > 0) {
+          chunks.push(data);
+        }
+        if (final || data.length === 0) {
+          entries[file.name] = concatBytes(chunks, fileBytes);
+        }
+      };
+      file.start();
     });
+    unzip.register(UnzipInflate);
+    unzip.register(UnzipPassThrough);
+    unzip.push(new Uint8Array(buffer), true);
   } catch (error) {
     if (error instanceof DocxImportError) {
       throw error;
     }
     throw new DocxImportError("invalid");
   }
+  if (failure) {
+    throw failure;
+  }
+  if (aborted) {
+    throw new DocxImportError("unsafe");
+  }
+  return entries;
+}
+
+function selectedDocxPart(name: string): boolean {
+  return (
+    name === "[Content_Types].xml" ||
+    name === "_rels/.rels" ||
+    name === "word/document.xml" ||
+    name === "word/numbering.xml" ||
+    name.toLowerCase().endsWith(".rels")
+  );
+}
+
+function concatBytes(chunks: Uint8Array[], length: number): Uint8Array {
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
 }
 
 function validateEntryName(file: UnzipFileInfo): void {
@@ -526,11 +595,17 @@ function formatChineseNumber(value: number, legal: boolean): string {
 
 function hasMainDocumentContentType(xml: string): boolean {
   const parser = new SaxesParser({ xmlns: true, position: false });
+  let depth = 0;
+  let rootValid = false;
   let found = false;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
   parser.on("opentag", (tag) => {
+    depth += 1;
+    if (depth === 1) {
+      rootValid = tag.local.toLowerCase() === "types" && CONTENT_TYPE_NAMESPACES.has(tag.uri);
+    }
     if (!CONTENT_TYPE_NAMESPACES.has(tag.uri) || tag.local.toLowerCase() !== "override") {
       return;
     }
@@ -542,46 +617,76 @@ function hasMainDocumentContentType(xml: string): boolean {
         contentType ===
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml");
   });
+  parser.on("closetag", () => {
+    depth -= 1;
+  });
   parseRelationshipLikeXml(parser, xml);
-  return found;
+  return rootValid && found;
 }
 
 function hasMainDocumentRelationship(xml: string): boolean {
   const parser = new SaxesParser({ xmlns: true, position: false });
+  let depth = 0;
+  let rootValid = false;
   let found = false;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
   parser.on("opentag", (tag) => {
+    depth += 1;
+    if (depth === 1) {
+      rootValid =
+        tag.local.toLowerCase() === "relationships" && RELATIONSHIP_NAMESPACES.has(tag.uri);
+    }
     if (!RELATIONSHIP_NAMESPACES.has(tag.uri) || tag.local.toLowerCase() !== "relationship") {
       return;
     }
     const type = attributeValue(tag.attributes, "type");
     const target = attributeValue(tag.attributes, "target")?.replace(/^\/+/u, "");
-    found = found || (type?.endsWith("/officeDocument") === true && target === "word/document.xml");
+    found =
+      found ||
+      (type !== undefined &&
+        OFFICE_DOCUMENT_RELATIONSHIP_TYPES.has(type) &&
+        target === "word/document.xml");
+  });
+  parser.on("closetag", () => {
+    depth -= 1;
   });
   parseRelationshipLikeXml(parser, xml);
-  return found;
+  return rootValid && found;
 }
 
 function hasUnsafeExternalRelationship(xml: string): boolean {
   const parser = new SaxesParser({ xmlns: true, position: false });
+  let depth = 0;
+  let rootValid = false;
   let unsafe = false;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
   parser.on("opentag", (tag) => {
+    depth += 1;
+    if (depth === 1) {
+      rootValid =
+        tag.local.toLowerCase() === "relationships" && RELATIONSHIP_NAMESPACES.has(tag.uri);
+    }
     if (!RELATIONSHIP_NAMESPACES.has(tag.uri) || tag.local.toLowerCase() !== "relationship") {
       return;
     }
     const targetMode = attributeValue(tag.attributes, "targetmode");
     const type = attributeValue(tag.attributes, "type");
-    if (targetMode?.toLowerCase() === "external" && !type?.toLowerCase().endsWith("/hyperlink")) {
+    if (
+      targetMode?.toLowerCase() === "external" &&
+      (type === undefined || !HYPERLINK_RELATIONSHIP_TYPES.has(type))
+    ) {
       unsafe = true;
     }
   });
+  parser.on("closetag", () => {
+    depth -= 1;
+  });
   parseRelationshipLikeXml(parser, xml);
-  return unsafe;
+  return !rootValid || unsafe;
 }
 
 function isWordDocumentXml(xml: string): boolean {

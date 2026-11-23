@@ -682,6 +682,32 @@ describe("manuscript import HTTP integration", () => {
       message: "DOCX 旧稿文件损坏或格式不受支持",
     });
 
+    const fakeRelationshipType = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["第一章 伪关系类型"],
+          extraEntries: {
+            "_rels/.rels": Buffer.from(
+              '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="https://evil.example/officeDocument" Target="word/document.xml"/></Relationships>',
+              "utf8",
+            ),
+          },
+        }),
+        {
+          filename: "fake-relationship-type.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(fakeRelationshipType.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
     const encrypted = await owner
       .post("/api/v1/imports/manuscripts")
       .set("Origin", origin)
