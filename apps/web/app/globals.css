@@ -1996,6 +1996,24 @@ a:focus-visible {
   font-size: 12px;
 }
 
+.manuscript-chunk-progress {
+  display: grid;
+  gap: 10px;
+}
+
+.manuscript-chunk-progress > div:first-child,
+.manuscript-chunk-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.manuscript-chunk-actions {
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+}
+
 .manuscript-empty-state {
   display: grid;
   justify-items: center;
@@ -5760,6 +5778,16 @@ a:focus-visible {
   }
 
   .manuscript-file-row .btn {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .manuscript-chunk-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .manuscript-chunk-actions .btn {
     justify-content: center;
     width: 100%;
   }

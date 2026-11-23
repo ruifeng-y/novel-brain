@@ -16,6 +16,7 @@ import {
   chunkedImportStartRequestSchema,
   chunkedImportChunkRequestSchema,
   chunkedImportProgressResponseSchema,
+  chunkedManuscriptImportConfirmRequestSchema,
   manuscriptImportConfirmRequestSchema,
   manuscriptImportConfirmResponseSchema,
   manuscriptImportResponseSchema,
@@ -48,6 +49,7 @@ function schemaOf(schema: z.ZodType): SchemaObject {
 
 const importResponseJsonSchema = schemaOf(manuscriptImportResponseSchema);
 const confirmBodySchema = schemaOf(manuscriptImportConfirmRequestSchema);
+const chunkedConfirmBodySchema = schemaOf(chunkedManuscriptImportConfirmRequestSchema);
 const confirmResponseJsonSchema = schemaOf(manuscriptImportConfirmResponseSchema);
 const chunkedCreateBodySchema = schemaOf(chunkedImportCreateRequestSchema);
 const chunkedStartBodySchema = schemaOf(chunkedImportStartRequestSchema);
@@ -278,6 +280,36 @@ export class ManuscriptImportController {
       auth.user.displayName,
       uuidV7Schema.parse(importId),
       manuscriptImportConfirmRequestSchema.parse(body),
+      this.auditContext(request, requestId),
+      `manuscript-import-${importId}`,
+    );
+    return manuscriptImportConfirmResponseSchema.parse({
+      data: result,
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":importId/confirm-chunked")
+  @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key", required: false })
+  @ApiBody({ schema: chunkedConfirmBodySchema })
+  @ApiOkResponse({
+    description: "Confirmed range-based chunked manuscript import",
+    schema: confirmResponseJsonSchema,
+  })
+  async confirmChunked(
+    @Req() request: AuthenticatedRequest,
+    @Param("importId") importId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    const auth = this.auth(request);
+    const result = await this.service.confirmChunked(
+      auth.user.id,
+      auth.user.displayName,
+      uuidV7Schema.parse(importId),
+      chunkedManuscriptImportConfirmRequestSchema.parse(body),
       this.auditContext(request, requestId),
       `manuscript-import-${importId}`,
     );

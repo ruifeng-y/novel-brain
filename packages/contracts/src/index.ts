@@ -1087,11 +1087,22 @@ export const manuscriptImportWarningSchema = z.object({
 });
 export type ManuscriptImportWarning = z.infer<typeof manuscriptImportWarningSchema>;
 
+export const manuscriptSourceRangeSchema = z
+  .object({
+    start: z.number().int().nonnegative(),
+    end: z.number().int().nonnegative(),
+  })
+  .refine((range) => range.end >= range.start, {
+    message: "Source range end must not precede its start",
+  });
+export type ManuscriptSourceRange = z.infer<typeof manuscriptSourceRangeSchema>;
+
 export const manuscriptImportChapterSchema = z.object({
   order: z.number().int().positive(),
   title: z.string().trim().min(1).max(200),
   content: z.string(),
   wordCount: z.number().int().nonnegative(),
+  sourceRange: manuscriptSourceRangeSchema,
 });
 export type ManuscriptImportChapter = z.infer<typeof manuscriptImportChapterSchema>;
 
@@ -5032,6 +5043,26 @@ export const manuscriptImportConfirmRequestSchema = z.object({
 });
 export type ManuscriptImportConfirmRequest = z.infer<typeof manuscriptImportConfirmRequestSchema>;
 
+export const chunkedManuscriptImportConfirmRequestSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  penName: z.string().trim().min(1).max(50).optional(),
+  genre: workGenreSchema.default("xianxia"),
+  scaleTarget: workScaleTargetSchema.default("long"),
+  chapterLengthTarget: z.number().int().min(1000).max(10000).default(3000),
+  chapters: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        sourceRange: manuscriptSourceRangeSchema,
+      }),
+    )
+    .min(1)
+    .max(1_000),
+});
+export type ChunkedManuscriptImportConfirmRequest = z.infer<
+  typeof chunkedManuscriptImportConfirmRequestSchema
+>;
+
 export const manuscriptImportConfirmDataSchema = z.object({
   work: workOverviewSchema,
   chapters: z.array(chapterSchema),
@@ -7467,6 +7498,7 @@ export const chunkedImportProgressSchema = z
       "completed",
     ]),
     chunkCount: z.number().int().positive(),
+    uploadedChunks: z.number().int().nonnegative(),
     processedChunks: z.number().int().nonnegative(),
     canConfirm: z.boolean(),
   })

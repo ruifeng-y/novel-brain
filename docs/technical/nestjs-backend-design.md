@@ -1060,7 +1060,7 @@ API：`POST /chapters/:id/review`、`POST /chapters/:id/facts/:factId/confirm`�
 | `import_conflicts` | `id`, `import_job_id`, `candidate_id`, `conflict_type`, `evidence`, `status` |
 | `import_reports` | `id`, `import_job_id`, `summary`, `accepted`, `pending`, `conflicts`, `unparsed` |
 
-旧稿默认文本导入不创建候选；旧稿“设定提取”和“设定导入”才创建候选、冲突和报告。设定导入接受作者已有的部分或完整设定，进入候选映射和冲突裁决，不影响旧稿导入。导入按文件/卷/章块或设定类型分块后台处理，支持断点、取消和部分失败。20 MB 不是产品上限；单文件/总大小可配置。导入文本视为不可信数据，不执行内容、不覆盖系统指令。
+旧稿默认文本导入不创建候选；旧稿“设定提取”和“设定导入”才创建候选、冲突和报告。设定导入接受作者已有的部分或完整设定，进入候选映射和冲突裁决，不影响旧稿导入。导入按文件/卷/章块或设定类型分块后台处理，支持断点、取消和部分失败。大文件预览只返回章节数量和 source range，确认时由服务端按范围物化正文，避免把全文放入单次请求。20 MB 不是产品上限；单文件/总大小可配置。导入文本视为不可信数据，不执行内容、不覆盖系统指令。
 
 API：`POST /imports`、`GET /imports/:id`、`POST /imports/:id/cancel`、`POST /imports/:id/resume`、`GET /imports/:id/report`、`POST /imports/:id/candidates/:candidateId/accept`、`POST /imports/:id/candidates/:candidateId/reject`。
 

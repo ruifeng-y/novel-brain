@@ -7,9 +7,12 @@ import {
   FileUp,
   GitMerge,
   LoaderCircle,
+  PauseCircle,
+  PlayCircle,
   Scissors,
+  XCircle,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   IMPORT_FILE_LIMITS,
   apiErrorSchema,
@@ -40,6 +43,17 @@ interface ManuscriptImportPanelProps {
 }
 
 type BusyState = "recognize" | "confirm" | null;
+type ChunkControl = "pause" | "resume" | "cancel" | null;
+
+interface ChunkedStream {
+  reader: ReadableStreamDefaultReader<string>;
+  buffer: string;
+  pendingText: string;
+  done: boolean;
+  nextSequence: number;
+}
+
+const CHUNKED_TEXT_CHARACTERS = 250_000;
 
 export function ManuscriptImportPanel({
   title,
@@ -59,10 +73,22 @@ export function ManuscriptImportPanel({
   const [manuscriptImport, setManuscriptImport] = useState<ManuscriptImport | null>(null);
   const [chapters, setChapters] = useState<ManuscriptImportChapter[]>([]);
   const [busy, setBusy] = useState<BusyState>(null);
+  const [isChunkedImport, setIsChunkedImport] = useState(false);
   const [chunkProgress, setChunkProgress] = useState<ChunkedImportProgress | null>(null);
+  const [chunkControl, setChunkControl] = useState<ChunkControl>(null);
+  const [canResumeChunked, setCanResumeChunked] = useState(false);
   const [error, setError] = useState("");
   const [splitIndex, setSplitIndex] = useState<number | null>(null);
   const [splitOffset, setSplitOffset] = useState(1);
+  const chunkStream = useRef<ChunkedStream | null>(null);
+  const pauseRequested = useRef(false);
+
+  useEffect(
+    () => () => {
+      void chunkStream.current?.reader.cancel().catch(() => undefined);
+    },
+    [],
+  );
 
   const canConfirm = Boolean(
     manuscriptImport &&
@@ -80,7 +106,13 @@ export function ManuscriptImportPanel({
     setSplitIndex(null);
     setError("");
     confirmKey.current = null;
+    setIsChunkedImport(false);
     setChunkProgress(null);
+    setChunkControl(null);
+    setCanResumeChunked(false);
+    pauseRequested.current = false;
+    void chunkStream.current?.reader.cancel().catch(() => undefined);
+    chunkStream.current = null;
   }
 
   function selectFile(nextFile: File | undefined) {
@@ -94,6 +126,170 @@ export function ManuscriptImportPanel({
       return;
     }
     resetPreview(nextFile);
+  }
+
+  async function controlChunk(
+    action: "pause" | "resume" | "cancel",
+    csrfToken?: string,
+  ): Promise<ChunkedImportProgress | null> {
+    if (!chunkProgress) {
+      return null;
+    }
+    setChunkControl(action);
+    setError("");
+    if (action === "pause" || action === "cancel") {
+      pauseRequested.current = true;
+    } else if (action === "resume") {
+      pauseRequested.current = false;
+    }
+    try {
+      const token = csrfToken ?? (await getCsrfToken());
+      const response = await fetch(
+        `/api/v1/imports/manuscripts/${chunkProgress.importId}/${action}`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": token,
+          },
+          body: "{}",
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
+      setChunkProgress(progress);
+      if (action === "cancel") {
+        setCanResumeChunked(false);
+        await chunkStream.current?.reader.cancel().catch(() => undefined);
+        chunkStream.current = null;
+      }
+      return progress;
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "导入状态更新失败，请重试。");
+      return null;
+    } finally {
+      setChunkControl(null);
+    }
+  }
+
+  async function continueChunkedImport(
+    file: File,
+    progress: ChunkedImportProgress,
+    csrfToken: string,
+  ): Promise<void> {
+    let current = progress;
+    if (current.status === "paused") {
+      const resumed = await controlChunk("resume", csrfToken);
+      if (!resumed) {
+        return;
+      }
+      current = resumed;
+    }
+    const stream = chunkStream.current;
+    if (!stream) {
+      throw new Error("分块读取状态已丢失，请重新选择文件。");
+    }
+    while (stream.nextSequence < current.chunkCount && !pauseRequested.current) {
+      const sourceText = stream.pendingText || (await nextTextChunk(stream));
+      if (!sourceText) {
+        break;
+      }
+      const response = await fetch(`/api/v1/imports/manuscripts/${current.importId}/chunks`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
+        body: JSON.stringify({ sequence: stream.nextSequence, sourceText }),
+      });
+      if (!response.ok) {
+        stream.pendingText = sourceText;
+        setCanResumeChunked(true);
+        throw new Error(await readError(response));
+      }
+      stream.pendingText = "";
+      stream.nextSequence += 1;
+      current = chunkedImportProgressResponseSchema.parse(await response.json()).data;
+      setChunkProgress(current);
+    }
+    setCanResumeChunked(stream.nextSequence < current.chunkCount);
+
+    while (
+      (current.status === "queued" || current.status === "processing") &&
+      !pauseRequested.current
+    ) {
+      const response = await fetch(`/api/v1/imports/manuscripts/${current.importId}/process`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
+        body: "{}",
+      });
+      if (!response.ok) {
+        setCanResumeChunked(true);
+        throw new Error(await readError(response));
+      }
+      current = chunkedImportProgressResponseSchema.parse(await response.json()).data;
+      if (pauseRequested.current && current.status === "processing") {
+        const pauseResponse = await fetch(`/api/v1/imports/manuscripts/${current.importId}/pause`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": csrfToken,
+          },
+          body: "{}",
+        });
+        if (pauseResponse.ok) {
+          current = chunkedImportProgressResponseSchema.parse(await pauseResponse.json()).data;
+        }
+      }
+      setChunkProgress(current);
+      if (current.status === "paused") {
+        break;
+      }
+    }
+
+    if (current.status === "awaiting_confirmation") {
+      const previewResponse = await fetch(`/api/v1/imports/manuscripts/${current.importId}`, {
+        cache: "no-store",
+      });
+      if (!previewResponse.ok) {
+        throw new Error(await readError(previewResponse));
+      }
+      const parsed = manuscriptImportResponseSchema.parse(await previewResponse.json()).data;
+      setManuscriptImport(parsed);
+      setChapters(parsed.chapters);
+      setIsChunkedImport(true);
+      setCanResumeChunked(false);
+      return;
+    }
+
+    if (current.status === "partial") {
+      setCanResumeChunked(current.uploadedChunks < current.chunkCount);
+      setError("旧稿分块处理部分失败，已保留进度，可以继续导入。");
+    }
+
+    setFile(file);
+  }
+
+  async function resumeChunkedImport() {
+    if (!file || !chunkProgress || busy !== null) {
+      return;
+    }
+    setBusy("recognize");
+    setError("");
+    pauseRequested.current = false;
+    try {
+      const csrfToken = await getCsrfToken();
+      await continueChunkedImport(file, chunkProgress, csrfToken);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "继续导入失败，请重试。");
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function recognize() {
@@ -115,8 +311,10 @@ export function ManuscriptImportPanel({
         throw new Error("DOCX 旧稿不能超过 1 MB，请拆分文件后重试。");
       }
       if (file.size > IMPORT_FILE_LIMITS.manuscript.maxFileBytes) {
-        const text = await file.text();
-        const chunks = splitIntoChunks(text, 500_000);
+        const chunkCount = await countTextChunks(file);
+        const stream = await createChunkStream(file);
+        chunkStream.current = stream;
+        pauseRequested.current = false;
         let response = await fetch("/api/v1/imports/manuscripts/chunked/start", {
           method: "POST",
           headers: {
@@ -124,55 +322,15 @@ export function ManuscriptImportPanel({
             "x-csrf-token": csrfToken,
             "idempotency-key": crypto.randomUUID(),
           },
-          body: JSON.stringify({ sourceName: file.name, chunkCount: chunks.length }),
+          body: JSON.stringify({ sourceName: file.name, chunkCount }),
         });
         if (!response.ok) {
           throw new Error(await readError(response));
         }
         let progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
         setChunkProgress(progress);
-        for (const [sequence, sourceText] of chunks.entries()) {
-          response = await fetch(`/api/v1/imports/manuscripts/${progress.importId}/chunks`, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-csrf-token": csrfToken,
-            },
-            body: JSON.stringify({ sequence, sourceText }),
-          });
-          if (!response.ok) {
-            throw new Error(await readError(response));
-          }
-          progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
-          setChunkProgress(progress);
-        }
-        while (progress.status === "queued" || progress.status === "processing") {
-          response = await fetch(`/api/v1/imports/manuscripts/${progress.importId}/process`, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-csrf-token": csrfToken,
-            },
-            body: "{}",
-          });
-          if (!response.ok) {
-            throw new Error(await readError(response));
-          }
-          progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
-          setChunkProgress(progress);
-        }
-        if (progress.status !== "awaiting_confirmation") {
-          throw new Error("分块导入未能完成，请检查后重试。");
-        }
-        const previewResponse = await fetch(`/api/v1/imports/manuscripts/${progress.importId}`, {
-          cache: "no-store",
-        });
-        if (!previewResponse.ok) {
-          throw new Error(await readError(previewResponse));
-        }
-        const parsed = manuscriptImportResponseSchema.parse(await previewResponse.json()).data;
-        setManuscriptImport(parsed);
-        setChapters(parsed.chapters);
+        setIsChunkedImport(true);
+        await continueChunkedImport(file, progress, csrfToken);
         return;
       }
       const body = new FormData();
@@ -205,14 +363,15 @@ export function ManuscriptImportPanel({
 
   function beginSplit(index: number) {
     const chapter = chapters[index];
-    if (!chapter || chapter.content.length < 2) {
+    const length = chapter ? chapterLength(chapter) : 0;
+    if (!chapter || length < 2) {
       return;
     }
-    const paragraphBreak = chapter.content.indexOf("\n\n", Math.floor(chapter.content.length / 3));
+    const paragraphBreak = chapter.content.indexOf("\n\n", Math.floor(length / 3));
     const initialOffset =
-      paragraphBreak > 0 && paragraphBreak < chapter.content.length - 1
+      paragraphBreak > 0 && paragraphBreak < length - 1
         ? paragraphBreak + 2
-        : Math.max(1, Math.floor(chapter.content.length / 2));
+        : Math.max(1, Math.floor(length / 2));
     setSplitIndex(index);
     setSplitOffset(initialOffset);
     setError("");
@@ -226,21 +385,35 @@ export function ManuscriptImportPanel({
     if (!chapter) {
       return;
     }
-    const offset = safeSplitOffset(chapter.content, splitOffset);
-    const left = chapter.content.slice(0, offset);
-    const right = chapter.content.slice(offset);
-    if (!left || !right) {
+    const length = chapterLength(chapter);
+    const offset = safeSplitOffset(length, splitOffset, chapter.content);
+    const leftContent = chapter.content.slice(0, offset);
+    const rightContent = chapter.content.slice(offset);
+    if ((!isChunkedImport && (!leftContent || !rightContent)) || offset <= 0 || offset >= length) {
       setError("拆分位置需要同时保留前后两段正文");
       return;
     }
+    const splitAt = chapter.sourceRange.start + offset;
+    const leftWordCount = isChunkedImport
+      ? Math.round((chapter.wordCount * offset) / Math.max(1, length))
+      : countWords(leftContent);
+    const rightWordCount = isChunkedImport
+      ? Math.max(0, chapter.wordCount - leftWordCount)
+      : countWords(rightContent);
     const next = [
       ...chapters.slice(0, splitIndex),
-      { ...chapter, content: left },
+      {
+        ...chapter,
+        content: leftContent,
+        wordCount: leftWordCount,
+        sourceRange: { start: chapter.sourceRange.start, end: splitAt },
+      },
       {
         order: splitIndex + 2,
         title: "拆分章节",
-        content: right,
-        wordCount: countWords(right),
+        content: rightContent,
+        wordCount: rightWordCount,
+        sourceRange: { start: splitAt, end: chapter.sourceRange.end },
       },
       ...chapters.slice(splitIndex + 1),
     ].map((item, index) => ({ ...item, order: index + 1 }));
@@ -260,6 +433,10 @@ export function ManuscriptImportPanel({
       ...chapter,
       content: chapter.content + nextChapter.content,
       wordCount: chapter.wordCount + nextChapter.wordCount,
+      sourceRange: {
+        start: chapter.sourceRange.start,
+        end: nextChapter.sourceRange.end,
+      },
     };
     setChapters(
       [...chapters.slice(0, index), merged, ...chapters.slice(index + 2)].map(
@@ -282,25 +459,37 @@ export function ManuscriptImportPanel({
     confirmKey.current ??= crypto.randomUUID();
     try {
       const csrfToken = await getCsrfToken();
-      const response = await fetch(`/api/v1/imports/manuscripts/${manuscriptImport.id}/confirm`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": csrfToken,
-          "idempotency-key": confirmKey.current,
+      const response = await fetch(
+        `/api/v1/imports/manuscripts/${manuscriptImport.id}/${
+          isChunkedImport ? "confirm-chunked" : "confirm"
+        }`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": csrfToken,
+            "idempotency-key": confirmKey.current,
+          },
+          body: JSON.stringify({
+            title,
+            ...(penName.trim() ? { penName: penName.trim() } : {}),
+            genre,
+            scaleTarget,
+            chapterLengthTarget,
+            chapters: chapters.map((chapter) =>
+              isChunkedImport
+                ? {
+                    title: chapter.title.trim(),
+                    sourceRange: chapter.sourceRange,
+                  }
+                : {
+                    title: chapter.title.trim(),
+                    content: chapter.content,
+                  },
+            ),
+          }),
         },
-        body: JSON.stringify({
-          title,
-          ...(penName.trim() ? { penName: penName.trim() } : {}),
-          genre,
-          scaleTarget,
-          chapterLengthTarget,
-          chapters: chapters.map((chapter) => ({
-            title: chapter.title.trim(),
-            content: chapter.content,
-          })),
-        }),
-      });
+      );
       if (!response.ok) {
         throw new Error(await readError(response));
       }
@@ -369,12 +558,65 @@ export function ManuscriptImportPanel({
         ) : null}
 
         {chunkProgress && chunkProgress.status !== "awaiting_confirmation" ? (
-          <div className="model-notice" role="status">
-            <LoaderCircle className="spin" size={15} aria-hidden="true" />
-            <span>
-              已处理 {chunkProgress.processedChunks} / {chunkProgress.chunkCount} 个分块
-            </span>
-          </div>
+          <section className="model-notice manuscript-chunk-progress" role="status">
+            <div>
+              {chunkProgress.status === "paused" || chunkProgress.status === "partial" ? (
+                <PauseCircle size={15} aria-hidden="true" />
+              ) : chunkProgress.status === "cancelled" ? (
+                <XCircle size={15} aria-hidden="true" />
+              ) : (
+                <LoaderCircle
+                  className={
+                    chunkProgress.status === "processing" || chunkProgress.status === "queued"
+                      ? "spin"
+                      : undefined
+                  }
+                  size={15}
+                  aria-hidden="true"
+                />
+              )}
+              <span>
+                已接收 {chunkProgress.uploadedChunks} / {chunkProgress.chunkCount}，已处理{" "}
+                {chunkProgress.processedChunks} / {chunkProgress.chunkCount} 个分块
+              </span>
+            </div>
+            {chunkProgress.status !== "cancelled" ? (
+              <div className="manuscript-chunk-actions">
+                {chunkProgress.status === "paused" ||
+                canResumeChunked ||
+                chunkProgress.status === "partial" ? (
+                  <button
+                    className="btn btn-ghost"
+                    disabled={busy !== null || chunkControl !== null}
+                    onClick={() => void resumeChunkedImport()}
+                    type="button"
+                  >
+                    <PlayCircle size={14} aria-hidden="true" />
+                    继续导入
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-ghost"
+                    disabled={busy === null || chunkControl !== null}
+                    onClick={() => void controlChunk("pause")}
+                    type="button"
+                  >
+                    <PauseCircle size={14} aria-hidden="true" />
+                    暂停处理
+                  </button>
+                )}
+                <button
+                  className="btn btn-ghost"
+                  disabled={chunkControl !== null}
+                  onClick={() => void controlChunk("cancel")}
+                  type="button"
+                >
+                  <XCircle size={14} aria-hidden="true" />
+                  取消导入
+                </button>
+              </div>
+            ) : null}
+          </section>
         ) : null}
 
         {manuscriptImport?.status === "empty" ? (
@@ -429,11 +671,14 @@ export function ManuscriptImportPanel({
                     </label>
                     <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
                   </div>
-                  <pre className="manuscript-content-preview">{chapter.content}</pre>
+                  <pre className="manuscript-content-preview">
+                    {chapter.content ||
+                      "原文已安全保留在导入任务中，确认后会按当前章节范围写入作品。"}
+                  </pre>
                   <div className="manuscript-row-actions">
                     <button
                       className="btn btn-ghost"
-                      disabled={busy !== null || chapter.content.length < 2}
+                      disabled={busy !== null || chapterLength(chapter) < 2}
                       onClick={() => beginSplit(index)}
                       type="button"
                     >
@@ -457,7 +702,7 @@ export function ManuscriptImportPanel({
                         <input
                           aria-label="拆分位置"
                           disabled={busy !== null}
-                          max={Math.max(1, chapter.content.length - 1)}
+                          max={Math.max(1, chapterLength(chapter) - 1)}
                           min={1}
                           onChange={(event) => setSplitOffset(Number(event.target.value))}
                           type="range"
@@ -465,7 +710,7 @@ export function ManuscriptImportPanel({
                         />
                       </label>
                       <small>
-                        前半 {splitOffset} 字 · 后半 {chapter.content.length - splitOffset} 字
+                        前半 {splitOffset} 字 · 后半 {chapterLength(chapter) - splitOffset} 字
                       </small>
                       <div>
                         <button
@@ -604,8 +849,11 @@ export function ManuscriptImportPanel({
   );
 }
 
-function safeSplitOffset(content: string, requested: number): number {
-  const bounded = Math.min(Math.max(1, requested), content.length - 1);
+function safeSplitOffset(length: number, requested: number, content: string): number {
+  const bounded = Math.min(Math.max(1, requested), length - 1);
+  if (!content) {
+    return bounded;
+  }
   const previous = content.charCodeAt(bounded - 1);
   const next = content.charCodeAt(bounded);
   return previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff
@@ -613,27 +861,67 @@ function safeSplitOffset(content: string, requested: number): number {
     : bounded;
 }
 
+function chapterLength(chapter: ManuscriptImportChapter): number {
+  return chapter.sourceRange.end - chapter.sourceRange.start;
+}
+
 function countWords(text: string): number {
   return Array.from(text.replace(/\s/gu, "")).length;
 }
 
-function splitIntoChunks(text: string, targetLength: number): string[] {
-  const chunks: string[] = [];
-  let offset = 0;
-  while (offset < text.length) {
-    let end = Math.min(text.length, offset + targetLength);
-    if (
-      end < text.length &&
-      end > offset &&
-      text.charCodeAt(end - 1) >= 0xd800 &&
-      text.charCodeAt(end - 1) <= 0xdbff
-    ) {
-      end -= 1;
+async function countTextChunks(file: File): Promise<number> {
+  const reader = decodeFileStream(file);
+  let buffer = "";
+  let count = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
     }
-    chunks.push(text.slice(offset, end));
-    offset = end;
+    buffer += value;
+    while (buffer.length >= CHUNKED_TEXT_CHARACTERS) {
+      count += 1;
+      buffer = buffer.slice(CHUNKED_TEXT_CHARACTERS);
+    }
   }
-  return chunks.length ? chunks : [""];
+  if (buffer.length > 0) {
+    count += 1;
+  }
+  return Math.max(1, count);
+}
+
+async function createChunkStream(file: File): Promise<ChunkedStream> {
+  return {
+    reader: decodeFileStream(file),
+    buffer: "",
+    pendingText: "",
+    done: false,
+    nextSequence: 0,
+  };
+}
+
+async function nextTextChunk(stream: ChunkedStream): Promise<string> {
+  while (stream.buffer.length < CHUNKED_TEXT_CHARACTERS && !stream.done) {
+    const { done, value } = await stream.reader.read();
+    if (done) {
+      stream.done = true;
+      break;
+    }
+    stream.buffer += value;
+  }
+  if (stream.buffer.length === 0) {
+    return "";
+  }
+  const chunk = stream.buffer.slice(0, CHUNKED_TEXT_CHARACTERS);
+  stream.buffer = stream.buffer.slice(chunk.length);
+  return chunk;
+}
+
+function decodeFileStream(file: File): ReadableStreamDefaultReader<string> {
+  return file
+    .stream()
+    .pipeThrough(new TextDecoderStream("utf-8", { fatal: true }))
+    .getReader();
 }
 
 async function readError(response: Response): Promise<string> {

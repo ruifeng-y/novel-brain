@@ -37,6 +37,11 @@ export interface ConfirmedManuscriptResult {
   chapterVersions: Array<ChapterVersionRecord & { parentNodeId: string | null }>;
 }
 
+function checkpointNumber(checkpoint: Record<string, unknown>, key: string): number | undefined {
+  const value = checkpoint[key];
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : undefined;
+}
+
 @Injectable()
 export class ManuscriptImportRepository implements OnModuleDestroy {
   private readonly pool: Pool;
@@ -131,7 +136,11 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           idempotencyKey: input.idempotencyKey,
           chunkCount: input.chunks.length,
           processedChunks: 0,
-          checkpoint: { nextSequence: 0 },
+          checkpoint: {
+            nextUploadSequence: input.chunks.length,
+            nextProcessSequence: 0,
+            uploadedChunks: input.chunks.length,
+          },
           metadata: { chunked: true, requestHash },
         })
         .returning();
@@ -199,7 +208,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           idempotencyKey: input.idempotencyKey,
           chunkCount: input.chunkCount,
           processedChunks: 0,
-          checkpoint: { nextSequence: 0 },
+          checkpoint: { nextUploadSequence: 0, nextProcessSequence: 0, uploadedChunks: 0 },
           metadata: { chunked: true, streamed: true, requestHash },
         })
         .returning();
@@ -215,7 +224,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
     importId: string;
     sequence: number;
     sourceText: string;
-  }): Promise<ManuscriptImportJobRecord | undefined> {
+  }): Promise<ManuscriptImportJobRecord | "not_ready" | "sequence_conflict" | undefined> {
     return this.withTenant(input.userId, async (transaction) => {
       const [job] = await transaction
         .select()
@@ -233,6 +242,9 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
       if (!job || input.sequence >= job.chunkCount) {
         return undefined;
       }
+      if (job.status === "cancelled" || job.status === "completed") {
+        return "not_ready";
+      }
       const [existing] = await transaction
         .select({ id: importChunks.id })
         .from(importChunks)
@@ -248,13 +260,20 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         return job;
       }
       const [last] = await transaction
-        .select({ endOffset: importChunks.endOffset })
+        .select({ sequence: importChunks.sequence, endOffset: importChunks.endOffset })
         .from(importChunks)
         .where(
           and(eq(importChunks.importJobId, input.importId), eq(importChunks.userId, input.userId)),
         )
         .orderBy(desc(importChunks.sequence))
         .limit(1);
+      const expectedSequence =
+        checkpointNumber(job.checkpoint, "nextUploadSequence") ??
+        checkpointNumber(job.checkpoint, "nextSequence") ??
+        (last?.sequence ?? -1) + 1;
+      if (input.sequence !== expectedSequence) {
+        return "sequence_conflict";
+      }
       const startOffset = last?.endOffset ?? 0;
       const endOffset = startOffset + input.sourceText.length;
       await transaction.insert(importChunks).values({
@@ -267,7 +286,22 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         endOffset,
         status: "pending",
       });
-      return job;
+      const uploadedChunks =
+        (checkpointNumber(job.checkpoint, "uploadedChunks") ??
+          Math.max(0, checkpointNumber(job.checkpoint, "nextSequence") ?? 0)) + 1;
+      const [updated] = await transaction
+        .update(importJobs)
+        .set({
+          checkpoint: {
+            ...job.checkpoint,
+            nextUploadSequence: input.sequence + 1,
+            uploadedChunks,
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(importJobs.id, input.importId))
+        .returning();
+      return updated;
     });
   }
 
@@ -341,7 +375,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         .set({
           status: processedChunks >= job.chunkCount ? "awaiting_confirmation" : "processing",
           processedChunks,
-          checkpoint: { nextSequence: chunk.sequence + 1 },
+          checkpoint: { ...job.checkpoint, nextProcessSequence: chunk.sequence + 1 },
           updatedAt: new Date(),
         })
         .where(eq(importJobs.id, importId))
