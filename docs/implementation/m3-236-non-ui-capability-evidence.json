@@ -2,6 +2,15 @@
   "schemaVersion": 1,
   "auditedAt": "2026-11-21",
   "issue": "#236",
+  "verification": {
+    "kind": "vitest",
+    "status": "passed",
+    "executedAt": "2026-11-23",
+    "command": "pnpm exec vitest run --testTimeout 15000",
+    "path": "docs/implementation/evidence/m3-236-vitest-summary.json",
+    "testFiles": 122,
+    "tests": 620
+  },
   "evidence": {
     "auth-http": { "kind": "integration", "path": "apps/api/test/auth.integration.test.ts" },
     "auth-e2e": { "kind": "e2e", "path": "apps/web/e2e/parity/auth.spec.ts" },
@@ -156,6 +165,10 @@
     "search-http": {
       "kind": "integration",
       "path": "apps/api/test/m2-04-06.integration.test.ts"
+    },
+    "global-search-e2e": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/changes.spec.ts"
     },
     "chunked-import-http": {
       "kind": "integration",
@@ -365,9 +378,30 @@
     "CHANGE-001": { "status": "verified", "evidence": ["changes-http", "changes-contract"] },
     "CHANGE-002": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-003": { "status": "verified", "evidence": ["changes-http"] },
-    "CHANGE-004": { "status": "verified", "evidence": ["changes-http"] },
-    "CHANGE-005": { "status": "verified", "evidence": ["changes-http", "changes-contract"] },
-    "CHANGE-006": { "status": "verified", "evidence": ["changes-http", "changes-contract"] },
+    "CHANGE-004": {
+      "status": "implemented",
+      "evidence": ["changes-http"],
+      "gap": {
+        "reason": "现有测试只从当前 head 建分支，尚未证明从任意历史版本节点建平行版本。",
+        "issue": "#263"
+      }
+    },
+    "CHANGE-005": {
+      "status": "implemented",
+      "evidence": ["changes-http", "changes-contract"],
+      "gap": {
+        "reason": "现有比较测试只覆盖 entity，尚未覆盖正文、事实、设定、大纲和伏笔/账本五类对象矩阵。",
+        "issue": "#263"
+      }
+    },
+    "CHANGE-006": {
+      "status": "implemented",
+      "evidence": ["changes-http", "changes-contract"],
+      "gap": {
+        "reason": "现有摘取测试只覆盖单个 entity，尚未证明五类对象逐项接受/拒绝与应用。",
+        "issue": "#263"
+      }
+    },
     "CHANGE-007": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-008": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-009": { "status": "verified", "evidence": ["changes-http", "work-overview-e2e"] },
@@ -395,7 +429,10 @@
       "status": "verified",
       "evidence": ["backup-filesystem", "backup-policy", "backup-database-target", "backup-evidence"]
     },
-    "SEARCH-001": { "status": "verified", "evidence": ["search-http", "retrieval-http"] },
+    "SEARCH-001": {
+      "status": "verified",
+      "evidence": ["search-http", "retrieval-http", "global-search-e2e"]
+    },
     "SEARCH-002": { "status": "verified", "evidence": ["search-http", "retrieval-http"] },
     "NOTIFY-001": { "status": "verified", "evidence": ["notifications-http", "changes-http"] },
     "SEC-001": { "status": "verified", "evidence": ["auth-http", "account-settings-e2e"] },
@@ -417,7 +454,12 @@
     },
     "OPS-003": {
       "status": "verified",
-      "evidence": ["observability-http", "observability-guardrail", "deployment-guardrail"]
+      "evidence": [
+        "observability-http",
+        "observability-guardrail",
+        "deployment-guardrail",
+        "deployment-smoke-ci"
+      ]
     },
     "EVAL-001": { "status": "verified", "evidence": ["quality-registry"] },
     "EVAL-002": {

@@ -495,21 +495,10 @@ export function isSuccessfulGithubActionsRun(reference, context = {}) {
   const [, owner, repository, runId] = match;
   if (`${owner}/${repository}` !== EXPECTED_GITHUB_REPOSITORY) return false;
   try {
-    const output = execFileSync(
-      "gh",
-      [
-        "api",
-        `repos/${owner}/${repository}/actions/runs/${runId}`,
-        "--jq",
-        "{status: .status, conclusion: .conclusion, url: .html_url, headSha: .head_sha, path: .path, event: .event}",
-      ],
-      {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-        timeout: 15_000,
-      },
+    const run = queryGithubApi(
+      `repos/${owner}/${repository}/actions/runs/${runId}`,
+      "{status: .status, conclusion: .conclusion, url: .html_url, headSha: .head_sha, path: .path, event: .event}",
     );
-    const run = JSON.parse(output);
     return isValidGithubActionsRunData(reference, run, context);
   } catch {
     return false;
@@ -527,28 +516,27 @@ export function isValidGapIssueData(reference, issue) {
   );
 }
 
-function isOpenBoundedGithubIssue(reference) {
+function isOpenReadyGithubIssue(reference) {
   const match = reference.match(GITHUB_ISSUE_REFERENCE);
   if (!match) return false;
   try {
-    const output = execFileSync(
-      "gh",
-      [
-        "api",
-        `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/${match[1]}`,
-        "--jq",
-        "{state: .state, title: .title, labels: [.labels[].name]}",
-      ],
-      {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-        timeout: 15_000,
-      },
+    const issue = queryGithubApi(
+      `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/${match[1]}`,
+      "{state: .state, title: .title, labels: [.labels[].name]}",
     );
-    return isValidGapIssueData(reference, JSON.parse(output));
+    return isValidGapIssueData(reference, issue);
   } catch {
     return false;
   }
+}
+
+function queryGithubApi(path, jq) {
+  const output = execFileSync("gh", ["api", path, "--jq", jq], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+    timeout: 15_000,
+  });
+  return JSON.parse(output);
 }
 
 function main() {
@@ -568,7 +556,7 @@ function main() {
     actionEvidence: JSON.parse(readFileSync("docs/implementation/v1-action-evidence.json", "utf8")),
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
-    gapIssueIsValid: isOpenBoundedGithubIssue,
+    gapIssueIsValid: isOpenReadyGithubIssue,
     fileContains,
     goldenIsValid,
     expectedCommit,

@@ -1,6 +1,6 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-21。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 100 个已有可执行证据并标为 `verified`，7 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
+> 状态：V1 delivery ledger，2026-11-21。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 97 个已有可执行证据并标为 `verified`，10 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
 > `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
 
 ## 状态定义
@@ -98,9 +98,9 @@
 | CHANGE-001 | 修改请求/原因/差异/来源 | V1 | verified | #120 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-001` | M2 |
 | CHANGE-002 | 影响分析/六项检查 | V1 | verified | #121 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-002` | M2 |
 | CHANGE-003 | 应用/撤销修改 | V1 | verified | #122 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-003` | M2 |
-| CHANGE-004 | 任意版本点拉平行版本 | V1 | verified | #123 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-004` | M2 |
-| CHANGE-005 | 正文/事实/设定/大纲/伏笔比较 | V1 | verified | #124 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-005` | M2 |
-| CHANGE-006 | 逐对象摘取/合并 | V1 | verified | #124 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-006` | M2 |
+| CHANGE-004 | 任意版本点拉平行版本 | V1 | implemented | #123 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-004`; gap #263 | M2 |
+| CHANGE-005 | 正文/事实/设定/大纲/伏笔比较 | V1 | implemented | #124 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-005`; gap #263 | M2 |
+| CHANGE-006 | 逐对象摘取/合并 | V1 | implemented | #124 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-006`; gap #263 | M2 |
 | CHANGE-007 | 高风险合并门禁 | V1 | verified | #125 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-007` | M2 |
 | CHANGE-008 | 回滚新版本/审计 | V1 | verified | #125 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-008` | M2 |
 | CHANGE-009 | 全局当前分支/分支切换 | V1 | verified | #123 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-009` | M2 |

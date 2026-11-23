@@ -16,7 +16,7 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 
 | Gate | Evidence | Status |
 | --- | --- | --- |
-| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`; `node scripts/validate-readiness.mjs` | structure pass; 100/107 non-UI V1 capabilities verified; 7 bounded gaps remain |
+| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/evidence/m3-236-vitest-summary.json`; `node scripts/validate-readiness.mjs` | structure pass; 97/107 non-UI V1 capabilities verified; 10 bounded gaps remain |
 | UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | all 17 non-static production pages are `parity-verified`; global release evidence remains blocked |
 | Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | existing Golden baseline evidence pass; final normal PR CI pending |
 | Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | implemented; final normal PR CI pending |
@@ -57,7 +57,7 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 
 ## 4. Remaining blockers
 
-1. Complete the remaining non-UI capability gaps: DOCX import (#261), 10M chunked-import recovery evidence (#262), approved variance threshold (#240), real provider smoke (#241) and human blind review (#239). WORK-002, IO-001, IO-003, EVAL-002, EVAL-003, EVAL-004 and CONT-001 remain non-verified.
+1. Complete the remaining non-UI capability gaps: DOCX import (#261), 10M chunked-import recovery evidence (#262), branch object-matrix evidence (#263), approved variance threshold (#240), real provider smoke (#241) and human blind review (#239). WORK-002, IO-001, IO-003, CHANGE-004, CHANGE-005, CHANGE-006, EVAL-002, EVAL-003, EVAL-004 and CONT-001 remain non-verified.
 2. Complete #238 UI capability and total traceability closeout, including replacing the stale `help` release-evidence rationale with its recorded green CI evidence.
 3. Record actual human blind-review scores for the frozen quality packet.
 4. Approve and record the inter-rater variance threshold with an owner and rationale.

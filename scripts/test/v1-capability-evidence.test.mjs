@@ -16,6 +16,15 @@ const traceability = [
 
 const completeAudit = {
   schemaVersion: 1,
+  verification: {
+    kind: "vitest",
+    status: "passed",
+    executedAt: "2026-11-23",
+    command: "pnpm exec vitest run --testTimeout 15000",
+    path: "docs/implementation/evidence/example-vitest-summary.json",
+    testFiles: 1,
+    tests: 1,
+  },
   evidence: {
     auth: {
       kind: "integration",
@@ -75,6 +84,13 @@ describe("non-UI capability evidence audit", () => {
         "capability-audit:unexpected:WORK-999",
       ]),
     );
+  });
+
+  it("requires a passed machine test run before any capability is verified", () => {
+    const audit = structuredClone(completeAudit);
+    delete audit.verification;
+
+    expect(validate(audit)).toContain("capability-audit:verification-missing");
   });
 
   it("rejects status drift between the audit and traceability ledger", () => {

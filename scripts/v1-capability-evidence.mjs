@@ -72,6 +72,30 @@ function validateEvidenceReferences(
   }
 }
 
+function validateVerification(verification, evidenceExists, blockers) {
+  if (!verification || typeof verification !== "object" || Array.isArray(verification)) {
+    blockers.push("capability-audit:verification-missing");
+    return;
+  }
+  if (verification.kind !== "vitest" || verification.status !== "passed") {
+    blockers.push("capability-audit:verification-invalid");
+  }
+  if (
+    !verification.command?.trim() ||
+    !verification.executedAt?.trim() ||
+    !Number.isInteger(verification.testFiles) ||
+    verification.testFiles <= 0 ||
+    !Number.isInteger(verification.tests) ||
+    verification.tests <= 0
+  ) {
+    blockers.push("capability-audit:verification-incomplete");
+  }
+  const path = normalizeRepositoryPath(verification.path);
+  if (!path || !evidenceExists(path)) {
+    blockers.push("capability-audit:verification-evidence-missing");
+  }
+}
+
 export function validateNonUiCapabilityEvidence(
   traceability,
   audit,
@@ -96,6 +120,9 @@ export function validateNonUiCapabilityEvidence(
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
     blockers.push("capability-audit:evidence-missing");
   }
+  if (Object.values(capabilities).some((record) => record?.status === "verified")) {
+    validateVerification(audit.verification, evidenceExists, blockers);
+  }
 
   for (const id of Object.keys(capabilities)) {
     if (!expectedIds.has(id)) {
@@ -118,17 +145,6 @@ export function validateNonUiCapabilityEvidence(
       blockers.push(`capability-audit:trace-mismatch:${row.id}`);
     }
 
-    if (record.status === "verified") {
-      validateEvidenceReferences(
-        row.id,
-        record,
-        evidence,
-        { evidenceExists, githubRunIsSuccessful },
-        blockers,
-      );
-      continue;
-    }
-
     validateEvidenceReferences(
       row.id,
       record,
@@ -136,6 +152,11 @@ export function validateNonUiCapabilityEvidence(
       { evidenceExists, githubRunIsSuccessful },
       blockers,
     );
+
+    if (record.status === "verified") {
+      continue;
+    }
+
     const gap = record.gap;
     if (!gap?.reason?.trim()) {
       blockers.push(`capability-audit:reason-missing:${row.id}`);

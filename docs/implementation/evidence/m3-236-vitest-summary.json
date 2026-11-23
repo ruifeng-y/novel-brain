@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "kind": "vitest",
+  "status": "passed",
+  "executedAt": "2026-11-23",
+  "command": "pnpm exec vitest run --testTimeout 15000",
+  "testFiles": 122,
+  "testSuites": 247,
+  "tests": 620,
+  "passed": 620,
+  "failed": 0,
+  "success": true
+}
