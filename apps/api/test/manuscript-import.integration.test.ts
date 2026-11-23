@@ -475,6 +475,37 @@ describe("manuscript import HTTP integration", () => {
     expect(created.body.data.chapters[0].content).toContain("严格格式正文。");
   });
 
+  it("ignores foreign namespace text and paragraphs outside the Word body", async () => {
+    const owner = await createAuthenticatedAgent("manuscript-docx-namespaces@example.com");
+    const token = await csrf(owner);
+    const documentXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:evil="urn:evil">',
+      "<w:p><w:r><w:t>正文外内容</w:t></w:r></w:p>",
+      "<w:body>",
+      "<evil:p><evil:t>恶意命名空间内容</evil:t></evil:p>",
+      "<w:p><w:r><w:t>第一章 正常正文</w:t></w:r></w:p>",
+      "<w:p><w:r><w:t>只保留 WordprocessingML 正文。</w:t></w:r></w:p>",
+      "</w:body></w:document>",
+    ].join("");
+
+    const created = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", buildDocxFixture({ documentXml }), {
+        filename: "namespace-isolation.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(200);
+
+    expect(created.body.data.chapters[0].content).toBe(
+      "第一章 正常正文\n只保留 WordprocessingML 正文。",
+    );
+    expect(JSON.stringify(created.body.data)).not.toContain("恶意命名空间内容");
+    expect(JSON.stringify(created.body.data)).not.toContain("正文外内容");
+  });
+
   it("rejects malformed, encrypted, empty, oversized and adversarial DOCX without writing canon", async () => {
     const owner = await createAuthenticatedAgent("manuscript-docx-errors@example.com");
     const token = await csrf(owner);

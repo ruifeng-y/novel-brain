@@ -191,9 +191,10 @@ function extractVisibleText(
   maxTextCharacters: number,
   numbering: Map<number, ChapterNumbering>,
 ): DocxTextResult {
-  const parser = new SaxesParser({ xmlns: false, position: false });
+  const parser = new SaxesParser({ xmlns: true, position: false });
   const blocks: Array<{ text: string; heading: boolean }> = [];
   let depth = 0;
+  let bodyDepth: number | null = null;
   let nodeCount = 0;
   let paragraph: string[] | null = null;
   let paragraphHeading = false;
@@ -217,9 +218,16 @@ function extractVisibleText(
       throw new DocxImportError("unsafe");
     }
 
-    const localName = localTagName(tag.name);
+    const localName = tag.local.toLowerCase();
+    const wordNamespace = WORD_PROCESSING_NAMESPACES.has(tag.uri);
     if (localName === "altchunk") {
       throw new DocxImportError("unsafe");
+    }
+    if (wordNamespace && localName === "body") {
+      bodyDepth = depth;
+    }
+    if (!wordNamespace || bodyDepth === null || depth < bodyDepth) {
+      return;
     }
     if (localName === "p") {
       if (paragraph) {
@@ -273,10 +281,12 @@ function extractVisibleText(
     }
   });
   parser.on("closetag", (tag) => {
-    const localName = localTagName(tag.name);
-    if (localName === "t") {
+    const localName = tag.local.toLowerCase();
+    const wordNamespace = WORD_PROCESSING_NAMESPACES.has(tag.uri);
+    const inBody = wordNamespace && bodyDepth !== null && depth >= bodyDepth;
+    if (inBody && localName === "t") {
       textDepth = Math.max(0, textDepth - 1);
-    } else if (localName === "p") {
+    } else if (inBody && localName === "p") {
       if (!paragraph) {
         throw new DocxImportError("unsafe");
       }
@@ -296,14 +306,14 @@ function extractVisibleText(
       paragraphHeading = false;
       paragraphNumId = undefined;
       paragraphIlvl = 0;
-    } else if (localName === "tc") {
+    } else if (inBody && localName === "tc") {
       if (tableCellDepth === 0) {
         throw new DocxImportError("unsafe");
       }
       tableCellDepth -= 1;
       rowCells.push(cellParagraphs.join("\n").trim());
       cellParagraphs = [];
-    } else if (localName === "tr") {
+    } else if (inBody && localName === "tr") {
       if (tableRowDepth === 0 || tableCellDepth !== 0) {
         throw new DocxImportError("unsafe");
       }
@@ -313,6 +323,9 @@ function extractVisibleText(
         blocks.push({ text: row, heading: false });
       }
       rowCells = [];
+    }
+    if (wordNamespace && localName === "body" && bodyDepth === depth) {
+      bodyDepth = null;
     }
     depth -= 1;
   });
