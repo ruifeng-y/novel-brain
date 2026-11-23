@@ -3,7 +3,7 @@
 > Issue: #236
 > Audited: 2026-11-21
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
-> Verification: [Production CI #45109239069](https://github.com/ruifeng-y/novel-brain/actions/runs/45109239069) on code head `67d37c5`
+> Verification: [Production CI #45114252958](https://github.com/ruifeng-y/novel-brain/actions/runs/45114252958) on code head `6ee5b44`
 > Result: 96 / 107 non-UI V1 capabilities verified; 11 retained as implemented with bounded gaps.
 
 ## 1. Audit Rule
