@@ -103,6 +103,7 @@ describe("chunked manuscript import recovery integration", () => {
     const ownerId = (await owner.get("/api/v1/auth/me").expect(200)).body.data.user.id as string;
     let token = await csrf(owner);
     const startedAt = performance.now();
+    let maxRequestBytes = 0;
 
     const oversizedBatch = await owner
       .post("/api/v1/imports/manuscripts/chunked")
@@ -147,6 +148,7 @@ describe("chunked manuscript import recovery integration", () => {
       expect(sourceText.length).toBeLessThanOrEqual(metadata.chunkCharacterCount);
       const requestBytes = Buffer.byteLength(JSON.stringify({ sequence, sourceText }));
       expect(requestBytes).toBeLessThan(1_000_000);
+      maxRequestBytes = Math.max(maxRequestBytes, requestBytes);
       const appended = chunkedImportProgressResponseSchema.parse(
         (
           await owner
@@ -658,7 +660,8 @@ describe("chunked manuscript import recovery integration", () => {
         chapterCount: metadata.chapterCount,
         chunkCharacterCount: metadata.chunkCharacterCount,
         chunkCount: metadata.chunkCount,
-        maxRequestBytes: 1_000_000,
+        maxRequestBytes,
+        requestCeilingBytes: 1_000_000,
         maxRssBytes,
         elapsedMs,
         sha256: metadata.sha256,

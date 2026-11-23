@@ -61,13 +61,16 @@ lifecycle:
 The Worker advances only the exact chunk selected by `nextProcessSequence`. A failed chunk
 sets the import to `partial` and blocks later chunks until `resume` resets the failed chunk;
 this prevents later chunks from advancing the global parser offset out of order.
+The shared confirmation contract rejects any single chapter over 200,000 characters,
+preventing a range from materializing the whole manuscript in application memory.
 
 Recorded local run:
 
 | Metric | Value |
 | --- | ---: |
-| Elapsed | `14,577 ms` |
-| Peak process RSS | `602,710,016 bytes` |
+| Elapsed | `14,778 ms` |
+| Peak process RSS | `598,466,560 bytes` |
+| Largest observed chunk request | `741,262 bytes` |
 | Chunk request ceiling asserted | `< 1,000,000 bytes` |
 | Processed chunks | `40 / 40` |
 | Imported chapters | `4,000` |
@@ -89,8 +92,6 @@ exactly, and confirmation reads source ranges into a streaming chunk cursor in b
   recovery;
 - a real Worker chunk failure, visible partial state, Worker restart and resume;
 - metadata-only preview with server-retained source;
-- confirmation rejects any single chapter over 200,000 characters, preventing a range from
-  materializing the whole manuscript in application memory;
 - range-based confirmation through the real API;
 - four viewports: 390, 900, 1180 and 1440;
 - full-page attachments for upload failure, paused, partial failure and preview states at
