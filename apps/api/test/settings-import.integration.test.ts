@@ -348,6 +348,20 @@ describe("settings import HTTP integration", () => {
       message: "设定文件不能超过 256 KB",
     });
 
+    const oversizedText = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", Buffer.alloc(256 * 1024 + 1, 0x50), {
+        filename: "oversized.md",
+        contentType: "text/markdown",
+      })
+      .expect(413);
+    expect(oversizedText.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "请求内容过大，请缩小后重试",
+    });
+
     const uploadLimit = await owner
       .post("/api/v1/imports")
       .set("Origin", origin)

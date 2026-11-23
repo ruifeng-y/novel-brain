@@ -3,8 +3,11 @@ import { strToU8, zipSync } from "fflate";
 interface DocxFixtureOptions {
   paragraphs?: string[];
   styledParagraphs?: Array<{ text: string; headingLevel?: number; outlineLevel?: number }>;
+  numberedParagraphs?: Array<{ text: string; numId: number; ilvl?: number }>;
   tableRows?: string[][];
   documentXml?: string;
+  documentXmlBytes?: Uint8Array;
+  numberingXml?: string;
   relationshipsXml?: string;
   extraEntries?: Record<string, Uint8Array>;
   omitContentTypes?: boolean;
@@ -38,6 +41,9 @@ export function buildDocxFixture(options: DocxFixtureOptions = {}): Buffer {
       ...(options.styledParagraphs ?? []).map((paragraph) =>
         paragraphXml(paragraph.text, paragraph.headingLevel, paragraph.outlineLevel),
       ),
+      ...(options.numberedParagraphs ?? []).map((paragraph) =>
+        numberedParagraphXml(paragraph.text, paragraph.numId, paragraph.ilvl ?? 0),
+      ),
       ...(options.tableRows ?? []).map((row) => tableXml(row)),
       "<w:sectPr/>",
       "</w:body>",
@@ -47,9 +53,12 @@ export function buildDocxFixture(options: DocxFixtureOptions = {}): Buffer {
   const entries: Record<string, Uint8Array> = {
     ...(options.omitContentTypes ? {} : { "[Content_Types].xml": strToU8(CONTENT_TYPES) }),
     ...(options.omitPackageRelationships ? {} : { "_rels/.rels": strToU8(PACKAGE_RELATIONSHIPS) }),
-    "word/document.xml": strToU8(documentXml),
+    "word/document.xml": options.documentXmlBytes ?? strToU8(documentXml),
     ...(options.extraEntries ?? {}),
   };
+  if (options.numberingXml) {
+    entries["word/numbering.xml"] = strToU8(options.numberingXml);
+  }
   if (options.relationshipsXml) {
     entries["word/_rels/document.xml.rels"] = strToU8(options.relationshipsXml);
   }
@@ -65,6 +74,10 @@ function paragraphXml(text: string, headingLevel?: number, outlineLevel?: number
   const outline = outlineLevel === undefined ? "" : `<w:outlineLvl w:val="${outlineLevel}"/>`;
   const properties = style || outline ? `<w:pPr>${style}${outline}</w:pPr>` : "";
   return `<w:p>${properties}<w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
+}
+
+function numberedParagraphXml(text: string, numId: number, ilvl: number): string {
+  return `<w:p><w:pPr><w:numPr><w:ilvl w:val="${ilvl}"/><w:numId w:val="${numId}"/></w:numPr></w:pPr><w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
 }
 
 function tableXml(row: string[]): string {

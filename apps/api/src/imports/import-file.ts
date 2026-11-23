@@ -65,6 +65,9 @@ export function readImportFile(file: ImportUploadFile, kind: ImportFileKind): Im
     throw new ApiError(400, "VALIDATION_INVALID", `${policy.label}文件为空`);
   }
   if (file.size > policy.maxFileBytes) {
+    if (!isDocxFileName(sourceName)) {
+      throw new ApiError(413, "VALIDATION_INVALID", "请求内容过大，请缩小后重试");
+    }
     throw new ApiError(400, "VALIDATION_INVALID", policy.oversizeMessage);
   }
 

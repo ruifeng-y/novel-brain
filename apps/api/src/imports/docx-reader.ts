@@ -23,6 +23,12 @@ export interface DocxTextResult {
   headingStarts: number[];
 }
 
+interface ChapterNumbering {
+  format: string;
+  levelText: string;
+  start: number;
+}
+
 export class DocxImportError extends Error {
   constructor(readonly reason: DocxImportErrorReason) {
     super(`DOCX import failed: ${reason}`);
@@ -79,14 +85,13 @@ export function readDocxText(buffer: Buffer, options: DocxReadOptions): DocxText
   }
 
   const xml = decodeXml(documentXml);
-  if (/<!DOCTYPE|<!ENTITY/iu.test(xml)) {
-    throw new DocxImportError("xml_declaration");
-  }
   if (!isWordDocumentXml(xml)) {
     throw new DocxImportError("invalid");
   }
 
-  const result = extractVisibleText(xml, options.maxTextCharacters);
+  const numberingXml = entries["word/numbering.xml"];
+  const numbering = numberingXml ? parseChapterNumbering(decodeXml(numberingXml)) : new Map();
+  const result = extractVisibleText(xml, options.maxTextCharacters, numbering);
   if (!result.text.trim()) {
     throw new DocxImportError("empty");
   }
@@ -143,6 +148,7 @@ function extractSafeEntries(
           file.name === "[Content_Types].xml" ||
           file.name === "_rels/.rels" ||
           file.name === "word/document.xml" ||
+          file.name === "word/numbering.xml" ||
           file.name.toLowerCase().endsWith(".rels")
         );
       },
@@ -173,19 +179,26 @@ function validateEntryName(file: UnzipFileInfo): void {
   }
 }
 
-function extractVisibleText(xml: string, maxTextCharacters: number): DocxTextResult {
+function extractVisibleText(
+  xml: string,
+  maxTextCharacters: number,
+  numbering: Map<number, ChapterNumbering>,
+): DocxTextResult {
   const parser = new SaxesParser({ xmlns: false, position: false });
   const blocks: Array<{ text: string; heading: boolean }> = [];
   let depth = 0;
   let nodeCount = 0;
   let paragraph: string[] | null = null;
   let paragraphHeading = false;
+  let paragraphNumId: number | undefined;
+  let paragraphIlvl = 0;
   let textDepth = 0;
   let tableRowDepth = 0;
   let tableCellDepth = 0;
   let rowCells: string[] = [];
   let cellParagraphs: string[] = [];
   let textLength = 0;
+  const numberingCounters = new Map<number, number>();
 
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
@@ -207,6 +220,8 @@ function extractVisibleText(xml: string, maxTextCharacters: number): DocxTextRes
       }
       paragraph = [];
       paragraphHeading = false;
+      paragraphNumId = undefined;
+      paragraphIlvl = 0;
     } else if (localName === "pstyle") {
       const styleId = attributeValue(tag.attributes, "val");
       paragraphHeading = paragraphHeading || (styleId ? isHeadingStyleId(styleId) : false);
@@ -215,6 +230,12 @@ function extractVisibleText(xml: string, maxTextCharacters: number): DocxTextRes
       paragraphHeading =
         paragraphHeading ||
         (Number.isInteger(outlineLevel) && outlineLevel >= 0 && outlineLevel <= 5);
+    } else if (localName === "numid") {
+      const numId = Number(attributeValue(tag.attributes, "val"));
+      paragraphNumId = Number.isInteger(numId) ? numId : undefined;
+    } else if (localName === "ilvl") {
+      const ilvl = Number(attributeValue(tag.attributes, "val"));
+      paragraphIlvl = Number.isInteger(ilvl) ? ilvl : 0;
     } else if (localName === "t") {
       textDepth += 1;
     } else if (localName === "tab") {
@@ -252,14 +273,22 @@ function extractVisibleText(xml: string, maxTextCharacters: number): DocxTextRes
       if (!paragraph) {
         throw new DocxImportError("unsafe");
       }
-      const paragraphText = paragraph.join("").replace(/\r\n?/gu, "\n");
+      const numbered = applyChapterNumbering({
+        text: paragraph.join("").replace(/\r\n?/gu, "\n"),
+        numId: paragraphNumId,
+        level: paragraphIlvl,
+        numbering,
+        counters: numberingCounters,
+      });
       paragraph = null;
       if (tableCellDepth > 0) {
-        cellParagraphs.push(paragraphText);
+        cellParagraphs.push(numbered.text);
       } else if (tableRowDepth === 0) {
-        blocks.push({ text: paragraphText, heading: paragraphHeading });
+        blocks.push({ text: numbered.text, heading: paragraphHeading || numbered.heading });
       }
       paragraphHeading = false;
+      paragraphNumId = undefined;
+      paragraphIlvl = 0;
     } else if (localName === "tc") {
       if (tableCellDepth === 0) {
         throw new DocxImportError("unsafe");
@@ -316,6 +345,136 @@ function blocksToText(blocks: Array<{ text: string; heading: boolean }>): DocxTe
     text: selected.map((block) => block.text).join("\n"),
     headingStarts,
   };
+}
+
+function parseChapterNumbering(xml: string): Map<number, ChapterNumbering> {
+  const parser = new SaxesParser({ xmlns: false, position: false });
+  const abstractNumbers = new Map<
+    number,
+    { format: string; levelText: string; start: number } | undefined
+  >();
+  const result = new Map<number, ChapterNumbering>();
+  let abstractNumId: number | undefined;
+  let level = 0;
+  let format = "decimal";
+  let levelText = "";
+  let start = 1;
+  let numId: number | undefined;
+  let mappedAbstractNumId: number | undefined;
+
+  parser.on("doctype", () => {
+    throw new DocxImportError("xml_declaration");
+  });
+  parser.on("opentag", (tag) => {
+    const localName = localTagName(tag.name);
+    if (localName === "abstractnum") {
+      abstractNumId = numericAttribute(tag.attributes, "abstractnumid");
+    } else if (localName === "lvl") {
+      level = numericAttribute(tag.attributes, "ilvl") ?? 0;
+      format = "decimal";
+      levelText = "";
+      start = 1;
+    } else if (localName === "numfmt") {
+      format = attributeValue(tag.attributes, "val") ?? "decimal";
+    } else if (localName === "lvltext") {
+      levelText = attributeValue(tag.attributes, "val") ?? "";
+    } else if (localName === "start") {
+      start = numericAttribute(tag.attributes, "val") ?? 1;
+    } else if (localName === "num") {
+      numId = numericAttribute(tag.attributes, "numid");
+    } else if (localName === "abstractnumid") {
+      mappedAbstractNumId = numericAttribute(tag.attributes, "val");
+    }
+  });
+  parser.on("closetag", (tag) => {
+    const localName = localTagName(tag.name);
+    if (
+      localName === "lvl" &&
+      level === 0 &&
+      abstractNumId !== undefined &&
+      levelText.includes("%1")
+    ) {
+      abstractNumbers.set(abstractNumId, { format, levelText, start });
+    } else if (localName === "abstractnum") {
+      abstractNumId = undefined;
+    } else if (localName === "num") {
+      if (numId !== undefined && mappedAbstractNumId !== undefined) {
+        const numbering = abstractNumbers.get(mappedAbstractNumId);
+        if (numbering && numbering.levelText.includes("第") && numbering.levelText.includes("章")) {
+          result.set(numId, numbering);
+        }
+      }
+      numId = undefined;
+      mappedAbstractNumId = undefined;
+    }
+  });
+  parseRelationshipLikeXml(parser, xml);
+  return result;
+}
+
+function applyChapterNumbering(input: {
+  text: string;
+  numId: number | undefined;
+  level: number;
+  numbering: Map<number, ChapterNumbering>;
+  counters: Map<number, number>;
+}): { text: string; heading: boolean } {
+  if (input.numId === undefined || input.level !== 0) {
+    return { text: input.text, heading: false };
+  }
+  const numbering = input.numbering.get(input.numId);
+  if (!numbering) {
+    return { text: input.text, heading: false };
+  }
+  const next = (input.counters.get(input.numId) ?? numbering.start - 1) + 1;
+  input.counters.set(input.numId, next);
+  const rendered = numbering.levelText.replace("%1", formatNumberingValue(next, numbering.format));
+  if (input.text.trimStart().startsWith(rendered)) {
+    return { text: input.text, heading: true };
+  }
+  return {
+    text: `${rendered}${input.text.startsWith(" ") ? "" : " "}${input.text}`,
+    heading: true,
+  };
+}
+
+function formatNumberingValue(value: number, format: string): string {
+  if (
+    format === "chineseCounting" ||
+    format === "chineseCountingThousand" ||
+    format === "ideographTraditional" ||
+    format === "ideographLegalTraditional" ||
+    format === "taiwaneseCounting"
+  ) {
+    return formatChineseNumber(value);
+  }
+  return String(value);
+}
+
+function formatChineseNumber(value: number): string {
+  const digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+  if (value <= 0 || value >= 10_000) {
+    return String(value);
+  }
+  if (value < 10) {
+    return digits[value] ?? String(value);
+  }
+  if (value < 20) {
+    return value === 10 ? "十" : `十${digits[value - 10]}`;
+  }
+  if (value < 100) {
+    const tens = Math.floor(value / 10);
+    const ones = value % 10;
+    return `${digits[tens]}十${ones === 0 ? "" : digits[ones]}`;
+  }
+  if (value < 1_000) {
+    const hundreds = Math.floor(value / 100);
+    const rest = value % 100;
+    return `${digits[hundreds]}百${rest === 0 ? "" : rest < 10 ? `零${digits[rest]}` : formatChineseNumber(rest)}`;
+  }
+  const thousands = Math.floor(value / 1_000);
+  const rest = value % 1_000;
+  return `${digits[thousands]}千${rest === 0 ? "" : rest < 100 ? `零${formatChineseNumber(rest)}` : formatChineseNumber(rest)}`;
 }
 
 function hasMainDocumentContentType(xml: string): boolean {
@@ -380,19 +539,28 @@ function hasUnsafeExternalRelationship(xml: string): boolean {
 
 function isWordDocumentXml(xml: string): boolean {
   const parser = new SaxesParser({ xmlns: true, position: false });
-  let rootChecked = false;
-  let valid = false;
+  let depth = 0;
+  let rootValid = false;
+  let hasBody = false;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
   parser.on("opentag", (tag) => {
-    if (rootChecked) {
-      return;
+    depth += 1;
+    if (depth === 1) {
+      rootValid =
+        tag.local === "document" &&
+        tag.uri === "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    } else if (
+      depth === 2 &&
+      tag.local === "body" &&
+      tag.uri === "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    ) {
+      hasBody = true;
     }
-    rootChecked = true;
-    valid =
-      tag.local === "document" &&
-      tag.uri === "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  });
+  parser.on("closetag", () => {
+    depth -= 1;
   });
   try {
     parser.write(xml).close();
@@ -402,7 +570,7 @@ function isWordDocumentXml(xml: string): boolean {
     }
     throw new DocxImportError("invalid");
   }
-  return rootChecked && valid;
+  return rootValid && hasBody;
 }
 
 function parseRelationshipLikeXml(parser: SaxesParser, xml: string): void {
@@ -448,17 +616,50 @@ function attributeValue(
   return undefined;
 }
 
+function numericAttribute(
+  attributes: Record<string, string> | Record<string, { value: string }>,
+  localName: string,
+): number | undefined {
+  const value = Number(attributeValue(attributes, localName));
+  return Number.isInteger(value) ? value : undefined;
+}
+
 function localTagName(name: string): string {
   const separator = name.lastIndexOf(":");
   return (separator >= 0 ? name.slice(separator + 1) : name).toLowerCase();
 }
 
 function decodeXml(value: Uint8Array): string {
+  const encoding = xmlEncoding(value);
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(value);
+    return new TextDecoder(encoding, { fatal: true }).decode(value);
   } catch {
     throw new DocxImportError("invalid");
   }
+}
+
+function xmlEncoding(value: Uint8Array): "utf-8" | "utf-16le" | "utf-16be" {
+  if (value[0] === 0xff && value[1] === 0xfe) {
+    return "utf-16le";
+  }
+  if (value[0] === 0xfe && value[1] === 0xff) {
+    return "utf-16be";
+  }
+  if (value[0] === 0x3c && value[1] === 0x00) {
+    return "utf-16le";
+  }
+  if (value[0] === 0x00 && value[1] === 0x3c) {
+    return "utf-16be";
+  }
+  const head = new TextDecoder("utf-8").decode(value.subarray(0, 256));
+  const declared = /^<\?xml[^>]*encoding\s*=\s*["']([^"']+)["']/iu.exec(head)?.[1]?.toLowerCase();
+  if (declared === "utf-16" || declared === "utf-16le") {
+    return "utf-16le";
+  }
+  if (declared === "utf-16be") {
+    return "utf-16be";
+  }
+  return "utf-8";
 }
 
 function isZip(buffer: Buffer): boolean {

@@ -356,6 +356,69 @@ describe("manuscript import HTTP integration", () => {
     );
   });
 
+  it("renders common automatic chapter numbering while preserving paragraph text", async () => {
+    const owner = await createAuthenticatedAgent("manuscript-docx-numbering@example.com");
+    const token = await csrf(owner);
+    const numberingXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+      '<w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="chineseCounting"/><w:lvlText w:val="第%1章"/></w:lvl></w:abstractNum>',
+      '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>',
+      "</w:numbering>",
+    ].join("");
+    const documentXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>',
+      '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>断碑夜雨</w:t></w:r></w:p>',
+      "<w:p><w:r><w:t>雨落在断碑上。</w:t></w:r></w:p>",
+      '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>夜船</w:t></w:r></w:p>',
+      "<w:p><w:r><w:t>夜船顺流而下。</w:t></w:r></w:p>",
+      "<w:sectPr/></w:body></w:document>",
+    ].join("");
+
+    const created = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", buildDocxFixture({ documentXml, numberingXml }), {
+        filename: "numbered-headings.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(200);
+
+    expect(created.body.data.chapters.map((chapter: { title: string }) => chapter.title)).toEqual([
+      "断碑夜雨",
+      "夜船",
+    ]);
+    expect(created.body.data.chapters[0].content).toBe("第一章 断碑夜雨\n雨落在断碑上。\n");
+    expect(created.body.data.chapters[1].content).toBe("第二章 夜船\n夜船顺流而下。");
+  });
+
+  it("accepts UTF-16 document XML and ignores DTD-like text inside comments", async () => {
+    const owner = await createAuthenticatedAgent("manuscript-docx-encoding@example.com");
+    const token = await csrf(owner);
+    const documentXml = [
+      '<?xml version="1.0" encoding="UTF-16" standalone="yes"?>',
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+      "<!-- 正文里出现 <!DOCTYPE 和 <!ENTITY 只是注释 -->",
+      "<w:body><w:p><w:r><w:t>第一章 编码正常</w:t></w:r></w:p>",
+      "<w:p><w:r><w:t>这一行必须保留。</w:t></w:r></w:p></w:body></w:document>",
+    ].join("");
+    const bytes = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(documentXml, "utf16le")]);
+
+    const created = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", buildDocxFixture({ documentXmlBytes: bytes }), {
+        filename: "utf16.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(200);
+
+    expect(created.body.data.chapters[0].content).toContain("这一行必须保留。");
+  });
+
   it("rejects malformed, encrypted, empty, oversized and adversarial DOCX without writing canon", async () => {
     const owner = await createAuthenticatedAgent("manuscript-docx-errors@example.com");
     const token = await csrf(owner);
@@ -438,6 +501,27 @@ describe("manuscript import HTTP integration", () => {
       message: "DOCX 旧稿文件损坏或格式不受支持",
     });
 
+    const missingBody = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          documentXml:
+            '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"></w:document>',
+        }),
+        {
+          filename: "missing-body.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(missingBody.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
     const encrypted = await owner
       .post("/api/v1/imports/manuscripts")
       .set("Origin", origin)
@@ -478,6 +562,20 @@ describe("manuscript import HTTP integration", () => {
     expect(oversized.body.error).toMatchObject({
       code: "VALIDATION_INVALID",
       message: "旧稿文件不能超过 1 MB",
+    });
+
+    const oversizedText = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", Buffer.alloc(1024 * 1024 + 1, 0x50), {
+        filename: "oversized.txt",
+        contentType: "text/plain",
+      })
+      .expect(413);
+    expect(oversizedText.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "请求内容过大，请缩小后重试",
     });
 
     const uploadLimit = await owner

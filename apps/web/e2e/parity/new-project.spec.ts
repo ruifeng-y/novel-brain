@@ -285,6 +285,17 @@ test("imports DOCX settings through settings mode and persists accepted entities
 
   await expect(page.getByText("已接受 2")).toBeVisible();
   await expect(page.getByText("DOCX 不支持")).toHaveCount(0);
+  for (const width of [1440, 1180, 900, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(
+      page.getByRole("heading", { name: "把人物、势力、地图和体系带进来" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "确认并创建作品" })).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
   await page.getByLabel("书名").fill("DOCX 设定开书");
   const confirmResponse = waitForApiResponse(
     page,
