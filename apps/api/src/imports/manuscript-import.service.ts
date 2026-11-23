@@ -14,7 +14,7 @@ import type {
   ManuscriptSourceRange,
   WorkOverview,
 } from "@novel-brain/contracts";
-import { manuscriptScanStateSchema } from "@novel-brain/contracts";
+import { MAX_MANUSCRIPT_BATCH_CHARACTERS, manuscriptScanStateSchema } from "@novel-brain/contracts";
 import { isWellFormedUtf16, manuscriptChaptersFromScan } from "@novel-brain/core";
 import { uuidv7 } from "uuidv7";
 
@@ -36,8 +36,6 @@ import { formatFromName, readImportFile, type ImportUploadFile } from "./import-
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorksService } from "../works/works.service";
 import type { WorksAuditContext } from "../works/works.repository";
-
-const MAX_BATCH_CHUNK_CHARACTERS = 500_000;
 
 @Injectable()
 export class ManuscriptImportService {
@@ -97,7 +95,7 @@ export class ManuscriptImportService {
       throw new ApiError(400, "VALIDATION_INVALID", "旧稿包含无法解析的 Unicode 内容");
     }
     const totalCharacters = input.chunks.reduce((total, chunk) => total + chunk.length, 0);
-    if (totalCharacters > MAX_BATCH_CHUNK_CHARACTERS) {
+    if (totalCharacters > MAX_MANUSCRIPT_BATCH_CHARACTERS) {
       throw new ApiError(
         413,
         "VALIDATION_INVALID",

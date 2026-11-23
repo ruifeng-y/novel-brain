@@ -399,6 +399,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           .select({
             sequence: importChunks.sequence,
             sourceText: importChunks.sourceText,
+            startOffset: importChunks.startOffset,
           })
           .from(importChunks)
           .where(
@@ -416,6 +417,9 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           throw new Error("旧分块检查点不完整，无法重建解析状态");
         }
         for (const chunk of chunks) {
+          if (chunk.sequence !== lastSequence + 1 || chunk.startOffset !== state.offset) {
+            throw new Error("旧分块检查点不连续，无法重建解析状态");
+          }
           state = scanManuscriptChunk(
             state,
             chunk.sourceText,

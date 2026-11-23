@@ -66,8 +66,8 @@ Recorded local run:
 
 | Metric | Value |
 | --- | ---: |
-| Elapsed | `14,936 ms` |
-| Peak process RSS | `599,445,504 bytes` |
+| Elapsed | `14,577 ms` |
+| Peak process RSS | `602,710,016 bytes` |
 | Chunk request ceiling asserted | `< 1,000,000 bytes` |
 | Processed chunks | `40 / 40` |
 | Imported chapters | `4,000` |

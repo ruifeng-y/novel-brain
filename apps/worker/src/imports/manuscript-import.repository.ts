@@ -323,8 +323,12 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
     }
     let lastSequence = -1;
     while (lastSequence + 1 < expectedSequence) {
-      const processedChunks = await client.query<{ sequence: number; source_text: string }>(
-        `SELECT sequence, source_text
+      const processedChunks = await client.query<{
+        sequence: number;
+        source_text: string;
+        start_offset: number;
+      }>(
+        `SELECT sequence, source_text, start_offset
            FROM import_chunks
           WHERE import_job_id = $1
             AND user_id = $2
@@ -339,6 +343,9 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
         throw new Error("旧分块检查点不完整，无法重建解析状态");
       }
       for (const chunk of processedChunks.rows) {
+        if (chunk.sequence !== lastSequence + 1 || chunk.start_offset !== state.offset) {
+          throw new Error("旧分块检查点不连续，无法重建解析状态");
+        }
         state = scanManuscriptChunk(state, chunk.source_text, false, {
           headingStarts: headingStartsFromMetadata(metadata),
         });

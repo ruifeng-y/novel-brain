@@ -136,6 +136,7 @@ describe("chunked manuscript import recovery integration", () => {
       uploadedChunks: 0,
       processedChunks: 0,
     });
+    expect(created.canConfirm).toBe(false);
 
     const chunks = largeManuscriptChunks();
     let uploadedCount = 0;
@@ -182,6 +183,7 @@ describe("chunked manuscript import recovery integration", () => {
         .body,
     ).data;
     expect(processedBeforePause.processedChunks).toBe(3);
+    expect(processedBeforePause.canConfirm).toBe(false);
     const paused = chunkedImportProgressResponseSchema.parse(
       (
         await owner
@@ -567,6 +569,7 @@ describe("chunked manuscript import recovery integration", () => {
       uploadedChunks: 2,
       processedChunks: 1,
     });
+    expect(partial.canConfirm).toBe(false);
     await owner
       .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
       .set("Origin", origin)
@@ -782,7 +785,7 @@ describe("chunked manuscript import recovery integration", () => {
           .set("Origin", origin)
           .set("X-CSRF-Token", token)
           .set("Idempotency-Key", "chunked-upgrade-start")
-          .send({ sourceName: "升级恢复.txt", chunkCount: 2 })
+          .send({ sourceName: "升级恢复.txt", chunkCount: 6 })
           .expect(200)
       ).body,
     ).data;
@@ -800,10 +803,15 @@ describe("chunked manuscript import recovery integration", () => {
     );
     expect(malformedChunks.rows[0]?.count).toBe(0);
 
-    for (const [sequence, sourceText] of [
+    const upgradeChunks = [
       "第一章 旧检查点\n\n正文。\n",
-      "第二章 新扫描\n\n正文。",
-    ].entries()) {
+      "第二章 新扫描\n\n正文。\n",
+      "第三章 第二批次\n\n正文。\n",
+      "第四章 第二批次\n\n正文。\n",
+      "第五章 第三批次\n\n正文。\n",
+      "第六章 第三批次\n\n正文。",
+    ];
+    for (const [sequence, sourceText] of upgradeChunks.entries()) {
       await owner
         .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)
         .set("Origin", origin)
@@ -811,39 +819,71 @@ describe("chunked manuscript import recovery integration", () => {
         .send({ sequence, sourceText })
         .expect(200);
     }
-    await processImport(ownerId, created.importId, 1);
-    await databasePool.query(
-      `UPDATE import_jobs
-          SET checkpoint = jsonb_build_object('nextSequence', 1)
-        WHERE id = $1`,
-      [created.importId],
-    );
-    const legacyCheckpoint = await databasePool.query<{
-      checkpoint: Record<string, unknown>;
-    }>("SELECT checkpoint FROM import_jobs WHERE id = $1", [created.importId]);
-    expect(legacyCheckpoint.rows[0]?.checkpoint).toEqual({ nextSequence: 1 });
-
-    await processImport(ownerId, created.importId);
-    const progress = chunkedImportProgressResponseSchema.parse(
-      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
-        .body,
-    ).data;
-    expect(progress.processedChunks).toBe(2);
-    expect(progress.status).toBe("awaiting_confirmation");
-    const preview = manuscriptImportResponseSchema.parse(
-      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(200)).body,
-    ).data;
-    expect(preview.chapters.map((chapter) => chapter.title)).toEqual(["旧检查点", "新扫描"]);
+    await processImport(ownerId, created.importId, 2);
     await databasePool.query(
       `UPDATE import_jobs
           SET checkpoint = jsonb_build_object('nextSequence', 2)
         WHERE id = $1`,
       [created.importId],
     );
+    const legacyCheckpoint = await databasePool.query<{
+      checkpoint: Record<string, unknown>;
+    }>("SELECT checkpoint FROM import_jobs WHERE id = $1", [created.importId]);
+    expect(legacyCheckpoint.rows[0]?.checkpoint).toEqual({ nextSequence: 2 });
+
+    await processImport(ownerId, created.importId);
+    const progress = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+        .body,
+    ).data;
+    expect(progress.processedChunks).toBe(6);
+    expect(progress.status).toBe("awaiting_confirmation");
+    const preview = manuscriptImportResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(200)).body,
+    ).data;
+    expect(preview.chapters.map((chapter) => chapter.title)).toEqual([
+      "旧检查点",
+      "新扫描",
+      "第二批次",
+      "第二批次",
+      "第三批次",
+      "第三批次",
+    ]);
+    await databasePool.query(
+      `UPDATE import_jobs
+          SET checkpoint = jsonb_build_object('nextSequence', 6)
+        WHERE id = $1`,
+      [created.importId],
+    );
     const rebuiltPreview = manuscriptImportResponseSchema.parse(
       (await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(200)).body,
     ).data;
-    expect(rebuiltPreview.chapters.map((chapter) => chapter.title)).toEqual(["旧检查点", "新扫描"]);
+    expect(rebuiltPreview.chapters.map((chapter) => chapter.title)).toEqual(
+      preview.chapters.map((chapter) => chapter.title),
+    );
+
+    await databasePool.query(
+      "UPDATE import_chunks SET start_offset = start_offset + 1 WHERE import_job_id = $1 AND sequence = 3",
+      [created.importId],
+    );
+    await databasePool.query(
+      "UPDATE import_jobs SET checkpoint = jsonb_build_object('nextSequence', 6) WHERE id = $1",
+      [created.importId],
+    );
+    await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(500);
+    await databasePool.query(
+      "UPDATE import_chunks SET start_offset = start_offset - 1 WHERE import_job_id = $1 AND sequence = 3",
+      [created.importId],
+    );
+    await databasePool.query(
+      "DELETE FROM import_chunks WHERE import_job_id = $1 AND sequence = 3",
+      [created.importId],
+    );
+    await databasePool.query(
+      "UPDATE import_jobs SET checkpoint = jsonb_build_object('nextSequence', 6) WHERE id = $1",
+      [created.importId],
+    );
+    await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(500);
   });
 
   it("uses the import_recovery RLS role for cross-tenant maintenance scans", async () => {

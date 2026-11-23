@@ -49,10 +49,6 @@ export function largeManuscriptMetadata(): LargeManuscriptMetadata {
   return cachedMetadata;
 }
 
-export function largeManuscriptText(): string {
-  return Array.from(largeManuscriptChunks()).join("");
-}
-
 function* chunks(chunkCharacterCount: number): Generator<string> {
   let pending = "";
   for (let index = 1; index <= LARGE_MANUSCRIPT_SPEC.chapterCount; index += 1) {
