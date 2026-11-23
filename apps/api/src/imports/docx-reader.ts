@@ -45,6 +45,14 @@ const WORD_PROCESSING_NAMESPACES = new Set([
   "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
   "http://purl.oclc.org/ooxml/wordprocessingml/main",
 ]);
+const CONTENT_TYPE_NAMESPACES = new Set([
+  "http://schemas.openxmlformats.org/package/2006/content-types",
+  "http://purl.oclc.org/ooxml/package/content-types",
+]);
+const RELATIONSHIP_NAMESPACES = new Set([
+  "http://schemas.openxmlformats.org/package/2006/relationships",
+  "http://purl.oclc.org/ooxml/package/relationships",
+]);
 
 export function isDocxFileName(fileName: string): boolean {
   return fileName.toLowerCase().endsWith(".docx");
@@ -195,6 +203,7 @@ function extractVisibleText(
   const blocks: Array<{ text: string; heading: boolean }> = [];
   let depth = 0;
   let bodyDepth: number | null = null;
+  let bodyCount = 0;
   let nodeCount = 0;
   let paragraph: string[] | null = null;
   let paragraphHeading = false;
@@ -224,6 +233,10 @@ function extractVisibleText(
       throw new DocxImportError("unsafe");
     }
     if (wordNamespace && localName === "body") {
+      bodyCount += 1;
+      if (bodyCount !== 1 || depth !== 2 || bodyDepth !== null) {
+        throw new DocxImportError("unsafe");
+      }
       bodyDepth = depth;
     }
     if (!wordNamespace || bodyDepth === null || depth < bodyDepth) {
@@ -512,13 +525,13 @@ function formatChineseNumber(value: number, legal: boolean): string {
 }
 
 function hasMainDocumentContentType(xml: string): boolean {
-  const parser = new SaxesParser({ xmlns: false, position: false });
+  const parser = new SaxesParser({ xmlns: true, position: false });
   let found = false;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
   parser.on("opentag", (tag) => {
-    if (localTagName(tag.name) !== "override") {
+    if (!CONTENT_TYPE_NAMESPACES.has(tag.uri) || tag.local.toLowerCase() !== "override") {
       return;
     }
     const partName = attributeValue(tag.attributes, "partname");
@@ -534,13 +547,13 @@ function hasMainDocumentContentType(xml: string): boolean {
 }
 
 function hasMainDocumentRelationship(xml: string): boolean {
-  const parser = new SaxesParser({ xmlns: false, position: false });
+  const parser = new SaxesParser({ xmlns: true, position: false });
   let found = false;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
   parser.on("opentag", (tag) => {
-    if (localTagName(tag.name) !== "relationship") {
+    if (!RELATIONSHIP_NAMESPACES.has(tag.uri) || tag.local.toLowerCase() !== "relationship") {
       return;
     }
     const type = attributeValue(tag.attributes, "type");
@@ -552,13 +565,13 @@ function hasMainDocumentRelationship(xml: string): boolean {
 }
 
 function hasUnsafeExternalRelationship(xml: string): boolean {
-  const parser = new SaxesParser({ xmlns: false, position: false });
+  const parser = new SaxesParser({ xmlns: true, position: false });
   let unsafe = false;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
   parser.on("opentag", (tag) => {
-    if (localTagName(tag.name) !== "relationship") {
+    if (!RELATIONSHIP_NAMESPACES.has(tag.uri) || tag.local.toLowerCase() !== "relationship") {
       return;
     }
     const targetMode = attributeValue(tag.attributes, "targetmode");
@@ -575,7 +588,7 @@ function isWordDocumentXml(xml: string): boolean {
   const parser = new SaxesParser({ xmlns: true, position: false });
   let depth = 0;
   let rootValid = false;
-  let hasBody = false;
+  let bodyCount = 0;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
@@ -584,7 +597,7 @@ function isWordDocumentXml(xml: string): boolean {
     if (depth === 1) {
       rootValid = tag.local === "document" && WORD_PROCESSING_NAMESPACES.has(tag.uri);
     } else if (depth === 2 && tag.local === "body" && WORD_PROCESSING_NAMESPACES.has(tag.uri)) {
-      hasBody = true;
+      bodyCount += 1;
     }
   });
   parser.on("closetag", () => {
@@ -598,7 +611,7 @@ function isWordDocumentXml(xml: string): boolean {
     }
     throw new DocxImportError("invalid");
   }
-  return rootValid && hasBody;
+  return rootValid && bodyCount === 1;
 }
 
 function parseRelationshipLikeXml(parser: SaxesParser, xml: string): void {

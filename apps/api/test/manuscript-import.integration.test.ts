@@ -609,6 +609,79 @@ describe("manuscript import HTTP integration", () => {
       message: "DOCX 旧稿文件损坏或格式不受支持",
     });
 
+    const duplicateBody = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          documentXml:
+            '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>第一章</w:t></w:r></w:p></w:body><w:body><w:p><w:r><w:t>隐藏正文</w:t></w:r></w:p></w:body></w:document>',
+        }),
+        {
+          filename: "duplicate-body.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(duplicateBody.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
+    const fakeContentTypes = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["第一章 伪包类型"],
+          extraEntries: {
+            "[Content_Types].xml": Buffer.from(
+              '<Types xmlns="urn:fake"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+              "utf8",
+            ),
+          },
+        }),
+        {
+          filename: "fake-content-types.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(fakeContentTypes.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
+    const fakeRelationships = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["第一章 伪包关系"],
+          extraEntries: {
+            "_rels/.rels": Buffer.from(
+              '<Relationships xmlns="urn:fake"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+              "utf8",
+            ),
+          },
+        }),
+        {
+          filename: "fake-relationships.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(fakeRelationships.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
     const encrypted = await owner
       .post("/api/v1/imports/manuscripts")
       .set("Origin", origin)
