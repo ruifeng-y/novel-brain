@@ -10,6 +10,7 @@ import {
   BATCH_TICK_JOB,
   GENERATE_CHAPTER_JOB,
   GENERATE_GOLDEN_THREE_JOB,
+  PROCESS_IMPORT_JOB,
   SUMMARY_REBUILD_JOB,
   EXPORT_WORK_JOB,
   WORKER_QUEUE_NAME,
@@ -55,6 +56,9 @@ import { WorkExportProcessor } from "./exports/work-export.processor";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorkPurgeProcessor } from "./works/work-purge.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ManuscriptImportProcessor } from "./imports/manuscript-import.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
 import {
   durableJobStatusToOutcome,
@@ -83,6 +87,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     private readonly accountPurgeProcessor: AccountPurgeProcessor,
     private readonly workExportProcessor: WorkExportProcessor,
     private readonly workPurgeProcessor: WorkPurgeProcessor,
+    private readonly manuscriptImportProcessor: ManuscriptImportProcessor,
     private readonly generationRepository: WorkerGenerationRepository,
     @Inject(WORKER_REDIS) private readonly connection: Redis,
     @Inject(WorkerOperationalMetricsRecorder)
@@ -151,6 +156,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
           ACCOUNT_PURGE_JOB,
           ACCOUNT_PURGE_TICK_JOB,
           EXPORT_WORK_JOB,
+          PROCESS_IMPORT_JOB,
         ],
       },
       "Worker is consuming its queue",
@@ -237,6 +243,8 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
           number: job.attemptsMade + 1,
           maxAttempts: Math.max(1, job.opts.attempts ?? 1),
         });
+      } else if (payload.jobType === PROCESS_IMPORT_JOB) {
+        outcome = await this.manuscriptImportProcessor.process(payload);
       } else if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
         await this.goldenThreeProcessor.process(payload);
       } else {
@@ -330,6 +338,8 @@ function jobLogContext(payload: WorkerJob): Record<string, unknown> {
       return { planId: payload.planId };
     case EXPORT_WORK_JOB:
       return { jobId: payload.jobId, exportId: payload.exportId };
+    case PROCESS_IMPORT_JOB:
+      return { importId: payload.importId };
     case GENERATE_GOLDEN_THREE_JOB:
       return {
         jobId: payload.jobId,

@@ -71,4 +71,27 @@ describe("manuscript import contracts", () => {
     });
     expect(request.chapters.map((chapter) => chapter.sourceRange.end)).toEqual([10_000, 20_000]);
   });
+
+  it("accepts the frozen 4000-chapter V1 baseline and rejects one chapter beyond it", () => {
+    const chapters = Array.from({ length: 4_000 }, (_, index) => ({
+      title: `第${index + 1}章`,
+      sourceRange: { start: index * 2_500, end: (index + 1) * 2_500 },
+    }));
+
+    expect(() =>
+      chunkedManuscriptImportConfirmRequestSchema.parse({
+        title: "千万字旧稿",
+        chapters,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      chunkedManuscriptImportConfirmRequestSchema.parse({
+        title: "超出基线",
+        chapters: [
+          ...chapters,
+          { title: "第4001章", sourceRange: { start: 10_000_000, end: 10_002_500 } },
+        ],
+      }),
+    ).toThrow();
+  });
 });

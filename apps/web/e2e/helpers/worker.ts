@@ -6,7 +6,13 @@ const databaseUrl =
   "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
 const redisUrl = process.env.E2E_REDIS_URL ?? "redis://localhost:6379/1";
 
-export async function startWorker(options: { failStep?: "draft" | "verify" | "revise" } = {}) {
+export async function startWorker(
+  options: {
+    failStep?: "draft" | "verify" | "revise";
+    failImportSequence?: number;
+    importProcessingDelayMs?: number;
+  } = {},
+) {
   const root = path.resolve(__dirname, "../../../..");
   const child = spawn(process.execPath, [path.join(root, "apps/worker/dist/main.js")], {
     cwd: root,
@@ -20,6 +26,12 @@ export async function startWorker(options: { failStep?: "draft" | "verify" | "re
       NODE_ENV: "test",
       LOG_LEVEL: "info",
       ...(options.failStep ? { FAKE_AI_FAILURE_STEP: options.failStep } : {}),
+      ...(options.failImportSequence !== undefined
+        ? { FAKE_IMPORT_FAILURE_SEQUENCE: String(options.failImportSequence) }
+        : {}),
+      ...(options.importProcessingDelayMs !== undefined
+        ? { IMPORT_PROCESSING_DELAY_MS: String(options.importProcessingDelayMs) }
+        : {}),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

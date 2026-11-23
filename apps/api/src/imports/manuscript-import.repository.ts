@@ -20,6 +20,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 
 import type { ManuscriptSourceRange } from "@novel-brain/contracts";
+import { isWellFormedUtf16 } from "@novel-brain/core";
 import { uuidv7 } from "uuidv7";
 
 import { countWords } from "./manuscript-import.parser";
@@ -36,6 +37,30 @@ export interface ConfirmedManuscriptResult {
   chapters: ChapterRecord[];
   chapterVersions: Array<ChapterVersionRecord & { parentNodeId: string | null }>;
 }
+
+interface ConfirmManuscriptInput {
+  userId: string;
+  importId: string;
+  displayName: string;
+  title: string;
+  penName?: string;
+  genre: string;
+  scaleTarget: string;
+  chapterLengthTarget: number;
+  audit: WorksAuditContext;
+  idempotencyKey: string;
+}
+
+interface ConfirmChapterInput {
+  title: string;
+  sourceRange: ManuscriptSourceRange;
+}
+
+type ChapterContentLoader = (
+  transaction: DatabaseTransaction,
+  index: number,
+  sourceRange: ManuscriptSourceRange,
+) => Promise<string>;
 
 function checkpointNumber(checkpoint: Record<string, unknown>, key: string): number | undefined {
   const value = checkpoint[key];
@@ -224,7 +249,12 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
     importId: string;
     sequence: number;
     sourceText: string;
-  }): Promise<ManuscriptImportJobRecord | "not_ready" | "sequence_conflict" | undefined> {
+  }): Promise<
+    ManuscriptImportJobRecord | "not_ready" | "sequence_conflict" | "invalid_text" | undefined
+  > {
+    if (!isWellFormedUtf16(input.sourceText)) {
+      return "invalid_text";
+    }
     return this.withTenant(input.userId, async (transaction) => {
       const [job] = await transaction
         .select()
@@ -302,85 +332,6 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           updatedAt: new Date(),
         })
         .where(eq(importJobs.id, input.importId))
-        .returning();
-      return updated;
-    });
-  }
-
-  async processChunk(
-    userId: string,
-    importId: string,
-  ): Promise<ManuscriptImportJobRecord | undefined> {
-    return this.withTenant(userId, async (transaction) => {
-      const [job] = await transaction
-        .select()
-        .from(importJobs)
-        .where(
-          and(
-            eq(importJobs.id, importId),
-            eq(importJobs.userId, userId),
-            eq(importJobs.mode, "manuscript_text"),
-          ),
-        )
-        .for("update")
-        .limit(1);
-      if (!job) {
-        return undefined;
-      }
-      if (
-        job.status === "completed" ||
-        job.status === "awaiting_confirmation" ||
-        job.status === "paused" ||
-        job.status === "cancelled"
-      ) {
-        return job;
-      }
-      const [chunk] = await transaction
-        .select()
-        .from(importChunks)
-        .where(
-          and(
-            eq(importChunks.importJobId, importId),
-            eq(importChunks.userId, userId),
-            eq(importChunks.status, "pending"),
-          ),
-        )
-        .orderBy(importChunks.sequence)
-        .for("update")
-        .limit(1);
-      if (!chunk) {
-        const [chunkTotals] = await transaction
-          .select({
-            total: sql<number>`count(*)::int`,
-            processed: sql<number>`count(*) filter (where ${importChunks.status} = 'processed')::int`,
-          })
-          .from(importChunks)
-          .where(and(eq(importChunks.importJobId, importId), eq(importChunks.userId, userId)));
-        const complete =
-          job.processedChunks === job.chunkCount &&
-          chunkTotals?.total === job.chunkCount &&
-          chunkTotals.processed === job.chunkCount;
-        const [finished] = await transaction
-          .update(importJobs)
-          .set({ status: complete ? "awaiting_confirmation" : "partial", updatedAt: new Date() })
-          .where(eq(importJobs.id, importId))
-          .returning();
-        return finished;
-      }
-      await transaction
-        .update(importChunks)
-        .set({ status: "processed", updatedAt: new Date() })
-        .where(eq(importChunks.id, chunk.id));
-      const processedChunks = job.processedChunks + 1;
-      const [updated] = await transaction
-        .update(importJobs)
-        .set({
-          status: processedChunks >= job.chunkCount ? "awaiting_confirmation" : "processing",
-          processedChunks,
-          checkpoint: { ...job.checkpoint, nextProcessSequence: chunk.sequence + 1 },
-          updatedAt: new Date(),
-        })
-        .where(eq(importJobs.id, importId))
         .returning();
       return updated;
     });
@@ -568,6 +519,32 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           .returning();
         return paused;
       }
+      const resetFailedChunks =
+        action === "resume"
+          ? await transaction
+              .update(importChunks)
+              .set({ status: "pending", errorMessage: null, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(importChunks.importJobId, importId),
+                  eq(importChunks.userId, userId),
+                  eq(importChunks.status, "failed"),
+                ),
+              )
+              .returning({ id: importChunks.id })
+          : [];
+      if (resetFailedChunks.length > 0 || job.status === "partial" || job.status === "failed") {
+        const [resumed] = await transaction
+          .update(importJobs)
+          .set({
+            status: job.processedChunks > 0 ? "processing" : "queued",
+            checkpoint: { ...job.checkpoint, manuscriptError: null },
+            updatedAt: new Date(),
+          })
+          .where(eq(importJobs.id, importId))
+          .returning();
+        return resumed;
+      }
       if (job.status !== "paused") {
         return job;
       }
@@ -596,6 +573,131 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
     audit: WorksAuditContext;
     idempotencyKey: string;
   }): Promise<ConfirmedManuscriptResult | "not_ready" | undefined> {
+    const result = await this.confirmWork(input, input.chapters, async (_transaction, index) => {
+      return input.chapters[index]?.content ?? "";
+    });
+    if (result === "not_ready" || result === undefined) {
+      return result;
+    }
+    return this.withTenant(input.userId, (transaction) =>
+      this.readConfirmed(transaction, input.userId, result.workId),
+    );
+  }
+
+  async confirmRanges(input: {
+    userId: string;
+    importId: string;
+    displayName: string;
+    title: string;
+    penName?: string;
+    genre: string;
+    scaleTarget: string;
+    chapterLengthTarget: number;
+    chapters: Array<{ title: string; sourceRange: ManuscriptSourceRange }>;
+    audit: WorksAuditContext;
+    idempotencyKey: string;
+  }): Promise<{ workId: string } | "not_ready" | undefined> {
+    let chunkCursor: {
+      sequence: number;
+      sourceText: string;
+      startOffset: number;
+      endOffset: number;
+    } | null = null;
+    return this.confirmWork(input, input.chapters, async (transaction, _index, sourceRange) => {
+      let content = "";
+      let offset = sourceRange.start;
+      while (offset < sourceRange.end) {
+        if (!chunkCursor || offset < chunkCursor.startOffset || offset >= chunkCursor.endOffset) {
+          const [chunk] = await transaction
+            .select({
+              sequence: importChunks.sequence,
+              sourceText: importChunks.sourceText,
+              startOffset: importChunks.startOffset,
+              endOffset: importChunks.endOffset,
+            })
+            .from(importChunks)
+            .where(
+              and(
+                eq(importChunks.importJobId, input.importId),
+                eq(importChunks.userId, input.userId),
+                sql`${importChunks.startOffset} <= ${offset}`,
+                sql`${importChunks.endOffset} > ${offset}`,
+              ),
+            )
+            .limit(1);
+          if (!chunk) {
+            throw new Error("Chunked manuscript source is incomplete");
+          }
+          chunkCursor = chunk;
+        }
+        const chunkOffset = offset - chunkCursor.startOffset;
+        const available = Math.min(sourceRange.end, chunkCursor.endOffset) - offset;
+        content += chunkCursor.sourceText.slice(chunkOffset, chunkOffset + available);
+        offset += available;
+      }
+      return content;
+    });
+  }
+
+  async validateChunkedRanges(
+    userId: string,
+    importId: string,
+    chapters: Array<{ sourceRange: ManuscriptSourceRange }>,
+  ): Promise<boolean | undefined> {
+    return this.withTenant(userId, async (transaction) => {
+      const chunks = await transaction
+        .select({
+          sourceText: importChunks.sourceText,
+          startOffset: importChunks.startOffset,
+          endOffset: importChunks.endOffset,
+        })
+        .from(importChunks)
+        .where(and(eq(importChunks.importJobId, importId), eq(importChunks.userId, userId)))
+        .orderBy(importChunks.sequence);
+      if (chunks.length === 0) {
+        return true;
+      }
+      const totalCharacters = chunks.at(-1)?.endOffset ?? 0;
+      let expectedStart = 0;
+      const boundaries = new Set<number>();
+      for (const chapter of chapters) {
+        if (
+          chapter.sourceRange.start !== expectedStart ||
+          chapter.sourceRange.end <= chapter.sourceRange.start
+        ) {
+          return false;
+        }
+        expectedStart = chapter.sourceRange.end;
+        boundaries.add(chapter.sourceRange.start);
+        boundaries.add(chapter.sourceRange.end);
+      }
+      if (expectedStart !== totalCharacters) {
+        return false;
+      }
+      boundaries.delete(0);
+      boundaries.delete(totalCharacters);
+      for (const chunk of chunks) {
+        for (const boundary of boundaries) {
+          if (boundary <= chunk.startOffset || boundary >= chunk.endOffset) {
+            continue;
+          }
+          const localOffset = boundary - chunk.startOffset;
+          const previous = chunk.sourceText.charCodeAt(localOffset - 1);
+          const next = chunk.sourceText.charCodeAt(localOffset);
+          if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+  }
+
+  private async confirmWork(
+    input: ConfirmManuscriptInput,
+    chapterInputs: ConfirmChapterInput[],
+    loadChapterContent: ChapterContentLoader,
+  ): Promise<{ workId: string } | "not_ready" | undefined> {
     return this.withTenant(input.userId, async (transaction) => {
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.userId}))`);
       const [job] = await transaction
@@ -617,7 +719,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         return "not_ready";
       }
       if (job.status === "completed" && job.workId) {
-        return this.readConfirmed(transaction, input.userId, job.workId);
+        return { workId: job.workId };
       }
 
       const workId = uuidv7();
@@ -690,70 +792,85 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
       });
 
       let parentNodeId = rootNodeId;
-      for (const [index, chapterInput] of input.chapters.entries()) {
-        const chapterId = uuidv7();
-        const versionId = uuidv7();
-        const versionNodeId = uuidv7();
-        const chapterNumber = index + 1;
-        const contentHash = createHash("sha256").update(chapterInput.content).digest("hex");
-
-        const [chapter] = await transaction
-          .insert(chapters)
-          .values({
+      for (let batchStart = 0; batchStart < chapterInputs.length; batchStart += 100) {
+        const batchInputs = chapterInputs.slice(batchStart, batchStart + 100);
+        const batch = [];
+        for (const [batchIndex, chapterInput] of batchInputs.entries()) {
+          const index = batchStart + batchIndex;
+          const content = await loadChapterContent(transaction, index, chapterInput.sourceRange);
+          batch.push({
+            chapterInput,
+            content,
+            chapterId: uuidv7(),
+            versionId: uuidv7(),
+            versionNodeId: uuidv7(),
+          });
+        }
+        await transaction.insert(chapters).values(
+          batch.map(({ chapterInput, chapterId, content }, batchIndex) => ({
             id: chapterId,
             workId: work.id,
             branchId: branch.id,
             userId: input.userId,
-            number: chapterNumber,
+            number: batchStart + batchIndex + 1,
             title: chapterInput.title,
             status: "writing",
             version: 1,
-            wordCount: countWords(chapterInput.content),
-          })
-          .returning();
-        if (!chapter) {
-          throw new Error("Failed to create imported chapter");
-        }
-
-        await transaction.insert(versionNodes).values({
-          id: versionNodeId,
-          workId: work.id,
-          branchId: branch.id,
-          userId: input.userId,
-          parentNodeId,
-          nodeType: "chapter_version",
-          objectType: "chapter",
-          objectId: chapter.id,
-          objectVersion: 1,
-          payload: {
-            contentHash,
-            importId: input.importId,
-            source: "manuscript_import",
-            chapterNumber,
-            sourceRange: chapterInput.sourceRange,
+            wordCount: countWords(content),
+          })),
+        );
+        const versionNodeValues = batch.map(
+          ({ chapterInput, chapterId, versionNodeId, content }, batchIndex) => {
+            const chapterNumber = batchStart + batchIndex + 1;
+            const value = {
+              id: versionNodeId,
+              workId: work.id,
+              branchId: branch.id,
+              userId: input.userId,
+              parentNodeId,
+              nodeType: "chapter_version",
+              objectType: "chapter",
+              objectId: chapterId,
+              objectVersion: 1,
+              payload: {
+                contentHash: createHash("sha256").update(content).digest("hex"),
+                importId: input.importId,
+                source: "manuscript_import",
+                chapterNumber,
+                sourceRange: chapterInput.sourceRange,
+              },
+              actorId: input.userId,
+              message: `导入第 ${chapterNumber} 章`,
+            };
+            parentNodeId = versionNodeId;
+            return value;
           },
-          actorId: input.userId,
-          message: `导入第 ${chapterNumber} 章`,
-        });
-
-        await transaction.insert(chapterVersions).values({
-          id: versionId,
-          workId: work.id,
-          branchId: branch.id,
-          userId: input.userId,
-          chapterId: chapter.id,
-          version: 1,
-          content: chapterInput.content,
-          contentHash,
-          versionNodeId,
-          source: "manuscript_import",
-        });
-
-        await transaction
-          .update(chapters)
-          .set({ currentVersionId: versionId, updatedAt: new Date() })
-          .where(eq(chapters.id, chapter.id));
-        parentNodeId = versionNodeId;
+        );
+        await transaction.insert(versionNodes).values(versionNodeValues);
+        await transaction.insert(chapterVersions).values(
+          batch.map(({ chapterId, versionId, versionNodeId, content }) => ({
+            id: versionId,
+            workId: work.id,
+            branchId: branch.id,
+            userId: input.userId,
+            chapterId,
+            version: 1,
+            content,
+            contentHash: createHash("sha256").update(content).digest("hex"),
+            versionNodeId,
+            source: "manuscript_import",
+          })),
+        );
+        await transaction.execute(sql`
+          UPDATE chapters AS chapter
+             SET current_version_id = current_version.version_id,
+                 updated_at = now()
+            FROM unnest(
+              ${sql.raw(`ARRAY[${batch.map(({ chapterId }) => `'${chapterId}'::uuid`).join(",")}]`)},
+              ${sql.raw(`ARRAY[${batch.map(({ versionId }) => `'${versionId}'::uuid`).join(",")}]`)}
+            ) AS current_version(chapter_id, version_id)
+           WHERE chapter.id = current_version.chapter_id
+        `);
       }
 
       await transaction
@@ -782,7 +899,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         userAgent: input.audit.userAgent,
       });
 
-      return this.readConfirmed(transaction, input.userId, work.id);
+      return { workId: work.id };
     });
   }
 

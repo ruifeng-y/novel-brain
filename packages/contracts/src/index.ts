@@ -5039,9 +5039,13 @@ export const manuscriptImportConfirmRequestSchema = z.object({
       }),
     )
     .min(1)
-    .max(1_000),
+    .max(4_000),
 });
 export type ManuscriptImportConfirmRequest = z.infer<typeof manuscriptImportConfirmRequestSchema>;
+
+export const MAX_MANUSCRIPT_CHAPTERS = 4_000 as const;
+export const MAX_MANUSCRIPT_CHUNK_CHARACTERS = 250_000 as const;
+export const MAX_MANUSCRIPT_BATCH_CHARACTERS = 500_000 as const;
 
 export const chunkedManuscriptImportConfirmRequestSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -5057,7 +5061,7 @@ export const chunkedManuscriptImportConfirmRequestSchema = z.object({
       }),
     )
     .min(1)
-    .max(1_000),
+    .max(MAX_MANUSCRIPT_CHAPTERS),
 });
 export type ChunkedManuscriptImportConfirmRequest = z.infer<
   typeof chunkedManuscriptImportConfirmRequestSchema
@@ -5699,6 +5703,7 @@ export const exportWorkJobSchema = z
 export type ExportWorkJob = z.infer<typeof exportWorkJobSchema>;
 
 export const WORKER_QUEUE_NAME = "novel-brain-jobs";
+export const PROCESS_IMPORT_JOB = "process_import";
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
 export const GENERATE_GOLDEN_THREE_JOB = "generate_golden_three";
 export const SUMMARY_REBUILD_JOB = "rebuild_summaries";
@@ -5717,6 +5722,44 @@ export const WORKER_JOB_STEPS = [
 
 export const workerJobStepSchema = z.enum(WORKER_JOB_STEPS);
 export type WorkerJobStep = z.infer<typeof workerJobStepSchema>;
+
+export const manuscriptScanHeadingSchema = z
+  .object({
+    start: z.number().int().nonnegative(),
+    title: z.string().trim().min(1).max(200),
+    warning: z
+      .object({
+        sourceExcerpt: z.string(),
+        reason: z.string().trim().min(1).max(500),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type ManuscriptScanHeading = z.infer<typeof manuscriptScanHeadingSchema>;
+
+export const manuscriptScanStateSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    offset: z.number().int().nonnegative(),
+    lineStart: z.number().int().nonnegative(),
+    pendingLine: z.string().max(MAX_MANUSCRIPT_CHUNK_CHARACTERS),
+    lineOverflow: z.boolean(),
+    headings: z.array(manuscriptScanHeadingSchema).max(MAX_MANUSCRIPT_CHAPTERS + 1),
+    hasText: z.boolean(),
+  })
+  .strict();
+export type ManuscriptScanState = z.infer<typeof manuscriptScanStateSchema>;
+
+export const importProcessJobSchema = z
+  .object({
+    jobType: z.literal(PROCESS_IMPORT_JOB),
+    importId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    idempotencyKey: z.string().min(1).max(200),
+  })
+  .strict();
+export type ImportProcessJob = z.infer<typeof importProcessJobSchema>;
 
 export const RECOVERY_CHECKPOINT_SCHEMA_VERSION = 1 as const;
 
@@ -6625,6 +6668,7 @@ export const accountPurgeTickJobSchema = z
 export type AccountPurgeTickJob = z.infer<typeof accountPurgeTickJobSchema>;
 
 export const workerJobSchema = z.discriminatedUnion("jobType", [
+  importProcessJobSchema,
   generateChapterJobSchema,
   generateGoldenThreeJobSchema,
   summaryRebuildJobSchema,
@@ -7466,21 +7510,28 @@ export const searchRebuildResponseSchema = apiEnvelopeSchema(searchRebuildProgre
 export const chunkedImportCreateRequestSchema = z
   .object({
     sourceName: z.string().trim().min(1).max(240),
-    chunks: z.array(z.string().min(1).max(5_000_000)).min(1).max(10_000),
+    chunks: z
+      .array(z.string().min(1).max(MAX_MANUSCRIPT_BATCH_CHARACTERS))
+      .min(1)
+      .max(MAX_MANUSCRIPT_CHAPTERS),
   })
   .strict();
 export type ChunkedImportCreateRequest = z.infer<typeof chunkedImportCreateRequestSchema>;
 export const chunkedImportStartRequestSchema = z
   .object({
     sourceName: z.string().trim().min(1).max(240),
-    chunkCount: z.number().int().min(1).max(10_000),
+    chunkCount: z.number().int().min(1).max(MAX_MANUSCRIPT_CHAPTERS),
   })
   .strict();
 export type ChunkedImportStartRequest = z.infer<typeof chunkedImportStartRequestSchema>;
 export const chunkedImportChunkRequestSchema = z
   .object({
-    sequence: z.number().int().nonnegative().max(9_999),
-    sourceText: z.string().min(1).max(5_000_000),
+    sequence: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(MAX_MANUSCRIPT_CHAPTERS - 1),
+    sourceText: z.string().min(1).max(MAX_MANUSCRIPT_CHUNK_CHARACTERS),
   })
   .strict();
 export type ChunkedImportChunkRequest = z.infer<typeof chunkedImportChunkRequestSchema>;

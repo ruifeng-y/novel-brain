@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import {
   IMPORT_FILE_LIMITS,
+  MAX_MANUSCRIPT_CHUNK_CHARACTERS,
   apiErrorSchema,
   chunkedImportProgressResponseSchema,
   manuscriptImportConfirmResponseSchema,
@@ -28,6 +29,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { safeChunkLength } from "../lib/manuscript-chunking";
 
 interface ManuscriptImportPanelProps {
   title: string;
@@ -53,8 +55,6 @@ interface ChunkedStream {
   done: boolean;
   nextSequence: number;
 }
-
-const CHUNKED_TEXT_CHARACTERS = 250_000;
 
 export function ManuscriptImportPanel({
   title,
@@ -181,7 +181,11 @@ export function ManuscriptImportPanel({
     csrfToken: string,
   ): Promise<void> {
     let current = progress;
-    if (current.status === "paused") {
+    if (
+      current.status === "paused" ||
+      current.status === "partial" ||
+      current.status === "failed"
+    ) {
       const resumed = await controlChunk("resume", csrfToken);
       if (!resumed) {
         return;
@@ -197,14 +201,21 @@ export function ManuscriptImportPanel({
       if (!sourceText) {
         break;
       }
-      const response = await fetch(`/api/v1/imports/manuscripts/${current.importId}/chunks`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": csrfToken,
-        },
-        body: JSON.stringify({ sequence: stream.nextSequence, sourceText }),
-      });
+      let response: Response;
+      try {
+        response = await fetch(`/api/v1/imports/manuscripts/${current.importId}/chunks`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": csrfToken,
+          },
+          body: JSON.stringify({ sequence: stream.nextSequence, sourceText }),
+        });
+      } catch {
+        stream.pendingText = sourceText;
+        setCanResumeChunked(true);
+        throw new Error("分块上传暂时失败，请重试。");
+      }
       if (!response.ok) {
         stream.pendingText = sourceText;
         setCanResumeChunked(true);
@@ -217,25 +228,7 @@ export function ManuscriptImportPanel({
     }
     setCanResumeChunked(stream.nextSequence < current.chunkCount);
 
-    while (
-      (current.status === "queued" ||
-        current.status === "processing" ||
-        current.status === "partial") &&
-      !pauseRequested.current
-    ) {
-      const response = await fetch(`/api/v1/imports/manuscripts/${current.importId}/process`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": csrfToken,
-        },
-        body: "{}",
-      });
-      if (!response.ok) {
-        setCanResumeChunked(true);
-        throw new Error(await readError(response));
-      }
-      current = chunkedImportProgressResponseSchema.parse(await response.json()).data;
+    while (true) {
       if (pauseRequested.current && current.status === "processing") {
         const pauseResponse = await fetch(`/api/v1/imports/manuscripts/${current.importId}/pause`, {
           method: "POST",
@@ -250,9 +243,30 @@ export function ManuscriptImportPanel({
         }
       }
       setChunkProgress(current);
-      if (current.status === "paused") {
+      if (
+        current.status === "awaiting_confirmation" ||
+        current.status === "paused" ||
+        current.status === "partial" ||
+        current.status === "failed" ||
+        current.status === "cancelled"
+      ) {
         break;
       }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      let progressResponse: Response;
+      try {
+        progressResponse = await fetch(`/api/v1/imports/manuscripts/${current.importId}/progress`, {
+          cache: "no-store",
+        });
+      } catch {
+        setCanResumeChunked(true);
+        throw new Error("导入进度暂时无法读取，请重试。");
+      }
+      if (!progressResponse.ok) {
+        setCanResumeChunked(true);
+        throw new Error(await readError(progressResponse));
+      }
+      current = chunkedImportProgressResponseSchema.parse(await progressResponse.json()).data;
     }
 
     if (current.status === "awaiting_confirmation") {
@@ -271,8 +285,14 @@ export function ManuscriptImportPanel({
     }
 
     if (current.status === "partial") {
-      setCanResumeChunked(current.uploadedChunks < current.chunkCount);
+      setCanResumeChunked(true);
       setError("旧稿分块处理部分失败，已保留进度，可以继续导入。");
+      return;
+    }
+    if (current.status === "failed") {
+      setCanResumeChunked(true);
+      setError("旧稿分块处理失败，已保留进度，可以继续导入。");
+      return;
     }
 
     setFile(file);
@@ -885,9 +905,9 @@ async function countTextChunks(file: File): Promise<number> {
       break;
     }
     buffer += value;
-    while (buffer.length >= CHUNKED_TEXT_CHARACTERS) {
+    while (buffer.length > MAX_MANUSCRIPT_CHUNK_CHARACTERS) {
       count += 1;
-      buffer = buffer.slice(CHUNKED_TEXT_CHARACTERS);
+      buffer = buffer.slice(safeChunkLength(buffer, MAX_MANUSCRIPT_CHUNK_CHARACTERS));
     }
   }
   if (buffer.length > 0) {
@@ -907,7 +927,7 @@ async function createChunkStream(file: File): Promise<ChunkedStream> {
 }
 
 async function nextTextChunk(stream: ChunkedStream): Promise<string> {
-  while (stream.buffer.length < CHUNKED_TEXT_CHARACTERS && !stream.done) {
+  while (stream.buffer.length <= MAX_MANUSCRIPT_CHUNK_CHARACTERS && !stream.done) {
     const { done, value } = await stream.reader.read();
     if (done) {
       stream.done = true;
@@ -918,7 +938,10 @@ async function nextTextChunk(stream: ChunkedStream): Promise<string> {
   if (stream.buffer.length === 0) {
     return "";
   }
-  const chunk = stream.buffer.slice(0, CHUNKED_TEXT_CHARACTERS);
+  const chunk = stream.buffer.slice(
+    0,
+    safeChunkLength(stream.buffer, MAX_MANUSCRIPT_CHUNK_CHARACTERS),
+  );
   stream.buffer = stream.buffer.slice(chunk.length);
   return chunk;
 }

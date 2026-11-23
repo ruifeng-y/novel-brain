@@ -4,8 +4,8 @@ export const LARGE_MANUSCRIPT_SPEC = {
   seed: "novelbrain-import-recovery-v1",
   version: 1,
   characterCount: 10_000_000,
-  chapterCount: 1_000,
-  chapterCharacterCount: 10_000,
+  chapterCount: 4_000,
+  chapterCharacterCount: 2_500,
   chunkCharacterCount: 250_000,
 } as const;
 

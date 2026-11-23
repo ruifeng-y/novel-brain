@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 import {
   chapterWorkspaceListResponseSchema,
   manuscriptImportConfirmResponseSchema,
@@ -11,6 +11,7 @@ import {
 import { registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import { buildDocxFixture } from "../helpers/docx";
 import { buildChunkedManuscriptFixture } from "../helpers/manuscript";
+import { startWorker } from "../helpers/worker";
 import {
   expectAuthorFacingLanguage,
   expectNoPrototypeOnlyLeakage,
@@ -541,101 +542,102 @@ test("shows empty, partial, malformed and unreadable manuscript states", async (
   await expect(page.getByText("旧稿编码无法解析，请使用 UTF-8 编码")).toBeVisible();
 });
 
-test("recovers a chunked manuscript import after upload failure, pause and resume", async ({
+test("recovers a chunked manuscript import after upload failure, pause and process interruption", async ({
   page,
   context,
-}) => {
-  await authenticatedPage(page, context);
-  await page.getByRole("button", { name: "导入旧稿", exact: true }).click();
-
-  let failedChunk = false;
-  await page.route("**/api/v1/imports/manuscripts/*/chunks", async (route) => {
-    const payload = route.request().postDataJSON() as { sequence?: number };
-    if (payload.sequence === 1 && !failedChunk) {
-      failedChunk = true;
-      await route.fulfill({
-        status: 500,
-        contentType: "application/json",
-        body: JSON.stringify({
-          error: {
-            code: "INTERNAL_ERROR",
-            message: "分块上传暂时失败。",
-            details: {},
-            requestId: "req_chunk_upload_failure",
-          },
-        }),
-      });
-      return;
-    }
-    await route.continue();
+}, testInfo) => {
+  let worker = await startWorker({
+    failImportSequence: 5,
+    importProcessingDelayMs: 300,
   });
-  await page.route("**/api/v1/imports/manuscripts/*/process", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    await route.continue();
-  });
+  try {
+    await authenticatedPage(page, context);
+    await page.getByRole("button", { name: "导入旧稿", exact: true }).click();
 
-  await page.getByLabel("上传旧稿文件").setInputFiles({
-    name: "chunked-recovery.txt",
-    mimeType: "text/plain",
-    buffer: buildChunkedManuscriptFixture(),
-  });
-  await page.getByRole("button", { name: "识别章节" }).click();
+    let failedChunk = false;
+    await page.route("**/api/v1/imports/manuscripts/*/chunks", async (route) => {
+      const payload = route.request().postDataJSON() as { sequence?: number };
+      if (payload.sequence === 1 && !failedChunk) {
+        failedChunk = true;
+        await route.abort("connectionreset");
+        return;
+      }
+      await route.continue();
+    });
 
-  await expect(page.getByText("分块上传暂时失败。")).toBeVisible();
-  await expect(page.getByText(/已接收 1 \/ 8/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
-  for (const width of [1440, 1180, 900, 390]) {
-    await page.setViewportSize({ width, height: 900 });
-    await expect(page.getByText("分块上传暂时失败。")).toBeVisible();
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(1);
+    await page.getByLabel("上传旧稿文件").setInputFiles({
+      name: "chunked-recovery.txt",
+      mimeType: "text/plain",
+      buffer: buildChunkedManuscriptFixture(),
+    });
+    await page.getByRole("button", { name: "识别章节" }).click();
+
+    await expect(page.getByText("分块上传暂时失败，请重试。")).toBeVisible();
+    await expect(page.getByText(/已接收 1 \/ 8/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
+    await attachResponsiveState(page, testInfo, "upload-failure");
+
+    await page.getByRole("button", { name: "继续导入" }).click();
+    const pauseResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        response.request().method() === "POST" &&
+        /^\/api\/v1\/imports\/manuscripts\/[0-9a-f-]+\/pause$/u.test(url.pathname)
+      );
+    });
+    await expect(page.getByRole("button", { name: "暂停处理" })).toBeVisible();
+    await page.getByRole("button", { name: "暂停处理" }).click();
+    await pauseResponse;
+    await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
+    await attachResponsiveState(page, testInfo, "paused");
+
+    await page.getByRole("button", { name: "继续导入" }).click();
+    await expect(page.getByText("旧稿分块处理部分失败，已保留进度，可以继续导入。")).toBeVisible({
+      timeout: 30_000,
+    });
+    await attachResponsiveState(page, testInfo, "partial-failure");
+
+    await worker.stop();
+    worker = await startWorker({ importProcessingDelayMs: 20 });
+    await page.getByRole("button", { name: "继续导入" }).click();
+    await expect(page.getByText("识别到 8 章")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/原文已安全保留在导入任务中/).first()).toBeVisible();
+    await page.getByLabel("书名").fill("分块恢复旧稿");
+    await attachResponsiveState(page, testInfo, "preview");
+
+    const confirmResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        response.request().method() === "POST" &&
+        /^\/api\/v1\/imports\/manuscripts\/[0-9a-f-]+\/confirm-chunked$/u.test(url.pathname)
+      );
+    });
+    await page.getByRole("button", { name: "确认并创建作品" }).click();
+    const confirmed = workResponseSchema.parse(await (await confirmResponse).json()).data;
+    await expect(page).toHaveURL(new RegExp(`/workspace/${confirmed.id}/overview$`));
+    const persistedWork = await getPersistedWork(page, confirmed.id);
+    const persistedChapters = await getPersistedChapters(page, persistedWork);
+    expect(persistedChapters).toHaveLength(8);
+    expect(persistedChapters[0]?.currentVersion?.content.split("\n")[0]).toBe("第1章 分块旧稿0001");
+    expect(persistedChapters[7]?.currentVersion?.content.split("\n")[0]).toBe("第8章 分块旧稿0008");
+  } finally {
+    await worker.stop();
   }
-
-  await page.getByRole("button", { name: "继续导入" }).click();
-  const pauseResponse = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return (
-      response.request().method() === "POST" &&
-      /^\/api\/v1\/imports\/manuscripts\/[0-9a-f-]+\/pause$/u.test(url.pathname)
-    );
-  });
-  await expect(page.getByRole("button", { name: "暂停处理" })).toBeVisible();
-  await page.getByRole("button", { name: "暂停处理" }).click();
-  await pauseResponse;
-  await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
-
-  await page.getByRole("button", { name: "继续导入" }).click();
-  await expect(page.getByText("识别到 8 章")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/原文已安全保留在导入任务中/).first()).toBeVisible();
-  await page.getByLabel("书名").fill("分块恢复旧稿");
-  for (const width of [1440, 1180, 900, 390]) {
-    await page.setViewportSize({ width, height: 900 });
-    await expect(page.getByRole("heading", { name: "把已经写下的部分带进来" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "确认并创建作品" })).toBeEnabled();
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(1);
-  }
-
-  const confirmResponse = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return (
-      response.request().method() === "POST" &&
-      /^\/api\/v1\/imports\/manuscripts\/[0-9a-f-]+\/confirm-chunked$/u.test(url.pathname)
-    );
-  });
-  await page.getByRole("button", { name: "确认并创建作品" }).click();
-  const confirmed = workResponseSchema.parse(await (await confirmResponse).json()).data;
-  await expect(page).toHaveURL(new RegExp(`/workspace/${confirmed.id}/overview$`));
-  const persistedWork = await getPersistedWork(page, confirmed.id);
-  const persistedChapters = await getPersistedChapters(page, persistedWork);
-  expect(persistedChapters).toHaveLength(8);
-  expect(persistedChapters[0]?.currentVersion?.content).toContain("第1章 分块旧稿0001");
-  expect(persistedChapters[7]?.currentVersion?.content).toContain("第8章 分块旧稿0008");
 });
+
+async function attachResponsiveState(page: Page, testInfo: TestInfo, state: string) {
+  for (const width of [1440, 1180, 900, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+    await testInfo.attach(`new-project-${state}-${width}`, {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: "image/png",
+    });
+  }
+}
 
 test("persists a settings conflict decision before creating the work", async ({
   page,

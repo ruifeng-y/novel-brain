@@ -6,6 +6,7 @@ import { performance } from "node:perf_hooks";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  PROCESS_IMPORT_JOB,
   chunkedImportProgressResponseSchema,
   manuscriptImportResponseSchema,
   workResponseSchema,
@@ -23,6 +24,8 @@ import {
   largeManuscriptMetadata,
   LARGE_MANUSCRIPT_SPEC,
 } from "./helpers/large-manuscript";
+import { ManuscriptImportProcessor } from "../../worker/src/imports/manuscript-import.processor";
+import { WorkerManuscriptImportRepository } from "../../worker/src/imports/manuscript-import.repository";
 
 const databaseUrl =
   process.env.TEST_DATABASE_URL ??
@@ -42,6 +45,8 @@ describe("chunked manuscript import recovery integration", () => {
   let app: INestApplication;
   let databasePool: ReturnType<typeof createDatabasePool>;
   let redis: Redis;
+  let importRepository: WorkerManuscriptImportRepository;
+  let importProcessor: ManuscriptImportProcessor;
   const mail = new CapturingMailGateway();
 
   beforeAll(async () => {
@@ -61,6 +66,8 @@ describe("chunked manuscript import recovery integration", () => {
     });
     redis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
     app = await createApp();
+    importRepository = new WorkerManuscriptImportRepository();
+    importProcessor = new ManuscriptImportProcessor(importRepository);
   });
 
   beforeEach(async () => {
@@ -70,6 +77,7 @@ describe("chunked manuscript import recovery integration", () => {
   });
 
   afterAll(async () => {
+    await importRepository?.onModuleDestroy();
     await app?.close();
     await databasePool?.end();
     redis?.disconnect();
@@ -80,16 +88,17 @@ describe("chunked manuscript import recovery integration", () => {
     expect(metadata).toMatchObject({
       seed: LARGE_MANUSCRIPT_SPEC.seed,
       characterCount: 10_000_000,
-      chapterCount: 1_000,
+      chapterCount: 4_000,
       chunkCharacterCount: 250_000,
       chunkCount: 40,
     });
     expect(metadata.sha256).toBe(
-      "8a6d4d6b55d18c062754e48657285a93dee8450498cd74e27215def7d1644497",
+      "1469e6aeefbf90c3c21a735f42e12138f4f3e0aee520fc82d423ab02036f5557",
     );
     const email = "chunked-recovery@example.com";
     const password = "StrongPassword123";
     let owner = await createAuthenticatedAgent(email, password);
+    const ownerId = (await owner.get("/api/v1/auth/me").expect(200)).body.data.user.id as string;
     let token = await csrf(owner);
     const startedAt = performance.now();
 
@@ -102,7 +111,7 @@ describe("chunked manuscript import recovery integration", () => {
         sourceName: "单请求过大.txt",
         chunks: ["x".repeat(500_001)],
       });
-    expect(oversizedBatch.status).toBe(413);
+    expect(oversizedBatch.status).toBe(400);
     expect(oversizedBatch.body.error.code).toBe("VALIDATION_INVALID");
 
     const created = chunkedImportProgressResponseSchema.parse(
@@ -158,19 +167,12 @@ describe("chunked manuscript import recovery integration", () => {
       }
     }
 
-    for (let sequence = 0; sequence < 3; sequence += 1) {
-      const processed = chunkedImportProgressResponseSchema.parse(
-        (
-          await owner
-            .post(`/api/v1/imports/manuscripts/${created.importId}/process`)
-            .set("Origin", origin)
-            .set("X-CSRF-Token", token)
-            .send({})
-            .expect(200)
-        ).body,
-      ).data;
-      expect(processed.processedChunks).toBe(sequence + 1);
-    }
+    await processImport(ownerId, created.importId, 3);
+    const processedBeforePause = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+        .body,
+    ).data;
+    expect(processedBeforePause.processedChunks).toBe(3);
     const paused = chunkedImportProgressResponseSchema.parse(
       (
         await owner
@@ -231,20 +233,12 @@ describe("chunked manuscript import recovery integration", () => {
       ).body,
     ).data;
     expect(resumedAgain.status).toBe("processing");
-    for (let sequence = 3; sequence < 5; sequence += 1) {
-      const processed = chunkedImportProgressResponseSchema.parse(
-        (
-          await owner
-            .post(`/api/v1/imports/manuscripts/${created.importId}/process`)
-            .set("Origin", origin)
-            .set("X-CSRF-Token", token)
-            .send({})
-            .expect(200)
-        ).body,
-      ).data;
-      expect(processed.processedChunks).toBe(sequence + 1);
-      resumed = processed;
-    }
+    await processImport(ownerId, created.importId, 2);
+    resumed = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+        .body,
+    ).data;
+    expect(resumed.processedChunks).toBe(5);
     expect(resumed.status).toBe("processing");
 
     await app.close();
@@ -284,19 +278,11 @@ describe("chunked manuscript import recovery integration", () => {
     }
     expect(uploadedCount).toBe(metadata.chunkCount);
 
-    let progress = afterRestart;
-    while (progress.processedChunks < metadata.chunkCount) {
-      progress = chunkedImportProgressResponseSchema.parse(
-        (
-          await owner
-            .post(`/api/v1/imports/manuscripts/${created.importId}/process`)
-            .set("Origin", origin)
-            .set("X-CSRF-Token", token)
-            .send({})
-            .expect(200)
-        ).body,
-      ).data;
-    }
+    await processImport(ownerId, created.importId);
+    const progress = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+        .body,
+    ).data;
     expect(progress).toMatchObject({
       status: "awaiting_confirmation",
       uploadedChunks: metadata.chunkCount,
@@ -312,14 +298,14 @@ describe("chunked manuscript import recovery integration", () => {
       order: 1,
       title: "分块旧稿0001",
       content: "",
-      sourceRange: { start: 0, end: 10_000 },
+      sourceRange: { start: 0, end: 2_500 },
     });
     expect(preview.chapters.at(-1)).toMatchObject({
       order: metadata.chapterCount,
-      title: "分块旧稿1000",
+      title: "分块旧稿4000",
       content: "",
       sourceRange: {
-        start: metadata.characterCount - 10_000,
+        start: metadata.characterCount - 2_500,
         end: metadata.characterCount,
       },
     });
@@ -492,12 +478,7 @@ describe("chunked manuscript import recovery integration", () => {
       .set("X-CSRF-Token", token)
       .send({ sequence: 0, sourceText: surrogateSource })
       .expect(200);
-    await owner
-      .post(`/api/v1/imports/manuscripts/${surrogateJob.importId}/process`)
-      .set("Origin", origin)
-      .set("X-CSRF-Token", token)
-      .send({})
-      .expect(200);
+    await processImport(ownerId, surrogateJob.importId);
     const splitInsideSurrogate = surrogateSource.indexOf("😀") + 1;
     const boundaryFailure = await owner
       .post(`/api/v1/imports/manuscripts/${surrogateJob.importId}/confirm-chunked`)
@@ -534,27 +515,7 @@ describe("chunked manuscript import recovery integration", () => {
       .set("X-CSRF-Token", token)
       .send({ sequence: 0, sourceText: partialFirstChunk })
       .expect(200);
-    await owner
-      .post(`/api/v1/imports/manuscripts/${partialJob.importId}/process`)
-      .set("Origin", origin)
-      .set("X-CSRF-Token", token)
-      .send({})
-      .expect(200);
-    const partial = chunkedImportProgressResponseSchema.parse(
-      (
-        await owner
-          .post(`/api/v1/imports/manuscripts/${partialJob.importId}/process`)
-          .set("Origin", origin)
-          .set("X-CSRF-Token", token)
-          .send({})
-          .expect(200)
-      ).body,
-    ).data;
-    expect(partial).toMatchObject({
-      status: "partial",
-      uploadedChunks: 1,
-      processedChunks: 1,
-    });
+    await processImport(ownerId, partialJob.importId, 1);
     const replayedChunk = chunkedImportProgressResponseSchema.parse(
       (
         await owner
@@ -572,6 +533,19 @@ describe("chunked manuscript import recovery integration", () => {
       .set("X-CSRF-Token", token)
       .send({ sequence: 1, sourceText: "第二章 补传\n\n正文。" })
       .expect(200);
+    process.env.FAKE_IMPORT_FAILURE_SEQUENCE = "1";
+    const failedOutcome = await processImportJob(ownerId, partialJob.importId);
+    delete process.env.FAKE_IMPORT_FAILURE_SEQUENCE;
+    expect(failedOutcome).toBe("failed");
+    const partial = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${partialJob.importId}/progress`).expect(200))
+        .body,
+    ).data;
+    expect(partial).toMatchObject({
+      status: "partial",
+      uploadedChunks: 2,
+      processedChunks: 1,
+    });
     await owner
       .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
       .set("Origin", origin)
@@ -579,20 +553,15 @@ describe("chunked manuscript import recovery integration", () => {
       .send({ sequence: 2, sourceText: "第三章 完成\n\n正文。" })
       .expect(200);
     await owner
-      .post(`/api/v1/imports/manuscripts/${partialJob.importId}/process`)
+      .post(`/api/v1/imports/manuscripts/${partialJob.importId}/resume`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({})
       .expect(200);
+    await processImport(ownerId, partialJob.importId);
     const partialRecovered = chunkedImportProgressResponseSchema.parse(
-      (
-        await owner
-          .post(`/api/v1/imports/manuscripts/${partialJob.importId}/process`)
-          .set("Origin", origin)
-          .set("X-CSRF-Token", token)
-          .send({})
-          .expect(200)
-      ).body,
+      (await owner.get(`/api/v1/imports/manuscripts/${partialJob.importId}/progress`).expect(200))
+        .body,
     ).data;
     expect(partialRecovered).toMatchObject({
       status: "awaiting_confirmation",
@@ -631,6 +600,23 @@ describe("chunked manuscript import recovery integration", () => {
     nextApp.useGlobalFilters(new ApiExceptionFilter());
     await nextApp.init();
     return nextApp;
+  }
+
+  async function processImport(actorId: string, importId: string, maxChunks?: number) {
+    const outcome = await processImportJob(actorId, importId, maxChunks);
+    expect(outcome).toBe("succeeded");
+  }
+
+  async function processImportJob(actorId: string, importId: string, maxChunks?: number) {
+    return importProcessor.process(
+      {
+        jobType: PROCESS_IMPORT_JOB,
+        actorId,
+        importId,
+        idempotencyKey: `integration-${importId}`,
+      },
+      maxChunks,
+    );
   }
 
   async function createAuthenticatedAgent(
