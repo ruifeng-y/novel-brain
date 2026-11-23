@@ -25,7 +25,7 @@
 
 自动化完成不等于 V1 release approved。以下证据仍缺失：
 
-- Non-UI capability 审计已完成：107 项中 96 项 `verified`，WORK-002、IO-001、IO-003、CHANGE-004、CHANGE-005、CHANGE-006、CHANGE-007、EVAL-002、EVAL-003、EVAL-004、CONT-001 仍有有界缺口；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
+- Non-UI capability 审计已完成：107 项中 97 项 `verified`，WORK-002、IO-003、CHANGE-004、CHANGE-005、CHANGE-006、CHANGE-007、EVAL-002、EVAL-003、EVAL-004、CONT-001 仍有有界缺口；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
 - UI-001..UI-009 的总 traceability 收口仍由 #238 负责；
 - 真实 human blind review 记录；
 - 已批准的 inter-rater variance threshold；

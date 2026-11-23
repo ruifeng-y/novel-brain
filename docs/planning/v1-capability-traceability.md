@@ -1,6 +1,6 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-21。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 96 个已有可执行证据并标为 `verified`，11 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
+> 状态：V1 delivery ledger，2026-11-23。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 97 个已有可执行证据并标为 `verified`，10 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
 > `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
 
 ## 状态定义
@@ -104,7 +104,7 @@
 | CHANGE-007 | 高风险合并门禁 | V1 | implemented | #125 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-007`; gap #263 | M2 |
 | CHANGE-008 | 回滚新版本/审计 | V1 | verified | #125 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-008` | M2 |
 | CHANGE-009 | 全局当前分支/分支切换 | V1 | verified | #123 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-009` | M2 |
-| IO-001 | TXT/Markdown/DOCX 解析/切分/合并/拆分 | V1 | implemented | #126 | #72 | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-001`; gap #261 | M2 |
+| IO-001 | TXT/Markdown/DOCX 解析/切分/合并/拆分 | V1 | verified | #126 | #72 | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-001` | M2 |
 | IO-002 | 可选设定提取/候选/冲突/报告 | V1 | verified | #127 | #71 | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-002` | M2 |
 | IO-003 | 导入后台任务/断点/进度 | V1 | implemented | #126 | — | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-003`; gap #262 | M2 |
 | IO-004 | 导出格式/范围/历史/下载/过期 | V1 | verified | #129 | — | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-004` | M3 |

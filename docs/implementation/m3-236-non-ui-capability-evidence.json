@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "auditedAt": "2026-11-21",
+  "auditedAt": "2026-11-23",
   "issue": "#236",
   "verification": {
     "kind": "ci",
     "status": "passed",
-    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45114252958",
-    "headSha": "6ee5b44a8abb1716ff626a3be6db6a0a77845f63"
+    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45195110712",
+    "headSha": "91f7956d5d02cf5f03f0f4e282ba4f1b95ec0503"
   },
   "evidence": {
     "auth-http": { "kind": "integration", "path": "apps/api/test/auth.integration.test.ts" },
@@ -410,12 +410,8 @@
     "CHANGE-008": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-009": { "status": "verified", "evidence": ["changes-http", "work-overview-e2e"] },
     "IO-001": {
-      "status": "implemented",
-      "evidence": ["manuscript-http", "settings-import-http"],
-      "gap": {
-        "reason": "TXT/Markdown 已实现，但 DOCX 旧稿导入与 DOCX 设定导入仍被生产代码和测试明确拒绝。",
-        "issue": "#261"
-      }
+      "status": "verified",
+      "evidence": ["manuscript-http", "settings-import-http", "new-project-e2e"]
     },
     "IO-002": { "status": "verified", "evidence": ["settings-import-http"] },
     "IO-003": {
