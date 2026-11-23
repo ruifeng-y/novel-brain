@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { crc32 } from "node:zlib";
 
 export const PRODUCTION_PAGE_IDS = [
@@ -23,6 +24,15 @@ export const PRODUCTION_PAGE_IDS = [
 export const STATIC_PRODUCTION_PAGE_IDS = ["help", "legal"];
 export const GOLDEN_VIEWPORTS = ["390", "900", "1180", "1440"];
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+export function normalizeRepositoryPath(reference) {
+  if (typeof reference !== "string" || !reference.trim()) return null;
+  const normalized = posix.normalize(reference.replace(/\\/gu, "/")).replace(/^\.\//u, "");
+  if (posix.isAbsolute(normalized) || normalized === ".." || normalized.startsWith("../")) {
+    return null;
+  }
+  return normalized;
+}
 
 export function isValidGoldenImage(image, viewport) {
   if (

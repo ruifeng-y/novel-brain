@@ -1,14 +1,15 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
-import { posix } from "node:path";
 
 import { runCli } from "./cli-entry.mjs";
+import { validateNonUiCapabilityEvidence } from "./v1-capability-evidence.mjs";
 import {
   GOLDEN_VIEWPORTS,
   PRODUCTION_PAGE_IDS,
   STATIC_PRODUCTION_PAGE_IDS,
   expandGoldenPaths,
   isValidGoldenImage,
+  normalizeRepositoryPath,
   parseTraceabilityRows,
   parseUiMatrix,
 } from "./v1-ledger.mjs";
@@ -29,7 +30,9 @@ export const REQUIRED_GATE_IDS = [
 const REQUIRED_GATES = new Set(REQUIRED_GATE_IDS);
 const GATE_STATUSES = new Set(["pass", "blocked", "failed", "deferred"]);
 const GITHUB_ACTIONS_RUN_URL = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/actions\/runs\/(\d+)$/u;
+const GITHUB_ISSUE_REFERENCE = /^#(\d+)$/u;
 const EXPECTED_GITHUB_REPOSITORY = "ruifeng-y/novel-brain";
+const BOUNDED_GAP_LABELS = new Set(["ready-for-agent", "ready-for-human"]);
 const AUTHORIZED_DEFERRAL_IDS = new Set(["PERF-001", "AGENT-007", "QUALITY-009"]);
 const DEVIATION_DOCUMENTS = [
   "docs/ui/prototype-contract.md",
@@ -37,19 +40,13 @@ const DEVIATION_DOCUMENTS = [
   "docs/ui/v1-prototype-signoff.md",
 ];
 
-function normalizeRepositoryPath(reference) {
-  if (typeof reference !== "string" || GITHUB_ACTIONS_RUN_URL.test(reference)) {
-    return reference;
-  }
-  const normalized = posix.normalize(reference.replace(/\\/gu, "/")).replace(/^\.\//u, "");
-  if (posix.isAbsolute(normalized) || normalized === ".." || normalized.startsWith("../")) {
-    return null;
-  }
-  return normalized;
+function normalizeReleaseReference(reference) {
+  if (typeof reference === "string" && GITHUB_ACTIONS_RUN_URL.test(reference)) return reference;
+  return normalizeRepositoryPath(reference);
 }
 
 function canonicalRepositoryPath(reference) {
-  return normalizeRepositoryPath(reference)?.toLowerCase() ?? null;
+  return normalizeReleaseReference(reference)?.toLowerCase() ?? null;
 }
 
 function isReproducibleReference(
@@ -60,7 +57,7 @@ function isReproducibleReference(
   if (GITHUB_ACTIONS_RUN_URL.test(reference)) {
     return githubRunIsSuccessful(reference, runContext);
   }
-  const normalized = normalizeRepositoryPath(reference);
+  const normalized = normalizeReleaseReference(reference);
   return Boolean(normalized) && evidenceExists(normalized);
 }
 
@@ -205,7 +202,6 @@ function validateTraceability(
   if (unresolvedCapabilities.length > 0) {
     blockers.push(
       `capability-verification:${unresolvedCapabilities.length}:${unresolvedCapabilities
-        .slice(0, 8)
         .map((row) => `${row.id}:${row.status}`)
         .join(",")}`,
     );
@@ -295,7 +291,7 @@ function validateDeviationApprovals(
       }
     }
     const [baselinePath, baselineMarker] = approval.replacementBaseline.split("#", 2);
-    const normalizedBaselinePath = normalizeRepositoryPath(baselinePath);
+    const normalizedBaselinePath = normalizeReleaseReference(baselinePath);
     if (
       !normalizedBaselinePath ||
       !baselineMarker?.trim() ||
@@ -412,6 +408,7 @@ function validateActionEvidence(
 export function evaluateV1Release({
   evidence,
   traceability,
+  capabilityEvidence = { schemaVersion: 1, evidence: {}, capabilities: {} },
   uiMatrix,
   deferrals,
   deviationApprovals,
@@ -419,6 +416,8 @@ export function evaluateV1Release({
   actionEvidence,
   evidenceExists = () => false,
   githubRunIsSuccessful = () => false,
+  auditCiRunIsValid = () => false,
+  gapIssueIsValid = () => false,
   fileContains = () => false,
   goldenIsValid = () => false,
   expectedCommit,
@@ -433,6 +432,12 @@ export function evaluateV1Release({
     ...validateTraceability(traceability, deferrals, {
       evidenceExists,
       githubRunIsSuccessful,
+    }),
+    ...validateNonUiCapabilityEvidence(traceability, capabilityEvidence, {
+      evidenceExists,
+      githubRunIsSuccessful,
+      auditCiRunIsValid,
+      gapIssueIsValid,
     }),
     ...validateUiMatrix(uiMatrix, { goldenIsValid }),
     ...validateDeviationApprovals(uiMatrix, deviationApprovals, {
@@ -491,25 +496,67 @@ export function isSuccessfulGithubActionsRun(reference, context = {}) {
   const [, owner, repository, runId] = match;
   if (`${owner}/${repository}` !== EXPECTED_GITHUB_REPOSITORY) return false;
   try {
-    const output = execFileSync(
-      "gh",
-      [
-        "api",
-        `repos/${owner}/${repository}/actions/runs/${runId}`,
-        "--jq",
-        "{status: .status, conclusion: .conclusion, url: .html_url, headSha: .head_sha, path: .path, event: .event}",
-      ],
-      {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-        timeout: 15_000,
-      },
+    const run = queryGithubApi(
+      `repos/${owner}/${repository}/actions/runs/${runId}`,
+      "{status: .status, conclusion: .conclusion, url: .html_url, headSha: .head_sha, path: .path, event: .event}",
     );
-    const run = JSON.parse(output);
     return isValidGithubActionsRunData(reference, run, context);
   } catch {
     return false;
   }
+}
+
+export function isValidGapIssueData(reference, issue) {
+  const match = reference.match(GITHUB_ISSUE_REFERENCE);
+  return Boolean(
+    match &&
+    issue?.state?.toUpperCase() === "OPEN" &&
+    issue.title?.trim() &&
+    Array.isArray(issue.labels) &&
+    issue.labels.some((label) => BOUNDED_GAP_LABELS.has(label)),
+  );
+}
+
+function isOpenReadyGithubIssue(reference) {
+  const match = reference.match(GITHUB_ISSUE_REFERENCE);
+  if (!match) return false;
+  try {
+    const issue = queryGithubApi(
+      `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/${match[1]}`,
+      "{state: .state, title: .title, labels: [.labels[].name]}",
+    );
+    return isValidGapIssueData(reference, issue);
+  } catch {
+    return false;
+  }
+}
+
+function isAuditCiRun(reference, expectedHeadSha) {
+  const match = reference?.match(GITHUB_ACTIONS_RUN_URL);
+  if (!match || !expectedHeadSha) return false;
+  const [, owner, repository, runId] = match;
+  if (`${owner}/${repository}` !== EXPECTED_GITHUB_REPOSITORY) return false;
+  try {
+    const run = queryGithubApi(
+      `repos/${owner}/${repository}/actions/runs/${runId}`,
+      "{status: .status, conclusion: .conclusion, url: .html_url, headSha: .head_sha, path: .path, event: .event}",
+    );
+    return isValidGithubActionsRunData(reference, run, {
+      gateId: "final-production-ci",
+      expectedCommit: expectedHeadSha,
+    });
+  } catch {
+    return false;
+  }
+}
+
+function queryGithubApi(path, jq) {
+  const output = execFileSync("gh", ["api", path, "--jq", jq], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+    timeout: 15_000,
+  });
+  return JSON.parse(output);
 }
 
 function main() {
@@ -519,6 +566,9 @@ function main() {
   const result = evaluateV1Release({
     evidence: JSON.parse(readFileSync("docs/implementation/v1-release-evidence.json", "utf8")),
     traceability: readFileSync("docs/planning/v1-capability-traceability.md", "utf8"),
+    capabilityEvidence: JSON.parse(
+      readFileSync("docs/implementation/m3-236-non-ui-capability-evidence.json", "utf8"),
+    ),
     uiMatrix: readFileSync("docs/ui/v1-ui-parity-matrix.md", "utf8"),
     deferrals: JSON.parse(readFileSync("docs/planning/v1-deferrals.json", "utf8")),
     deviationApprovals: JSON.parse(readFileSync("docs/ui/v1-ui-deviations.json", "utf8")),
@@ -526,6 +576,8 @@ function main() {
     actionEvidence: JSON.parse(readFileSync("docs/implementation/v1-action-evidence.json", "utf8")),
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
+    auditCiRunIsValid: isAuditCiRun,
+    gapIssueIsValid: isOpenReadyGithubIssue,
     fileContains,
     goldenIsValid,
     expectedCommit,

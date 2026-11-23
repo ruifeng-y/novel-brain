@@ -11,6 +11,7 @@ import {
 import {
   REQUIRED_GATE_IDS,
   evaluateV1Release,
+  isValidGapIssueData,
   isValidGithubActionsRunData,
   isSuccessfulGithubActionsRun,
 } from "../validate-v1-release.mjs";
@@ -347,6 +348,26 @@ describe("V1 release gate", () => {
     expect(result.blockers).toContain("auth:deviation-evidence-self-referential");
   });
 
+  it("propagates non-UI capability audit blockers through the release gate", () => {
+    const blockedTraceability = [
+      "| ID | Capability | Scope | Status | Primary issue | Supporting | Design | Evidence | Milestone |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      traceRow("UI-001", "V1", "verified", "#104"),
+      traceRow("IO-001", "V1", "implemented", "#126"),
+      traceRow("PERF-001", "后续", "deferred", "—"),
+    ].join("\n");
+    const result = evaluate({
+      traceability: blockedTraceability,
+      capabilityEvidence: {
+        schemaVersion: 1,
+        evidence: {},
+        capabilities: {},
+      },
+    });
+
+    expect(result.blockers).toContain("capability-audit:missing:IO-001");
+  });
+
   it("requires action evidence to cover the declared required action IDs", () => {
     const actionContract = passingActionContract();
     actionContract.pages.auth.push("secondary");
@@ -414,6 +435,19 @@ describe("V1 release gate", () => {
         { gateId: "final-production-ci", expectedCommit: "abc123" },
       ),
     ).toBe(false);
+  });
+
+  it("accepts only open, bounded follow-up issues for capability gaps", () => {
+    const reference = "#261";
+    const issue = {
+      state: "open",
+      title: "补齐 DOCX 导入",
+      labels: ["ready-for-agent", "m3"],
+    };
+    expect(isValidGapIssueData(reference, issue)).toBe(true);
+    expect(isValidGapIssueData(reference, { ...issue, state: "CLOSED" })).toBe(false);
+    expect(isValidGapIssueData(reference, { ...issue, labels: ["m3"] })).toBe(false);
+    expect(isValidGapIssueData("999", issue)).toBe(false);
   });
 
   it("rejects truncated pseudo-PNG evidence", () => {
