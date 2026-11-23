@@ -359,7 +359,7 @@ describe("settings import HTTP integration", () => {
       .expect(413);
     expect(uploadLimit.body.error).toMatchObject({
       code: "VALIDATION_INVALID",
-      message: "上传文件过大，请缩小文件后重试",
+      message: "请求内容过大，请缩小后重试",
     });
 
     const decompressionBomb = await owner

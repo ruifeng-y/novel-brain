@@ -2,11 +2,13 @@ import { strToU8, zipSync } from "fflate";
 
 interface DocxFixtureOptions {
   paragraphs?: string[];
-  styledParagraphs?: Array<{ text: string; headingLevel?: number }>;
+  styledParagraphs?: Array<{ text: string; headingLevel?: number; outlineLevel?: number }>;
   tableRows?: string[][];
   documentXml?: string;
   relationshipsXml?: string;
   extraEntries?: Record<string, Uint8Array>;
+  omitContentTypes?: boolean;
+  omitPackageRelationships?: boolean;
 }
 
 const CONTENT_TYPES = [
@@ -34,7 +36,7 @@ export function buildDocxFixture(options: DocxFixtureOptions = {}): Buffer {
       "<w:body>",
       ...(options.paragraphs ?? []).map((paragraph) => paragraphXml(paragraph)),
       ...(options.styledParagraphs ?? []).map((paragraph) =>
-        paragraphXml(paragraph.text, paragraph.headingLevel),
+        paragraphXml(paragraph.text, paragraph.headingLevel, paragraph.outlineLevel),
       ),
       ...(options.tableRows ?? []).map((row) => tableXml(row)),
       "<w:sectPr/>",
@@ -43,8 +45,8 @@ export function buildDocxFixture(options: DocxFixtureOptions = {}): Buffer {
     ].join("");
 
   const entries: Record<string, Uint8Array> = {
-    "[Content_Types].xml": strToU8(CONTENT_TYPES),
-    "_rels/.rels": strToU8(PACKAGE_RELATIONSHIPS),
+    ...(options.omitContentTypes ? {} : { "[Content_Types].xml": strToU8(CONTENT_TYPES) }),
+    ...(options.omitPackageRelationships ? {} : { "_rels/.rels": strToU8(PACKAGE_RELATIONSHIPS) }),
     "word/document.xml": strToU8(documentXml),
     ...(options.extraEntries ?? {}),
   };
@@ -58,9 +60,10 @@ export function encryptedDocxFixture(): Buffer {
   return Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0, 0, 0]);
 }
 
-function paragraphXml(text: string, headingLevel?: number): string {
-  const properties =
-    headingLevel === undefined ? "" : `<w:pPr><w:pStyle w:val="Heading${headingLevel}"/></w:pPr>`;
+function paragraphXml(text: string, headingLevel?: number, outlineLevel?: number): string {
+  const style = headingLevel === undefined ? "" : `<w:pStyle w:val="Heading${headingLevel}"/>`;
+  const outline = outlineLevel === undefined ? "" : `<w:outlineLvl w:val="${outlineLevel}"/>`;
+  const properties = style || outline ? `<w:pPr>${style}${outline}</w:pPr>` : "";
   return `<w:p>${properties}<w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
 }
 

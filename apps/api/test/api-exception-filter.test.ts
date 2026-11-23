@@ -136,7 +136,7 @@ describe("API exception filter sensitive payload boundary", () => {
     expect(response.status).toHaveBeenCalledWith(413);
     expect(response.json.mock.calls[0]?.[0].error).toMatchObject({
       code: "VALIDATION_INVALID",
-      message: "上传文件过大，请缩小文件后重试",
+      message: "请求内容过大，请缩小后重试",
     });
   });
 
@@ -149,7 +149,7 @@ describe("API exception filter sensitive payload boundary", () => {
     expect(response.status).toHaveBeenCalledWith(413);
     expect(response.json.mock.calls[0]?.[0].error).toMatchObject({
       code: "VALIDATION_INVALID",
-      message: "上传文件过大，请缩小文件后重试",
+      message: "请求内容过大，请缩小后重试",
     });
   });
 });

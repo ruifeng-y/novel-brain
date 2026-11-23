@@ -23,49 +23,57 @@ export interface ImportedFileText {
 }
 
 export const SUPPORTED_IMPORT_EXTENSIONS = [".txt", ".md", ".markdown", ".docx"] as const;
+const IMPORT_POLICIES = {
+  manuscript: {
+    label: "旧稿",
+    maxUploadBytes: 2 * 1024 * 1024,
+    maxFileBytes: 1024 * 1024,
+    maxUncompressedBytes: 8 * 1024 * 1024,
+    maxTextCharacters: 1_000_000,
+    oversizeMessage: "旧稿文件不能超过 1 MB",
+    rejectEmpty: false,
+  },
+  settings: {
+    label: "设定",
+    maxUploadBytes: 512 * 1024,
+    maxFileBytes: 256 * 1024,
+    maxUncompressedBytes: 4 * 1024 * 1024,
+    maxTextCharacters: 100_000,
+    oversizeMessage: "设定文件不能超过 256 KB",
+    rejectEmpty: true,
+  },
+} as const;
 export const MAX_IMPORT_UPLOAD_BYTES: Record<ImportFileKind, number> = {
-  manuscript: 2 * 1024 * 1024,
-  settings: 512 * 1024,
-};
-const MAX_IMPORT_FILE_BYTES: Record<ImportFileKind, number> = {
-  manuscript: 1024 * 1024,
-  settings: 256 * 1024,
-};
-const MAX_DOCX_UNCOMPRESSED_BYTES: Record<ImportFileKind, number> = {
-  manuscript: 8 * 1024 * 1024,
-  settings: 4 * 1024 * 1024,
-};
-const MAX_IMPORT_TEXT_CHARACTERS: Record<ImportFileKind, number> = {
-  manuscript: 1_000_000,
-  settings: 100_000,
+  manuscript: IMPORT_POLICIES.manuscript.maxUploadBytes,
+  settings: IMPORT_POLICIES.settings.maxUploadBytes,
 };
 
 export function readImportFile(file: ImportUploadFile, kind: ImportFileKind): ImportedFileText {
   const sourceName = file.originalname.trim();
   const extension = importExtension(sourceName);
-  const label = kind === "manuscript" ? "旧稿" : "设定";
+  const policy = IMPORT_POLICIES[kind];
   if (
     !SUPPORTED_IMPORT_EXTENSIONS.includes(extension as (typeof SUPPORTED_IMPORT_EXTENSIONS)[number])
   ) {
-    throw new ApiError(400, "VALIDATION_INVALID", `请选择 TXT、Markdown 或 DOCX ${label}文件`);
-  }
-  if (kind === "settings" && file.size <= 0) {
-    throw new ApiError(400, "VALIDATION_INVALID", "设定文件为空");
-  }
-  if (file.size > MAX_IMPORT_FILE_BYTES[kind]) {
     throw new ApiError(
       400,
       "VALIDATION_INVALID",
-      kind === "manuscript" ? "旧稿文件不能超过 1 MB" : "设定文件不能超过 256 KB",
+      `请选择 TXT、Markdown 或 DOCX ${policy.label}文件`,
     );
+  }
+  if (policy.rejectEmpty && file.size <= 0) {
+    throw new ApiError(400, "VALIDATION_INVALID", `${policy.label}文件为空`);
+  }
+  if (file.size > policy.maxFileBytes) {
+    throw new ApiError(400, "VALIDATION_INVALID", policy.oversizeMessage);
   }
 
   if (isDocxFileName(sourceName)) {
     try {
       const result = readDocxText(file.buffer, {
-        maxCompressedBytes: MAX_IMPORT_FILE_BYTES[kind],
-        maxUncompressedBytes: MAX_DOCX_UNCOMPRESSED_BYTES[kind],
-        maxTextCharacters: MAX_IMPORT_TEXT_CHARACTERS[kind],
+        maxCompressedBytes: policy.maxFileBytes,
+        maxUncompressedBytes: policy.maxUncompressedBytes,
+        maxTextCharacters: policy.maxTextCharacters,
       });
       return {
         text: result.text,

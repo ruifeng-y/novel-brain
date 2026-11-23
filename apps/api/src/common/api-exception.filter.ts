@@ -65,7 +65,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         apiErrorSchema.parse({
           error: {
             code: "VALIDATION_INVALID",
-            message: "上传文件过大，请缩小文件后重试",
+            message: "请求内容过大，请缩小后重试",
             details: {},
             requestId,
           },

@@ -292,7 +292,7 @@ describe("manuscript import HTTP integration", () => {
     const styledParagraphs = [
       { text: "断碑夜雨", headingLevel: 1 },
       { text: "雨落在断碑上。" },
-      { text: "夜船", headingLevel: 1 },
+      { text: "夜船", outlineLevel: 0 },
       { text: "夜船顺流而下。" },
     ];
 
@@ -325,6 +325,37 @@ describe("manuscript import HTTP integration", () => {
     ]);
   });
 
+  it("accepts ordinary Word hyperlink relationships without following them", async () => {
+    const owner = await createAuthenticatedAgent("manuscript-docx-hyperlink@example.com");
+    const token = await csrf(owner);
+
+    const created = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["第一章 外链正文", "正文只保留文字，不访问链接。"],
+          relationshipsXml: [
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+            '<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.com/reference" TargetMode="External"/>',
+            "</Relationships>",
+          ].join(""),
+        }),
+        {
+          filename: "hyperlink.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(200);
+
+    expect(created.body.data.chapters[0].content).toBe(
+      "第一章 外链正文\n正文只保留文字，不访问链接。",
+    );
+  });
+
   it("rejects malformed, encrypted, empty, oversized and adversarial DOCX without writing canon", async () => {
     const owner = await createAuthenticatedAgent("manuscript-docx-errors@example.com");
     const token = await csrf(owner);
@@ -341,6 +372,68 @@ describe("manuscript import HTTP integration", () => {
       })
       .expect(400);
     expect(malformed.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
+    const missingContentTypes = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["第一章 缺少包类型"],
+          omitContentTypes: true,
+        }),
+        {
+          filename: "missing-content-types.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(missingContentTypes.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
+    const missingPackageRelationships = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["第一章 缺少包关系"],
+          omitPackageRelationships: true,
+        }),
+        {
+          filename: "missing-package-relationships.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(missingPackageRelationships.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿文件损坏或格式不受支持",
+    });
+
+    const wrongRoot = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          documentXml: '<?xml version="1.0" encoding="UTF-8"?><document>不是 Word 文档</document>',
+        }),
+        {
+          filename: "wrong-root.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(wrongRoot.body.error).toMatchObject({
       code: "VALIDATION_INVALID",
       message: "DOCX 旧稿文件损坏或格式不受支持",
     });
@@ -398,7 +491,7 @@ describe("manuscript import HTTP integration", () => {
       .expect(413);
     expect(uploadLimit.body.error).toMatchObject({
       code: "VALIDATION_INVALID",
-      message: "上传文件过大，请缩小文件后重试",
+      message: "请求内容过大，请缩小后重试",
     });
 
     const decompressionBomb = await owner
@@ -432,7 +525,7 @@ describe("manuscript import HTTP integration", () => {
           relationshipsXml: [
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
-            '<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="http://127.0.0.1/private" TargetMode="External"/>',
+            '<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/attachedTemplate" Target="http://127.0.0.1/private" TargetMode="External"/>',
             "</Relationships>",
           ].join(""),
         }),
@@ -458,7 +551,7 @@ describe("manuscript import HTTP integration", () => {
           relationshipsXml: [
             '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
-            '<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="http://127.0.0.1/private" TargetMode="Extern&#x61;l"/>',
+            '<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/attachedTemplate" Target="http://127.0.0.1/private" TargetMode="Extern&#x61;l"/>',
             "</Relationships>",
           ].join(""),
         }),

@@ -56,15 +56,24 @@ export function readDocxText(buffer: Buffer, options: DocxReadOptions): DocxText
 
   const entries = extractSafeEntries(buffer, options.maxUncompressedBytes);
   const documentXml = entries["word/document.xml"];
-  if (!documentXml) {
+  const contentTypesXml = entries["[Content_Types].xml"];
+  const packageRelationshipsXml = entries["_rels/.rels"];
+  if (!documentXml || !contentTypesXml || !packageRelationshipsXml) {
     throw new DocxImportError("invalid");
   }
   if (documentXml.byteLength > MAX_DOCUMENT_XML_BYTES) {
     throw new DocxImportError("oversized");
   }
 
+  if (
+    !hasMainDocumentContentType(decodeXml(contentTypesXml)) ||
+    !hasMainDocumentRelationship(decodeXml(packageRelationshipsXml))
+  ) {
+    throw new DocxImportError("invalid");
+  }
+
   for (const [name, entry] of Object.entries(entries)) {
-    if (name.toLowerCase().endsWith(".rels") && relationshipsHaveExternalTarget(decodeXml(entry))) {
+    if (name.toLowerCase().endsWith(".rels") && hasUnsafeExternalRelationship(decodeXml(entry))) {
       throw new DocxImportError("external_relation");
     }
   }
@@ -72,6 +81,9 @@ export function readDocxText(buffer: Buffer, options: DocxReadOptions): DocxText
   const xml = decodeXml(documentXml);
   if (/<!DOCTYPE|<!ENTITY/iu.test(xml)) {
     throw new DocxImportError("xml_declaration");
+  }
+  if (!isWordDocumentXml(xml)) {
+    throw new DocxImportError("invalid");
   }
 
   const result = extractVisibleText(xml, options.maxTextCharacters);
@@ -127,7 +139,12 @@ function extractSafeEntries(
         if (totalUncompressedBytes > maxUncompressedBytes) {
           throw new DocxImportError("oversized");
         }
-        return file.name === "word/document.xml" || file.name.toLowerCase().endsWith(".rels");
+        return (
+          file.name === "[Content_Types].xml" ||
+          file.name === "_rels/.rels" ||
+          file.name === "word/document.xml" ||
+          file.name.toLowerCase().endsWith(".rels")
+        );
       },
     });
   } catch (error) {
@@ -193,6 +210,11 @@ function extractVisibleText(xml: string, maxTextCharacters: number): DocxTextRes
     } else if (localName === "pstyle") {
       const styleId = attributeValue(tag.attributes, "val");
       paragraphHeading = paragraphHeading || (styleId ? isHeadingStyleId(styleId) : false);
+    } else if (localName === "outlinelvl") {
+      const outlineLevel = Number(attributeValue(tag.attributes, "val"));
+      paragraphHeading =
+        paragraphHeading ||
+        (Number.isInteger(outlineLevel) && outlineLevel >= 0 && outlineLevel <= 5);
     } else if (localName === "t") {
       textDepth += 1;
     } else if (localName === "tab") {
@@ -296,9 +318,49 @@ function blocksToText(blocks: Array<{ text: string; heading: boolean }>): DocxTe
   };
 }
 
-function relationshipsHaveExternalTarget(xml: string): boolean {
+function hasMainDocumentContentType(xml: string): boolean {
   const parser = new SaxesParser({ xmlns: false, position: false });
-  let external = false;
+  let found = false;
+  parser.on("doctype", () => {
+    throw new DocxImportError("xml_declaration");
+  });
+  parser.on("opentag", (tag) => {
+    if (localTagName(tag.name) !== "override") {
+      return;
+    }
+    const partName = attributeValue(tag.attributes, "partname");
+    const contentType = attributeValue(tag.attributes, "contenttype");
+    found =
+      found ||
+      (partName === "/word/document.xml" &&
+        contentType ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml");
+  });
+  parseRelationshipLikeXml(parser, xml);
+  return found;
+}
+
+function hasMainDocumentRelationship(xml: string): boolean {
+  const parser = new SaxesParser({ xmlns: false, position: false });
+  let found = false;
+  parser.on("doctype", () => {
+    throw new DocxImportError("xml_declaration");
+  });
+  parser.on("opentag", (tag) => {
+    if (localTagName(tag.name) !== "relationship") {
+      return;
+    }
+    const type = attributeValue(tag.attributes, "type");
+    const target = attributeValue(tag.attributes, "target")?.replace(/^\/+/u, "");
+    found = found || (type?.endsWith("/officeDocument") === true && target === "word/document.xml");
+  });
+  parseRelationshipLikeXml(parser, xml);
+  return found;
+}
+
+function hasUnsafeExternalRelationship(xml: string): boolean {
+  const parser = new SaxesParser({ xmlns: false, position: false });
+  let unsafe = false;
   parser.on("doctype", () => {
     throw new DocxImportError("xml_declaration");
   });
@@ -307,11 +369,31 @@ function relationshipsHaveExternalTarget(xml: string): boolean {
       return;
     }
     const targetMode = attributeValue(tag.attributes, "targetmode");
-    if (targetMode?.toLowerCase() === "external") {
-      external = true;
+    const type = attributeValue(tag.attributes, "type");
+    if (targetMode?.toLowerCase() === "external" && !type?.toLowerCase().endsWith("/hyperlink")) {
+      unsafe = true;
     }
   });
+  parseRelationshipLikeXml(parser, xml);
+  return unsafe;
+}
 
+function isWordDocumentXml(xml: string): boolean {
+  const parser = new SaxesParser({ xmlns: true, position: false });
+  let rootChecked = false;
+  let valid = false;
+  parser.on("doctype", () => {
+    throw new DocxImportError("xml_declaration");
+  });
+  parser.on("opentag", (tag) => {
+    if (rootChecked) {
+      return;
+    }
+    rootChecked = true;
+    valid =
+      tag.local === "document" &&
+      tag.uri === "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  });
   try {
     parser.write(xml).close();
   } catch (error) {
@@ -320,7 +402,18 @@ function relationshipsHaveExternalTarget(xml: string): boolean {
     }
     throw new DocxImportError("invalid");
   }
-  return external;
+  return rootChecked && valid;
+}
+
+function parseRelationshipLikeXml(parser: SaxesParser, xml: string): void {
+  try {
+    parser.write(xml).close();
+  } catch (error) {
+    if (error instanceof DocxImportError) {
+      throw error;
+    }
+    throw new DocxImportError("invalid");
+  }
 }
 
 function formatTableRow(cells: string[]): string {
