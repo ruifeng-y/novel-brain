@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../src/app.module";
 import { MAIL_GATEWAY, type MailGateway } from "../src/auth/mail.gateway";
 import { ApiExceptionFilter } from "../src/common/api-exception.filter";
+import { buildDocxFixture, encryptedDocxFixture } from "./helpers/docx-fixture";
 
 const databaseUrl =
   process.env.TEST_DATABASE_URL ??
@@ -177,6 +178,238 @@ describe("settings import HTTP integration", () => {
         ],
       },
     });
+  });
+
+  it("imports supported DOCX settings through settings mode and persists accepted entities", async () => {
+    const owner = await createAuthenticatedAgent("docx-settings-import@example.com");
+    const token = await csrf(owner);
+
+    const created = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["人物：沈砚，外门杂役，左臂骨折。", "地图：人界 → 东境 → 忘川渡。"],
+        }),
+        {
+          filename: "settings.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(200);
+
+    expect(created.body.data).toMatchObject({
+      sourceKind: "file",
+      sourceName: "settings.docx",
+      canConfirm: true,
+      report: {
+        accepted: [
+          { type: "character", name: "沈砚" },
+          { type: "map", name: "人界 → 东境 → 忘川渡" },
+        ],
+        conflicts: [],
+        unparsed: [],
+      },
+    });
+
+    const confirmed = await owner
+      .post(`/api/v1/imports/${created.body.data.id}/confirm`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "settings-docx-confirm")
+      .send({ title: "DOCX 设定开书" })
+      .expect(200);
+    expect(confirmed.body.data).toMatchObject({
+      title: "DOCX 设定开书",
+      sourceMode: "settings_import",
+      mainBranch: { name: "main" },
+    });
+
+    const importedBranchPath =
+      `/api/v1/works/${confirmed.body.data.id}/branches/` + `${confirmed.body.data.mainBranch.id}`;
+    const materialized = await owner.get(`${importedBranchPath}/entities`).expect(200);
+    expect(
+      materialized.body.data.map((entity: { type: string; name: string }) => [
+        entity.type,
+        entity.name,
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["character", "沈砚"],
+        ["map", "人界 → 东境 → 忘川渡"],
+      ]),
+    );
+    expect(
+      materialized.body.data.every((entity: { source: string }) => entity.source === "import"),
+    ).toBe(true);
+  });
+
+  it("supports DOCX settings tables and preserves each row as traceable text", async () => {
+    const owner = await createAuthenticatedAgent("docx-settings-table@example.com");
+    const token = await csrf(owner);
+
+    const created = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          tableRows: [
+            ["类型", "名称", "说明"],
+            ["人物", "顾青", "太玄门弟子"],
+            ["势力", "太玄门", "正道魁首"],
+          ],
+        }),
+        {
+          filename: "settings-table.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(200);
+
+    expect(created.body.data.report.accepted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "character",
+          name: "顾青",
+          sourceExcerpt: "人物：顾青，太玄门弟子",
+        }),
+        expect.objectContaining({
+          type: "faction",
+          name: "太玄门",
+          sourceExcerpt: "势力：太玄门，正道魁首",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects malformed, encrypted, empty, oversized and adversarial DOCX settings without partial canon", async () => {
+    const owner = await createAuthenticatedAgent("docx-settings-errors@example.com");
+    const token = await csrf(owner);
+    const currentUser = await owner.get("/api/v1/auth/me").expect(200);
+    const userId = currentUser.body.data.user.id as string;
+
+    const malformed = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", Buffer.from("PK\u0003\u0004broken", "binary"), {
+        filename: "broken.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(400);
+    expect(malformed.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 设定文件损坏或格式不受支持",
+    });
+
+    const encrypted = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", encryptedDocxFixture(), {
+        filename: "encrypted.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(400);
+    expect(encrypted.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 设定文件已加密，请取消密码保护后重新上传",
+    });
+
+    const empty = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", buildDocxFixture({ paragraphs: ["", "   "] }), {
+        filename: "empty.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(400);
+    expect(empty.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 设定文件中没有可导入的正文",
+    });
+
+    const oversized = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", Buffer.alloc(256 * 1024 + 1, 0x50), {
+        filename: "oversized.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(400);
+    expect(oversized.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "设定文件不能超过 256 KB",
+    });
+
+    const uploadLimit = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", Buffer.alloc(600 * 1024, 0x50), {
+        filename: "too-large-upload.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(413);
+    expect(uploadLimit.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "上传文件过大，请缩小文件后重试",
+    });
+
+    const decompressionBomb = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["人物：沈砚，外门杂役。", "压".repeat(110_000)],
+        }),
+        {
+          filename: "compressed-large.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(decompressionBomb.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 设定解压后内容过大",
+    });
+
+    const macro = await owner
+      .post("/api/v1/imports")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach(
+        "file",
+        buildDocxFixture({
+          paragraphs: ["人物：沈砚，外门杂役。"],
+          extraEntries: { "word/vbaProject.bin": new Uint8Array([1, 2, 3]) },
+        }),
+        {
+          filename: "macro.docx",
+          contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        },
+      )
+      .expect(400);
+    expect(macro.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 设定包含宏或嵌入对象",
+    });
+
+    const counts = await databasePool.query<{ works: number; jobs: number }>(
+      `SELECT
+        (SELECT count(*)::int FROM works WHERE user_id = $1) AS works,
+        (SELECT count(*)::int FROM import_jobs WHERE user_id = $1) AS jobs`,
+      [userId],
+    );
+    expect(counts.rows[0]).toEqual({ works: 0, jobs: 0 });
   });
 
   it("reports contradictory candidates and disables confirmation", async () => {
@@ -408,8 +641,8 @@ describe("settings import HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", ownerToken)
       .attach("file", Buffer.from("binary"), {
-        filename: "settings.docx",
-        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename: "settings.rtf",
+        contentType: "application/rtf",
       })
       .expect(400);
     expect(unsupported.body.error.code).toBe("VALIDATION_INVALID");

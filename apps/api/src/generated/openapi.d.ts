@@ -17196,7 +17196,7 @@ export interface operations {
               status: "ready" | "partial" | "empty";
               sourceName: string;
               /** @enum {string} */
-              format: "txt" | "markdown";
+              format: "txt" | "markdown" | "docx";
               chapters: {
                 order: number;
                 title: string;
@@ -17247,7 +17247,7 @@ export interface operations {
               status: "ready" | "partial" | "empty";
               sourceName: string;
               /** @enum {string} */
-              format: "txt" | "markdown";
+              format: "txt" | "markdown" | "docx";
               chapters: {
                 order: number;
                 title: string;

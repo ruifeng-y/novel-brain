@@ -8,9 +8,11 @@ import type {
   SettingsImportCreateRequest,
   WorkOverview,
 } from "@novel-brain/contracts";
+import { settingsImportCreateRequestSchema } from "@novel-brain/contracts";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+import { readImportFile, type ImportUploadFile } from "./import-file";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SettingsImportRepository } from "./settings-import.repository";
@@ -64,6 +66,19 @@ export class SettingsImportService {
       unparsed: parsed.unparsed,
     });
     return this.toContract(record);
+  }
+
+  async createFromFile(
+    userId: string,
+    file: ImportUploadFile,
+    sourceName?: string,
+  ): Promise<SettingsImport> {
+    const uploaded = readImportFile(file, "settings");
+    const request = settingsImportCreateRequestSchema.parse({
+      text: uploaded.text,
+      sourceName: sourceName?.trim() || file.originalname.trim(),
+    });
+    return this.create(userId, request, { kind: "file", name: file.originalname });
   }
 
   async get(userId: string, importId: string): Promise<SettingsImport> {

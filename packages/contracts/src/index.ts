@@ -1059,7 +1059,7 @@ export type SettingsImportConflictDecisionRequest = z.infer<
 export const settingsImportResponseSchema = apiEnvelopeSchema(settingsImportSchema);
 export const importReportResponseSchema = apiEnvelopeSchema(importReportSchema);
 
-export const manuscriptImportFormatSchema = z.enum(["txt", "markdown"]);
+export const manuscriptImportFormatSchema = z.enum(["txt", "markdown", "docx"]);
 export type ManuscriptImportFormat = z.infer<typeof manuscriptImportFormatSchema>;
 
 export const manuscriptImportStatusSchema = z.enum(["ready", "partial", "empty"]);

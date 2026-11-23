@@ -36912,7 +36912,7 @@
                         },
                         "format": {
                           "type": "string",
-                          "enum": ["txt", "markdown"]
+                          "enum": ["txt", "markdown", "docx"]
                         },
                         "chapters": {
                           "type": "array",
@@ -37047,7 +37047,7 @@
                         },
                         "format": {
                           "type": "string",
-                          "enum": ["txt", "markdown"]
+                          "enum": ["txt", "markdown", "docx"]
                         },
                         "chapters": {
                           "type": "array",

@@ -60,6 +60,20 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    if (isUploadLimitError(exception) || isPayloadTooLargeError(exception)) {
+      response.status(413).json(
+        apiErrorSchema.parse({
+          error: {
+            code: "VALIDATION_INVALID",
+            message: "上传文件过大，请缩小文件后重试",
+            details: {},
+            requestId,
+          },
+        }),
+      );
+      return;
+    }
+
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       response.status(status).json(
@@ -94,6 +108,19 @@ export class ApiExceptionFilter implements ExceptionFilter {
       }),
     );
   }
+}
+
+function isUploadLimitError(exception: unknown): boolean {
+  return (
+    typeof exception === "object" &&
+    exception !== null &&
+    "code" in exception &&
+    exception.code === "LIMIT_FILE_SIZE"
+  );
+}
+
+function isPayloadTooLargeError(exception: unknown): boolean {
+  return exception instanceof HttpException && exception.getStatus() === 413;
 }
 
 function publicErrorMessage(status: number): string {

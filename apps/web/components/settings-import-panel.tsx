@@ -72,16 +72,22 @@ export function SettingsImportPanel({
 
   async function readFixture(file: File) {
     const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    if (![".txt", ".md", ".markdown"].includes(extension)) {
+    if (![".txt", ".md", ".markdown", ".docx"].includes(extension)) {
       setSelectedFile(null);
       setSettingsImport(null);
-      setError("请选择 TXT 或 Markdown 设定文件。");
+      setError("请选择 TXT、Markdown 或 DOCX 设定文件。");
+      return;
+    }
+    if (extension === ".docx" && file.size > 256 * 1024) {
+      setSelectedFile(null);
+      setSettingsImport(null);
+      setError("DOCX 设定文件不能超过 256 KB。");
       return;
     }
     setSelectedFile(file);
     setSettingsImport(null);
     setError("");
-    setText(await file.text());
+    setText(extension === ".docx" ? "" : await file.text());
   }
 
   async function recognize() {
@@ -210,9 +216,9 @@ export function SettingsImportPanel({
           <label className="settings-upload" htmlFor="settings-file">
             <FileUp size={22} aria-hidden="true" />
             <strong>上传设定文件</strong>
-            <span>TXT 或 Markdown，最大 256 KB</span>
+            <span>TXT、Markdown 或 DOCX，最大 256 KB</span>
             <input
-              accept=".txt,.md,.markdown,text/plain,text/markdown"
+              accept=".txt,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               id="settings-file"
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -251,7 +257,7 @@ export function SettingsImportPanel({
         <div className="model-form-actions">
           <button
             className="btn btn-ghost"
-            disabled={busy !== null || !text.trim()}
+            disabled={busy !== null || (!text.trim() && !selectedFile)}
             onClick={recognize}
             type="button"
           >

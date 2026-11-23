@@ -37,9 +37,10 @@ import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 import { ApiError } from "../common/api-error";
+import { MAX_IMPORT_UPLOAD_BYTES, type ImportUploadFile } from "./import-file";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { ManuscriptImportService, formatFromName } from "./manuscript-import.service";
+import { ManuscriptImportService } from "./manuscript-import.service";
 
 function schemaOf(schema: z.ZodType): SchemaObject {
   return z.toJSONSchema(schema, { target: "openapi-3.0", io: "output" }) as SchemaObject;
@@ -59,15 +60,6 @@ const createRequestBodySchema: SchemaObject = {
     file: { type: "string", format: "binary" },
   },
 };
-const SUPPORTED_FILE_EXTENSIONS = [".txt", ".md", ".markdown"] as const;
-const MAX_MANUSCRIPT_FILE_BYTES = 1024 * 1024;
-
-interface UploadedTextFile {
-  originalname: string;
-  size: number;
-  buffer: Buffer;
-}
-
 @ApiTags("imports")
 @Controller("imports/manuscripts")
 @UseGuards(SessionAuthGuard, CsrfGuard)
@@ -146,35 +138,22 @@ export class ManuscriptImportController {
 
   @Post()
   @HttpCode(200)
-  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: MAX_MANUSCRIPT_FILE_BYTES } }))
+  @UseInterceptors(
+    FileInterceptor("file", { limits: { fileSize: MAX_IMPORT_UPLOAD_BYTES.manuscript } }),
+  )
   @ApiConsumes("multipart/form-data")
   @ApiBody({ schema: createRequestBodySchema })
   @ApiOkResponse({ description: "Parsed manuscript chapters", schema: importResponseJsonSchema })
   async create(
     @Req() request: AuthenticatedRequest,
     @Body() _body: unknown,
-    @UploadedFile() file?: UploadedTextFile,
+    @UploadedFile() file?: ImportUploadFile,
   ) {
     if (!file) {
-      throw new ApiError(400, "VALIDATION_INVALID", "请选择 TXT 或 Markdown 旧稿文件");
+      throw new ApiError(400, "VALIDATION_INVALID", "请选择 TXT、Markdown 或 DOCX 旧稿文件");
     }
-    const sourceName = file.originalname.trim();
-    const extension = sourceName.slice(sourceName.lastIndexOf(".")).toLowerCase();
-    if (
-      !SUPPORTED_FILE_EXTENSIONS.includes(extension as (typeof SUPPORTED_FILE_EXTENSIONS)[number])
-    ) {
-      throw new ApiError(400, "VALIDATION_INVALID", "请选择 TXT 或 Markdown 旧稿文件");
-    }
-    if (file.size > MAX_MANUSCRIPT_FILE_BYTES) {
-      throw new ApiError(400, "VALIDATION_INVALID", "旧稿文件不能超过 1 MB");
-    }
-    const text = decodeUtf8(file.buffer);
     const requestId = createRequestId();
-    const result = await this.service.create(this.userId(request), {
-      text,
-      sourceName,
-      format: formatFromName(sourceName),
-    });
+    const result = await this.service.createFromFile(this.userId(request), file);
     return manuscriptImportResponseSchema.parse({
       data: result,
       requestId,
@@ -327,13 +306,5 @@ export class ManuscriptImportController {
       ip: getClientIp(request) || "unknown",
       userAgent: userAgent || "unknown",
     };
-  }
-}
-
-function decodeUtf8(buffer: Buffer): string {
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
-  } catch {
-    throw new ApiError(400, "VALIDATION_INVALID", "旧稿编码无法解析，请使用 UTF-8 编码");
   }
 }

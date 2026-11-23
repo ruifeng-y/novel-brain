@@ -22,7 +22,8 @@ import type {
   ChapterVersionRecord,
   ManuscriptImportJobRecord,
 } from "./manuscript-import.repository";
-import { parseManuscriptText } from "./manuscript-import.parser";
+import { parseManuscriptText, type ManuscriptSourceRange } from "./manuscript-import.parser";
+import { formatFromName, readImportFile, type ImportUploadFile } from "./import-file";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorksService } from "../works/works.service";
@@ -37,15 +38,40 @@ export class ManuscriptImportService {
 
   async create(
     userId: string,
-    input: { text: string; sourceName: string; format: ManuscriptImportFormat },
+    input: {
+      text: string;
+      sourceName: string;
+      format: ManuscriptImportFormat;
+      headingStarts?: readonly number[];
+    },
   ): Promise<ManuscriptImport> {
+    const parsed = parseManuscriptText(
+      input.text,
+      input.sourceName.replace(/\.[^.]+$/u, "") || "全文",
+      { headingStarts: input.headingStarts ?? [] },
+    );
     const record = await this.repository.create({
       id: uuidv7(),
       userId,
       sourceName: input.sourceName,
       sourceText: input.text,
+      metadata: {
+        sourceFormat: input.format,
+        sourceRanges: parsed.chapters.map((chapter) => chapter.sourceRange),
+        sourceHeadingStarts: [...(input.headingStarts ?? [])],
+      },
     });
     return this.toContract(record, input.format);
+  }
+
+  async createFromFile(userId: string, file: ImportUploadFile): Promise<ManuscriptImport> {
+    const uploaded = readImportFile(file, "manuscript");
+    return this.create(userId, {
+      text: uploaded.text,
+      sourceName: file.originalname.trim(),
+      format: uploaded.format,
+      headingStarts: uploaded.headingStarts,
+    });
   }
 
   async createChunked(
@@ -184,6 +210,7 @@ export class ManuscriptImportService {
         const parsed = parseManuscriptText(
           record.sourceText,
           record.sourceName?.replace(/\.[^.]+$/u, "") || "全文",
+          { headingStarts: headingStartsFromRecord(record) },
         );
         if (parsed.status === "empty") {
           throw new ApiError(400, "VALIDATION_INVALID", "空旧稿不能创建作品");
@@ -203,7 +230,7 @@ export class ManuscriptImportService {
       genre: input.genre,
       scaleTarget: input.scaleTarget,
       chapterLengthTarget: input.chapterLengthTarget,
-      chapters: input.chapters,
+      chapters: withSourceRanges(input.chapters),
       audit,
       idempotencyKey,
     });
@@ -225,6 +252,7 @@ export class ManuscriptImportService {
     const parsed = parseManuscriptText(
       sourceText,
       record.sourceName?.replace(/\.[^.]+$/u, "") || "全文",
+      { headingStarts: headingStartsFromRecord(record) },
     );
     return {
       id: record.id,
@@ -244,8 +272,22 @@ export class ManuscriptImportService {
   }
 }
 
-export function formatFromName(sourceName: string | null): ManuscriptImportFormat {
-  return sourceName?.toLowerCase().match(/\.(?:md|markdown)$/u) ? "markdown" : "txt";
+function headingStartsFromRecord(record: ManuscriptImportJobRecord): number[] {
+  const value = record.metadata.sourceHeadingStarts;
+  return Array.isArray(value)
+    ? value.filter((item): item is number => typeof item === "number" && Number.isInteger(item))
+    : [];
+}
+
+function withSourceRanges(
+  chapters: Array<{ title: string; content: string }>,
+): Array<{ title: string; content: string; sourceRange: ManuscriptSourceRange }> {
+  let offset = 0;
+  return chapters.map((chapter) => {
+    const sourceRange = { start: offset, end: offset + chapter.content.length };
+    offset = sourceRange.end;
+    return { ...chapter, sourceRange };
+  });
 }
 
 function toChapterContract(chapter: ChapterRecord): Chapter {

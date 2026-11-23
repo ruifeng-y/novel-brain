@@ -18,6 +18,8 @@ import {
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
+
+import type { ManuscriptSourceRange } from "./manuscript-import.parser";
 import { uuidv7 } from "uuidv7";
 
 import { countWords } from "./manuscript-import.parser";
@@ -64,6 +66,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
     userId: string;
     sourceName: string;
     sourceText: string;
+    metadata: Record<string, unknown>;
   }): Promise<ManuscriptImportJobRecord> {
     return this.withTenant(input.userId, async (transaction) => {
       const [job] = await transaction
@@ -76,6 +79,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           sourceKind: "file",
           sourceName: input.sourceName,
           sourceText: input.sourceText,
+          metadata: input.metadata,
         })
         .returning();
       if (!job) {
@@ -552,7 +556,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
     genre: string;
     scaleTarget: string;
     chapterLengthTarget: number;
-    chapters: Array<{ title: string; content: string }>;
+    chapters: Array<{ title: string; content: string; sourceRange: ManuscriptSourceRange }>;
     audit: WorksAuditContext;
     idempotencyKey: string;
   }): Promise<ConfirmedManuscriptResult | undefined> {
@@ -682,7 +686,13 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           objectType: "chapter",
           objectId: chapter.id,
           objectVersion: 1,
-          payload: { contentHash, importId: input.importId, source: "manuscript_import" },
+          payload: {
+            contentHash,
+            importId: input.importId,
+            source: "manuscript_import",
+            chapterNumber,
+            sourceRange: chapterInput.sourceRange,
+          },
           actorId: input.userId,
           message: `导入第 ${chapterNumber} 章`,
         });

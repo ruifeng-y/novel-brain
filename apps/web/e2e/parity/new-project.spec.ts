@@ -9,6 +9,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { buildDocxFixture } from "../helpers/docx";
 import {
   expectAuthorFacingLanguage,
   expectNoPrototypeOnlyLeakage,
@@ -265,6 +266,46 @@ test("imports partial settings and persists accepted entities", async ({ page, c
   }
 });
 
+test("imports DOCX settings through settings mode and persists accepted entities", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  await page.getByRole("button", { name: "导入设定", exact: true }).click();
+  await page.getByLabel("上传设定文件").setInputFiles({
+    name: "settings.docx",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    buffer: buildDocxFixture(["人物：沈砚，外门杂役，左臂骨折。", "势力：太玄门，正道魁首。"]),
+  });
+  const importResponse = waitForApiResponse(page, "POST", "/api/v1/imports");
+  await page.getByRole("button", { name: "开始识别" }).click();
+  const settingsImport = settingsImportResponseSchema.parse(
+    await (await importResponse).json(),
+  ).data;
+
+  await expect(page.getByText("已接受 2")).toBeVisible();
+  await expect(page.getByText("DOCX 不支持")).toHaveCount(0);
+  await page.getByLabel("书名").fill("DOCX 设定开书");
+  const confirmResponse = waitForApiResponse(
+    page,
+    "POST",
+    `/api/v1/imports/${settingsImport.id}/confirm`,
+  );
+  await page.getByRole("button", { name: "确认并创建作品" }).click();
+  const createdWork = workResponseSchema.parse(await (await confirmResponse).json()).data;
+  await expect(page).toHaveURL(new RegExp(`/workspace/${createdWork.id}/overview$`));
+
+  const persistedWork = await getPersistedWork(page, createdWork.id);
+  expect(persistedWork.sourceMode).toBe("settings_import");
+  const entities = await getPersistedSettingEntities(page, persistedWork);
+  expect(entities).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ type: "character", name: "沈砚", source: "import" }),
+      expect.objectContaining({ type: "faction", name: "太玄门", source: "import" }),
+    ]),
+  );
+});
+
 test("imports complete settings and reports pending candidates before creation", async ({
   page,
   context,
@@ -389,7 +430,65 @@ test("imports an old manuscript and persists chapter order and content", async (
   expect(persistedManuscript).toContain("沈砚按住左臂。");
 });
 
-test("shows empty, partial, unsupported and unreadable manuscript states", async ({
+test("imports a DOCX manuscript and persists ordered chapter content", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  await page.getByRole("button", { name: "导入旧稿", exact: true }).click();
+  await page.getByLabel("上传旧稿文件").setInputFiles({
+    name: "old-draft.docx",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    buffer: buildDocxFixture([
+      "第一章 断碑夜雨",
+      "雨落在断碑上。",
+      "第二章 夜船",
+      "夜船顺流而下。",
+    ]),
+  });
+  const recognizeResponse = waitForApiResponse(page, "POST", "/api/v1/imports/manuscripts");
+  await page.getByRole("button", { name: "识别章节" }).click();
+  const manuscriptImport = manuscriptImportResponseSchema.parse(
+    await (await recognizeResponse).json(),
+  ).data;
+
+  expect(manuscriptImport.format).toBe("docx");
+  expect(manuscriptImport.chapters.map((chapter) => chapter.title)).toEqual(["断碑夜雨", "夜船"]);
+  await expect(page.getByText("识别到 2 章")).toBeVisible();
+  await expect(page.getByText("DOCX 不支持")).toHaveCount(0);
+
+  for (const width of [1440, 1180, 900, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByRole("heading", { name: "把已经写下的部分带进来" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "确认并创建作品" })).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
+
+  await page.getByLabel("书名").fill("DOCX 旧稿新书");
+  const confirmResponse = waitForApiResponse(
+    page,
+    "POST",
+    `/api/v1/imports/manuscripts/${manuscriptImport.id}/confirm`,
+  );
+  await page.getByRole("button", { name: "确认并创建作品" }).click();
+  const confirmedImport = manuscriptImportConfirmResponseSchema.parse(
+    await (await confirmResponse).json(),
+  ).data;
+  await expect(page).toHaveURL(new RegExp(`/workspace/${confirmedImport.work.id}/overview$`));
+
+  const persistedWork = await getPersistedWork(page, confirmedImport.work.id);
+  expect(persistedWork.sourceMode).toBe("manuscript_import");
+  const persistedChapters = await getPersistedChapters(page, persistedWork);
+  expect(persistedChapters.map(({ title }) => title)).toEqual(["断碑夜雨", "夜船"]);
+  expect(persistedChapters.map((chapter) => chapter.currentVersion?.content ?? "").join("")).toBe(
+    ["第一章 断碑夜雨", "雨落在断碑上。", "第二章 夜船", "夜船顺流而下。"].join("\n"),
+  );
+});
+
+test("shows empty, partial, malformed and unreadable manuscript states", async ({
   page,
   context,
 }) => {
@@ -401,7 +500,8 @@ test("shows empty, partial, unsupported and unreadable manuscript states", async
     mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     buffer: Buffer.from("not supported", "utf8"),
   });
-  await expect(page.getByText("请选择 TXT 或 Markdown 旧稿文件")).toBeVisible();
+  await page.getByRole("button", { name: "识别章节" }).click();
+  await expect(page.getByText("DOCX 旧稿文件损坏或格式不受支持")).toBeVisible();
 
   await page.getByLabel("上传旧稿文件").setInputFiles({
     name: "empty.txt",

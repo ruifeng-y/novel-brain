@@ -35,7 +35,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 import { getClientIp } from "../auth/client-ip";
-import { ApiError } from "../common/api-error";
+import { MAX_IMPORT_UPLOAD_BYTES, type ImportUploadFile } from "./import-file";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SettingsImportService } from "./settings-import.service";
@@ -63,15 +63,6 @@ const decisionBodySchema = schemaOf(settingsImportConflictDecisionRequestSchema)
 const importResponseJsonSchema = schemaOf(settingsImportResponseSchema);
 const reportResponseJsonSchema = schemaOf(importReportResponseSchema);
 const workResponseJsonSchema = schemaOf(workResponseSchema);
-const SUPPORTED_FILE_EXTENSIONS = [".txt", ".md", ".markdown"] as const;
-const MAX_SETTINGS_FILE_BYTES = 256 * 1024;
-
-interface UploadedTextFile {
-  originalname: string;
-  mimetype: string;
-  size: number;
-  buffer: Buffer;
-}
 
 @ApiTags("imports")
 @Controller("imports")
@@ -81,7 +72,9 @@ export class SettingsImportController {
 
   @Post()
   @HttpCode(200)
-  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: MAX_SETTINGS_FILE_BYTES } }))
+  @UseInterceptors(
+    FileInterceptor("file", { limits: { fileSize: MAX_IMPORT_UPLOAD_BYTES.settings } }),
+  )
   @ApiConsumes("application/json", "multipart/form-data")
   @ApiBody({ schema: createRequestBodySchema })
   @ApiOkResponse({
@@ -91,16 +84,16 @@ export class SettingsImportController {
   async create(
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
-    @UploadedFile() file?: UploadedTextFile,
+    @UploadedFile() file?: ImportUploadFile,
   ) {
     const requestId = createRequestId();
-    const input = file
-      ? fileInput(file, body)
-      : {
-          request: settingsImportCreateRequestSchema.parse(body),
-          source: { kind: "paste" as const, name: null },
-        };
-    const result = await this.service.create(this.userId(request), input.request, input.source);
+    const result = file
+      ? await this.service.createFromFile(this.userId(request), file, sourceNameOverride(body))
+      : await this.service.create(
+          this.userId(request),
+          settingsImportCreateRequestSchema.parse(body),
+          { kind: "paste", name: null },
+        );
     return settingsImportResponseSchema.parse({
       data: result,
       requestId,
@@ -206,25 +199,9 @@ export class SettingsImportController {
   }
 }
 
-function fileInput(file: UploadedTextFile, body: unknown) {
-  const filename = file.originalname.trim();
-  const extension = filename.slice(filename.lastIndexOf(".")).toLowerCase();
-  if (
-    !SUPPORTED_FILE_EXTENSIONS.includes(extension as (typeof SUPPORTED_FILE_EXTENSIONS)[number])
-  ) {
-    throw new ApiError(400, "VALIDATION_INVALID", "请选择 TXT 或 Markdown 设定文件");
-  }
-  if (file.size <= 0 || file.size > MAX_SETTINGS_FILE_BYTES) {
-    throw new ApiError(400, "VALIDATION_INVALID", "设定文件为空或超过 256 KB");
-  }
-  const text = file.buffer.toString("utf8").trim();
+function sourceNameOverride(body: unknown): string | undefined {
   const form = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const sourceName =
-    typeof form.sourceName === "string" && form.sourceName.trim()
-      ? form.sourceName.trim()
-      : filename;
-  return {
-    request: settingsImportCreateRequestSchema.parse({ text, sourceName }),
-    source: { kind: "file" as const, name: filename },
-  };
+  return typeof form.sourceName === "string" && form.sourceName.trim()
+    ? form.sourceName.trim()
+    : undefined;
 }

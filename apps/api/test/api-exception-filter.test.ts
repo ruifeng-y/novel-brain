@@ -1,3 +1,4 @@
+import { PayloadTooLargeException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
@@ -124,5 +125,31 @@ describe("API exception filter sensitive payload boundary", () => {
       "UNHANDLED_ERROR_CANARY_133",
     );
     expect(JSON.stringify(logger.error.mock.calls)).not.toContain("UNHANDLED_ERROR_CANARY_133");
+  });
+
+  it("maps multipart file-size limits to a stable author-facing validation error", () => {
+    const { host, response } = createHost();
+    const filter = new ApiExceptionFilter({ error: vi.fn() } as never, []);
+
+    filter.catch(Object.assign(new Error("File too large"), { code: "LIMIT_FILE_SIZE" }), host);
+
+    expect(response.status).toHaveBeenCalledWith(413);
+    expect(response.json.mock.calls[0]?.[0].error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "上传文件过大，请缩小文件后重试",
+    });
+  });
+
+  it("maps Nest payload-too-large errors to the same author-facing validation error", () => {
+    const { host, response } = createHost();
+    const filter = new ApiExceptionFilter({ error: vi.fn() } as never, []);
+
+    filter.catch(new PayloadTooLargeException("File too large"), host);
+
+    expect(response.status).toHaveBeenCalledWith(413);
+    expect(response.json.mock.calls[0]?.[0].error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "上传文件过大，请缩小文件后重试",
+    });
   });
 });

@@ -26,11 +26,13 @@
     "bullmq": "6.6.0",
     "drizzle-orm": "0.45.4",
     "express": "^5.0.0",
+    "fflate": "0.8.2",
     "ioredis": "6.0.0",
     "nodemailer": "10.3.1",
     "pino": "^10.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
+    "saxes": "6.0.0",
     "sharp": "0.35.5",
     "uuidv7": "1.2.1",
     "zod": "4.6.7"
