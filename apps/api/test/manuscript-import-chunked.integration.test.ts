@@ -687,11 +687,6 @@ describe("chunked manuscript import recovery integration", () => {
     }
 
     await redis.flushdb();
-    const firstDelivery = (await importRepository.listRecoverableJobs()).find(
-      (job) => job.importId === created.importId,
-    );
-    expect(firstDelivery?.checkpoint.nextProcessSequence).toBe(0);
-
     const queueConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
     const workerConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
     const queue = new Queue<WorkerJob>(WORKER_QUEUE_NAME, { connection: queueConnection });
@@ -707,11 +702,19 @@ describe("chunked manuscript import recovery integration", () => {
     );
     try {
       await Promise.all([queue.waitUntilReady(), worker.waitUntilReady()]);
-      await queue.add(PROCESS_IMPORT_JOB, firstDelivery!, {
-        jobId: firstDelivery!.idempotencyKey,
-        removeOnComplete: true,
-        removeOnFail: true,
+      const firstDeliveries: string[] = [];
+      await importProcessor.recoverPendingJobs(async (payload) => {
+        if (payload.importId === created.importId) {
+          firstDeliveries.push(payload.idempotencyKey);
+          expect(payload.checkpoint.nextProcessSequence).toBe(0);
+        }
+        await queue.add(PROCESS_IMPORT_JOB, payload, {
+          jobId: payload.idempotencyKey,
+          removeOnComplete: true,
+          removeOnFail: true,
+        });
       });
+      expect(firstDeliveries).toHaveLength(1);
       await expect
         .poll(
           async () =>
@@ -731,15 +734,19 @@ describe("chunked manuscript import recovery integration", () => {
       ).data;
       expect(afterTick).toMatchObject({ status: "processing", processedChunks: 10 });
 
-      const secondDelivery = (await importRepository.listRecoverableJobs()).find(
-        (job) => job.importId === created.importId,
-      );
-      expect(secondDelivery?.checkpoint.nextProcessSequence).toBe(10);
-      await queue.add(PROCESS_IMPORT_JOB, secondDelivery!, {
-        jobId: secondDelivery!.idempotencyKey,
-        removeOnComplete: true,
-        removeOnFail: true,
+      const secondDeliveries: string[] = [];
+      await importProcessor.recoverPendingJobs(async (payload) => {
+        if (payload.importId === created.importId) {
+          secondDeliveries.push(payload.idempotencyKey);
+          expect(payload.checkpoint.nextProcessSequence).toBe(10);
+        }
+        await queue.add(PROCESS_IMPORT_JOB, payload, {
+          jobId: payload.idempotencyKey,
+          removeOnComplete: true,
+          removeOnFail: true,
+        });
       });
+      expect(secondDeliveries).toHaveLength(1);
       await expect
         .poll(
           async () =>
@@ -758,6 +765,135 @@ describe("chunked manuscript import recovery integration", () => {
       await queue.close();
       queueConnection.disconnect();
       workerConnection.disconnect();
+    }
+  });
+
+  it("rebuilds parser state from pre-upgrade nextSequence checkpoints", async () => {
+    const owner = await createAuthenticatedAgent(
+      "chunked-upgrade@example.com",
+      "StrongPassword123",
+    );
+    const token = await csrf(owner);
+    const ownerId = (await owner.get("/api/v1/auth/me").expect(200)).body.data.user.id as string;
+    const created = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post("/api/v1/imports/manuscripts/chunked/start")
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "chunked-upgrade-start")
+          .send({ sourceName: "升级恢复.txt", chunkCount: 2 })
+          .expect(200)
+      ).body,
+    ).data;
+    const malformed = await owner
+      .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Content-Type", "application/json")
+      .send(Buffer.from('{"sequence":0,"sourceText":"\\ud800"}', "utf8"));
+    expect(malformed.status).toBe(400);
+    expect(malformed.body.error.code).toBe("VALIDATION_INVALID");
+    const malformedChunks = await databasePool.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM import_chunks WHERE import_job_id = $1",
+      [created.importId],
+    );
+    expect(malformedChunks.rows[0]?.count).toBe(0);
+
+    for (const [sequence, sourceText] of [
+      "第一章 旧检查点\n\n正文。\n",
+      "第二章 新扫描\n\n正文。",
+    ].entries()) {
+      await owner
+        .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({ sequence, sourceText })
+        .expect(200);
+    }
+    await processImport(ownerId, created.importId, 1);
+    await databasePool.query(
+      `UPDATE import_jobs
+          SET checkpoint = (
+            checkpoint - 'manuscript' - 'nextProcessSequence'
+          ) || jsonb_build_object('nextSequence', 1)
+        WHERE id = $1`,
+      [created.importId],
+    );
+    const legacyCheckpoint = await databasePool.query<{
+      checkpoint: Record<string, unknown>;
+    }>("SELECT checkpoint FROM import_jobs WHERE id = $1", [created.importId]);
+    expect(legacyCheckpoint.rows[0]?.checkpoint).toMatchObject({ nextSequence: 1 });
+    expect(legacyCheckpoint.rows[0]?.checkpoint.nextProcessSequence).toBeUndefined();
+
+    await processImport(ownerId, created.importId);
+    const progress = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+        .body,
+    ).data;
+    expect(progress.processedChunks).toBe(2);
+    expect(progress.status).toBe("awaiting_confirmation");
+    const preview = manuscriptImportResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(200)).body,
+    ).data;
+    expect(preview.chapters.map((chapter) => chapter.title)).toEqual(["旧检查点", "新扫描"]);
+  });
+
+  it("uses the import_recovery RLS role for cross-tenant maintenance scans", async () => {
+    const owner = await createAuthenticatedAgent("chunked-rls@example.com", "StrongPassword123");
+    const token = await csrf(owner);
+    const created = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post("/api/v1/imports/manuscripts/chunked/start")
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "chunked-rls-start")
+          .send({ sourceName: "RLS 分块.txt", chunkCount: 1 })
+          .expect(200)
+      ).body,
+    ).data;
+    await owner
+      .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ sequence: 0, sourceText: "第一章 RLS\n\n正文。" })
+      .expect(200);
+
+    const role = "novelbrain_import_recovery_probe";
+    await databasePool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${role}') THEN
+          CREATE ROLE ${role} NOLOGIN;
+        END IF;
+      END
+      $$;
+      GRANT USAGE ON SCHEMA public TO ${role};
+      GRANT SELECT ON import_jobs TO ${role};
+    `);
+    const client = await databasePool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(`SET LOCAL ROLE ${role}`);
+      await client.query("SELECT set_config('app.system_role', 'import_recovery', true)");
+      const allowed = await client.query<{ count: number }>(
+        "SELECT count(*)::int AS count FROM import_jobs WHERE id = $1",
+        [created.importId],
+      );
+      expect(allowed.rows[0]?.count).toBe(1);
+      await client.query("SELECT set_config('app.system_role', '', true)");
+      const denied = await client.query<{ count: number }>(
+        "SELECT count(*)::int AS count FROM import_jobs WHERE id = $1",
+        [created.importId],
+      );
+      expect(denied.rows[0]?.count).toBe(0);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
     }
   });
 

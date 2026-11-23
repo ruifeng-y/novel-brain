@@ -6,7 +6,8 @@ import {
   type ImportProcessJob,
   type ManuscriptScanState,
 } from "@novel-brain/contracts";
-import { Pool, type PoolClient } from "pg";
+import { createDatabasePool } from "@novel-brain/db";
+import type { Pool, PoolClient } from "pg";
 
 import {
   IMPORT_RECOVERY_SYSTEM_ROLE,
@@ -44,7 +45,10 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required");
     }
-    this.pool = new Pool({ connectionString: databaseUrl });
+    this.pool = createDatabasePool(databaseUrl, {
+      query_timeout: 15_000,
+      statement_timeout: 15_000,
+    });
   }
 
   async processNextChunk(actorId: string, importId: string): Promise<ImportProcessStep> {
@@ -77,7 +81,10 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
         return { continue: false, failed: false };
       }
 
-      const expectedSequence = checkpointNumber(job.checkpoint, "nextProcessSequence");
+      const expectedSequence =
+        checkpointNumber(job.checkpoint, "nextProcessSequence") ??
+        checkpointNumber(job.checkpoint, "nextSequence") ??
+        0;
       const chunkResult = await client.query<ImportChunkRow>(
         `SELECT sequence, source_text, start_offset, end_offset
            FROM import_chunks
@@ -90,7 +97,7 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
       );
       const chunk = chunkResult.rows[0];
       if (!chunk) {
-        const uploadedChunks = checkpointNumber(job.checkpoint, "uploadedChunks");
+        const uploadedChunks = checkpointNumber(job.checkpoint, "uploadedChunks") ?? 0;
         const completed =
           uploadedChunks >= job.chunk_count && job.processed_chunks >= job.chunk_count;
         await client.query(
@@ -128,7 +135,14 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
       }
 
       try {
-        const previousState = manuscriptStateFromCheckpoint(job.checkpoint);
+        const previousState = await this.manuscriptStateFromCheckpoint(
+          client,
+          actorId,
+          importId,
+          job.checkpoint,
+          job.metadata,
+          expectedSequence,
+        );
         if (previousState.offset !== chunk.start_offset) {
           throw new Error("分块检查点与原文偏移不一致");
         }
@@ -146,7 +160,7 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
           throw new Error("章节数量超过 V1 导入上限");
         }
         const processedChunks = job.processed_chunks + 1;
-        const uploadedChunks = checkpointNumber(job.checkpoint, "uploadedChunks");
+        const uploadedChunks = checkpointNumber(job.checkpoint, "uploadedChunks") ?? 0;
         const completed = uploadedChunks >= job.chunk_count && processedChunks >= job.chunk_count;
         await client.query(
           `UPDATE import_chunks
@@ -240,8 +254,8 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
       client.release();
     }
     return rows.map((row) => {
-      const nextProcessSequence = checkpointNumber(row.checkpoint, "nextProcessSequence");
-      const uploadedChunks = checkpointNumber(row.checkpoint, "uploadedChunks");
+      const nextProcessSequence = checkpointNumber(row.checkpoint, "nextProcessSequence") ?? 0;
+      const uploadedChunks = checkpointNumber(row.checkpoint, "uploadedChunks") ?? 0;
       return {
         jobType: PROCESS_IMPORT_JOB,
         importId: row.id,
@@ -282,12 +296,42 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
       client.release();
     }
   }
-}
 
-function manuscriptStateFromCheckpoint(checkpoint: Record<string, unknown>): ManuscriptScanState {
-  return checkpoint.manuscript
-    ? manuscriptScanStateSchema.parse(checkpoint.manuscript)
-    : createManuscriptScanState();
+  private async manuscriptStateFromCheckpoint(
+    client: PoolClient,
+    userId: string,
+    importId: string,
+    checkpoint: Record<string, unknown>,
+    metadata: Record<string, unknown>,
+    expectedSequence: number,
+  ): Promise<ManuscriptScanState> {
+    if (checkpoint.manuscript) {
+      return manuscriptScanStateSchema.parse(checkpoint.manuscript);
+    }
+    let state = createManuscriptScanState();
+    if (expectedSequence === 0) {
+      return state;
+    }
+    const processedChunks = await client.query<{ source_text: string }>(
+      `SELECT source_text
+         FROM import_chunks
+        WHERE import_job_id = $1
+          AND user_id = $2
+          AND status = 'processed'
+          AND sequence < $3
+        ORDER BY sequence`,
+      [importId, userId, expectedSequence],
+    );
+    if (processedChunks.rows.length !== expectedSequence) {
+      throw new Error("旧分块检查点不完整，无法重建解析状态");
+    }
+    for (const chunk of processedChunks.rows) {
+      state = scanManuscriptChunk(state, chunk.source_text, false, {
+        headingStarts: headingStartsFromMetadata(metadata),
+      });
+    }
+    return state;
+  }
 }
 
 function headingStartsFromMetadata(metadata: Record<string, unknown>): number[] {
@@ -298,7 +342,7 @@ function headingStartsFromMetadata(metadata: Record<string, unknown>): number[] 
     : [];
 }
 
-function checkpointNumber(checkpoint: Record<string, unknown>, key: string): number {
+function checkpointNumber(checkpoint: Record<string, unknown>, key: string): number | undefined {
   const value = checkpoint[key];
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : undefined;
 }

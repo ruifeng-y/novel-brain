@@ -352,31 +352,6 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
     });
   }
 
-  async sourceText(userId: string, importId: string): Promise<string | undefined> {
-    return this.withTenant(userId, async (transaction) => {
-      const [job] = await transaction
-        .select({ id: importJobs.id })
-        .from(importJobs)
-        .where(
-          and(
-            eq(importJobs.id, importId),
-            eq(importJobs.userId, userId),
-            eq(importJobs.mode, "manuscript_text"),
-          ),
-        )
-        .limit(1);
-      if (!job) {
-        return undefined;
-      }
-      const chunks = await transaction
-        .select({ sourceText: importChunks.sourceText })
-        .from(importChunks)
-        .where(and(eq(importChunks.importJobId, importId), eq(importChunks.userId, userId)))
-        .orderBy(importChunks.sequence);
-      return chunks.map((chunk) => chunk.sourceText).join("");
-    });
-  }
-
   async hasSourceText(userId: string, importId: string): Promise<boolean | undefined> {
     return this.withTenant(userId, async (transaction) => {
       const [job] = await transaction

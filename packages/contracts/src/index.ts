@@ -5025,6 +5025,11 @@ export const canonCommitListQuerySchema = cursorPageQuerySchema;
 export type CanonCommitListQuery = z.infer<typeof canonCommitListQuerySchema>;
 export const canonCommitListResponseSchema = cursorListResponseSchema(z.array(canonCommitSchema));
 
+export const MAX_MANUSCRIPT_CHAPTERS = 4_000 as const;
+export const MAX_MANUSCRIPT_CHAPTER_CHARACTERS = 200_000 as const;
+export const MAX_MANUSCRIPT_CHUNK_CHARACTERS = 250_000 as const;
+export const MAX_MANUSCRIPT_BATCH_CHARACTERS = 500_000 as const;
+
 export const manuscriptImportConfirmRequestSchema = z.object({
   title: z.string().trim().min(1).max(120),
   penName: z.string().trim().min(1).max(50).optional(),
@@ -5035,7 +5040,7 @@ export const manuscriptImportConfirmRequestSchema = z.object({
     .array(
       z.object({
         title: z.string().trim().min(1).max(200),
-        content: z.string().min(1),
+        content: z.string().min(1).max(MAX_MANUSCRIPT_CHAPTER_CHARACTERS),
       }),
     )
     .min(1)
@@ -5043,10 +5048,10 @@ export const manuscriptImportConfirmRequestSchema = z.object({
 });
 export type ManuscriptImportConfirmRequest = z.infer<typeof manuscriptImportConfirmRequestSchema>;
 
-export const MAX_MANUSCRIPT_CHAPTERS = 4_000 as const;
-export const MAX_MANUSCRIPT_CHUNK_CHARACTERS = 250_000 as const;
-export const MAX_MANUSCRIPT_BATCH_CHARACTERS = 500_000 as const;
-
+const manuscriptChapterSourceRangeSchema = manuscriptSourceRangeSchema.refine(
+  (range) => range.end - range.start <= MAX_MANUSCRIPT_CHAPTER_CHARACTERS,
+  { message: `Manuscript chapter cannot exceed ${MAX_MANUSCRIPT_CHAPTER_CHARACTERS} characters` },
+);
 export const chunkedManuscriptImportConfirmRequestSchema = z.object({
   title: z.string().trim().min(1).max(120),
   penName: z.string().trim().min(1).max(50).optional(),
@@ -5057,7 +5062,7 @@ export const chunkedManuscriptImportConfirmRequestSchema = z.object({
     .array(
       z.object({
         title: z.string().trim().min(1).max(200),
-        sourceRange: manuscriptSourceRangeSchema,
+        sourceRange: manuscriptChapterSourceRangeSchema,
       }),
     )
     .min(1)

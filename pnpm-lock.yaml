@@ -357,9 +357,15 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
     devDependencies:
+      bullmq:
+        specifier: 6.6.0
+        version: 6.6.0(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
       fflate:
         specifier: 0.8.2
         version: 0.8.2
+      ioredis:
+        specifier: 6.0.0
+        version: 6.0.0(supports-color@10.2.2)
 
   apps/worker:
     dependencies:

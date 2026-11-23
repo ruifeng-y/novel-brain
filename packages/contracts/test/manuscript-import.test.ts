@@ -120,4 +120,18 @@ describe("manuscript import contracts", () => {
       }),
     ).toThrow();
   });
+
+  it("bounds one chapter so range confirmation cannot materialize the full manuscript", () => {
+    expect(() =>
+      chunkedManuscriptImportConfirmRequestSchema.parse({
+        title: "单章过大",
+        chapters: [
+          {
+            title: "第1章",
+            sourceRange: { start: 0, end: 200_001 },
+          },
+        ],
+      }),
+    ).toThrow();
+  });
 });

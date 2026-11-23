@@ -7,8 +7,9 @@ import {
   settingsImportResponseSchema,
   workResponseSchema,
 } from "@novel-brain/contracts";
+import { Pool } from "pg";
 
-import { registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import { buildDocxFixture } from "../helpers/docx";
 import { buildChunkedManuscriptFixture } from "../helpers/manuscript";
 import { startWorker } from "../helpers/worker";
@@ -17,6 +18,10 @@ import {
   expectNoPrototypeOnlyLeakage,
   waitForApiResponse,
 } from "../helpers/ui";
+
+const e2eDatabaseUrl =
+  process.env.E2E_DATABASE_URL ??
+  "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
 
 async function getPersistedWork(page: Page, workId: string) {
   const response = await page.request.get(`/api/v1/works/${workId}`);
@@ -595,6 +600,7 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
 
     await page.getByRole("button", { name: "继续导入" }).click();
     await expect(page.getByText(/已处理\s*[1-7]\s*\/\s*8/)).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => worker.activeJobCount()).toBe(1);
     await worker.crash();
     worker = await startWorker({
       failImportSequence: 5,
@@ -602,6 +608,7 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
       workerLockDurationMs: 1_000,
       workerStalledIntervalMs: 1_000,
     });
+    await expect.poll(() => worker.activeJobCount()).toBe(1);
     await expect(page.getByText("旧稿分块处理部分失败，已保留进度，可以继续导入。")).toBeVisible({
       timeout: 30_000,
     });
@@ -615,6 +622,13 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     await page.getByLabel("书名").fill("分块恢复旧稿");
     await attachResponsiveState(page, testInfo, "preview");
 
+    const confirmRequest = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        request.method() === "POST" &&
+        /^\/api\/v1\/imports\/manuscripts\/[0-9a-f-]+\/confirm-chunked$/u.test(url.pathname)
+      );
+    });
     const confirmResponse = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return (
@@ -623,7 +637,9 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
       );
     });
     await page.getByRole("button", { name: "确认并创建作品" }).click();
-    const confirmed = workResponseSchema.parse(await (await confirmResponse).json()).data;
+    const submittedConfirm = await confirmRequest;
+    const confirmedResponse = await confirmResponse;
+    const confirmed = workResponseSchema.parse(await confirmedResponse.json()).data;
     await expect(page).toHaveURL(new RegExp(`/workspace/${confirmed.id}/overview$`));
     const persistedWork = await getPersistedWork(page, confirmed.id);
     const persistedChapters = await getPersistedChapters(page, persistedWork);
@@ -633,6 +649,70 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     );
     expect(persistedChapters[0]?.currentVersion?.content.split("\n")[0]).toBe("第1章 分块旧稿0001");
     expect(persistedChapters[7]?.currentVersion?.content.split("\n")[0]).toBe("第8章 分块旧稿0008");
+
+    const fixtureText = manuscriptFixture.toString("utf8");
+    const expectedContents = fixtureText.split(/(?=第\d+章 )/u).filter(Boolean);
+    let expectedStart = 0;
+    const expectedRanges = expectedContents.map((content) => {
+      const range = { start: expectedStart, end: expectedStart + content.length };
+      expectedStart = range.end;
+      return range;
+    });
+    const csrfToken = await getCsrf(page.request);
+    const replay = await page.request.post(confirmedResponse.url(), {
+      headers: {
+        Origin: "http://localhost:3000",
+        "X-CSRF-Token": csrfToken,
+        "Idempotency-Key": "playwright-chunked-confirm-replay",
+      },
+      data: submittedConfirm.postDataJSON(),
+    });
+    expect(replay.status(), await replay.text()).toBe(200);
+
+    const pool = new Pool({ connectionString: e2eDatabaseUrl });
+    try {
+      const persistedRanges = await pool.query<{
+        number: number;
+        content: string;
+        source_start: number;
+        source_end: number;
+      }>(
+        `SELECT chapter.number,
+                version.content,
+                (node.payload->'sourceRange'->>'start')::int AS source_start,
+                (node.payload->'sourceRange'->>'end')::int AS source_end
+           FROM chapters AS chapter
+           INNER JOIN chapter_versions AS version ON version.chapter_id = chapter.id
+           INNER JOIN version_nodes AS node ON node.id = version.version_node_id
+          WHERE chapter.work_id = $1
+          ORDER BY chapter.number`,
+        [confirmed.id],
+      );
+      expect(persistedRanges.rows.map((row) => row.content)).toEqual(expectedContents);
+      expect(
+        persistedRanges.rows.map((row) => ({
+          start: row.source_start,
+          end: row.source_end,
+        })),
+      ).toEqual(expectedRanges);
+
+      const counts = await pool.query<{
+        chapters: number;
+        versions: number;
+        nodes: number;
+      }>(
+        `SELECT
+           (SELECT count(*)::int FROM chapters WHERE work_id = $1) AS chapters,
+           (SELECT count(*)::int FROM chapter_versions WHERE work_id = $1) AS versions,
+           (SELECT count(*)::int
+              FROM version_nodes
+             WHERE work_id = $1 AND node_type = 'chapter_version') AS nodes`,
+        [confirmed.id],
+      );
+      expect(counts.rows[0]).toEqual({ chapters: 8, versions: 8, nodes: 8 });
+    } finally {
+      await pool.end();
+    }
   } finally {
     await worker.stop();
   }

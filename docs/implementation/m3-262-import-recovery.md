@@ -66,8 +66,8 @@ Recorded local run:
 
 | Metric | Value |
 | --- | ---: |
-| Elapsed | `14,476 ms` |
-| Peak process RSS | `595,042,304 bytes` |
+| Elapsed | `14,851 ms` |
+| Peak process RSS | `600,051,712 bytes` |
 | Chunk request ceiling asserted | `< 1,000,000 bytes` |
 | Processed chunks | `40 / 40` |
 | Imported chapters | `4,000` |
@@ -89,6 +89,8 @@ exactly, and confirmation reads source ranges into a streaming chunk cursor in b
   recovery;
 - a real Worker chunk failure, visible partial state, Worker restart and resume;
 - metadata-only preview with server-retained source;
+- confirmation rejects any single chapter over 200,000 characters, preventing a range from
+  materializing the whole manuscript in application memory;
 - range-based confirmation through the real API;
 - four viewports: 390, 900, 1180 and 1440;
 - full-page attachments for upload failure, paused, partial failure and preview states at

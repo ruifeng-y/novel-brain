@@ -33,8 +33,15 @@ export class ManuscriptImportProcessor {
     return "succeeded";
   }
 
-  async listRecoverableJobs(maxJobs = 50) {
-    return this.repository.listRecoverableJobs(maxJobs);
+  async recoverPendingJobs(
+    enqueue: (payload: ImportProcessJob) => Promise<void>,
+    maxJobs = 50,
+  ): Promise<number> {
+    const jobs = await this.repository.listRecoverableJobs(maxJobs);
+    for (const job of jobs) {
+      await enqueue(job);
+    }
+    return jobs.length;
   }
 }
 

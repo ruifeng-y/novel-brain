@@ -213,11 +213,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         );
         await this.runMaintenance(
           "manuscript_import_recovery",
-          async () => {
-            for (const pending of await this.manuscriptImportProcessor.listRecoverableJobs()) {
-              await this.enqueueRecoveredImport(pending);
-            }
-          },
+          () =>
+            this.manuscriptImportProcessor.recoverPendingJobs((pending) =>
+              this.enqueueRecoveredImport(pending),
+            ),
           undefined,
         );
         await this.runMaintenance(

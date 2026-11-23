@@ -1,6 +1,10 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
 
+import { WORKER_QUEUE_NAME, type WorkerJob } from "@novel-brain/contracts";
+import { Queue } from "bullmq";
+import Redis from "ioredis";
+
 const databaseUrl =
   process.env.E2E_DATABASE_URL ??
   "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
@@ -45,10 +49,36 @@ export async function startWorker(
   });
 
   await waitForWorker(child);
+  const probeConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  const probeQueue = new Queue<WorkerJob>(WORKER_QUEUE_NAME, { connection: probeConnection });
+  await probeQueue.waitUntilReady();
+  const closeProbe = async () => {
+    await probeQueue.close();
+    if (probeConnection.status === "ready") {
+      await probeConnection.quit();
+    } else {
+      probeConnection.disconnect();
+    }
+  };
+  const stop = async () => {
+    try {
+      await stopWorker(child);
+    } finally {
+      await closeProbe();
+    }
+  };
+  const crash = async () => {
+    try {
+      await crashWorker(child);
+    } finally {
+      await closeProbe();
+    }
+  };
   return {
     child,
-    stop: () => stopWorker(child),
-    crash: () => crashWorker(child),
+    stop,
+    crash,
+    activeJobCount: async () => (await probeQueue.getActive()).length,
   };
 }
 

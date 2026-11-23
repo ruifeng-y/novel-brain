@@ -17,6 +17,8 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "bullmq": "6.6.0",
+    "ioredis": "6.0.0",
     "fflate": "0.8.2"
   }
 }
