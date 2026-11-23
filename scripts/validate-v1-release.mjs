@@ -202,7 +202,6 @@ function validateTraceability(
   if (unresolvedCapabilities.length > 0) {
     blockers.push(
       `capability-verification:${unresolvedCapabilities.length}:${unresolvedCapabilities
-        .slice(0, 8)
         .map((row) => `${row.id}:${row.status}`)
         .join(",")}`,
     );

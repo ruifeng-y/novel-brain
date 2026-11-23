@@ -80,5 +80,5 @@ V1 RELEASE BLOCKED
   WORK-002, IO-001, IO-003, CHANGE-004..CHANGE-006, UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
 ```
 
-The remaining non-UI blockers are tracked by #240, #241, #261, #262 and #263. UI capability
+The remaining non-UI blockers are tracked by #239, #240, #241, #261, #262 and #263. UI capability
 closure remains #238; final release evidence and CI remain #242.
