@@ -218,7 +218,9 @@ export function ManuscriptImportPanel({
     setCanResumeChunked(stream.nextSequence < current.chunkCount);
 
     while (
-      (current.status === "queued" || current.status === "processing") &&
+      (current.status === "queued" ||
+        current.status === "processing" ||
+        current.status === "partial") &&
       !pauseRequested.current
     ) {
       const response = await fetch(`/api/v1/imports/manuscripts/${current.importId}/process`, {

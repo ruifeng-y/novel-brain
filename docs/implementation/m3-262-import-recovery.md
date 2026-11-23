@@ -31,6 +31,8 @@ lifecycle:
 
 - streamed start and sequential chunk append;
 - bounded requests below 1 MB per chunk;
+- legacy batch endpoint capped at 500,000 characters and rejects larger payloads with `413`;
+- mismatched replay of an existing chunk sequence rejected instead of silently ignored;
 - partial upload failure and retry;
 - idempotent pause/resume and process suppression while paused;
 - app restart while processing, followed by continued processing from committed chunks;
@@ -40,6 +42,7 @@ lifecycle:
 - range-only confirmation without sending 10M characters in one request;
 - confirmation response below 200 KB, containing work metadata instead of chapter text;
 - replay confirmation without duplicate chapters or versions;
+- `canConfirm` remains false during queued, processing, paused and partial states;
 - source ranges covering exactly `0..10,000,000`;
 - rejection of a range that splits a surrogate pair.
 

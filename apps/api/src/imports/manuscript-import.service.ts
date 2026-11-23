@@ -32,6 +32,8 @@ import { formatFromName, readImportFile, type ImportUploadFile } from "./import-
 import { WorksService } from "../works/works.service";
 import type { WorksAuditContext } from "../works/works.repository";
 
+const MAX_BATCH_CHUNK_CHARACTERS = 500_000;
+
 @Injectable()
 export class ManuscriptImportService {
   constructor(
@@ -84,6 +86,14 @@ export class ManuscriptImportService {
   ): Promise<ChunkedImportProgress> {
     if (!idempotencyKey.trim()) {
       throw new ApiError(400, "VALIDATION_INVALID", "分块导入需要 Idempotency-Key");
+    }
+    const totalCharacters = input.chunks.reduce((total, chunk) => total + chunk.length, 0);
+    if (totalCharacters > MAX_BATCH_CHUNK_CHARACTERS) {
+      throw new ApiError(
+        413,
+        "VALIDATION_INVALID",
+        "大批量旧稿请使用流式分块入口，单次请求内容过大",
+      );
     }
     const record = await this.repository.createChunked({
       id: uuidv7(),
@@ -331,7 +341,10 @@ export class ManuscriptImportService {
       })),
       warnings: parsed.warnings,
       canConfirm:
-        record.status !== "completed" && parsed.status !== "empty" && parsed.chapters.length > 0,
+        record.status !== "completed" &&
+        (record.metadata.chunked !== true || record.status === "awaiting_confirmation") &&
+        parsed.status !== "empty" &&
+        parsed.chapters.length > 0,
       confirmedWorkId: record.workId,
       createdAt: record.createdAt.toISOString(),
     };

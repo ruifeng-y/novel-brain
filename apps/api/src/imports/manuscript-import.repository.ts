@@ -246,7 +246,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         return "not_ready";
       }
       const [existing] = await transaction
-        .select({ id: importChunks.id })
+        .select({ id: importChunks.id, sourceText: importChunks.sourceText })
         .from(importChunks)
         .where(
           and(
@@ -257,7 +257,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         )
         .limit(1);
       if (existing) {
-        return job;
+        return existing.sourceText === input.sourceText ? job : "sequence_conflict";
       }
       const [last] = await transaction
         .select({ sequence: importChunks.sequence, endOffset: importChunks.endOffset })
@@ -292,6 +292,8 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
       const [updated] = await transaction
         .update(importJobs)
         .set({
+          status:
+            job.status === "partial" && uploadedChunks >= job.chunkCount ? "queued" : job.status,
           checkpoint: {
             ...job.checkpoint,
             nextUploadSequence: input.sequence + 1,

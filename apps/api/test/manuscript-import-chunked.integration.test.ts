@@ -93,6 +93,18 @@ describe("chunked manuscript import recovery integration", () => {
     let token = await csrf(owner);
     const startedAt = performance.now();
 
+    const oversizedBatch = await owner
+      .post("/api/v1/imports/manuscripts/chunked")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "chunked-oversized-batch")
+      .send({
+        sourceName: "单请求过大.txt",
+        chunks: ["x".repeat(500_001)],
+      });
+    expect(oversizedBatch.status).toBe(413);
+    expect(oversizedBatch.body.error.code).toBe("VALIDATION_INVALID");
+
     const created = chunkedImportProgressResponseSchema.parse(
       (
         await owner
@@ -135,6 +147,15 @@ describe("chunked manuscript import recovery integration", () => {
       ).data;
       uploadedCount += 1;
       expect(appended.uploadedChunks).toBe(sequence + 1);
+      if (sequence === 0) {
+        const mismatchedReplay = await owner
+          .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({ sequence, sourceText: `${sourceText.slice(0, -1)}改` });
+        expect(mismatchedReplay.status).toBe(409);
+        expect(mismatchedReplay.body.error.code).toBe("IMPORT_NOT_READY");
+      }
     }
 
     for (let sequence = 0; sequence < 3; sequence += 1) {
@@ -164,6 +185,7 @@ describe("chunked manuscript import recovery integration", () => {
       status: "paused",
       uploadedChunks: 10,
       processedChunks: 3,
+      canConfirm: false,
     });
     const pausedAgain = chunkedImportProgressResponseSchema.parse(
       (
