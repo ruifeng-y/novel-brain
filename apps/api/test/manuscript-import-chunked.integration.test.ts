@@ -892,6 +892,53 @@ describe("chunked manuscript import recovery integration", () => {
     await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(500);
   });
 
+  it("fails dense chapter headings before the checkpoint grows past the V1 limit", async () => {
+    const owner = await createAuthenticatedAgent("chunked-dense@example.com", "StrongPassword123");
+    const token = await csrf(owner);
+    const ownerId = (await owner.get("/api/v1/auth/me").expect(200)).body.data.user.id as string;
+    const created = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post("/api/v1/imports/manuscripts/chunked/start")
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "chunked-dense-start")
+          .send({ sourceName: "密集章节.txt", chunkCount: 1 })
+          .expect(200)
+      ).body,
+    ).data;
+    await owner
+      .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ sequence: 0, sourceText: "第1章\n".repeat(50_000) })
+      .expect(200);
+
+    await expect(processImportJob(ownerId, created.importId, 1)).resolves.toBe("failed");
+    const progress = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+        .body,
+    ).data;
+    expect(progress).toMatchObject({
+      status: "partial",
+      uploadedChunks: 1,
+      processedChunks: 0,
+      canConfirm: false,
+    });
+    const checkpoint = await databasePool.query<{
+      manuscript: unknown;
+      error: string | null;
+    }>(
+      `SELECT checkpoint->'manuscript' AS manuscript,
+              checkpoint->>'manuscriptError' AS error
+         FROM import_jobs
+        WHERE id = $1`,
+      [created.importId],
+    );
+    expect(checkpoint.rows[0]?.manuscript).toBeNull();
+    expect(checkpoint.rows[0]?.error).toContain("章节");
+  });
+
   it("uses the import_recovery RLS role for cross-tenant maintenance scans", async () => {
     const owner = await createAuthenticatedAgent("chunked-rls@example.com", "StrongPassword123");
     const token = await csrf(owner);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ManuscriptHeadingLimitError,
   createManuscriptScanState,
   isWellFormedUtf16,
   manuscriptChaptersFromScan,
@@ -64,5 +65,11 @@ describe("incremental manuscript scanning", () => {
     expect(chapters.chapters).toEqual([
       { title: "开端", sourceRange: { start: 0, end: state.offset } },
     ]);
+  });
+
+  it("fails a dense chunk before headings can grow past the V1 chapter bound", () => {
+    expect(() =>
+      scanManuscriptChunk(createManuscriptScanState(), "第1章\n".repeat(4_002), true),
+    ).toThrow(ManuscriptHeadingLimitError);
   });
 });

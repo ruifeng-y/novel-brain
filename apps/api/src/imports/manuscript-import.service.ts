@@ -15,7 +15,11 @@ import type {
   WorkOverview,
 } from "@novel-brain/contracts";
 import { MAX_MANUSCRIPT_BATCH_CHARACTERS, manuscriptScanStateSchema } from "@novel-brain/contracts";
-import { isWellFormedUtf16, manuscriptChaptersFromScan } from "@novel-brain/core";
+import {
+  ManuscriptHeadingLimitError,
+  isWellFormedUtf16,
+  manuscriptChaptersFromScan,
+} from "@novel-brain/core";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
@@ -54,11 +58,19 @@ export class ManuscriptImportService {
       headingStarts?: readonly number[];
     },
   ): Promise<ManuscriptImport> {
-    const parsed = parseManuscriptText(
-      input.text,
-      input.sourceName.replace(/\.[^.]+$/u, "") || "全文",
-      { headingStarts: input.headingStarts ?? [] },
-    );
+    let parsed: ReturnType<typeof parseManuscriptText>;
+    try {
+      parsed = parseManuscriptText(
+        input.text,
+        input.sourceName.replace(/\.[^.]+$/u, "") || "全文",
+        { headingStarts: input.headingStarts ?? [] },
+      );
+    } catch (error) {
+      if (error instanceof ManuscriptHeadingLimitError) {
+        throw new ApiError(400, "VALIDATION_INVALID", "旧稿章节数量超过 V1 导入上限");
+      }
+      throw error;
+    }
     const record = await this.repository.create({
       id: uuidv7(),
       userId,

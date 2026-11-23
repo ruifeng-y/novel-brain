@@ -1,3 +1,4 @@
+import { MAX_MANUSCRIPT_CHAPTERS } from "@novel-brain/contracts";
 import type {
   ManuscriptImportStatus,
   ManuscriptImportWarning,
@@ -22,10 +23,18 @@ export interface ScannedManuscript {
 }
 
 const MAX_HEADING_LINE_CHARACTERS = 4_096;
+const MAX_SCAN_HEADINGS = MAX_MANUSCRIPT_CHAPTERS + 1;
 export const IMPORT_RECOVERY_SYSTEM_ROLE = "import_recovery";
 const MARKDOWN_HEADING = /^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$/u;
 const TEXT_HEADING =
   /^[ \t]*(第[一二三四五六七八九十百千万零〇两\d]+章)(?:[ \t:：、.-]+(.*))?[ \t]*$/u;
+
+export class ManuscriptHeadingLimitError extends Error {
+  constructor() {
+    super(`旧稿章节数量超过 V1 导入上限（${MAX_MANUSCRIPT_CHAPTERS} 章）`);
+    this.name = "ManuscriptHeadingLimitError";
+  }
+}
 
 export function createManuscriptScanState(): ManuscriptScanState {
   return {
@@ -191,6 +200,9 @@ function consumeLine(
   const styledHeading = styledStarts.has(lineStart) && normalizedLine.trim().length > 0;
   if (!markdownMatch && !textMatch && !styledHeading) {
     return;
+  }
+  if (headings.length >= MAX_SCAN_HEADINGS) {
+    throw new ManuscriptHeadingLimitError();
   }
   const title = (markdownMatch?.[2] ?? textMatch?.[2] ?? textMatch?.[1] ?? normalizedLine).trim();
   headings.push({
