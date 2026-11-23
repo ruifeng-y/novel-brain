@@ -106,4 +106,8 @@ pnpm exec playwright test apps/web/e2e/parity/new-project.spec.ts -g "recovers a
 pnpm exec playwright test apps/web/e2e/parity/new-project.spec.ts
 ```
 
-Production CI evidence is recorded after the normal pull-request run.
+Production CI evidence is bound to code head `d03b3ce`:
+[Production CI #45286994401](https://github.com/ruifeng-y/novel-brain/actions/runs/45286994401)
+passed `check` (unit and integration) and `playwright`.
+[Deployment Smoke #45286994397](https://github.com/ruifeng-y/novel-brain/actions/runs/45286994397)
+passed `compose-smoke`.
