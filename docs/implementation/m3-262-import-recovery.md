@@ -68,8 +68,8 @@ Recorded local run:
 
 | Metric | Value |
 | --- | ---: |
-| Elapsed | `14,778 ms` |
-| Peak process RSS | `598,466,560 bytes` |
+| Elapsed | `14,761 ms` |
+| Peak process RSS | `601,550,848 bytes` |
 | Largest observed chunk request | `741,262 bytes` |
 | Chunk request ceiling asserted | `< 1,000,000 bytes` |
 | Processed chunks | `40 / 40` |

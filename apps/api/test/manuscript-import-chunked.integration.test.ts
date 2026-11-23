@@ -281,6 +281,9 @@ describe("chunked manuscript import recovery integration", () => {
       expect(next.done).toBe(false);
       const sourceText = next.value;
       expect(sourceText.length).toBeLessThanOrEqual(metadata.chunkCharacterCount);
+      const requestBytes = Buffer.byteLength(JSON.stringify({ sequence, sourceText }));
+      expect(requestBytes).toBeLessThan(1_000_000);
+      maxRequestBytes = Math.max(maxRequestBytes, requestBytes);
       uploadedCount += 1;
       await owner
         .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)

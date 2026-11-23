@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 import {
+  IMPORT_FILE_LIMITS,
   chapterWorkspaceListResponseSchema,
   chunkedImportProgressResponseSchema,
   manuscriptImportConfirmResponseSchema,
@@ -523,6 +524,14 @@ test("shows empty, partial, malformed and unreadable manuscript states", async (
   await expect(page.getByText("DOCX 旧稿文件损坏或格式不受支持")).toBeVisible();
 
   await page.getByLabel("上传旧稿文件").setInputFiles({
+    name: "oversized.docx",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    buffer: Buffer.alloc(IMPORT_FILE_LIMITS.manuscript.maxFileBytes + 1),
+  });
+  await page.getByRole("button", { name: "识别章节" }).click();
+  await expect(page.getByText("DOCX 旧稿不能超过 1 MB，请拆分文件后重试。")).toBeVisible();
+
+  await page.getByLabel("上传旧稿文件").setInputFiles({
     name: "empty.txt",
     mimeType: "text/plain",
     buffer: Buffer.from(" \n\n ", "utf8"),
@@ -595,7 +604,10 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     await expect(page.getByText("分块上传暂时失败，请重试。")).toBeVisible();
     await expect(page.getByText(`已接收 1 / ${chunkCount}`)).toBeVisible();
     await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
-    await attachResponsiveState(page, testInfo, "upload-failure");
+    await attachResponsiveState(page, testInfo, "upload-failure", async () => {
+      await expect(page.getByText("分块上传暂时失败，请重试。")).toBeVisible();
+      await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
+    });
 
     await page.getByRole("button", { name: "继续导入" }).click();
     const pauseResponse = page.waitForResponse((response) => {
@@ -609,12 +621,20 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     await page.getByRole("button", { name: "暂停处理" }).click();
     await pauseResponse;
     await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
-    await attachResponsiveState(page, testInfo, "paused");
+    await attachResponsiveState(page, testInfo, "paused", async () => {
+      await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
+    });
 
     await page.getByRole("button", { name: "继续导入" }).click();
     await expect(
       page.getByText(new RegExp(`已处理\\s*[1-${chunkCount - 1}]\\s*/\\s*${chunkCount}`)),
     ).toBeVisible({ timeout: 30_000 });
+    await attachResponsiveState(page, testInfo, "processing", async () => {
+      await expect(
+        page.getByText(new RegExp(`已处理\\s*[1-${chunkCount - 1}]\\s*/\\s*${chunkCount}`)),
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "暂停处理" })).toBeVisible();
+    });
     await expect.poll(() => worker.activeJobCount()).toBe(1);
     const failureSequence = await readNextProcessSequence(importId);
     expect(failureSequence).toBeGreaterThan(0);
@@ -631,7 +651,12 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     await expect(
       page.getByText(new RegExp(`已处理\\s*${failureSequence}\\s*/\\s*${chunkCount}`)),
     ).toBeVisible();
-    await attachResponsiveState(page, testInfo, "partial-failure");
+    await attachResponsiveState(page, testInfo, "partial-failure", async () => {
+      await expect(
+        page.getByText("旧稿分块处理部分失败，已保留进度，可以继续导入。"),
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
+    });
 
     await worker.stop();
     worker = await startWorker({ importProcessingDelayMs: 20 });
@@ -639,7 +664,10 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     await expect(page.getByText("识别到 8 章")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/原文已安全保留在导入任务中/).first()).toBeVisible();
     await page.getByLabel("书名").fill("分块恢复旧稿");
-    await attachResponsiveState(page, testInfo, "preview");
+    await attachResponsiveState(page, testInfo, "preview", async () => {
+      await expect(page.getByText("识别到 8 章")).toBeVisible();
+      await expect(page.getByRole("button", { name: "确认并创建作品" })).toBeEnabled();
+    });
 
     const confirmRequest = page.waitForRequest((request) => {
       const url = new URL(request.url());
@@ -736,9 +764,15 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
   }
 });
 
-async function attachResponsiveState(page: Page, testInfo: TestInfo, state: string) {
+async function attachResponsiveState(
+  page: Page,
+  testInfo: TestInfo,
+  state: string,
+  assertState?: () => Promise<void>,
+) {
   for (const width of [1440, 1180, 900, 390]) {
     await page.setViewportSize({ width, height: 900 });
+    await assertState?.();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
