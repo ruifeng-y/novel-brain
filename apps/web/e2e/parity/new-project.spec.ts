@@ -547,7 +547,6 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
   context,
 }, testInfo) => {
   let worker = await startWorker({
-    failImportSequence: 5,
     importProcessingDelayMs: 300,
     workerLockDurationMs: 1_000,
     workerStalledIntervalMs: 1_000,
@@ -567,10 +566,11 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
       await route.continue();
     });
 
+    const manuscriptFixture = buildChunkedManuscriptFixture();
     await page.getByLabel("上传旧稿文件").setInputFiles({
       name: "chunked-recovery.txt",
       mimeType: "text/plain",
-      buffer: buildChunkedManuscriptFixture(),
+      buffer: manuscriptFixture,
     });
     await page.getByRole("button", { name: "识别章节" }).click();
 
@@ -628,6 +628,9 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     const persistedWork = await getPersistedWork(page, confirmed.id);
     const persistedChapters = await getPersistedChapters(page, persistedWork);
     expect(persistedChapters).toHaveLength(8);
+    expect(persistedChapters.map((chapter) => chapter.currentVersion?.content ?? "").join("")).toBe(
+      manuscriptFixture.toString("utf8"),
+    );
     expect(persistedChapters[0]?.currentVersion?.content.split("\n")[0]).toBe("第1章 分块旧稿0001");
     expect(persistedChapters[7]?.currentVersion?.content.split("\n")[0]).toBe("第8章 分块旧稿0008");
   } finally {

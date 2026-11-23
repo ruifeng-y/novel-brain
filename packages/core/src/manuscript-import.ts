@@ -22,6 +22,7 @@ export interface ScannedManuscript {
 }
 
 const MAX_HEADING_LINE_CHARACTERS = 4_096;
+export const IMPORT_RECOVERY_SYSTEM_ROLE = "import_recovery";
 const MARKDOWN_HEADING = /^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$/u;
 const TEXT_HEADING =
   /^[ \t]*(第[一二三四五六七八九十百千万零〇两\d]+章)(?:[ \t:：、.-]+(.*))?[ \t]*$/u;

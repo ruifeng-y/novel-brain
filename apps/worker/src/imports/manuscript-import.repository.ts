@@ -9,6 +9,7 @@ import {
 import { Pool, type PoolClient } from "pg";
 
 import {
+  IMPORT_RECOVERY_SYSTEM_ROLE,
   createManuscriptScanState,
   manuscriptChaptersFromScan,
   scanManuscriptChunk,
@@ -196,29 +197,49 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
   }
 
   async listRecoverableJobs(limit = 50): Promise<ImportProcessJob[]> {
-    const result = await this.pool.query<{
+    const client = await this.pool.connect();
+    let rows: Array<{
       id: string;
       user_id: string;
       processed_chunks: number;
       checkpoint: Record<string, unknown>;
-    }>(
-      `SELECT job.id, job.user_id, job.processed_chunks, job.checkpoint
-         FROM import_jobs AS job
-        WHERE job.mode = 'manuscript_text'
-          AND job.metadata->>'chunked' = 'true'
-          AND job.status IN ('queued', 'processing')
-          AND EXISTS (
-            SELECT 1
-              FROM import_chunks AS chunk
-             WHERE chunk.import_job_id = job.id
-               AND chunk.user_id = job.user_id
-               AND chunk.status = 'pending'
-          )
-        ORDER BY job.updated_at
-        LIMIT $1`,
-      [Math.max(1, Math.min(200, limit))],
-    );
-    return result.rows.map((row) => {
+    }>;
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('app.system_role', $1, true)", [
+        IMPORT_RECOVERY_SYSTEM_ROLE,
+      ]);
+      const result = await client.query<{
+        id: string;
+        user_id: string;
+        processed_chunks: number;
+        checkpoint: Record<string, unknown>;
+      }>(
+        `SELECT job.id, job.user_id, job.processed_chunks, job.checkpoint
+           FROM import_jobs AS job
+          WHERE job.mode = 'manuscript_text'
+            AND job.metadata->>'chunked' = 'true'
+            AND job.status IN ('queued', 'processing')
+            AND EXISTS (
+              SELECT 1
+                FROM import_chunks AS chunk
+               WHERE chunk.import_job_id = job.id
+                 AND chunk.user_id = job.user_id
+                 AND chunk.status = 'pending'
+            )
+          ORDER BY job.updated_at
+          LIMIT $1`,
+        [Math.max(1, Math.min(200, limit))],
+      );
+      rows = result.rows;
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+    return rows.map((row) => {
       const nextProcessSequence = checkpointNumber(row.checkpoint, "nextProcessSequence");
       const uploadedChunks = checkpointNumber(row.checkpoint, "uploadedChunks");
       return {

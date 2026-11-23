@@ -322,8 +322,6 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
       const [updated] = await transaction
         .update(importJobs)
         .set({
-          status:
-            job.status === "partial" && uploadedChunks >= job.chunkCount ? "queued" : job.status,
           checkpoint: {
             ...job.checkpoint,
             nextUploadSequence: input.sequence + 1,
@@ -682,23 +680,24 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         if (interiorBoundaries.length === 0) {
           continue;
         }
-        const boundaryArray = sql.raw(`ARRAY[${interiorBoundaries.map(String).join(",")}]`);
-        const result = await transaction.execute<{ boundary: number; pair: string }>(sql`
-          SELECT boundary.value AS boundary,
-                 substring(
-                   chunk.source_text
-                   FROM boundary.value - chunk.start_offset
-                   FOR 2
-                 ) AS pair
-            FROM import_chunks AS chunk
-            CROSS JOIN unnest(${boundaryArray}) AS boundary(value)
-           WHERE chunk.import_job_id = ${importId}
-             AND chunk.user_id = ${userId}
-             AND chunk.start_offset = ${chunk.startOffset}
-        `);
-        for (const row of result.rows) {
-          const previous = row.pair.charCodeAt(0);
-          const next = row.pair.charCodeAt(1);
+        const [sourceChunk] = await transaction
+          .select({ sourceText: importChunks.sourceText })
+          .from(importChunks)
+          .where(
+            and(
+              eq(importChunks.importJobId, importId),
+              eq(importChunks.userId, userId),
+              eq(importChunks.startOffset, chunk.startOffset),
+            ),
+          )
+          .limit(1);
+        if (!sourceChunk) {
+          return false;
+        }
+        for (const boundary of interiorBoundaries) {
+          const localOffset = boundary - chunk.startOffset;
+          const previous = sourceChunk.sourceText.charCodeAt(localOffset - 1);
+          const next = sourceChunk.sourceText.charCodeAt(localOffset);
           if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
             return false;
           }

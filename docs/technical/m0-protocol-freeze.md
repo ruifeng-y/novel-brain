@@ -304,7 +304,8 @@ M0 关键错误：
 
 `process_import` 是导入专用 Worker job，显式使用 `workId: null`、`branchId: null`、
 幂等键和版本化 checkpoint。Worker 每次 tick 只处理有界数量的连续分块；PostgreSQL 的
-`nextProcessSequence` 是恢复真源，维护 tick 会重新投递 Redis 丢失但仍可恢复的导入任务。
+`nextProcessSequence` 是恢复真源，维护 tick 会以受 RLS policy 限制的
+`app.system_role = 'import_recovery'` 扫描并重新投递 Redis 丢失但仍可恢复的导入任务。
 
 ### 5.11 健康、就绪与运维指标
 

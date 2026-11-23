@@ -1,17 +1,19 @@
 import "reflect-metadata";
 
-import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   PROCESS_IMPORT_JOB,
+  WORKER_QUEUE_NAME,
   chunkedImportProgressResponseSchema,
   manuscriptImportResponseSchema,
   workResponseSchema,
+  type WorkerJob,
 } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
+import { Queue, Worker as BullWorker } from "bullmq";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -332,20 +334,29 @@ describe("chunked manuscript import recovery integration", () => {
       .expect(200);
     expect(Buffer.byteLength(JSON.stringify(confirmHttp.body))).toBeLessThan(200_000);
     const confirmed = workResponseSchema.parse(confirmHttp.body).data;
-    const persistedVersions = await databasePool.query<{ content: string }>(
-      `SELECT version.content
+    const persistedVersionSummary = await databasePool.query<{
+      count: number;
+      sha256: string;
+    }>(
+      `SELECT count(*)::int AS count,
+              encode(
+                sha256(
+                  convert_to(
+                    string_agg(version.content, '' ORDER BY chapter.number),
+                    'UTF8'
+                  )
+                ),
+                'hex'
+              ) AS sha256
          FROM chapter_versions AS version
          INNER JOIN chapters AS chapter ON chapter.id = version.chapter_id
-         WHERE chapter.work_id = $1
-         ORDER BY chapter.number`,
+         WHERE chapter.work_id = $1`,
       [confirmed.id],
     );
-    expect(persistedVersions.rows).toHaveLength(metadata.chapterCount);
-    const confirmedHash = createHash("sha256");
-    for (const version of persistedVersions.rows) {
-      confirmedHash.update(version.content);
-    }
-    expect(confirmedHash.digest("hex")).toBe(metadata.sha256);
+    expect(persistedVersionSummary.rows[0]).toEqual({
+      count: metadata.chapterCount,
+      sha256: metadata.sha256,
+    });
     const versionRanges = await databasePool.query<{
       chapter_number: number;
       source_start: number;
@@ -467,7 +478,7 @@ describe("chunked manuscript import recovery integration", () => {
     expect(confirmAfterCancel.status).toBe(409);
     expect(confirmAfterCancel.body.error.code).toBe("IMPORT_NOT_READY");
 
-    const surrogateSource = "第一章 😀\n\n正文。";
+    const surrogateSource = "😀第一章 😀\n\n正文。";
     const surrogateJob = chunkedImportProgressResponseSchema.parse(
       (
         await owner
@@ -515,7 +526,10 @@ describe("chunked manuscript import recovery integration", () => {
           .expect(200)
       ).body,
     ).data;
-    const partialFirstChunk = "第一章 部分失败\n\n正文。";
+    const partialFirstChunk = "第一章 部分失败\n\n正文。\n";
+    const partialSecondChunk = "第二章 补传\n\n正文。\n";
+    const partialThirdChunk = "第三章 完成\n\n正文。";
+    const partialSource = `${partialFirstChunk}${partialSecondChunk}${partialThirdChunk}`;
     await owner
       .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
       .set("Origin", origin)
@@ -538,7 +552,7 @@ describe("chunked manuscript import recovery integration", () => {
       .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
-      .send({ sequence: 1, sourceText: "第二章 补传\n\n正文。" })
+      .send({ sequence: 1, sourceText: partialSecondChunk })
       .expect(200);
     process.env.FAKE_IMPORT_FAILURE_SEQUENCE = "1";
     const failedOutcome = await processImportJob(ownerId, partialJob.importId);
@@ -557,7 +571,7 @@ describe("chunked manuscript import recovery integration", () => {
       .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
-      .send({ sequence: 2, sourceText: "第三章 完成\n\n正文。" })
+      .send({ sequence: 2, sourceText: partialThirdChunk })
       .expect(200);
     await owner
       .post(`/api/v1/imports/manuscripts/${partialJob.importId}/resume`)
@@ -575,6 +589,59 @@ describe("chunked manuscript import recovery integration", () => {
       uploadedChunks: 3,
       processedChunks: 3,
     });
+    const partialPreview = manuscriptImportResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${partialJob.importId}`).expect(200)).body,
+    ).data;
+    expect(partialPreview.chapters).toHaveLength(3);
+    const partialConfirmBody = {
+      title: "部分失败恢复作品",
+      chapters: partialPreview.chapters.map((chapter) => ({
+        title: chapter.title,
+        sourceRange: chapter.sourceRange,
+      })),
+    };
+    const partialWork = workResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/imports/manuscripts/${partialJob.importId}/confirm-chunked`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "chunked-partial-confirm")
+          .send(partialConfirmBody)
+          .expect(200)
+      ).body,
+    ).data;
+    await owner
+      .post(`/api/v1/imports/manuscripts/${partialJob.importId}/confirm-chunked`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "chunked-partial-confirm")
+      .send(partialConfirmBody)
+      .expect(200);
+    const partialVersions = await databasePool.query<{
+      content: string;
+      source_start: number;
+      source_end: number;
+    }>(
+      `SELECT version.content,
+              (node.payload->'sourceRange'->>'start')::int AS source_start,
+              (node.payload->'sourceRange'->>'end')::int AS source_end
+         FROM chapter_versions AS version
+         INNER JOIN chapters AS chapter ON chapter.id = version.chapter_id
+         INNER JOIN version_nodes AS node ON node.id = version.version_node_id
+        WHERE chapter.work_id = $1
+        ORDER BY chapter.number`,
+      [partialWork.id],
+    );
+    expect(partialVersions.rows).toHaveLength(3);
+    expect(partialVersions.rows.map((version) => version.content).join("")).toBe(partialSource);
+    expect(
+      partialVersions.rows.map((version) => [version.source_start, version.source_end]),
+    ).toEqual([
+      [0, partialFirstChunk.length],
+      [partialFirstChunk.length, partialFirstChunk.length + partialSecondChunk.length],
+      [partialFirstChunk.length + partialSecondChunk.length, partialSource.length],
+    ]);
 
     const elapsedMs = Math.round(performance.now() - startedAt);
     const maxRssBytes = process.resourceUsage().maxRSS * 1024;
@@ -595,6 +662,104 @@ describe("chunked manuscript import recovery integration", () => {
       }),
     );
   }, 240_000);
+
+  it("recovers bounded BullMQ ticks after Redis loses the delivery job", async () => {
+    const owner = await createAuthenticatedAgent("chunked-bullmq@example.com", "StrongPassword123");
+    const token = await csrf(owner);
+    const created = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post("/api/v1/imports/manuscripts/chunked/start")
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "chunked-bullmq-start")
+          .send({ sourceName: "BullMQ 分块.txt", chunkCount: 12 })
+          .expect(200)
+      ).body,
+    ).data;
+    for (let sequence = 0; sequence < 12; sequence += 1) {
+      await owner
+        .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({ sequence, sourceText: `第${sequence + 1}章 BullMQ\n\n正文。` })
+        .expect(200);
+    }
+
+    await redis.flushdb();
+    const firstDelivery = (await importRepository.listRecoverableJobs()).find(
+      (job) => job.importId === created.importId,
+    );
+    expect(firstDelivery?.checkpoint.nextProcessSequence).toBe(0);
+
+    const queueConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    const workerConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    const queue = new Queue<WorkerJob>(WORKER_QUEUE_NAME, { connection: queueConnection });
+    const worker = new BullWorker<WorkerJob, void>(
+      WORKER_QUEUE_NAME,
+      async (job) => {
+        const outcome = await importProcessor.process(job.data);
+        if (outcome === "failed") {
+          throw new Error("Import processor reported failure");
+        }
+      },
+      { connection: workerConnection, concurrency: 1 },
+    );
+    try {
+      await Promise.all([queue.waitUntilReady(), worker.waitUntilReady()]);
+      await queue.add(PROCESS_IMPORT_JOB, firstDelivery!, {
+        jobId: firstDelivery!.idempotencyKey,
+        removeOnComplete: true,
+        removeOnFail: true,
+      });
+      await expect
+        .poll(
+          async () =>
+            chunkedImportProgressResponseSchema.parse(
+              (
+                await owner
+                  .get(`/api/v1/imports/manuscripts/${created.importId}/progress`)
+                  .expect(200)
+              ).body,
+            ).data.processedChunks,
+          { timeout: 15_000 },
+        )
+        .toBe(10);
+      const afterTick = chunkedImportProgressResponseSchema.parse(
+        (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+          .body,
+      ).data;
+      expect(afterTick).toMatchObject({ status: "processing", processedChunks: 10 });
+
+      const secondDelivery = (await importRepository.listRecoverableJobs()).find(
+        (job) => job.importId === created.importId,
+      );
+      expect(secondDelivery?.checkpoint.nextProcessSequence).toBe(10);
+      await queue.add(PROCESS_IMPORT_JOB, secondDelivery!, {
+        jobId: secondDelivery!.idempotencyKey,
+        removeOnComplete: true,
+        removeOnFail: true,
+      });
+      await expect
+        .poll(
+          async () =>
+            chunkedImportProgressResponseSchema.parse(
+              (
+                await owner
+                  .get(`/api/v1/imports/manuscripts/${created.importId}/progress`)
+                  .expect(200)
+              ).body,
+            ).data.status,
+          { timeout: 15_000 },
+        )
+        .toBe("awaiting_confirmation");
+    } finally {
+      await worker.close();
+      await queue.close();
+      queueConnection.disconnect();
+      workerConnection.disconnect();
+    }
+  });
 
   async function createApp(): Promise<INestApplication> {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
