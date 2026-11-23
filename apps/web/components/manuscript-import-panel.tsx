@@ -19,6 +19,7 @@ import {
   chunkedImportProgressResponseSchema,
   manuscriptImportConfirmResponseSchema,
   manuscriptImportResponseSchema,
+  workResponseSchema,
   type ChunkedImportProgress,
   type ManuscriptImport,
   type ManuscriptImportChapter,
@@ -315,7 +316,7 @@ export function ManuscriptImportPanel({
         const stream = await createChunkStream(file);
         chunkStream.current = stream;
         pauseRequested.current = false;
-        let response = await fetch("/api/v1/imports/manuscripts/chunked/start", {
+        const response = await fetch("/api/v1/imports/manuscripts/chunked/start", {
           method: "POST",
           headers: {
             "content-type": "application/json",
@@ -327,7 +328,7 @@ export function ManuscriptImportPanel({
         if (!response.ok) {
           throw new Error(await readError(response));
         }
-        let progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
+        const progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
         setChunkProgress(progress);
         setIsChunkedImport(true);
         await continueChunkedImport(file, progress, csrfToken);
@@ -493,7 +494,10 @@ export function ManuscriptImportPanel({
       if (!response.ok) {
         throw new Error(await readError(response));
       }
-      const work = manuscriptImportConfirmResponseSchema.parse(await response.json()).data.work;
+      const payload = await response.json();
+      const work = isChunkedImport
+        ? workResponseSchema.parse(payload).data
+        : manuscriptImportConfirmResponseSchema.parse(payload).data.work;
       onCreated(work.id);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "作品创建失败，请重试。");

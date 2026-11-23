@@ -17773,7 +17773,7 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Confirmed range-based chunked manuscript import */
+      /** @description Created work from range-based chunked manuscript import */
       200: {
         headers: {
           [name: string]: unknown;
@@ -17781,153 +17781,120 @@ export interface operations {
         content: {
           "application/json": {
             data: {
-              work: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
                 id: string;
-                title: string;
-                penName: string;
                 /** @enum {string} */
-                genre: "xianxia" | "history" | "urban";
-                /** @enum {string} */
-                status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
-                /** @enum {string} */
-                scaleTarget: "short" | "medium" | "long" | "epic";
-                chapterLengthTarget: number;
-                /** @enum {string} */
-                sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
-                idea: string | null;
-                templatePack: {
-                  id: string;
-                  /** @enum {string} */
-                  key: "xianxia" | "history" | "urban";
-                  version: number;
-                  label: string;
-                  fields: {
-                    [key: string]: unknown;
-                  };
-                  fieldSchema: {
-                    key: string;
-                    label: string;
-                    /** @enum {string} */
-                    type: "text" | "number" | "boolean" | "list";
-                    required: boolean;
-                    options: string[];
-                  }[];
-                  rules: {
-                    key: string;
-                    label: string;
-                    description: string;
-                  }[];
-                  uiHints: {
-                    worldLabel: string;
-                    powerSystemLabel: string;
-                    powerLevelLabel: string;
-                    factionLabel: string;
-                    itemLabel: string;
-                  };
-                  generationGuidance: {
-                    protagonistArchetypes: string[];
-                    conflictSeeds: string[];
-                    worldRuleSeeds: string[];
-                    forbiddenElements: string[];
-                  };
-                  migration: {
-                    fromVersion: number;
-                    toVersion: number;
-                    notes: string[];
-                  } | null;
-                } | null;
-                settings: {
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
                   [key: string]: unknown;
                 };
-                /** @default null */
-                coverImageUrl: string | null;
-                /** @default [] */
-                tags: string[];
-                /** @default 1 */
-                version: number;
-                /**
-                 * Format: date-time
-                 * @default null
-                 */
-                archivedAt: string | null;
-                /**
-                 * Format: date-time
-                 * @default null
-                 */
-                deletedAt: string | null;
-                /**
-                 * Format: date-time
-                 * @default null
-                 */
-                purgeAfter: string | null;
-                /** @default false */
-                exportReady: boolean;
-                /** @default false */
-                canPurge: boolean;
-                /** Format: date-time */
-                createdAt: string;
-                /** Format: date-time */
-                updatedAt: string;
-                mainBranch: {
-                  id: string;
-                  workId: string;
-                  name: string;
-                  headNodeId: string;
+                fieldSchema: {
+                  key: string;
+                  label: string;
                   /** @enum {string} */
-                  status: "active" | "archived";
-                };
-                branches: {
-                  id: string;
-                  workId: string;
-                  name: string;
-                  headNodeId: string;
-                  /** @enum {string} */
-                  status: "active" | "archived";
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
                 }[];
-                readiness: {
-                  /** @enum {string} */
-                  status: "not_ready" | "partial" | "ready";
-                  completed: number;
-                  total: number;
-                  items: {
-                    /** @enum {string} */
-                    key: "main_branch" | "model_config" | "story_bible" | "outline";
-                    label: string;
-                    ready: boolean;
-                  }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
                 };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
               };
-              chapters: {
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
                 id: string;
                 workId: string;
-                branchId: string;
-                number: number;
-                title: string;
+                name: string;
+                headNodeId: string;
                 /** @enum {string} */
-                status:
-                  | "planned"
-                  | "writing"
-                  | "waiting_review"
-                  | "changes_requested"
-                  | "approved"
-                  | "locked"
-                  | "published"
-                  | "rejected";
-                version: number;
-                wordCount: number;
-                currentVersionId: string;
-              }[];
-              chapterVersions: {
+                status: "active" | "archived";
+              };
+              branches: {
                 id: string;
-                chapterId: string;
-                version: number;
-                content: string;
-                contentHash: string;
-                versionNodeId: string;
-                parentNodeId: string | null;
-                /** Format: date-time */
-                createdAt: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
               }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
             };
             /** Format: starts_with */
             requestId: string;

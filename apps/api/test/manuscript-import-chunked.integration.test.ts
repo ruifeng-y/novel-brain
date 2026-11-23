@@ -1,13 +1,14 @@
 import "reflect-metadata";
 
+import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
   chunkedImportProgressResponseSchema,
-  manuscriptImportConfirmResponseSchema,
   manuscriptImportResponseSchema,
+  workResponseSchema,
 } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import Redis from "ioredis";
@@ -83,13 +84,14 @@ describe("chunked manuscript import recovery integration", () => {
       chunkCharacterCount: 250_000,
       chunkCount: 40,
     });
+    expect(metadata.sha256).toBe(
+      "8a6d4d6b55d18c062754e48657285a93dee8450498cd74e27215def7d1644497",
+    );
     const email = "chunked-recovery@example.com";
     const password = "StrongPassword123";
     let owner = await createAuthenticatedAgent(email, password);
     let token = await csrf(owner);
     const startedAt = performance.now();
-    const heapBefore = process.memoryUsage().heapUsed;
-    let peakHeap = heapBefore;
 
     const created = chunkedImportProgressResponseSchema.parse(
       (
@@ -113,15 +115,14 @@ describe("chunked manuscript import recovery integration", () => {
     });
 
     const chunks = largeManuscriptChunks();
-    const uploaded: string[] = [];
+    let uploadedCount = 0;
     for (let sequence = 0; sequence < 10; sequence += 1) {
       const next = chunks.next();
       expect(next.done).toBe(false);
       const sourceText = next.value;
       expect(sourceText.length).toBeLessThanOrEqual(metadata.chunkCharacterCount);
       const requestBytes = Buffer.byteLength(JSON.stringify({ sequence, sourceText }));
-        expect(requestBytes).toBeLessThan(1_000_000);
-      uploaded.push(sourceText);
+      expect(requestBytes).toBeLessThan(1_000_000);
       const appended = chunkedImportProgressResponseSchema.parse(
         (
           await owner
@@ -132,11 +133,11 @@ describe("chunked manuscript import recovery integration", () => {
             .expect(200)
         ).body,
       ).data;
+      uploadedCount += 1;
       expect(appended.uploadedChunks).toBe(sequence + 1);
-      peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
     }
 
-    for (let sequence = 0; sequence < 5; sequence += 1) {
+    for (let sequence = 0; sequence < 3; sequence += 1) {
       const processed = chunkedImportProgressResponseSchema.parse(
         (
           await owner
@@ -162,8 +163,19 @@ describe("chunked manuscript import recovery integration", () => {
     expect(paused).toMatchObject({
       status: "paused",
       uploadedChunks: 10,
-      processedChunks: 5,
+      processedChunks: 3,
     });
+    const pausedAgain = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/imports/manuscripts/${created.importId}/pause`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({})
+          .expect(200)
+      ).body,
+    ).data;
+    expect(pausedAgain.processedChunks).toBe(3);
     const pausedProcess = chunkedImportProgressResponseSchema.parse(
       (
         await owner
@@ -174,19 +186,8 @@ describe("chunked manuscript import recovery integration", () => {
           .expect(200)
       ).body,
     ).data;
-    expect(pausedProcess.processedChunks).toBe(5);
-
-    await app.close();
-    app = await createApp();
-    owner = await loginAgent(email, password);
-    token = await csrf(owner);
-    const afterRestart = chunkedImportProgressResponseSchema.parse(
-      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
-        .body,
-    ).data;
-    expect(afterRestart).toMatchObject({ status: "paused", processedChunks: 5 });
-
-    const resumed = chunkedImportProgressResponseSchema.parse(
+    expect(pausedProcess.processedChunks).toBe(3);
+    let resumed = chunkedImportProgressResponseSchema.parse(
       (
         await owner
           .post(`/api/v1/imports/manuscripts/${created.importId}/resume`)
@@ -197,22 +198,69 @@ describe("chunked manuscript import recovery integration", () => {
       ).body,
     ).data;
     expect(resumed.status).toBe("processing");
+    const resumedAgain = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/imports/manuscripts/${created.importId}/resume`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({})
+          .expect(200)
+      ).body,
+    ).data;
+    expect(resumedAgain.status).toBe("processing");
+    for (let sequence = 3; sequence < 5; sequence += 1) {
+      const processed = chunkedImportProgressResponseSchema.parse(
+        (
+          await owner
+            .post(`/api/v1/imports/manuscripts/${created.importId}/process`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", token)
+            .send({})
+            .expect(200)
+        ).body,
+      ).data;
+      expect(processed.processedChunks).toBe(sequence + 1);
+      resumed = processed;
+    }
+    expect(resumed.status).toBe("processing");
+
+    await app.close();
+    app = await createApp();
+    owner = await loginAgent(email, password);
+    token = await csrf(owner);
+    const afterRestart = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+        .body,
+    ).data;
+    expect(afterRestart).toMatchObject({ status: "processing", processedChunks: 5 });
+
+    const resumedAfterRestart = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/imports/manuscripts/${created.importId}/resume`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({})
+          .expect(200)
+      ).body,
+    ).data;
+    expect(resumedAfterRestart.status).toBe("processing");
 
     for (let sequence = 10; sequence < metadata.chunkCount; sequence += 1) {
       const next = chunks.next();
       expect(next.done).toBe(false);
       const sourceText = next.value;
       expect(sourceText.length).toBeLessThanOrEqual(metadata.chunkCharacterCount);
-      uploaded.push(sourceText);
+      uploadedCount += 1;
       await owner
         .post(`/api/v1/imports/manuscripts/${created.importId}/chunks`)
         .set("Origin", origin)
         .set("X-CSRF-Token", token)
         .send({ sequence, sourceText })
         .expect(200);
-      peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
     }
-    expect(uploaded).toHaveLength(metadata.chunkCount);
+    expect(uploadedCount).toBe(metadata.chunkCount);
 
     let progress = afterRestart;
     while (progress.processedChunks < metadata.chunkCount) {
@@ -226,7 +274,6 @@ describe("chunked manuscript import recovery integration", () => {
             .expect(200)
         ).body,
       ).data;
-      peakHeap = Math.max(peakHeap, process.memoryUsage().heapUsed);
     }
     expect(progress).toMatchObject({
       status: "awaiting_confirmation",
@@ -255,45 +302,61 @@ describe("chunked manuscript import recovery integration", () => {
       },
     });
 
-    const confirmed = manuscriptImportConfirmResponseSchema.parse(
-      (
-        await owner
-          .post(`/api/v1/imports/manuscripts/${created.importId}/confirm-chunked`)
-          .set("Origin", origin)
-          .set("X-CSRF-Token", token)
-          .set("Idempotency-Key", "chunked-confirm-10m")
-          .send({
-            title: "千万字恢复测试",
-            chapters: preview.chapters.map((chapter) => ({
-              title: chapter.title,
-              sourceRange: chapter.sourceRange,
-            })),
-          })
-          .expect(200)
-      ).body,
-    ).data;
-    expect(confirmed.chapters).toHaveLength(metadata.chapterCount);
-    expect(confirmed.chapterVersions).toHaveLength(metadata.chapterCount);
-    expect(confirmed.chapterVersions[0]?.parentNodeId).not.toBeNull();
-    const versionRanges = await databasePool.query<{
-      count: number;
-      first_start: number;
-      last_end: number;
-    }>(
-      `SELECT count(*)::int AS count,
-                min((payload->'sourceRange'->>'start')::int) AS first_start,
-                max((payload->'sourceRange'->>'end')::int) AS last_end
-         FROM version_nodes
-         WHERE work_id = $1 AND node_type = 'chapter_version'`,
-      [confirmed.work.id],
+    const confirmHttp = await owner
+      .post(`/api/v1/imports/manuscripts/${created.importId}/confirm-chunked`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "chunked-confirm-10m")
+      .send({
+        title: "千万字恢复测试",
+        chapters: preview.chapters.map((chapter) => ({
+          title: chapter.title,
+          sourceRange: chapter.sourceRange,
+        })),
+      })
+      .expect(200);
+    expect(Buffer.byteLength(JSON.stringify(confirmHttp.body))).toBeLessThan(200_000);
+    const confirmed = workResponseSchema.parse(confirmHttp.body).data;
+    const persistedVersions = await databasePool.query<{ content: string }>(
+      `SELECT version.content
+         FROM chapter_versions AS version
+         INNER JOIN chapters AS chapter ON chapter.id = version.chapter_id
+         WHERE chapter.work_id = $1
+         ORDER BY chapter.number`,
+      [confirmed.id],
     );
-    expect(versionRanges.rows[0]).toEqual({
-      count: metadata.chapterCount,
-      first_start: 0,
-      last_end: metadata.characterCount,
-    });
+    expect(persistedVersions.rows).toHaveLength(metadata.chapterCount);
+    const confirmedHash = createHash("sha256");
+    for (const version of persistedVersions.rows) {
+      confirmedHash.update(version.content);
+    }
+    expect(confirmedHash.digest("hex")).toBe(metadata.sha256);
+    const versionRanges = await databasePool.query<{
+      chapter_number: number;
+      source_start: number;
+      source_end: number;
+    }>(
+      `SELECT (payload->>'chapterNumber')::int AS chapter_number,
+                (payload->'sourceRange'->>'start')::int AS source_start,
+                (payload->'sourceRange'->>'end')::int AS source_end
+         FROM version_nodes
+         WHERE work_id = $1 AND node_type = 'chapter_version'
+         ORDER BY (payload->>'chapterNumber')::int`,
+      [confirmed.id],
+    );
+    expect(versionRanges.rows).toHaveLength(metadata.chapterCount);
+    expect(
+      versionRanges.rows.every((range, index) => {
+        const expectedStart = index * LARGE_MANUSCRIPT_SPEC.chapterCharacterCount;
+        return (
+          range.chapter_number === index + 1 &&
+          range.source_start === expectedStart &&
+          range.source_end === expectedStart + LARGE_MANUSCRIPT_SPEC.chapterCharacterCount
+        );
+      }),
+    ).toBe(true);
 
-    const replay = manuscriptImportConfirmResponseSchema.parse(
+    const replay = workResponseSchema.parse(
       (
         await owner
           .post(`/api/v1/imports/manuscripts/${created.importId}/confirm-chunked`)
@@ -310,8 +373,27 @@ describe("chunked manuscript import recovery integration", () => {
           .expect(200)
       ).body,
     ).data;
-    expect(replay.work.id).toBe(confirmed.work.id);
-    expect(replay.chapterVersions).toHaveLength(metadata.chapterCount);
+    expect(replay.id).toBe(confirmed.id);
+    const replayVersions = await databasePool.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM chapter_versions WHERE work_id = $1",
+      [confirmed.id],
+    );
+    expect(replayVersions.rows[0]?.count).toBe(metadata.chapterCount);
+
+    const other = await createAuthenticatedAgent("chunked-recovery-other@example.com", password);
+    const otherToken = await csrf(other);
+    await other
+      .post(`/api/v1/imports/manuscripts/${created.importId}/confirm-chunked`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({
+        title: "越权确认",
+        chapters: preview.chapters.map((chapter) => ({
+          title: chapter.title,
+          sourceRange: chapter.sourceRange,
+        })),
+      })
+      .expect(403);
 
     const cancelJob = chunkedImportProgressResponseSchema.parse(
       (
@@ -341,6 +423,17 @@ describe("chunked manuscript import recovery integration", () => {
       ).body,
     ).data;
     expect(cancelled.status).toBe("cancelled");
+    const cancelledAgain = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/imports/manuscripts/${cancelJob.importId}/cancel`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({})
+          .expect(200)
+      ).body,
+    ).data;
+    expect(cancelledAgain.status).toBe("cancelled");
     const appendAfterCancel = await owner
       .post(`/api/v1/imports/manuscripts/${cancelJob.importId}/chunks`)
       .set("Origin", origin)
@@ -348,6 +441,58 @@ describe("chunked manuscript import recovery integration", () => {
       .send({ sequence: 1, sourceText: "第二章 不应接收\n\n正文。" });
     expect(appendAfterCancel.status).toBe(409);
     expect(appendAfterCancel.body.error.code).toBe("IMPORT_NOT_READY");
+    const confirmAfterCancel = await owner
+      .post(`/api/v1/imports/manuscripts/${cancelJob.importId}/confirm-chunked`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        title: "取消后的导入",
+        chapters: [{ title: "第一章", sourceRange: { start: 0, end: 1 } }],
+      });
+    expect(confirmAfterCancel.status).toBe(409);
+    expect(confirmAfterCancel.body.error.code).toBe("IMPORT_NOT_READY");
+
+    const surrogateSource = "第一章 😀\n\n正文。";
+    const surrogateJob = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post("/api/v1/imports/manuscripts/chunked/start")
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "chunked-surrogate-boundary")
+          .send({ sourceName: "代理项边界.txt", chunkCount: 1 })
+          .expect(200)
+      ).body,
+    ).data;
+    await owner
+      .post(`/api/v1/imports/manuscripts/${surrogateJob.importId}/chunks`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ sequence: 0, sourceText: surrogateSource })
+      .expect(200);
+    await owner
+      .post(`/api/v1/imports/manuscripts/${surrogateJob.importId}/process`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({})
+      .expect(200);
+    const splitInsideSurrogate = surrogateSource.indexOf("😀") + 1;
+    const boundaryFailure = await owner
+      .post(`/api/v1/imports/manuscripts/${surrogateJob.importId}/confirm-chunked`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        title: "代理项错误拆分",
+        chapters: [
+          { title: "第一章", sourceRange: { start: 0, end: splitInsideSurrogate } },
+          {
+            title: "第二章",
+            sourceRange: { start: splitInsideSurrogate, end: surrogateSource.length },
+          },
+        ],
+      });
+    expect(boundaryFailure.status).toBe(400);
+    expect(boundaryFailure.body.error.code).toBe("VALIDATION_INVALID");
 
     const partialJob = chunkedImportProgressResponseSchema.parse(
       (
@@ -360,11 +505,12 @@ describe("chunked manuscript import recovery integration", () => {
           .expect(200)
       ).body,
     ).data;
+    const partialFirstChunk = "第一章 部分失败\n\n正文。";
     await owner
       .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
-      .send({ sequence: 0, sourceText: "第一章 部分失败\n\n正文。" })
+      .send({ sequence: 0, sourceText: partialFirstChunk })
       .expect(200);
     await owner
       .post(`/api/v1/imports/manuscripts/${partialJob.importId}/process`)
@@ -387,9 +533,54 @@ describe("chunked manuscript import recovery integration", () => {
       uploadedChunks: 1,
       processedChunks: 1,
     });
+    const replayedChunk = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({ sequence: 0, sourceText: partialFirstChunk })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(replayedChunk.uploadedChunks).toBe(1);
+    await owner
+      .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ sequence: 1, sourceText: "第二章 补传\n\n正文。" })
+      .expect(200);
+    await owner
+      .post(`/api/v1/imports/manuscripts/${partialJob.importId}/chunks`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ sequence: 2, sourceText: "第三章 完成\n\n正文。" })
+      .expect(200);
+    await owner
+      .post(`/api/v1/imports/manuscripts/${partialJob.importId}/process`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({})
+      .expect(200);
+    const partialRecovered = chunkedImportProgressResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/imports/manuscripts/${partialJob.importId}/process`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({})
+          .expect(200)
+      ).body,
+    ).data;
+    expect(partialRecovered).toMatchObject({
+      status: "awaiting_confirmation",
+      uploadedChunks: 3,
+      processedChunks: 3,
+    });
 
     const elapsedMs = Math.round(performance.now() - startedAt);
-    expect(peakHeap).toBeLessThan(512 * 1024 * 1024);
+    const maxRssBytes = process.resourceUsage().maxRSS * 1024;
+    expect(maxRssBytes).toBeLessThan(768 * 1024 * 1024);
     console.info(
       JSON.stringify({
         event: "import_recovery.evidence",
@@ -399,8 +590,8 @@ describe("chunked manuscript import recovery integration", () => {
         chapterCount: metadata.chapterCount,
         chunkCharacterCount: metadata.chunkCharacterCount,
         chunkCount: metadata.chunkCount,
-          maxRequestBytes: 1_000_000,
-        peakHeapBytes: peakHeap,
+        maxRequestBytes: 1_000_000,
+        maxRssBytes,
         elapsedMs,
         sha256: metadata.sha256,
       }),

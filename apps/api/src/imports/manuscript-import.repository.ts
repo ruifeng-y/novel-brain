@@ -19,7 +19,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 
-import type { ManuscriptSourceRange } from "./manuscript-import.parser";
+import type { ManuscriptSourceRange } from "@novel-brain/contracts";
 import { uuidv7 } from "uuidv7";
 
 import { countWords } from "./manuscript-import.parser";
@@ -593,7 +593,7 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
     chapters: Array<{ title: string; content: string; sourceRange: ManuscriptSourceRange }>;
     audit: WorksAuditContext;
     idempotencyKey: string;
-  }): Promise<ConfirmedManuscriptResult | undefined> {
+  }): Promise<ConfirmedManuscriptResult | "not_ready" | undefined> {
     return this.withTenant(input.userId, async (transaction) => {
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.userId}))`);
       const [job] = await transaction
@@ -610,6 +610,9 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         .for("update");
       if (!job) {
         return undefined;
+      }
+      if (job.status !== "awaiting_confirmation" && job.status !== "completed") {
+        return "not_ready";
       }
       if (job.status === "completed" && job.workId) {
         return this.readConfirmed(transaction, input.userId, job.workId);

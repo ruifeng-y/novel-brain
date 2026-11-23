@@ -21,6 +21,7 @@ import {
   manuscriptImportConfirmResponseSchema,
   manuscriptImportResponseSchema,
   uuidV7Schema,
+  workResponseSchema,
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
 import {
@@ -295,8 +296,8 @@ export class ManuscriptImportController {
   @ApiHeader({ name: "Idempotency-Key", required: false })
   @ApiBody({ schema: chunkedConfirmBodySchema })
   @ApiOkResponse({
-    description: "Confirmed range-based chunked manuscript import",
-    schema: confirmResponseJsonSchema,
+    description: "Created work from range-based chunked manuscript import",
+    schema: schemaOf(workResponseSchema),
   })
   async confirmChunked(
     @Req() request: AuthenticatedRequest,
@@ -313,7 +314,7 @@ export class ManuscriptImportController {
       this.auditContext(request, requestId),
       `manuscript-import-${importId}`,
     );
-    return manuscriptImportConfirmResponseSchema.parse({
+    return workResponseSchema.parse({
       data: result,
       requestId,
       meta: {},

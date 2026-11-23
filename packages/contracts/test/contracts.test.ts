@@ -962,6 +962,7 @@ describe("shared contracts", () => {
               title: "第一章 断碑夜雨",
               content: "# 第一章 断碑夜雨\n\n雨落在断碑上。",
               wordCount: 11,
+              sourceRange: { start: 0, end: 26 },
             },
           ],
           warnings: [

@@ -1,4 +1,8 @@
-import type { ManuscriptImportStatus, ManuscriptImportWarning } from "@novel-brain/contracts";
+import type {
+  ManuscriptImportStatus,
+  ManuscriptImportWarning,
+  ManuscriptSourceRange,
+} from "@novel-brain/contracts";
 
 export interface ParsedManuscriptChapter {
   title: string;
@@ -11,11 +15,6 @@ export interface ParsedManuscript {
   status: ManuscriptImportStatus;
   chapters: ParsedManuscriptChapter[];
   warnings: ManuscriptImportWarning[];
-}
-
-export interface ManuscriptSourceRange {
-  start: number;
-  end: number;
 }
 
 export interface ManuscriptParseOptions {

@@ -69,7 +69,7 @@ function* chunks(chunkCharacterCount: number): Generator<string> {
 
 function chapterText(index: number): string {
   const header = `第${index}章 分块旧稿${String(index).padStart(4, "0")}\n`;
-  const bodyPrefix = `沈砚在第${index}章沿忘川河继续赶路。`;
+  const bodyPrefix = `[${LARGE_MANUSCRIPT_SPEC.seed}:v${LARGE_MANUSCRIPT_SPEC.version}]沈砚在第${index}章沿忘川河继续赶路。`;
   const filler = "风吹过断碑，夜色压在河面上。";
   const bodyLength = LARGE_MANUSCRIPT_SPEC.chapterCharacterCount - header.length - 1;
   const body = `${bodyPrefix}${filler.repeat(

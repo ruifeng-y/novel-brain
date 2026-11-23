@@ -11,6 +11,8 @@ import type {
   ManuscriptImportConfirmData,
   ManuscriptImportConfirmRequest,
   ManuscriptImportFormat,
+  ManuscriptSourceRange,
+  WorkOverview,
 } from "@novel-brain/contracts";
 import { uuidv7 } from "uuidv7";
 
@@ -23,7 +25,7 @@ import type {
   ChapterVersionRecord,
   ManuscriptImportJobRecord,
 } from "./manuscript-import.repository";
-import { parseManuscriptText, type ManuscriptSourceRange } from "./manuscript-import.parser";
+import { parseManuscriptText } from "./manuscript-import.parser";
 import { formatFromName, readImportFile, type ImportUploadFile } from "./import-file";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -243,6 +245,9 @@ export class ManuscriptImportService {
       audit,
       idempotencyKey,
     });
+    if (result === "not_ready") {
+      throw new ApiError(409, "IMPORT_NOT_READY", "导入已暂停、取消或尚未完成");
+    }
     if (!result) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
@@ -260,7 +265,7 @@ export class ManuscriptImportService {
     input: ChunkedManuscriptImportConfirmRequest,
     audit: WorksAuditContext,
     idempotencyKey: string,
-  ): Promise<ManuscriptImportConfirmData> {
+  ): Promise<WorkOverview> {
     const record = await this.repository.find(userId, importId);
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
@@ -275,7 +280,7 @@ export class ManuscriptImportService {
     if (sourceText === undefined) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
-    validateChapterRanges(input.chapters, sourceText.length);
+    validateChapterRanges(input.chapters, sourceText);
     const chapters = input.chapters.map((chapter) => ({
       title: chapter.title,
       content: sourceText.slice(chapter.sourceRange.start, chapter.sourceRange.end),
@@ -294,14 +299,13 @@ export class ManuscriptImportService {
       audit,
       idempotencyKey,
     });
+    if (result === "not_ready") {
+      throw new ApiError(409, "IMPORT_NOT_READY", "导入已暂停、取消或尚未完成");
+    }
     if (!result) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
-    return {
-      work: await this.worksService.get(userId, result.workId),
-      chapters: result.chapters.map(toChapterContract),
-      chapterVersions: result.chapterVersions.map(toChapterVersionContract),
-    };
+    return this.worksService.get(userId, result.workId);
   }
 
   private toContract(
@@ -412,19 +416,30 @@ function toChunkedProgress(record: ManuscriptImportJobRecord): ChunkedImportProg
 
 function validateChapterRanges(
   chapters: Array<{ sourceRange: ManuscriptSourceRange }>,
-  sourceLength: number,
+  sourceText: string,
 ): void {
   let expectedStart = 0;
   for (const chapter of chapters) {
     if (
       chapter.sourceRange.start !== expectedStart ||
-      chapter.sourceRange.end <= chapter.sourceRange.start
+      chapter.sourceRange.end <= chapter.sourceRange.start ||
+      splitsSurrogatePair(sourceText, chapter.sourceRange.start) ||
+      splitsSurrogatePair(sourceText, chapter.sourceRange.end)
     ) {
       throw new ApiError(400, "VALIDATION_INVALID", "章节范围必须连续覆盖旧稿原文");
     }
     expectedStart = chapter.sourceRange.end;
   }
-  if (expectedStart !== sourceLength) {
+  if (expectedStart !== sourceText.length) {
     throw new ApiError(400, "VALIDATION_INVALID", "章节范围必须连续覆盖旧稿原文");
   }
+}
+
+function splitsSurrogatePair(text: string, offset: number): boolean {
+  if (offset <= 0 || offset >= text.length) {
+    return false;
+  }
+  const previous = text.charCodeAt(offset - 1);
+  const next = text.charCodeAt(offset);
+  return previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff;
 }

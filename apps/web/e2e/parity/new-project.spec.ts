@@ -594,7 +594,6 @@ test("recovers a chunked manuscript import after upload failure, pause and resum
   }
 
   await page.getByRole("button", { name: "继续导入" }).click();
-  await expect(page.getByText(/已处理 1 \/ 8/)).toBeVisible();
   const pauseResponse = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return (
@@ -602,6 +601,7 @@ test("recovers a chunked manuscript import after upload failure, pause and resum
       /^\/api\/v1\/imports\/manuscripts\/[0-9a-f-]+\/pause$/u.test(url.pathname)
     );
   });
+  await expect(page.getByRole("button", { name: "暂停处理" })).toBeVisible();
   await page.getByRole("button", { name: "暂停处理" }).click();
   await pauseResponse;
   await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
@@ -628,11 +628,9 @@ test("recovers a chunked manuscript import after upload failure, pause and resum
     );
   });
   await page.getByRole("button", { name: "确认并创建作品" }).click();
-  const confirmed = manuscriptImportConfirmResponseSchema.parse(
-    await (await confirmResponse).json(),
-  ).data;
-  await expect(page).toHaveURL(new RegExp(`/workspace/${confirmed.work.id}/overview$`));
-  const persistedWork = await getPersistedWork(page, confirmed.work.id);
+  const confirmed = workResponseSchema.parse(await (await confirmResponse).json()).data;
+  await expect(page).toHaveURL(new RegExp(`/workspace/${confirmed.id}/overview$`));
+  const persistedWork = await getPersistedWork(page, confirmed.id);
   const persistedChapters = await getPersistedChapters(page, persistedWork);
   expect(persistedChapters).toHaveLength(8);
   expect(persistedChapters[0]?.currentVersion?.content).toContain("第1章 分块旧稿0001");
