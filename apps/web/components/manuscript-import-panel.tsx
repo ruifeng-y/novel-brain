@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import {
+  IMPORT_FILE_LIMITS,
   apiErrorSchema,
   chunkedImportProgressResponseSchema,
   manuscriptImportConfirmResponseSchema,
@@ -87,9 +88,9 @@ export function ManuscriptImportPanel({
       return;
     }
     const extension = nextFile.name.slice(nextFile.name.lastIndexOf(".")).toLowerCase();
-    if (![".txt", ".md", ".markdown"].includes(extension)) {
+    if (![".txt", ".md", ".markdown", ".docx"].includes(extension)) {
       resetPreview(null);
-      setError("请选择 TXT 或 Markdown 旧稿文件");
+      setError("请选择 TXT、Markdown 或 DOCX 旧稿文件");
       return;
     }
     resetPreview(nextFile);
@@ -107,7 +108,13 @@ export function ManuscriptImportPanel({
     confirmKey.current = null;
     try {
       const csrfToken = await getCsrfToken();
-      if (file.size > 1024 * 1024) {
+      if (
+        file.name.toLowerCase().endsWith(".docx") &&
+        file.size > IMPORT_FILE_LIMITS.manuscript.maxFileBytes
+      ) {
+        throw new Error("DOCX 旧稿不能超过 1 MB，请拆分文件后重试。");
+      }
+      if (file.size > IMPORT_FILE_LIMITS.manuscript.maxFileBytes) {
         const text = await file.text();
         const chunks = splitIntoChunks(text, 500_000);
         let response = await fetch("/api/v1/imports/manuscripts/chunked/start", {
@@ -314,7 +321,7 @@ export function ManuscriptImportPanel({
             <span className="panel-kicker">导入旧稿</span>
             <h2>把已经写下的部分带进来</h2>
           </div>
-          <span className="badge">TXT · Markdown</span>
+          <span className="badge">TXT · Markdown · DOCX</span>
         </div>
         <div className="settings-note">
           <FileText size={15} aria-hidden="true" />
@@ -324,9 +331,9 @@ export function ManuscriptImportPanel({
         <label className="settings-upload manuscript-upload" htmlFor="manuscript-file">
           <FileUp size={22} aria-hidden="true" />
           <strong>上传旧稿文件</strong>
-          <span>TXT 或 Markdown；大于 1 MB 时自动分块处理</span>
+          <span>TXT、Markdown 或 DOCX；TXT/Markdown 大于 1 MB 时自动分块处理</span>
           <input
-            accept=".txt,.md,.markdown,text/plain,text/markdown"
+            accept=".txt,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             disabled={busy !== null}
             id="manuscript-file"
             onChange={(event) => selectFile(event.target.files?.[0])}
@@ -374,7 +381,7 @@ export function ManuscriptImportPanel({
           <section className="manuscript-empty-state">
             <FileText size={24} aria-hidden="true" />
             <h3>旧稿里没有可导入的正文</h3>
-            <p>请检查文件内容或换一份 TXT、Markdown 文件。</p>
+            <p>请检查文件内容或换一份 TXT、Markdown、DOCX 文件。</p>
           </section>
         ) : null}
 

@@ -179,12 +179,12 @@ M0 关键错误：
 | POST | `/api/v1/works/:workId/duplicate` | 幂等复制作品设定内容，正文与版本默认排除 |
 | GET | `/api/v1/works/:workId/branches` | M0 返回 main 分支 |
 | POST | `/api/v1/works/:workId/import` | 设定导入或旧稿导入 |
-| POST | `/api/v1/imports` | 从粘贴文本或小型 TXT/Markdown 文件识别设定候选，不创建作品 |
+| POST | `/api/v1/imports` | 从粘贴文本或小型 TXT/Markdown/DOCX 文件识别设定候选，不创建作品 |
 | GET | `/api/v1/imports/:importId` | 导入状态和候选 |
 | GET | `/api/v1/imports/:importId/report` | 导入报告和冲突 |
 | POST | `/api/v1/imports/:importId/conflicts/:conflictId/decision` | 记录导入冲突裁决 |
 | POST | `/api/v1/imports/:importId/confirm` | 冲突全部裁决后创建新作品和 main 分支 |
-| POST | `/api/v1/imports/manuscripts` | 从小型 TXT/Markdown 旧稿识别章节切分，不创建作品 |
+| POST | `/api/v1/imports/manuscripts` | 从小型 TXT/Markdown/DOCX 旧稿识别章节切分，不创建作品 |
 | GET | `/api/v1/imports/manuscripts/:importId` | 旧稿章节切分预览 |
 | POST | `/api/v1/imports/manuscripts/:importId/confirm` | 确认调整后的章节，创建新作品、main 分支和有序章节版本 |
 
@@ -408,8 +408,8 @@ manifest `schemaVersion` 为 2 时固定 `aiDisclosureMetadata`：`required` 来
 
 ### ManuscriptImport
 
-- `id`、`status`、`sourceName`、`format`、`chapters`、`warnings`、`canConfirm`、`confirmedWorkId`、`createdAt`。
-- `status`：`ready`、`partial`、`empty`；编码无法解析或文件类型不支持返回 `VALIDATION_INVALID`。
+- `id`、`status`、`sourceName`、`format`（`txt`、`markdown`、`docx`）、`chapters`、`warnings`、`canConfirm`、`confirmedWorkId`、`createdAt`。
+- `status`：`ready`、`partial`、`empty`；编码无法解析、文件类型不支持或 DOCX 包结构无效返回 `VALIDATION_INVALID`。
 - `chapters` 为按原文顺序排列的 `order`、`title`、`content`、`wordCount`；默认文本导入不创建候选或已确认设定。
 - 确认请求提交调整后的 `title` 和 `content` 序列；服务端必须验证这些内容按顺序拼接后与原文完全一致。
 
