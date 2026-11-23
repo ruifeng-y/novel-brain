@@ -17,13 +17,10 @@ const traceability = [
 const completeAudit = {
   schemaVersion: 1,
   verification: {
-    kind: "vitest",
+    kind: "ci",
     status: "passed",
-    executedAt: "2026-11-23",
-    command: "pnpm exec vitest run --testTimeout 15000",
-    path: "docs/implementation/evidence/example-vitest-summary.json",
-    testFiles: 1,
-    tests: 1,
+    path: "https://github.com/ruifeng-y/novel-brain/actions/runs/123",
+    headSha: "a".repeat(40),
   },
   evidence: {
     auth: {
@@ -54,6 +51,7 @@ const completeAudit = {
 const validate = (audit = completeAudit, overrides = {}) =>
   validateNonUiCapabilityEvidence(traceability, audit, {
     evidenceExists: () => true,
+    auditCiRunIsValid: () => true,
     gapIssueIsValid: () => true,
     githubRunIsSuccessful: () => true,
     ...overrides,
@@ -91,6 +89,14 @@ describe("non-UI capability evidence audit", () => {
     delete audit.verification;
 
     expect(validate(audit)).toContain("capability-audit:verification-missing");
+  });
+
+  it("requires the recorded CI run to match the audited code head", () => {
+    expect(
+      validate(completeAudit, {
+        auditCiRunIsValid: () => false,
+      }),
+    ).toContain("capability-audit:verification-evidence-missing");
   });
 
   it("rejects status drift between the audit and traceability ledger", () => {
@@ -152,6 +158,7 @@ describe("non-UI capability evidence audit", () => {
     );
     const blockers = validateNonUiCapabilityEvidence(mappedTraceability, completeAudit, {
       evidenceExists: () => true,
+      auditCiRunIsValid: () => true,
       gapIssueIsValid: () => true,
       githubRunIsSuccessful: () => true,
     });

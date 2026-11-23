@@ -417,6 +417,7 @@ export function evaluateV1Release({
   actionEvidence,
   evidenceExists = () => false,
   githubRunIsSuccessful = () => false,
+  auditCiRunIsValid = () => false,
   gapIssueIsValid = () => false,
   fileContains = () => false,
   goldenIsValid = () => false,
@@ -436,6 +437,7 @@ export function evaluateV1Release({
     ...validateNonUiCapabilityEvidence(traceability, capabilityEvidence, {
       evidenceExists,
       githubRunIsSuccessful,
+      auditCiRunIsValid,
       gapIssueIsValid,
     }),
     ...validateUiMatrix(uiMatrix, { goldenIsValid }),
@@ -530,6 +532,25 @@ function isOpenReadyGithubIssue(reference) {
   }
 }
 
+function isAuditCiRun(reference, expectedHeadSha) {
+  const match = reference?.match(GITHUB_ACTIONS_RUN_URL);
+  if (!match || !expectedHeadSha) return false;
+  const [, owner, repository, runId] = match;
+  if (`${owner}/${repository}` !== EXPECTED_GITHUB_REPOSITORY) return false;
+  try {
+    const run = queryGithubApi(
+      `repos/${owner}/${repository}/actions/runs/${runId}`,
+      "{status: .status, conclusion: .conclusion, url: .html_url, headSha: .head_sha, path: .path, event: .event}",
+    );
+    return isValidGithubActionsRunData(reference, run, {
+      gateId: "final-production-ci",
+      expectedCommit: expectedHeadSha,
+    });
+  } catch {
+    return false;
+  }
+}
+
 function queryGithubApi(path, jq) {
   const output = execFileSync("gh", ["api", path, "--jq", jq], {
     encoding: "utf8",
@@ -556,6 +577,7 @@ function main() {
     actionEvidence: JSON.parse(readFileSync("docs/implementation/v1-action-evidence.json", "utf8")),
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
+    auditCiRunIsValid: isAuditCiRun,
     gapIssueIsValid: isOpenReadyGithubIssue,
     fileContains,
     goldenIsValid,

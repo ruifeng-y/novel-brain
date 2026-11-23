@@ -16,7 +16,7 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 
 | Gate | Evidence | Status |
 | --- | --- | --- |
-| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/evidence/m3-236-vitest-summary.json`; `node scripts/validate-readiness.mjs` | structure pass; 97/107 non-UI V1 capabilities verified; 10 bounded gaps remain |
+| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`; `node scripts/validate-readiness.mjs` | structure pass; 97/107 non-UI V1 capabilities verified; 10 bounded gaps remain |
 | UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | all 17 non-static production pages are `parity-verified`; global release evidence remains blocked |
 | Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | existing Golden baseline evidence pass; final normal PR CI pending |
 | Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | implemented; final normal PR CI pending |

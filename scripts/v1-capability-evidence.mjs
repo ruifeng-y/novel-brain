@@ -72,26 +72,22 @@ function validateEvidenceReferences(
   }
 }
 
-function validateVerification(verification, evidenceExists, blockers) {
+function validateVerification(verification, auditCiRunIsValid, blockers) {
   if (!verification || typeof verification !== "object" || Array.isArray(verification)) {
     blockers.push("capability-audit:verification-missing");
     return;
   }
-  if (verification.kind !== "vitest" || verification.status !== "passed") {
+  if (
+    verification.kind !== "ci" ||
+    verification.status !== "passed" ||
+    !/^[0-9a-f]{40}$/u.test(verification.headSha ?? "")
+  ) {
     blockers.push("capability-audit:verification-invalid");
   }
   if (
-    !verification.command?.trim() ||
-    !verification.executedAt?.trim() ||
-    !Number.isInteger(verification.testFiles) ||
-    verification.testFiles <= 0 ||
-    !Number.isInteger(verification.tests) ||
-    verification.tests <= 0
+    !/^https:\/\/github\.com\/[^/]+\/[^/]+\/actions\/runs\/\d+$/u.test(verification.path ?? "") ||
+    !auditCiRunIsValid(verification.path, verification.headSha)
   ) {
-    blockers.push("capability-audit:verification-incomplete");
-  }
-  const path = normalizeRepositoryPath(verification.path);
-  if (!path || !evidenceExists(path)) {
     blockers.push("capability-audit:verification-evidence-missing");
   }
 }
@@ -102,6 +98,7 @@ export function validateNonUiCapabilityEvidence(
   {
     evidenceExists = () => false,
     githubRunIsSuccessful = () => false,
+    auditCiRunIsValid = () => false,
     gapIssueIsValid = () => false,
   } = {},
 ) {
@@ -121,7 +118,7 @@ export function validateNonUiCapabilityEvidence(
     blockers.push("capability-audit:evidence-missing");
   }
   if (Object.values(capabilities).some((record) => record?.status === "verified")) {
-    validateVerification(audit.verification, evidenceExists, blockers);
+    validateVerification(audit.verification, auditCiRunIsValid, blockers);
   }
 
   for (const id of Object.keys(capabilities)) {

@@ -3,13 +3,10 @@
   "auditedAt": "2026-11-21",
   "issue": "#236",
   "verification": {
-    "kind": "vitest",
-    "status": "passed",
-    "executedAt": "2026-11-23",
-    "command": "pnpm exec vitest run --testTimeout 15000",
-    "path": "docs/implementation/evidence/m3-236-vitest-summary.json",
-    "testFiles": 122,
-    "tests": 620
+    "kind": "ci",
+    "status": "pending",
+    "path": "",
+    "headSha": ""
   },
   "evidence": {
     "auth-http": { "kind": "integration", "path": "apps/api/test/auth.integration.test.ts" },
