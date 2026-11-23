@@ -96,6 +96,9 @@ export function readDocxText(buffer: Buffer, options: DocxReadOptions): DocxText
   const numberingXml = entries["word/numbering.xml"];
   const numbering = numberingXml ? parseChapterNumbering(decodeXml(numberingXml)) : new Map();
   const result = extractVisibleText(xml, options.maxTextCharacters, numbering);
+  if (result.text.length > options.maxTextCharacters) {
+    throw new DocxImportError("oversized");
+  }
   if (!result.text.trim()) {
     throw new DocxImportError("empty");
   }

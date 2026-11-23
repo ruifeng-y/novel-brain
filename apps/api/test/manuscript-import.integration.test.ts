@@ -668,6 +668,26 @@ describe("manuscript import HTTP integration", () => {
       message: "DOCX 旧稿解压后内容过大",
     });
 
+    const expandedText = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>',
+      `<w:p><w:r><w:t>${"字".repeat(950_000)}</w:t>${"<w:tab/>".repeat(100_000)}</w:r></w:p>`,
+      "</w:body></w:document>",
+    ].join("");
+    const expandedTextFile = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", buildDocxFixture({ documentXml: expandedText }), {
+        filename: "expanded-text.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(400);
+    expect(expandedTextFile.body.error).toMatchObject({
+      code: "VALIDATION_INVALID",
+      message: "DOCX 旧稿解压后内容过大",
+    });
+
     const externalRelationship = await owner
       .post("/api/v1/imports/manuscripts")
       .set("Origin", origin)
