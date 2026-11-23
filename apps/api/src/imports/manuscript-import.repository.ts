@@ -20,7 +20,12 @@ import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 
 import type { ManuscriptSourceRange } from "@novel-brain/contracts";
-import { isWellFormedUtf16 } from "@novel-brain/core";
+import { manuscriptScanStateSchema } from "@novel-brain/contracts";
+import {
+  createManuscriptScanState,
+  isWellFormedUtf16,
+  scanManuscriptChunk,
+} from "@novel-brain/core";
 import { uuidv7 } from "uuidv7";
 
 import { countWords } from "./manuscript-import.parser";
@@ -65,6 +70,13 @@ type ChapterContentLoader = (
 function checkpointNumber(checkpoint: Record<string, unknown>, key: string): number | undefined {
   const value = checkpoint[key];
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : undefined;
+}
+
+function headingStartsFromRecord(record: ManuscriptImportJobRecord): number[] {
+  const value = record.metadata.sourceHeadingStarts;
+  return Array.isArray(value)
+    ? value.filter((item): item is number => typeof item === "number" && Number.isInteger(item))
+    : [];
 }
 
 @Injectable()
@@ -316,9 +328,13 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         endOffset,
         status: "pending",
       });
-      const uploadedChunks =
-        (checkpointNumber(job.checkpoint, "uploadedChunks") ??
-          Math.max(0, checkpointNumber(job.checkpoint, "nextSequence") ?? 0)) + 1;
+      const uploadedChunksResult = await transaction
+        .select({ count: sql<number>`count(*)::int` })
+        .from(importChunks)
+        .where(
+          and(eq(importChunks.importJobId, input.importId), eq(importChunks.userId, input.userId)),
+        );
+      const uploadedChunks = uploadedChunksResult[0]?.count ?? input.sequence + 1;
       const [updated] = await transaction
         .update(importJobs)
         .set({
@@ -349,6 +365,78 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
         )
         .limit(1);
       return job;
+    });
+  }
+
+  async ensureChunkedScanState(
+    userId: string,
+    importId: string,
+  ): Promise<ReturnType<typeof createManuscriptScanState> | undefined> {
+    return this.withTenant(userId, async (transaction) => {
+      const [job] = await transaction
+        .select()
+        .from(importJobs)
+        .where(
+          and(
+            eq(importJobs.id, importId),
+            eq(importJobs.userId, userId),
+            eq(importJobs.mode, "manuscript_text"),
+            sql`${importJobs.metadata}->>'chunked' = 'true'`,
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!job) {
+        return undefined;
+      }
+      if (job.checkpoint.manuscript) {
+        return manuscriptScanStateSchema.parse(job.checkpoint.manuscript);
+      }
+      let state = createManuscriptScanState();
+      let lastSequence = -1;
+      while (lastSequence + 1 < job.processedChunks) {
+        const chunks = await transaction
+          .select({
+            sequence: importChunks.sequence,
+            sourceText: importChunks.sourceText,
+          })
+          .from(importChunks)
+          .where(
+            and(
+              eq(importChunks.importJobId, importId),
+              eq(importChunks.userId, userId),
+              eq(importChunks.status, "processed"),
+              sql`${importChunks.sequence} > ${lastSequence}`,
+              sql`${importChunks.sequence} < ${job.processedChunks}`,
+            ),
+          )
+          .orderBy(importChunks.sequence)
+          .limit(4);
+        if (chunks.length === 0) {
+          throw new Error("旧分块检查点不完整，无法重建解析状态");
+        }
+        for (const chunk of chunks) {
+          state = scanManuscriptChunk(
+            state,
+            chunk.sourceText,
+            job.processedChunks === job.chunkCount && chunk.sequence === job.chunkCount - 1,
+            { headingStarts: headingStartsFromRecord(job) },
+          );
+          lastSequence = chunk.sequence;
+        }
+      }
+      await transaction
+        .update(importJobs)
+        .set({
+          checkpoint: {
+            ...job.checkpoint,
+            nextProcessSequence: job.processedChunks,
+            manuscript: state,
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(importJobs.id, importId));
+      return state;
     });
   }
 

@@ -4,7 +4,7 @@ export function buildChunkedManuscriptFixture(): Buffer {
     const header = `第${index}章 分块旧稿${String(index).padStart(4, "0")}\n`;
     const bodyPrefix = `沈砚在第${index}章沿忘川河继续赶路。`;
     const filler = "风吹过断碑，夜色压在河面上。";
-    const bodyLength = 220_000 - header.length - 1;
+    const bodyLength = 150_000 - header.length - 1;
     const body = `${bodyPrefix}${filler.repeat(
       Math.ceil((bodyLength - bodyPrefix.length) / filler.length),
     )}`.slice(0, bodyLength);

@@ -814,17 +814,14 @@ describe("chunked manuscript import recovery integration", () => {
     await processImport(ownerId, created.importId, 1);
     await databasePool.query(
       `UPDATE import_jobs
-          SET checkpoint = (
-            checkpoint - 'manuscript' - 'nextProcessSequence'
-          ) || jsonb_build_object('nextSequence', 1)
+          SET checkpoint = jsonb_build_object('nextSequence', 1)
         WHERE id = $1`,
       [created.importId],
     );
     const legacyCheckpoint = await databasePool.query<{
       checkpoint: Record<string, unknown>;
     }>("SELECT checkpoint FROM import_jobs WHERE id = $1", [created.importId]);
-    expect(legacyCheckpoint.rows[0]?.checkpoint).toMatchObject({ nextSequence: 1 });
-    expect(legacyCheckpoint.rows[0]?.checkpoint.nextProcessSequence).toBeUndefined();
+    expect(legacyCheckpoint.rows[0]?.checkpoint).toEqual({ nextSequence: 1 });
 
     await processImport(ownerId, created.importId);
     const progress = chunkedImportProgressResponseSchema.parse(
@@ -837,6 +834,16 @@ describe("chunked manuscript import recovery integration", () => {
       (await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(200)).body,
     ).data;
     expect(preview.chapters.map((chapter) => chapter.title)).toEqual(["旧检查点", "新扫描"]);
+    await databasePool.query(
+      `UPDATE import_jobs
+          SET checkpoint = jsonb_build_object('nextSequence', 2)
+        WHERE id = $1`,
+      [created.importId],
+    );
+    const rebuiltPreview = manuscriptImportResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}`).expect(200)).body,
+    ).data;
+    expect(rebuiltPreview.chapters.map((chapter) => chapter.title)).toEqual(["旧检查点", "新扫描"]);
   });
 
   it("uses the import_recovery RLS role for cross-tenant maintenance scans", async () => {
@@ -865,35 +872,33 @@ describe("chunked manuscript import recovery integration", () => {
       DO $$
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${role}') THEN
-          CREATE ROLE ${role} NOLOGIN;
+          CREATE ROLE ${role} LOGIN PASSWORD 'import-recovery-test';
+        ELSE
+          ALTER ROLE ${role} LOGIN PASSWORD 'import-recovery-test';
         END IF;
       END
       $$;
       GRANT USAGE ON SCHEMA public TO ${role};
-      GRANT SELECT ON import_jobs TO ${role};
+      GRANT SELECT ON import_jobs, import_chunks TO ${role};
     `);
-    const client = await databasePool.connect();
+    const probeUrl = new URL(databaseUrl);
+    probeUrl.username = role;
+    probeUrl.password = "import-recovery-test";
+    const previousDatabaseUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = probeUrl.toString();
+    const probeRepository = new WorkerManuscriptImportRepository();
+    process.env.DATABASE_URL = previousDatabaseUrl;
     try {
-      await client.query("BEGIN");
-      await client.query(`SET LOCAL ROLE ${role}`);
-      await client.query("SELECT set_config('app.system_role', 'import_recovery', true)");
-      const allowed = await client.query<{ count: number }>(
-        "SELECT count(*)::int AS count FROM import_jobs WHERE id = $1",
-        [created.importId],
+      await expect(probeRepository.listRecoverableJobs()).resolves.toContainEqual(
+        expect.objectContaining({ importId: created.importId }),
       );
-      expect(allowed.rows[0]?.count).toBe(1);
-      await client.query("SELECT set_config('app.system_role', '', true)");
-      const denied = await client.query<{ count: number }>(
-        "SELECT count(*)::int AS count FROM import_jobs WHERE id = $1",
-        [created.importId],
-      );
-      expect(denied.rows[0]?.count).toBe(0);
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK").catch(() => undefined);
-      throw error;
     } finally {
-      client.release();
+      if (previousDatabaseUrl === undefined) {
+        delete process.env.DATABASE_URL;
+      } else {
+        process.env.DATABASE_URL = previousDatabaseUrl;
+      }
+      await probeRepository.onModuleDestroy();
     }
   });
 

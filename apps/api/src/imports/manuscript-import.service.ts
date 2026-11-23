@@ -203,10 +203,14 @@ export class ManuscriptImportService {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
     if (record.metadata.chunked === true) {
+      const state = await this.repository.ensureChunkedScanState(userId, importId);
+      if (!state) {
+        throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+      }
       return this.toChunkedContract(
         record,
         format ?? formatFromName(record.sourceName),
-        repositoryScannedManuscript(record),
+        repositoryScannedManuscript(record, state),
       );
     }
     const sourceText = record.sourceText;
@@ -311,7 +315,11 @@ export class ManuscriptImportService {
     if (record.status !== "awaiting_confirmation" && record.status !== "completed") {
       throw new ApiError(409, "IMPORT_NOT_READY", "旧稿仍在分块处理，请完成后再确认");
     }
-    const scanned = repositoryScannedManuscript(record);
+    const state = await this.repository.ensureChunkedScanState(userId, importId);
+    if (!state) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    const scanned = repositoryScannedManuscript(record, state);
     validateChapterRanges(input.chapters, scanned.totalCharacters);
     const matches = await this.repository.validateChunkedRanges(userId, importId, input.chapters);
     if (matches === undefined) {
@@ -409,20 +417,25 @@ function headingStartsFromRecord(record: ManuscriptImportJobRecord): number[] {
     : [];
 }
 
-function repositoryScannedManuscript(record: ManuscriptImportJobRecord) {
+function repositoryScannedManuscript(
+  record: ManuscriptImportJobRecord,
+  verifiedState?: ReturnType<typeof manuscriptScanStateSchema.parse>,
+) {
   const rawState = record.checkpoint.manuscript;
-  const state = rawState
-    ? manuscriptScanStateSchema.parse(rawState)
-    : {
-        schemaVersion: 1 as const,
-        offset: sourceCharacterCount(record),
-        lineStart: 0,
-        pendingLine: "",
-        lineOverflow: false,
-        prefixHasText: false,
-        headings: [],
-        hasText: false,
-      };
+  const state = verifiedState
+    ? verifiedState
+    : rawState
+      ? manuscriptScanStateSchema.parse(rawState)
+      : {
+          schemaVersion: 1 as const,
+          offset: sourceCharacterCount(record),
+          lineStart: 0,
+          pendingLine: "",
+          lineOverflow: false,
+          prefixHasText: false,
+          headings: [],
+          hasText: false,
+        };
   const totalCharacters =
     typeof record.checkpoint.sourceCharacterCount === "number"
       ? record.checkpoint.sourceCharacterCount

@@ -82,9 +82,7 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
       }
 
       const expectedSequence =
-        checkpointNumber(job.checkpoint, "nextProcessSequence") ??
-        checkpointNumber(job.checkpoint, "nextSequence") ??
-        0;
+        checkpointNumber(job.checkpoint, "nextProcessSequence") ?? job.processed_chunks;
       const chunkResult = await client.query<ImportChunkRow>(
         `SELECT sequence, source_text, start_offset, end_offset
            FROM import_chunks
@@ -97,7 +95,12 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
       );
       const chunk = chunkResult.rows[0];
       if (!chunk) {
-        const uploadedChunks = checkpointNumber(job.checkpoint, "uploadedChunks") ?? 0;
+        const uploadedChunks = await this.uploadedChunkCount(
+          client,
+          actorId,
+          importId,
+          job.checkpoint,
+        );
         const completed =
           uploadedChunks >= job.chunk_count && job.processed_chunks >= job.chunk_count;
         await client.query(
@@ -160,7 +163,12 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
           throw new Error("章节数量超过 V1 导入上限");
         }
         const processedChunks = job.processed_chunks + 1;
-        const uploadedChunks = checkpointNumber(job.checkpoint, "uploadedChunks") ?? 0;
+        const uploadedChunks = await this.uploadedChunkCount(
+          client,
+          actorId,
+          importId,
+          job.checkpoint,
+        );
         const completed = uploadedChunks >= job.chunk_count && processedChunks >= job.chunk_count;
         await client.query(
           `UPDATE import_chunks
@@ -182,6 +190,7 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
             JSON.stringify({
               ...job.checkpoint,
               nextProcessSequence: chunk.sequence + 1,
+              uploadedChunks,
               sourceCharacterCount: chunk.end_offset,
               manuscript: nextState,
               manuscriptError: null,
@@ -312,25 +321,53 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
     if (expectedSequence === 0) {
       return state;
     }
-    const processedChunks = await client.query<{ source_text: string }>(
-      `SELECT source_text
-         FROM import_chunks
-        WHERE import_job_id = $1
-          AND user_id = $2
-          AND status = 'processed'
-          AND sequence < $3
-        ORDER BY sequence`,
-      [importId, userId, expectedSequence],
-    );
-    if (processedChunks.rows.length !== expectedSequence) {
-      throw new Error("旧分块检查点不完整，无法重建解析状态");
+    let lastSequence = -1;
+    while (lastSequence + 1 < expectedSequence) {
+      const processedChunks = await client.query<{ sequence: number; source_text: string }>(
+        `SELECT sequence, source_text
+           FROM import_chunks
+          WHERE import_job_id = $1
+            AND user_id = $2
+            AND status = 'processed'
+            AND sequence > $3
+            AND sequence < $4
+          ORDER BY sequence
+          LIMIT 4`,
+        [importId, userId, lastSequence, expectedSequence],
+      );
+      if (processedChunks.rows.length === 0) {
+        throw new Error("旧分块检查点不完整，无法重建解析状态");
+      }
+      for (const chunk of processedChunks.rows) {
+        state = scanManuscriptChunk(state, chunk.source_text, false, {
+          headingStarts: headingStartsFromMetadata(metadata),
+        });
+        lastSequence = chunk.sequence;
+      }
     }
-    for (const chunk of processedChunks.rows) {
-      state = scanManuscriptChunk(state, chunk.source_text, false, {
-        headingStarts: headingStartsFromMetadata(metadata),
-      });
+    if (lastSequence + 1 !== expectedSequence) {
+      throw new Error("旧分块检查点不连续，无法重建解析状态");
     }
     return state;
+  }
+
+  private async uploadedChunkCount(
+    client: PoolClient,
+    userId: string,
+    importId: string,
+    checkpoint: Record<string, unknown>,
+  ): Promise<number> {
+    const checkpointCount = checkpointNumber(checkpoint, "uploadedChunks");
+    if (checkpointCount !== undefined) {
+      return checkpointCount;
+    }
+    const result = await client.query<{ count: number }>(
+      `SELECT count(*)::int AS count
+         FROM import_chunks
+        WHERE import_job_id = $1 AND user_id = $2`,
+      [importId, userId],
+    );
+    return result.rows[0]?.count ?? 0;
   }
 }
 

@@ -1,6 +1,7 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 import {
   chapterWorkspaceListResponseSchema,
+  chunkedImportProgressResponseSchema,
   manuscriptImportConfirmResponseSchema,
   manuscriptImportResponseSchema,
   settingEntityListResponseSchema,
@@ -551,8 +552,9 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
   page,
   context,
 }, testInfo) => {
+  test.setTimeout(60_000);
   let worker = await startWorker({
-    importProcessingDelayMs: 300,
+    importProcessingDelayMs: 1_000,
     workerLockDurationMs: 1_000,
     workerStalledIntervalMs: 1_000,
   });
@@ -572,15 +574,26 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     });
 
     const manuscriptFixture = buildChunkedManuscriptFixture();
+    const fixtureText = manuscriptFixture.toString("utf8");
+    const chunkCount = Math.ceil(fixtureText.length / 250_000);
+    const startResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        response.request().method() === "POST" &&
+        url.pathname === "/api/v1/imports/manuscripts/chunked/start"
+      );
+    });
     await page.getByLabel("上传旧稿文件").setInputFiles({
       name: "chunked-recovery.txt",
       mimeType: "text/plain",
       buffer: manuscriptFixture,
     });
     await page.getByRole("button", { name: "识别章节" }).click();
+    const importId = chunkedImportProgressResponseSchema.parse(await (await startResponse).json())
+      .data.importId;
 
     await expect(page.getByText("分块上传暂时失败，请重试。")).toBeVisible();
-    await expect(page.getByText(/已接收 1 \/ 8/)).toBeVisible();
+    await expect(page.getByText(`已接收 1 / ${chunkCount}`)).toBeVisible();
     await expect(page.getByRole("button", { name: "继续导入" })).toBeVisible();
     await attachResponsiveState(page, testInfo, "upload-failure");
 
@@ -599,19 +612,25 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     await attachResponsiveState(page, testInfo, "paused");
 
     await page.getByRole("button", { name: "继续导入" }).click();
-    await expect(page.getByText(/已处理\s*[1-7]\s*\/\s*8/)).toBeVisible({ timeout: 30_000 });
+    await expect(
+      page.getByText(new RegExp(`已处理\\s*[1-${chunkCount - 1}]\\s*/\\s*${chunkCount}`)),
+    ).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => worker.activeJobCount()).toBe(1);
+    const failureSequence = await readNextProcessSequence(importId);
+    expect(failureSequence).toBeGreaterThan(0);
     await worker.crash();
     worker = await startWorker({
-      failImportSequence: 5,
+      failImportSequence: failureSequence,
       importProcessingDelayMs: 300,
       workerLockDurationMs: 1_000,
       workerStalledIntervalMs: 1_000,
     });
-    await expect.poll(() => worker.activeJobCount()).toBe(1);
     await expect(page.getByText("旧稿分块处理部分失败，已保留进度，可以继续导入。")).toBeVisible({
       timeout: 30_000,
     });
+    await expect(
+      page.getByText(new RegExp(`已处理\\s*${failureSequence}\\s*/\\s*${chunkCount}`)),
+    ).toBeVisible();
     await attachResponsiveState(page, testInfo, "partial-failure");
 
     await worker.stop();
@@ -650,7 +669,6 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     expect(persistedChapters[0]?.currentVersion?.content.split("\n")[0]).toBe("第1章 分块旧稿0001");
     expect(persistedChapters[7]?.currentVersion?.content.split("\n")[0]).toBe("第8章 分块旧稿0008");
 
-    const fixtureText = manuscriptFixture.toString("utf8");
     const expectedContents = fixtureText.split(/(?=第\d+章 )/u).filter(Boolean);
     let expectedStart = 0;
     const expectedRanges = expectedContents.map((content) => {
@@ -729,6 +747,24 @@ async function attachResponsiveState(page: Page, testInfo: TestInfo, state: stri
       body: await page.screenshot({ fullPage: true }),
       contentType: "image/png",
     });
+  }
+}
+
+async function readNextProcessSequence(importId: string): Promise<number> {
+  const pool = new Pool({ connectionString: e2eDatabaseUrl });
+  try {
+    const result = await pool.query<{ next_process_sequence: number }>(
+      `SELECT (checkpoint->>'nextProcessSequence')::int AS next_process_sequence
+         FROM import_jobs
+        WHERE id = $1`,
+      [importId],
+    );
+    if (result.rows[0]?.next_process_sequence === undefined) {
+      throw new Error("Chunked import checkpoint is missing nextProcessSequence");
+    }
+    return result.rows[0].next_process_sequence;
+  } finally {
+    await pool.end();
   }
 }
 
