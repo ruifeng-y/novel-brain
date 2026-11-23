@@ -117,6 +117,8 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       {
         connection: this.connection,
         concurrency: 1,
+        lockDuration: positiveIntegerEnvironment("WORKER_LOCK_DURATION_MS", 30_000),
+        stalledInterval: positiveIntegerEnvironment("WORKER_STALLED_INTERVAL_MS", 30_000),
         name: "novelbrain-worker",
       },
     );
@@ -210,6 +212,15 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
           undefined,
         );
         await this.runMaintenance(
+          "manuscript_import_recovery",
+          async () => {
+            for (const pending of await this.manuscriptImportProcessor.listRecoverableJobs()) {
+              await this.enqueueRecoveredImport(pending);
+            }
+          },
+          undefined,
+        );
+        await this.runMaintenance(
           "work_trash_purge",
           () => this.workPurgeProcessor.cleanupDue(),
           undefined,
@@ -293,6 +304,34 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     });
   }
 
+  private async enqueueRecoveredImport(payload: WorkerJob): Promise<void> {
+    if (payload.jobType !== PROCESS_IMPORT_JOB) {
+      return;
+    }
+    const existing = await this.queue.getJob(payload.idempotencyKey);
+    if (!existing) {
+      await this.queue.add(PROCESS_IMPORT_JOB, payload, {
+        jobId: payload.idempotencyKey,
+        removeOnComplete: true,
+        removeOnFail: true,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1_000 },
+      });
+      return;
+    }
+    const state = await existing.getState();
+    if (state === "failed" || state === "completed") {
+      await existing.remove();
+      await this.queue.add(PROCESS_IMPORT_JOB, payload, {
+        jobId: payload.idempotencyKey,
+        removeOnComplete: true,
+        removeOnFail: true,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1_000 },
+      });
+    }
+  }
+
   private async runMaintenance<T>(
     operation: string,
     action: () => Promise<T>,
@@ -339,7 +378,7 @@ function jobLogContext(payload: WorkerJob): Record<string, unknown> {
     case EXPORT_WORK_JOB:
       return { jobId: payload.jobId, exportId: payload.exportId };
     case PROCESS_IMPORT_JOB:
-      return { importId: payload.importId };
+      return { importId: payload.importId, checkpointStep: payload.checkpoint.nextProcessSequence };
     case GENERATE_GOLDEN_THREE_JOB:
       return {
         jobId: payload.jobId,
@@ -348,4 +387,9 @@ function jobLogContext(payload: WorkerJob): Record<string, unknown> {
     default:
       return { jobId: payload.jobId, checkpointStep: payload.checkpoint.step };
   }
+}
+
+function positiveIntegerEnvironment(name: string, fallback: number): number {
+  const value = Number(process.env[name] ?? "");
+  return Number.isInteger(value) && value > 0 ? value : fallback;
 }

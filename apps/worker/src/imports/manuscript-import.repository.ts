@@ -1,7 +1,9 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   MAX_MANUSCRIPT_CHAPTERS,
+  PROCESS_IMPORT_JOB,
   manuscriptScanStateSchema,
+  type ImportProcessJob,
   type ManuscriptScanState,
 } from "@novel-brain/contracts";
 import { Pool, type PoolClient } from "pg";
@@ -190,6 +192,50 @@ export class WorkerManuscriptImportRepository implements OnModuleDestroy {
         );
         return { continue: false, failed: true };
       }
+    });
+  }
+
+  async listRecoverableJobs(limit = 50): Promise<ImportProcessJob[]> {
+    const result = await this.pool.query<{
+      id: string;
+      user_id: string;
+      processed_chunks: number;
+      checkpoint: Record<string, unknown>;
+    }>(
+      `SELECT job.id, job.user_id, job.processed_chunks, job.checkpoint
+         FROM import_jobs AS job
+        WHERE job.mode = 'manuscript_text'
+          AND job.metadata->>'chunked' = 'true'
+          AND job.status IN ('queued', 'processing')
+          AND EXISTS (
+            SELECT 1
+              FROM import_chunks AS chunk
+             WHERE chunk.import_job_id = job.id
+               AND chunk.user_id = job.user_id
+               AND chunk.status = 'pending'
+          )
+        ORDER BY job.updated_at
+        LIMIT $1`,
+      [Math.max(1, Math.min(200, limit))],
+    );
+    return result.rows.map((row) => {
+      const nextProcessSequence = checkpointNumber(row.checkpoint, "nextProcessSequence");
+      const uploadedChunks = checkpointNumber(row.checkpoint, "uploadedChunks");
+      return {
+        jobType: PROCESS_IMPORT_JOB,
+        importId: row.id,
+        workId: null,
+        branchId: null,
+        actorId: row.user_id,
+        idempotencyKey: `manuscript-import-${row.id}-${nextProcessSequence}-${uploadedChunks}`,
+        checkpoint: {
+          schemaVersion: 1,
+          revision: row.processed_chunks,
+          nextProcessSequence,
+          uploadedChunks,
+          processedChunks: row.processed_chunks,
+        },
+      };
     });
   }
 

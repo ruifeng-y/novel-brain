@@ -114,8 +114,9 @@ export class ManuscriptImportService {
     if (record === "idempotency_conflict") {
       throw new ApiError(409, "VERSION_CONFLICT", "同一 Idempotency-Key 不能用于不同分块导入");
     }
-    await this.queue.enqueue(userId, record.id, record.chunkCount);
-    return toChunkedProgress(record);
+    const progress = toChunkedProgress(record);
+    await this.queue.enqueue(userId, record.id, progress);
+    return progress;
   }
 
   async startChunked(
@@ -154,8 +155,9 @@ export class ManuscriptImportService {
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在、无权访问或分块序号无效");
     }
-    await this.queue.enqueue(userId, importId, uploadedChunkCount(record));
-    return toChunkedProgress(record);
+    const progress = toChunkedProgress(record);
+    await this.queue.enqueue(userId, importId, progress);
+    return progress;
   }
 
   async processChunk(userId: string, importId: string): Promise<ChunkedImportProgress> {
@@ -163,8 +165,9 @@ export class ManuscriptImportService {
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
-    await this.queue.enqueue(userId, importId, uploadedChunkCount(record));
-    return toChunkedProgress(record);
+    const progress = toChunkedProgress(record);
+    await this.queue.enqueue(userId, importId, progress);
+    return progress;
   }
 
   async progress(userId: string, importId: string): Promise<ChunkedImportProgress> {
@@ -185,7 +188,7 @@ export class ManuscriptImportService {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
     if (action === "resume") {
-      await this.queue.enqueue(userId, importId, uploadedChunkCount(record));
+      await this.queue.enqueue(userId, importId, toChunkedProgress(record));
     }
     return toChunkedProgress(record);
   }
@@ -406,13 +409,6 @@ function headingStartsFromRecord(record: ManuscriptImportJobRecord): number[] {
     : [];
 }
 
-function uploadedChunkCount(record: ManuscriptImportJobRecord): number {
-  const value = record.checkpoint.uploadedChunks;
-  return typeof value === "number" && Number.isInteger(value) && value >= 0
-    ? value
-    : record.processedChunks;
-}
-
 function repositoryScannedManuscript(record: ManuscriptImportJobRecord) {
   const rawState = record.checkpoint.manuscript;
   const state = rawState
@@ -423,6 +419,7 @@ function repositoryScannedManuscript(record: ManuscriptImportJobRecord) {
         lineStart: 0,
         pendingLine: "",
         lineOverflow: false,
+        prefixHasText: false,
         headings: [],
         hasText: false,
       };

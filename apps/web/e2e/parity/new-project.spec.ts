@@ -549,6 +549,8 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
   let worker = await startWorker({
     failImportSequence: 5,
     importProcessingDelayMs: 300,
+    workerLockDurationMs: 1_000,
+    workerStalledIntervalMs: 1_000,
   });
   try {
     await authenticatedPage(page, context);
@@ -592,6 +594,14 @@ test("recovers a chunked manuscript import after upload failure, pause and proce
     await attachResponsiveState(page, testInfo, "paused");
 
     await page.getByRole("button", { name: "继续导入" }).click();
+    await expect(page.getByText(/已处理\s*[1-7]\s*\/\s*8/)).toBeVisible({ timeout: 30_000 });
+    await worker.crash();
+    worker = await startWorker({
+      failImportSequence: 5,
+      importProcessingDelayMs: 300,
+      workerLockDurationMs: 1_000,
+      workerStalledIntervalMs: 1_000,
+    });
     await expect(page.getByText("旧稿分块处理部分失败，已保留进度，可以继续导入。")).toBeVisible({
       timeout: 30_000,
     });

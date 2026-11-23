@@ -55,4 +55,14 @@ describe("incremental manuscript scanning", () => {
     expect(isWellFormedUtf16("\ud800")).toBe(false);
     expect(isWellFormedUtf16("旧稿😀")).toBe(true);
   });
+
+  it("keeps a whitespace-only prefix in the first chapter instead of creating a preface", () => {
+    let state = createManuscriptScanState();
+    state = scanManuscriptChunk(state, "  \n第1章 开端\n正文", true);
+
+    const chapters = manuscriptChaptersFromScan(state, state.offset, "全文");
+    expect(chapters.chapters).toEqual([
+      { title: "开端", sourceRange: { start: 0, end: state.offset } },
+    ]);
+  });
 });

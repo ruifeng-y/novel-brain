@@ -2,6 +2,7 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   PROCESS_IMPORT_JOB,
   WORKER_QUEUE_NAME,
+  type ChunkedImportProgress,
   type ImportProcessJob,
 } from "@novel-brain/contracts";
 import { Queue } from "bullmq";
@@ -23,12 +24,22 @@ export class ManuscriptImportQueue implements OnModuleDestroy {
     });
   }
 
-  async enqueue(actorId: string, importId: string, sequence: number): Promise<void> {
+  async enqueue(actorId: string, importId: string, progress: ChunkedImportProgress): Promise<void> {
+    const nextProcessSequence = Math.min(progress.processedChunks, progress.uploadedChunks);
     const payload: ImportProcessJob = {
       jobType: PROCESS_IMPORT_JOB,
       importId,
+      workId: null,
+      branchId: null,
       actorId,
-      idempotencyKey: `manuscript-import-${importId}-${sequence}`,
+      idempotencyKey: `manuscript-import-${importId}-${nextProcessSequence}-${progress.uploadedChunks}`,
+      checkpoint: {
+        schemaVersion: 1,
+        revision: progress.uploadedChunks,
+        nextProcessSequence,
+        uploadedChunks: progress.uploadedChunks,
+        processedChunks: progress.processedChunks,
+      },
     };
     await this.queue.add(PROCESS_IMPORT_JOB, payload, {
       jobId: payload.idempotencyKey,

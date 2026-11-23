@@ -35,12 +35,17 @@ lifecycle:
 - mismatched replay of an existing chunk sequence rejected instead of silently ignored;
 - partial upload failure and retry;
 - idempotent pause/resume and process suppression while paused;
-- real `process_import` Worker jobs driven by BullMQ, with the API only enqueueing work and
-  polling durable progress;
+- real `process_import` Worker jobs with explicit null work scope and a durable checkpoint;
+  API integration invokes the production processor/repository seam against PostgreSQL, while
+  Playwright starts and kills a real BullMQ Worker process;
 - app restart while processing, followed by continued processing from the last committed
   sequence and parse checkpoint;
 - forced Worker failure, followed by pause/resume and a new Worker processing the failed
   chunk from its pending state;
+- `SIGKILL` while a real Worker owns an active import job, BullMQ stalled-job recovery and a
+  replacement Worker continuing from `nextProcessSequence`;
+- periodic PostgreSQL-backed recovery scanning for queued/processing imports with pending
+  chunks, so Redis delivery loss does not strand durable import state;
 - cancel and rejection of append after cancellation;
 - repeated cancel, rejected confirmation after cancellation and cross-tenant denial;
 - rejection of malformed UTF-16 before a chunk can enter durable source storage;
@@ -59,8 +64,8 @@ Recorded local run:
 
 | Metric | Value |
 | --- | ---: |
-| Elapsed | `14,983 ms` |
-| Peak process RSS | `642,555,904 bytes` |
+| Elapsed | `20,088 ms` |
+| Peak process RSS | `516,984,832 bytes` |
 | Chunk request ceiling asserted | `< 1,000,000 bytes` |
 | Processed chunks | `40 / 40` |
 | Imported chapters | `4,000` |
@@ -68,7 +73,8 @@ Recorded local run:
 The memory bound is for this fixture and environment, not a universal throughput or
 capacity claim. The test fails if peak process RSS reaches 768 MiB. The parser keeps at
 most one source chunk plus bounded checkpoint metadata; preview does not materialize the
-full source, and confirmation reads source ranges into a streaming chunk cursor in batches.
+full source, boundary checks query only two characters at each requested range edge, and
+confirmation reads source ranges into a streaming chunk cursor in batches.
 
 ## 3. Production UI Evidence
 
@@ -77,6 +83,8 @@ full source, and confirmation reads source ranges into a streaming chunk cursor 
 - one injected chunk-upload failure followed by real API retry;
 - received/processed chunk progress;
 - pause while a real Worker is processing;
+- a real Worker process crash while processing, replacement Worker and BullMQ stalled-job
+  recovery;
 - a real Worker chunk failure, visible partial state, Worker restart and resume;
 - metadata-only preview with server-retained source;
 - range-based confirmation through the real API;

@@ -5744,7 +5744,8 @@ export const manuscriptScanStateSchema = z
     offset: z.number().int().nonnegative(),
     lineStart: z.number().int().nonnegative(),
     pendingLine: z.string().max(MAX_MANUSCRIPT_CHUNK_CHARACTERS),
-    lineOverflow: z.boolean(),
+    lineOverflow: z.boolean().default(false),
+    prefixHasText: z.boolean().default(false),
     headings: z.array(manuscriptScanHeadingSchema).max(MAX_MANUSCRIPT_CHAPTERS + 1),
     hasText: z.boolean(),
   })
@@ -5755,8 +5756,19 @@ export const importProcessJobSchema = z
   .object({
     jobType: z.literal(PROCESS_IMPORT_JOB),
     importId: uuidV7Schema,
+    workId: z.null(),
+    branchId: z.null(),
     actorId: uuidV7Schema,
     idempotencyKey: z.string().min(1).max(200),
+    checkpoint: z
+      .object({
+        schemaVersion: z.literal(1),
+        revision: z.number().int().nonnegative(),
+        nextProcessSequence: z.number().int().nonnegative(),
+        uploadedChunks: z.number().int().nonnegative(),
+        processedChunks: z.number().int().nonnegative(),
+      })
+      .strict(),
   })
   .strict();
 export type ImportProcessJob = z.infer<typeof importProcessJobSchema>;

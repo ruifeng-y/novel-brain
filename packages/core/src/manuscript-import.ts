@@ -33,6 +33,7 @@ export function createManuscriptScanState(): ManuscriptScanState {
     lineStart: 0,
     pendingLine: "",
     lineOverflow: false,
+    prefixHasText: false,
     headings: [],
     hasText: false,
   };
@@ -66,11 +67,20 @@ export function scanManuscriptChunk(
   let lineOverflow = state.lineOverflow;
   let lineStart = state.lineStart;
   let position = state.offset;
+  let prefixHasText = state.prefixHasText;
 
   for (let index = 0; index < chunk.length; index += 1) {
     const character = chunk[index]!;
     if (character === "\n") {
+      const headingCountBefore = headings.length;
       consumeLine(lineSample, lineOverflow, lineStart, styledStarts, headings);
+      if (
+        headingCountBefore === 0 &&
+        headings.length === 0 &&
+        (lineOverflow || lineSample.trim().length > 0)
+      ) {
+        prefixHasText = true;
+      }
       lineSample = "";
       lineOverflow = false;
       position += 1;
@@ -101,6 +111,7 @@ export function scanManuscriptChunk(
     lineStart,
     pendingLine: lineSample,
     lineOverflow,
+    prefixHasText,
     headings,
     hasText: state.hasText || /\S/u.test(chunk),
   };
@@ -137,7 +148,8 @@ export function manuscriptChaptersFromScan(
   const chapters: ScannedManuscriptChapter[] = [];
   const warnings = headings.flatMap((heading) => (heading.warning ? [heading.warning] : []));
   const firstHeadingStart = headings[0]?.start ?? 0;
-  if (firstHeadingStart > 0) {
+  const includePrefix = firstHeadingStart > 0 && state.prefixHasText;
+  if (includePrefix) {
     chapters.push({
       title: "前言",
       sourceRange: { start: 0, end: firstHeadingStart },
@@ -149,7 +161,7 @@ export function manuscriptChaptersFromScan(
     chapters.push({
       title: heading.title,
       sourceRange: {
-        start: index === 0 && firstHeadingStart === 0 ? 0 : heading.start,
+        start: index === 0 && !includePrefix ? 0 : heading.start,
         end: nextStart,
       },
     });

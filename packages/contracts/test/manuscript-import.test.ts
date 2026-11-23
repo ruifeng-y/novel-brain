@@ -4,6 +4,7 @@ import {
   IMPORT_FILE_LIMITS,
   chunkedImportProgressResponseSchema,
   chunkedManuscriptImportConfirmRequestSchema,
+  importProcessJobSchema,
   manuscriptImportFormatSchema,
   manuscriptImportResponseSchema,
 } from "../src";
@@ -91,6 +92,31 @@ describe("manuscript import contracts", () => {
           ...chapters,
           { title: "第4001章", sourceRange: { start: 10_000_000, end: 10_002_500 } },
         ],
+      }),
+    ).toThrow();
+  });
+
+  it("binds import processor jobs to explicit null work scope and a durable checkpoint", () => {
+    const job = importProcessJobSchema.parse({
+      jobType: "process_import",
+      importId: "01910000-0000-7000-8000-000000000003",
+      workId: null,
+      branchId: null,
+      actorId: "01910000-0000-7000-8000-000000000004",
+      idempotencyKey: "manuscript-import-3-1-2",
+      checkpoint: {
+        schemaVersion: 1,
+        revision: 2,
+        nextProcessSequence: 1,
+        uploadedChunks: 2,
+        processedChunks: 1,
+      },
+    });
+    expect(job.checkpoint.nextProcessSequence).toBe(1);
+    expect(() =>
+      importProcessJobSchema.parse({
+        ...job,
+        workId: "01910000-0000-7000-8000-000000000005",
       }),
     ).toThrow();
   });

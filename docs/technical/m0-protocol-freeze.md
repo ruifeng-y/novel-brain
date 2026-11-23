@@ -291,7 +291,7 @@ M0 关键错误：
 | POST | `/api/v1/imports/manuscripts/chunked` | 创建带检查点的分块导入 |
 | POST | `/api/v1/imports/manuscripts/chunked/start` | 创建流式分块导入任务 |
 | POST | `/api/v1/imports/manuscripts/:importId/chunks` | 按序号追加单个分块 |
-| POST | `/api/v1/imports/manuscripts/:importId/process` | 处理下一个分块 |
+| POST | `/api/v1/imports/manuscripts/:importId/process` | 幂等投递后台分块处理 tick |
 | GET | `/api/v1/imports/manuscripts/:importId/progress` | 查询分块进度 |
 | POST | `/api/v1/imports/manuscripts/:importId/pause` | 暂停分块处理 |
 | POST | `/api/v1/imports/manuscripts/:importId/resume` | 从已提交分块继续 |
@@ -301,6 +301,10 @@ M0 关键错误：
 未完成全部分块时确认导入返回 `IMPORT_NOT_READY`。分块进度同时返回 `uploadedChunks` 和
 `processedChunks`；分块预览只返回章节标题、字数和 `sourceRange`，正文保留在服务端。
 导入默认只保留原文，不自动写入语义候选或已确认设定。
+
+`process_import` 是导入专用 Worker job，显式使用 `workId: null`、`branchId: null`、
+幂等键和版本化 checkpoint。Worker 每次 tick 只处理有界数量的连续分块；PostgreSQL 的
+`nextProcessSequence` 是恢复真源，维护 tick 会重新投递 Redis 丢失但仍可恢复的导入任务。
 
 ### 5.11 健康、就绪与运维指标
 

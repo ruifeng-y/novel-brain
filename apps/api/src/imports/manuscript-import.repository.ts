@@ -647,7 +647,6 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
     return this.withTenant(userId, async (transaction) => {
       const chunks = await transaction
         .select({
-          sourceText: importChunks.sourceText,
           startOffset: importChunks.startOffset,
           endOffset: importChunks.endOffset,
         })
@@ -677,13 +676,29 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
       boundaries.delete(0);
       boundaries.delete(totalCharacters);
       for (const chunk of chunks) {
-        for (const boundary of boundaries) {
-          if (boundary <= chunk.startOffset || boundary >= chunk.endOffset) {
-            continue;
-          }
-          const localOffset = boundary - chunk.startOffset;
-          const previous = chunk.sourceText.charCodeAt(localOffset - 1);
-          const next = chunk.sourceText.charCodeAt(localOffset);
+        const interiorBoundaries = [...boundaries].filter(
+          (boundary) => boundary > chunk.startOffset && boundary < chunk.endOffset,
+        );
+        if (interiorBoundaries.length === 0) {
+          continue;
+        }
+        const boundaryArray = sql.raw(`ARRAY[${interiorBoundaries.map(String).join(",")}]`);
+        const result = await transaction.execute<{ boundary: number; pair: string }>(sql`
+          SELECT boundary.value AS boundary,
+                 substring(
+                   chunk.source_text
+                   FROM boundary.value - chunk.start_offset
+                   FOR 2
+                 ) AS pair
+            FROM import_chunks AS chunk
+            CROSS JOIN unnest(${boundaryArray}) AS boundary(value)
+           WHERE chunk.import_job_id = ${importId}
+             AND chunk.user_id = ${userId}
+             AND chunk.start_offset = ${chunk.startOffset}
+        `);
+        for (const row of result.rows) {
+          const previous = row.pair.charCodeAt(0);
+          const next = row.pair.charCodeAt(1);
           if (previous >= 0xd800 && previous <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
             return false;
           }

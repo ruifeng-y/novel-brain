@@ -5,7 +5,8 @@ import type { ImportProcessJob } from "@novel-brain/contracts";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorkerManuscriptImportRepository } from "./manuscript-import.repository";
 
-const MAX_CHUNKS_PER_JOB = 4_000;
+const MAX_CHUNKS_PER_TICK = 10;
+const MAX_CHUNKS_PER_TICK_OVERRIDE = 4_000;
 
 @Injectable()
 export class ManuscriptImportProcessor {
@@ -13,9 +14,9 @@ export class ManuscriptImportProcessor {
 
   async process(
     payload: ImportProcessJob,
-    maxChunks = MAX_CHUNKS_PER_JOB,
+    maxChunks = MAX_CHUNKS_PER_TICK,
   ): Promise<"succeeded" | "failed"> {
-    const limit = Math.max(1, Math.min(MAX_CHUNKS_PER_JOB, maxChunks));
+    const limit = Math.max(1, Math.min(MAX_CHUNKS_PER_TICK_OVERRIDE, maxChunks));
     for (let index = 0; index < limit; index += 1) {
       const delayMs = importProcessingDelayMs();
       if (delayMs > 0) {
@@ -30,6 +31,10 @@ export class ManuscriptImportProcessor {
       }
     }
     return "succeeded";
+  }
+
+  async listRecoverableJobs(maxJobs = 50) {
+    return this.repository.listRecoverableJobs(maxJobs);
   }
 }
 

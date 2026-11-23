@@ -11,6 +11,8 @@ export async function startWorker(
     failStep?: "draft" | "verify" | "revise";
     failImportSequence?: number;
     importProcessingDelayMs?: number;
+    workerLockDurationMs?: number;
+    workerStalledIntervalMs?: number;
   } = {},
 ) {
   const root = path.resolve(__dirname, "../../../..");
@@ -32,6 +34,12 @@ export async function startWorker(
       ...(options.importProcessingDelayMs !== undefined
         ? { IMPORT_PROCESSING_DELAY_MS: String(options.importProcessingDelayMs) }
         : {}),
+      ...(options.workerLockDurationMs !== undefined
+        ? { WORKER_LOCK_DURATION_MS: String(options.workerLockDurationMs) }
+        : {}),
+      ...(options.workerStalledIntervalMs !== undefined
+        ? { WORKER_STALLED_INTERVAL_MS: String(options.workerStalledIntervalMs) }
+        : {}),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -40,6 +48,7 @@ export async function startWorker(
   return {
     child,
     stop: () => stopWorker(child),
+    crash: () => crashWorker(child),
   };
 }
 
@@ -93,5 +102,15 @@ function stopWorker(child: ChildProcess): Promise<void> {
       resolve();
     });
     child.kill("SIGTERM");
+  });
+}
+
+function crashWorker(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    child.once("exit", () => resolve());
+    child.kill("SIGKILL");
   });
 }

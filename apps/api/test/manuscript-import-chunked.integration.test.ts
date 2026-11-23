@@ -166,6 +166,13 @@ describe("chunked manuscript import recovery integration", () => {
         expect(mismatchedReplay.body.error.code).toBe("IMPORT_NOT_READY");
       }
     }
+    await expect(importRepository.listRecoverableJobs()).resolves.toContainEqual(
+      expect.objectContaining({
+        jobType: PROCESS_IMPORT_JOB,
+        importId: created.importId,
+        actorId: ownerId,
+      }),
+    );
 
     await processImport(ownerId, created.importId, 3);
     const processedBeforePause = chunkedImportProgressResponseSchema.parse(
@@ -603,7 +610,7 @@ describe("chunked manuscript import recovery integration", () => {
   }
 
   async function processImport(actorId: string, importId: string, maxChunks?: number) {
-    const outcome = await processImportJob(actorId, importId, maxChunks);
+    const outcome = await processImportJob(actorId, importId, maxChunks ?? 4_000);
     expect(outcome).toBe("succeeded");
   }
 
@@ -611,9 +618,18 @@ describe("chunked manuscript import recovery integration", () => {
     return importProcessor.process(
       {
         jobType: PROCESS_IMPORT_JOB,
+        workId: null,
+        branchId: null,
         actorId,
         importId,
         idempotencyKey: `integration-${importId}`,
+        checkpoint: {
+          schemaVersion: 1,
+          revision: 0,
+          nextProcessSequence: 0,
+          uploadedChunks: 0,
+          processedChunks: 0,
+        },
       },
       maxChunks,
     );

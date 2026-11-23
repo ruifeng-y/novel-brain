@@ -642,9 +642,18 @@ describe("M2 change, branch, search and chunked import integration", () => {
     await expect(
       importProcessor.process({
         jobType: PROCESS_IMPORT_JOB,
+        workId: null,
+        branchId: null,
         actorId,
         importId,
         idempotencyKey: `m2-integration-${importId}`,
+        checkpoint: {
+          schemaVersion: 1,
+          revision: 0,
+          nextProcessSequence: 0,
+          uploadedChunks: 0,
+          processedChunks: 0,
+        },
       }),
     ).resolves.toBe("succeeded");
   }
