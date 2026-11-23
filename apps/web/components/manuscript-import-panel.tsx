@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import {
+  IMPORT_FILE_LIMITS,
   apiErrorSchema,
   chunkedImportProgressResponseSchema,
   manuscriptImportConfirmResponseSchema,
@@ -107,10 +108,13 @@ export function ManuscriptImportPanel({
     confirmKey.current = null;
     try {
       const csrfToken = await getCsrfToken();
-      if (file.name.toLowerCase().endsWith(".docx") && file.size > 1024 * 1024) {
+      if (
+        file.name.toLowerCase().endsWith(".docx") &&
+        file.size > IMPORT_FILE_LIMITS.manuscript.maxFileBytes
+      ) {
         throw new Error("DOCX 旧稿不能超过 1 MB，请拆分文件后重试。");
       }
-      if (file.size > 1024 * 1024) {
+      if (file.size > IMPORT_FILE_LIMITS.manuscript.maxFileBytes) {
         const text = await file.text();
         const chunks = splitIntoChunks(text, 500_000);
         let response = await fetch("/api/v1/imports/manuscripts/chunked/start", {

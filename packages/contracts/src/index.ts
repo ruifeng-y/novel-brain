@@ -1062,6 +1062,22 @@ export const importReportResponseSchema = apiEnvelopeSchema(importReportSchema);
 export const manuscriptImportFormatSchema = z.enum(["txt", "markdown", "docx"]);
 export type ManuscriptImportFormat = z.infer<typeof manuscriptImportFormatSchema>;
 
+// Small synchronous import defaults. Configurable large-file limits are tracked by #262.
+export const IMPORT_FILE_LIMITS = {
+  manuscript: {
+    maxFileBytes: 1024 * 1024,
+    maxUploadBytes: 2 * 1024 * 1024,
+    maxDocxUncompressedBytes: 8 * 1024 * 1024,
+    maxTextCharacters: 1_000_000,
+  },
+  settings: {
+    maxFileBytes: 256 * 1024,
+    maxUploadBytes: 512 * 1024,
+    maxDocxUncompressedBytes: 4 * 1024 * 1024,
+    maxTextCharacters: 100_000,
+  },
+} as const;
+
 export const manuscriptImportStatusSchema = z.enum(["ready", "partial", "empty"]);
 export type ManuscriptImportStatus = z.infer<typeof manuscriptImportStatusSchema>;
 

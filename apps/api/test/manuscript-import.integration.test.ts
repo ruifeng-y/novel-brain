@@ -362,7 +362,7 @@ describe("manuscript import HTTP integration", () => {
     const numberingXml = [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
       '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
-      '<w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="chineseCounting"/><w:lvlText w:val="第%1章"/></w:lvl></w:abstractNum>',
+      '<w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="110"/><w:numFmt w:val="chineseCounting"/><w:lvlText w:val="第%1章"/></w:lvl></w:abstractNum>',
       '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>',
       "</w:numbering>",
     ].join("");
@@ -390,8 +390,39 @@ describe("manuscript import HTTP integration", () => {
       "断碑夜雨",
       "夜船",
     ]);
-    expect(created.body.data.chapters[0].content).toBe("第一章 断碑夜雨\n雨落在断碑上。\n");
-    expect(created.body.data.chapters[1].content).toBe("第二章 夜船\n夜船顺流而下。");
+    expect(created.body.data.chapters[0].content).toBe("第一百一十章 断碑夜雨\n雨落在断碑上。\n");
+    expect(created.body.data.chapters[1].content).toBe("第一百一十一章 夜船\n夜船顺流而下。");
+  });
+
+  it("formats legal traditional automatic numbering without losing zero places", async () => {
+    const owner = await createAuthenticatedAgent("manuscript-docx-legal-numbering@example.com");
+    const token = await csrf(owner);
+    const numberingXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+      '<w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1010"/><w:numFmt w:val="ideographLegalTraditional"/><w:lvlText w:val="第%1章"/></w:lvl></w:abstractNum>',
+      '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>',
+      "</w:numbering>",
+    ].join("");
+    const documentXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>',
+      '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>断碑夜雨</w:t></w:r></w:p>',
+      "<w:p><w:r><w:t>雨落在断碑上。</w:t></w:r></w:p>",
+      "<w:sectPr/></w:body></w:document>",
+    ].join("");
+
+    const created = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", buildDocxFixture({ documentXml, numberingXml }), {
+        filename: "legal-numbered-heading.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(200);
+
+    expect(created.body.data.chapters[0].content).toBe("第壹仟零壹拾章 断碑夜雨\n雨落在断碑上。");
   });
 
   it("accepts UTF-16 document XML and ignores DTD-like text inside comments", async () => {
@@ -417,6 +448,31 @@ describe("manuscript import HTTP integration", () => {
       .expect(200);
 
     expect(created.body.data.chapters[0].content).toContain("这一行必须保留。");
+  });
+
+  it("accepts ECMA-376 Strict WordprocessingML namespaces", async () => {
+    const owner = await createAuthenticatedAgent("manuscript-docx-strict@example.com");
+    const token = await csrf(owner);
+    const documentXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:document xmlns:w="http://purl.oclc.org/ooxml/wordprocessingml/main"><w:body>',
+      "<w:p><w:r><w:t>第一章 严格格式</w:t></w:r></w:p>",
+      "<w:p><w:r><w:t>严格格式正文。</w:t></w:r></w:p>",
+      "</w:body></w:document>",
+    ].join("");
+
+    const created = await owner
+      .post("/api/v1/imports/manuscripts")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .attach("file", buildDocxFixture({ documentXml }), {
+        filename: "strict.docx",
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      })
+      .expect(200);
+
+    expect(created.body.data.chapters[0].title).toBe("严格格式");
+    expect(created.body.data.chapters[0].content).toContain("严格格式正文。");
   });
 
   it("rejects malformed, encrypted, empty, oversized and adversarial DOCX without writing canon", async () => {

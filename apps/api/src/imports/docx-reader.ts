@@ -41,6 +41,10 @@ const MAX_ZIP_ENTRIES = 2_048;
 const MAX_XML_DEPTH = 256;
 const MAX_XML_NODES = 250_000;
 const MAX_DOCUMENT_XML_BYTES = 8 * 1024 * 1024;
+const WORD_PROCESSING_NAMESPACES = new Set([
+  "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+  "http://purl.oclc.org/ooxml/wordprocessingml/main",
+]);
 
 export function isDocxFileName(fileName: string): boolean {
   return fileName.toLowerCase().endsWith(".docx");
@@ -439,42 +443,56 @@ function applyChapterNumbering(input: {
 }
 
 function formatNumberingValue(value: number, format: string): string {
+  if (format === "ideographLegalTraditional") {
+    return formatChineseNumber(value, true);
+  }
   if (
     format === "chineseCounting" ||
     format === "chineseCountingThousand" ||
     format === "ideographTraditional" ||
-    format === "ideographLegalTraditional" ||
     format === "taiwaneseCounting"
   ) {
-    return formatChineseNumber(value);
+    return formatChineseNumber(value, false);
   }
   return String(value);
 }
 
-function formatChineseNumber(value: number): string {
-  const digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+function formatChineseNumber(value: number, legal: boolean): string {
+  const digits = legal
+    ? ["零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"]
+    : ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+  const units = legal ? ["", "拾", "佰", "仟"] : ["", "十", "百", "千"];
   if (value <= 0 || value >= 10_000) {
     return String(value);
   }
-  if (value < 10) {
-    return digits[value] ?? String(value);
+  if (!legal && value < 20) {
+    return value < 10
+      ? (digits[value] ?? String(value))
+      : `十${value === 10 ? "" : digits[value - 10]}`;
   }
-  if (value < 20) {
-    return value === 10 ? "十" : `十${digits[value - 10]}`;
+
+  const chars = String(value);
+  let result = "";
+  let pendingZero = false;
+  for (const [index, char] of [...chars].entries()) {
+    const digit = Number(char);
+    const place = chars.length - index - 1;
+    if (digit === 0) {
+      if (result && place > 0) {
+        pendingZero = true;
+      }
+      continue;
+    }
+    if (pendingZero) {
+      result += "零";
+      pendingZero = false;
+    }
+    if (!(!legal && digit === 1 && place === 1 && !result)) {
+      result += digits[digit];
+    }
+    result += units[place];
   }
-  if (value < 100) {
-    const tens = Math.floor(value / 10);
-    const ones = value % 10;
-    return `${digits[tens]}十${ones === 0 ? "" : digits[ones]}`;
-  }
-  if (value < 1_000) {
-    const hundreds = Math.floor(value / 100);
-    const rest = value % 100;
-    return `${digits[hundreds]}百${rest === 0 ? "" : rest < 10 ? `零${digits[rest]}` : formatChineseNumber(rest)}`;
-  }
-  const thousands = Math.floor(value / 1_000);
-  const rest = value % 1_000;
-  return `${digits[thousands]}千${rest === 0 ? "" : rest < 100 ? `零${formatChineseNumber(rest)}` : formatChineseNumber(rest)}`;
+  return result || "零";
 }
 
 function hasMainDocumentContentType(xml: string): boolean {
@@ -548,14 +566,8 @@ function isWordDocumentXml(xml: string): boolean {
   parser.on("opentag", (tag) => {
     depth += 1;
     if (depth === 1) {
-      rootValid =
-        tag.local === "document" &&
-        tag.uri === "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-    } else if (
-      depth === 2 &&
-      tag.local === "body" &&
-      tag.uri === "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    ) {
+      rootValid = tag.local === "document" && WORD_PROCESSING_NAMESPACES.has(tag.uri);
+    } else if (depth === 2 && tag.local === "body" && WORD_PROCESSING_NAMESPACES.has(tag.uri)) {
       hasBody = true;
     }
   });

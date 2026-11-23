@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { manuscriptImportFormatSchema, manuscriptImportResponseSchema } from "../src";
+import {
+  IMPORT_FILE_LIMITS,
+  manuscriptImportFormatSchema,
+  manuscriptImportResponseSchema,
+} from "../src";
 
 describe("manuscript import contracts", () => {
   it("accepts TXT, Markdown and DOCX previews without changing chapter traceability fields", () => {
     expect(manuscriptImportFormatSchema.options).toEqual(["txt", "markdown", "docx"]);
+    expect(IMPORT_FILE_LIMITS.manuscript.maxFileBytes).toBe(1024 * 1024);
+    expect(IMPORT_FILE_LIMITS.settings.maxFileBytes).toBe(256 * 1024);
 
     const parsed = manuscriptImportResponseSchema.parse({
       data: {

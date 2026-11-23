@@ -1,4 +1,4 @@
-import type { ManuscriptImportFormat } from "@novel-brain/contracts";
+import { IMPORT_FILE_LIMITS, type ManuscriptImportFormat } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
 import {
@@ -26,19 +26,19 @@ export const SUPPORTED_IMPORT_EXTENSIONS = [".txt", ".md", ".markdown", ".docx"]
 const IMPORT_POLICIES = {
   manuscript: {
     label: "旧稿",
-    maxUploadBytes: 2 * 1024 * 1024,
-    maxFileBytes: 1024 * 1024,
-    maxUncompressedBytes: 8 * 1024 * 1024,
-    maxTextCharacters: 1_000_000,
+    maxUploadBytes: IMPORT_FILE_LIMITS.manuscript.maxUploadBytes,
+    maxFileBytes: IMPORT_FILE_LIMITS.manuscript.maxFileBytes,
+    maxUncompressedBytes: IMPORT_FILE_LIMITS.manuscript.maxDocxUncompressedBytes,
+    maxTextCharacters: IMPORT_FILE_LIMITS.manuscript.maxTextCharacters,
     oversizeMessage: "旧稿文件不能超过 1 MB",
     rejectEmpty: false,
   },
   settings: {
     label: "设定",
-    maxUploadBytes: 512 * 1024,
-    maxFileBytes: 256 * 1024,
-    maxUncompressedBytes: 4 * 1024 * 1024,
-    maxTextCharacters: 100_000,
+    maxUploadBytes: IMPORT_FILE_LIMITS.settings.maxUploadBytes,
+    maxFileBytes: IMPORT_FILE_LIMITS.settings.maxFileBytes,
+    maxUncompressedBytes: IMPORT_FILE_LIMITS.settings.maxDocxUncompressedBytes,
+    maxTextCharacters: IMPORT_FILE_LIMITS.settings.maxTextCharacters,
     oversizeMessage: "设定文件不能超过 256 KB",
     rejectEmpty: true,
   },

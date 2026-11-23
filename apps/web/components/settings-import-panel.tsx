@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import {
+  IMPORT_FILE_LIMITS,
   apiErrorSchema,
   settingsImportResponseSchema,
   workResponseSchema,
@@ -78,7 +79,7 @@ export function SettingsImportPanel({
       setError("请选择 TXT、Markdown 或 DOCX 设定文件。");
       return;
     }
-    if (extension === ".docx" && file.size > 256 * 1024) {
+    if (extension === ".docx" && file.size > IMPORT_FILE_LIMITS.settings.maxFileBytes) {
       setSelectedFile(null);
       setSettingsImport(null);
       setError("DOCX 设定文件不能超过 256 KB。");
