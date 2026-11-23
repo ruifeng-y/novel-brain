@@ -4,7 +4,7 @@
 > Audited: 2026-11-21
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
 > Verification: [Production CI #45109239069](https://github.com/ruifeng-y/novel-brain/actions/runs/45109239069) on code head `67d37c5`
-> Result: 97 / 107 non-UI V1 capabilities verified; 10 retained as implemented with bounded gaps.
+> Result: 96 / 107 non-UI V1 capabilities verified; 11 retained as implemented with bounded gaps.
 
 ## 1. Audit Rule
 
@@ -27,11 +27,11 @@ The release gate now validates:
 
 | Status | Count |
 | --- | ---: |
-| Verified | 97 |
-| Blocked by a bounded gap | 10 |
+| Verified | 96 |
+| Blocked by a bounded gap | 11 |
 | Missing audit record | 0 |
 
-The ten blocked capabilities are:
+The eleven blocked capabilities are:
 
 | Capability | Gap | Follow-up |
 | --- | --- | --- |
@@ -41,6 +41,7 @@ The ten blocked capabilities are:
 | CHANGE-004 | Branch creation from an arbitrary historical node is not proven. | #263 |
 | CHANGE-005 | The five-object comparison matrix is not proven. | #263 |
 | CHANGE-006 | Per-object accept/reject/apply across all five object types is not proven. | #263 |
+| CHANGE-007 | High-risk confirmation rejection paths are not proven. | #263 |
 | EVAL-002 | The release-level inter-rater variance threshold is not approved. | #240 |
 | EVAL-003 | The protected real DeepSeek smoke has not run for the release candidate. | #241 |
 | EVAL-004 | Canary/rollback tests pass, but release use still requires real-provider and approved quality evidence. | #241 |
@@ -76,8 +77,8 @@ Expected release result after this audit:
 
 ```text
 V1 RELEASE BLOCKED
-- capability-verification:19
-  WORK-002, IO-001, IO-003, CHANGE-004..CHANGE-006, UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
+- capability-verification:20
+  WORK-002, IO-001, IO-003, CHANGE-004..CHANGE-007, UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
 ```
 
 The remaining non-UI blockers are tracked by #239, #240, #241, #261, #262 and #263. UI capability

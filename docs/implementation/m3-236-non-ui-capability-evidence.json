@@ -399,7 +399,14 @@
         "issue": "#263"
       }
     },
-    "CHANGE-007": { "status": "verified", "evidence": ["changes-http"] },
+    "CHANGE-007": {
+      "status": "implemented",
+      "evidence": ["changes-http"],
+      "gap": {
+        "reason": "现有测试只覆盖 confirmHighRisk=true 的成功路径，未覆盖缺失或 false 时的稳定拒绝。",
+        "issue": "#263"
+      }
+    },
     "CHANGE-008": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-009": { "status": "verified", "evidence": ["changes-http", "work-overview-e2e"] },
     "IO-001": {

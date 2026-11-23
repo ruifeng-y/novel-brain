@@ -62,6 +62,7 @@ describe("non-UI capability evidence audit", () => {
     expect(validate()).toEqual([]);
     expect(EXECUTABLE_EVIDENCE_KINDS.has("integration")).toBe(true);
     expect(EXECUTABLE_EVIDENCE_KINDS.has("manual_signoff")).toBe(false);
+    expect(EXECUTABLE_EVIDENCE_KINDS.has("ci")).toBe(false);
   });
 
   it("rejects missing and unexpected non-UI capability records", () => {

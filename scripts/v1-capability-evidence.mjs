@@ -8,7 +8,7 @@ const EVIDENCE_KIND_DESCRIPTORS = {
   guardrail: { executable: true, pathPattern: /^scripts\/test\/.*\.test\.mjs$/u },
   manual_signoff: { executable: false, pathPattern: /\.(?:md|json)$/u },
   ci: {
-    executable: true,
+    executable: false,
     external: true,
     pathPattern: /^https:\/\/github\.com\/[^/]+\/[^/]+\/actions\/runs\/\d+$/u,
   },
