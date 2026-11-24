@@ -5,8 +5,8 @@
   "verification": {
     "kind": "ci",
     "status": "passed",
-    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45195110712",
-    "headSha": "91f7956d5d02cf5f03f0f4e282ba4f1b95ec0503"
+    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45286994401",
+    "headSha": "d03b3ce9a4022b0a66543b63f3e2d83ea06aa1ce"
   },
   "evidence": {
     "auth-http": { "kind": "integration", "path": "apps/api/test/auth.integration.test.ts" },
@@ -171,6 +171,14 @@
       "kind": "integration",
       "path": "apps/api/test/m2-04-06.integration.test.ts"
     },
+    "chunked-import-recovery-http": {
+      "kind": "integration",
+      "path": "apps/api/test/manuscript-import-chunked.integration.test.ts"
+    },
+    "production-ci-262": {
+      "kind": "ci",
+      "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45286994401"
+    },
     "notifications-http": {
       "kind": "integration",
       "path": "apps/api/test/notifications.integration.test.ts"
@@ -269,12 +277,13 @@
       "evidence": ["works-http", "settings-import-http", "manuscript-http", "new-project-e2e"]
     },
     "WORK-002": {
-      "status": "implemented",
-      "evidence": ["manuscript-http", "chunked-import-http"],
-      "gap": {
-        "reason": "小文件 TXT/Markdown 解析已有证据，但 #126 要求的大文件分块与断点恢复没有复现证据。",
-        "issue": "#262"
-      }
+      "status": "verified",
+      "evidence": [
+        "manuscript-http",
+        "chunked-import-recovery-http",
+        "new-project-e2e",
+        "production-ci-262"
+      ]
     },
     "WORK-003": { "status": "verified", "evidence": ["settings-import-http", "new-project-e2e"] },
     "WORK-004": { "status": "verified", "evidence": ["works-http", "dashboard-e2e"] },
@@ -415,12 +424,8 @@
     },
     "IO-002": { "status": "verified", "evidence": ["settings-import-http"] },
     "IO-003": {
-      "status": "implemented",
-      "evidence": ["chunked-import-http"],
-      "gap": {
-        "reason": "分块接口只有小夹具证据；千万字、受限内存、崩溃续传和 UI 恢复状态尚无复现证据。",
-        "issue": "#262"
-      }
+      "status": "verified",
+      "evidence": ["chunked-import-recovery-http", "new-project-e2e", "production-ci-262"]
     },
     "IO-004": { "status": "verified", "evidence": ["work-export-http", "work-export-core"] },
     "IO-005": { "status": "verified", "evidence": ["work-export-http"] },

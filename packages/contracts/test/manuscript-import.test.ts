@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   IMPORT_FILE_LIMITS,
+  chunkedImportProgressResponseSchema,
+  chunkedManuscriptImportConfirmRequestSchema,
+  importProcessJobSchema,
   manuscriptImportFormatSchema,
   manuscriptImportResponseSchema,
 } from "../src";
@@ -24,6 +27,7 @@ describe("manuscript import contracts", () => {
             title: "第一章 断碑夜雨",
             content: "第一章 断碑夜雨\n雨落在断碑上。",
             wordCount: 14,
+            sourceRange: { start: 0, end: 15 },
           },
         ],
         warnings: [],
@@ -37,9 +41,97 @@ describe("manuscript import contracts", () => {
 
     expect(parsed.data.format).toBe("docx");
     expect(parsed.data.chapters[0]?.content).toContain("雨落在断碑上。");
+    expect(parsed.data.chapters[0]?.sourceRange).toEqual({ start: 0, end: 15 });
   });
 
   it("rejects unsupported import formats", () => {
     expect(() => manuscriptImportFormatSchema.parse("pdf")).toThrow();
+  });
+
+  it("accepts chunked progress and range-based confirmation without source text", () => {
+    const progress = chunkedImportProgressResponseSchema.parse({
+      data: {
+        importId: "01910000-0000-7000-8000-000000000002",
+        status: "processing",
+        chunkCount: 40,
+        uploadedChunks: 40,
+        processedChunks: 12,
+        canConfirm: false,
+      },
+      requestId: "req_chunked_progress",
+      meta: {},
+    });
+    expect(progress.data.uploadedChunks).toBe(40);
+
+    const request = chunkedManuscriptImportConfirmRequestSchema.parse({
+      title: "分块旧稿",
+      chapters: [
+        { title: "第一章", sourceRange: { start: 0, end: 10_000 } },
+        { title: "第二章", sourceRange: { start: 10_000, end: 20_000 } },
+      ],
+    });
+    expect(request.chapters.map((chapter) => chapter.sourceRange.end)).toEqual([10_000, 20_000]);
+  });
+
+  it("accepts the frozen 4000-chapter V1 baseline and rejects one chapter beyond it", () => {
+    const chapters = Array.from({ length: 4_000 }, (_, index) => ({
+      title: `第${index + 1}章`,
+      sourceRange: { start: index * 2_500, end: (index + 1) * 2_500 },
+    }));
+
+    expect(() =>
+      chunkedManuscriptImportConfirmRequestSchema.parse({
+        title: "千万字旧稿",
+        chapters,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      chunkedManuscriptImportConfirmRequestSchema.parse({
+        title: "超出基线",
+        chapters: [
+          ...chapters,
+          { title: "第4001章", sourceRange: { start: 10_000_000, end: 10_002_500 } },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it("binds import processor jobs to explicit null work scope and a durable checkpoint", () => {
+    const job = importProcessJobSchema.parse({
+      jobType: "process_import",
+      importId: "01910000-0000-7000-8000-000000000003",
+      workId: null,
+      branchId: null,
+      actorId: "01910000-0000-7000-8000-000000000004",
+      idempotencyKey: "manuscript-import-3-1-2",
+      checkpoint: {
+        schemaVersion: 1,
+        revision: 2,
+        nextProcessSequence: 1,
+        uploadedChunks: 2,
+        processedChunks: 1,
+      },
+    });
+    expect(job.checkpoint.nextProcessSequence).toBe(1);
+    expect(() =>
+      importProcessJobSchema.parse({
+        ...job,
+        workId: "01910000-0000-7000-8000-000000000005",
+      }),
+    ).toThrow();
+  });
+
+  it("bounds one chapter so range confirmation cannot materialize the full manuscript", () => {
+    expect(() =>
+      chunkedManuscriptImportConfirmRequestSchema.parse({
+        title: "单章过大",
+        chapters: [
+          {
+            title: "第1章",
+            sourceRange: { start: 0, end: 200_001 },
+          },
+        ],
+      }),
+    ).toThrow();
   });
 });

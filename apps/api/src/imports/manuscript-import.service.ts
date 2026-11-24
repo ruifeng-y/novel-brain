@@ -3,6 +3,7 @@ import type {
   Chapter,
   ChapterVersion,
   ChunkedImportCreateRequest,
+  ChunkedManuscriptImportConfirmRequest,
   ChunkedImportStartRequest,
   ChunkedImportChunkRequest,
   ChunkedImportProgress,
@@ -10,10 +11,21 @@ import type {
   ManuscriptImportConfirmData,
   ManuscriptImportConfirmRequest,
   ManuscriptImportFormat,
+  ManuscriptSourceRange,
+  WorkOverview,
 } from "@novel-brain/contracts";
+import { MAX_MANUSCRIPT_BATCH_CHARACTERS, manuscriptScanStateSchema } from "@novel-brain/contracts";
+import {
+  ManuscriptHeadingLimitError,
+  isWellFormedUtf16,
+  manuscriptChaptersFromScan,
+} from "@novel-brain/core";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ManuscriptImportQueue } from "./manuscript-import.queue";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { ManuscriptImportRepository } from "./manuscript-import.repository";
@@ -22,7 +34,7 @@ import type {
   ChapterVersionRecord,
   ManuscriptImportJobRecord,
 } from "./manuscript-import.repository";
-import { parseManuscriptText, type ManuscriptSourceRange } from "./manuscript-import.parser";
+import { parseManuscriptText } from "./manuscript-import.parser";
 import { formatFromName, readImportFile, type ImportUploadFile } from "./import-file";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -34,6 +46,7 @@ export class ManuscriptImportService {
   constructor(
     private readonly repository: ManuscriptImportRepository,
     private readonly worksService: WorksService,
+    private readonly queue: ManuscriptImportQueue,
   ) {}
 
   async create(
@@ -45,11 +58,19 @@ export class ManuscriptImportService {
       headingStarts?: readonly number[];
     },
   ): Promise<ManuscriptImport> {
-    const parsed = parseManuscriptText(
-      input.text,
-      input.sourceName.replace(/\.[^.]+$/u, "") || "全文",
-      { headingStarts: input.headingStarts ?? [] },
-    );
+    let parsed: ReturnType<typeof parseManuscriptText>;
+    try {
+      parsed = parseManuscriptText(
+        input.text,
+        input.sourceName.replace(/\.[^.]+$/u, "") || "全文",
+        { headingStarts: input.headingStarts ?? [] },
+      );
+    } catch (error) {
+      if (error instanceof ManuscriptHeadingLimitError) {
+        throw new ApiError(400, "VALIDATION_INVALID", "旧稿章节数量超过 V1 导入上限");
+      }
+      throw error;
+    }
     const record = await this.repository.create({
       id: uuidv7(),
       userId,
@@ -82,6 +103,17 @@ export class ManuscriptImportService {
     if (!idempotencyKey.trim()) {
       throw new ApiError(400, "VALIDATION_INVALID", "分块导入需要 Idempotency-Key");
     }
+    if (!input.chunks.every(isWellFormedUtf16)) {
+      throw new ApiError(400, "VALIDATION_INVALID", "旧稿包含无法解析的 Unicode 内容");
+    }
+    const totalCharacters = input.chunks.reduce((total, chunk) => total + chunk.length, 0);
+    if (totalCharacters > MAX_MANUSCRIPT_BATCH_CHARACTERS) {
+      throw new ApiError(
+        413,
+        "VALIDATION_INVALID",
+        "大批量旧稿请使用流式分块入口，单次请求内容过大",
+      );
+    }
     const record = await this.repository.createChunked({
       id: uuidv7(),
       userId,
@@ -92,7 +124,9 @@ export class ManuscriptImportService {
     if (record === "idempotency_conflict") {
       throw new ApiError(409, "VERSION_CONFLICT", "同一 Idempotency-Key 不能用于不同分块导入");
     }
-    return toChunkedProgress(record);
+    const progress = toChunkedProgress(record);
+    await this.queue.enqueue(userId, record.id, progress);
+    return progress;
   }
 
   async startChunked(
@@ -122,18 +156,28 @@ export class ManuscriptImportService {
     input: ChunkedImportChunkRequest,
   ): Promise<ChunkedImportProgress> {
     const record = await this.repository.appendChunk({ userId, importId, ...input });
+    if (record === "invalid_text") {
+      throw new ApiError(400, "VALIDATION_INVALID", "旧稿包含无法解析的 Unicode 内容");
+    }
+    if (record === "not_ready" || record === "sequence_conflict") {
+      throw new ApiError(409, "IMPORT_NOT_READY", "导入已取消、完成或分块顺序无效");
+    }
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在、无权访问或分块序号无效");
     }
-    return toChunkedProgress(record);
+    const progress = toChunkedProgress(record);
+    await this.queue.enqueue(userId, importId, progress);
+    return progress;
   }
 
   async processChunk(userId: string, importId: string): Promise<ChunkedImportProgress> {
-    const record = await this.repository.processChunk(userId, importId);
+    const record = await this.repository.find(userId, importId);
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
-    return toChunkedProgress(record);
+    const progress = toChunkedProgress(record);
+    await this.queue.enqueue(userId, importId, progress);
+    return progress;
   }
 
   async progress(userId: string, importId: string): Promise<ChunkedImportProgress> {
@@ -153,6 +197,9 @@ export class ManuscriptImportService {
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
+    if (action === "resume") {
+      await this.queue.enqueue(userId, importId, toChunkedProgress(record));
+    }
     return toChunkedProgress(record);
   }
 
@@ -165,14 +212,27 @@ export class ManuscriptImportService {
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
-    const sourceText =
-      record.metadata.chunked === true
-        ? await this.repository.sourceText(userId, importId)
-        : record.sourceText;
+    if (record.metadata.chunked === true) {
+      const state = await this.repository.ensureChunkedScanState(userId, importId);
+      if (!state) {
+        throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+      }
+      return this.toChunkedContract(
+        record,
+        format ?? formatFromName(record.sourceName),
+        repositoryScannedManuscript(record, state),
+      );
+    }
+    const sourceText = record.sourceText;
     if (sourceText === undefined) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
-    return this.toContract(record, format ?? formatFromName(record.sourceName), sourceText);
+    return this.toContract(
+      record,
+      format ?? formatFromName(record.sourceName),
+      sourceText,
+      record.metadata.chunked !== true,
+    );
   }
 
   async confirm(
@@ -234,6 +294,9 @@ export class ManuscriptImportService {
       audit,
       idempotencyKey,
     });
+    if (result === "not_ready") {
+      throw new ApiError(409, "IMPORT_NOT_READY", "导入已暂停、取消或尚未完成");
+    }
     if (!result) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
@@ -244,10 +307,64 @@ export class ManuscriptImportService {
     };
   }
 
+  async confirmChunked(
+    userId: string,
+    displayName: string,
+    importId: string,
+    input: ChunkedManuscriptImportConfirmRequest,
+    audit: WorksAuditContext,
+    idempotencyKey: string,
+  ): Promise<WorkOverview> {
+    const record = await this.repository.find(userId, importId);
+    if (!record) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    if (record.metadata.chunked !== true) {
+      throw new ApiError(409, "IMPORT_NOT_READY", "该导入不是分块旧稿");
+    }
+    if (record.status !== "awaiting_confirmation" && record.status !== "completed") {
+      throw new ApiError(409, "IMPORT_NOT_READY", "旧稿仍在分块处理，请完成后再确认");
+    }
+    const state = await this.repository.ensureChunkedScanState(userId, importId);
+    if (!state) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    const scanned = repositoryScannedManuscript(record, state);
+    validateChapterRanges(input.chapters, scanned.totalCharacters);
+    const matches = await this.repository.validateChunkedRanges(userId, importId, input.chapters);
+    if (matches === undefined) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    if (!matches) {
+      throw new ApiError(400, "VALIDATION_INVALID", "章节范围必须连续覆盖旧稿原文");
+    }
+    const result = await this.repository.confirmRanges({
+      userId,
+      importId,
+      displayName,
+      title: input.title,
+      ...(input.penName ? { penName: input.penName } : {}),
+      genre: input.genre,
+      scaleTarget: input.scaleTarget,
+      chapterLengthTarget: input.chapterLengthTarget,
+      chapters: input.chapters,
+      audit,
+      idempotencyKey,
+    });
+    if (result === "not_ready") {
+      throw new ApiError(409, "IMPORT_NOT_READY", "导入已暂停、取消或尚未完成");
+    }
+    if (!result) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    return this.worksService.get(userId, result.workId);
+  }
+
   private toContract(
     record: ManuscriptImportJobRecord,
     format: ManuscriptImportFormat,
     sourceText = record.sourceText,
+    includeContent = true,
   ): ManuscriptImport {
     const parsed = parseManuscriptText(
       sourceText,
@@ -262,10 +379,41 @@ export class ManuscriptImportService {
       chapters: parsed.chapters.map((chapter, index) => ({
         order: index + 1,
         ...chapter,
+        content: includeContent ? chapter.content : "",
       })),
       warnings: parsed.warnings,
       canConfirm:
-        record.status !== "completed" && parsed.status !== "empty" && parsed.chapters.length > 0,
+        record.status !== "completed" &&
+        (record.metadata.chunked !== true || record.status === "awaiting_confirmation") &&
+        parsed.status !== "empty" &&
+        parsed.chapters.length > 0,
+      confirmedWorkId: record.workId,
+      createdAt: record.createdAt.toISOString(),
+    };
+  }
+
+  private toChunkedContract(
+    record: ManuscriptImportJobRecord,
+    format: ManuscriptImportFormat,
+    scanned: ReturnType<typeof repositoryScannedManuscript>,
+  ): ManuscriptImport {
+    return {
+      id: record.id,
+      status: scanned.status,
+      sourceName: record.sourceName ?? "旧稿",
+      format,
+      chapters: scanned.chapters.map((chapter, index) => ({
+        order: index + 1,
+        title: chapter.title,
+        content: "",
+        wordCount: chapter.sourceRange.end - chapter.sourceRange.start,
+        sourceRange: chapter.sourceRange,
+      })),
+      warnings: scanned.warnings,
+      canConfirm:
+        record.status === "awaiting_confirmation" &&
+        scanned.status !== "empty" &&
+        scanned.chapters.length > 0,
       confirmedWorkId: record.workId,
       createdAt: record.createdAt.toISOString(),
     };
@@ -277,6 +425,44 @@ function headingStartsFromRecord(record: ManuscriptImportJobRecord): number[] {
   return Array.isArray(value)
     ? value.filter((item): item is number => typeof item === "number" && Number.isInteger(item))
     : [];
+}
+
+function repositoryScannedManuscript(
+  record: ManuscriptImportJobRecord,
+  verifiedState?: ReturnType<typeof manuscriptScanStateSchema.parse>,
+) {
+  const rawState = record.checkpoint.manuscript;
+  const state = verifiedState
+    ? verifiedState
+    : rawState
+      ? manuscriptScanStateSchema.parse(rawState)
+      : {
+          schemaVersion: 1 as const,
+          offset: sourceCharacterCount(record),
+          lineStart: 0,
+          pendingLine: "",
+          lineOverflow: false,
+          prefixHasText: false,
+          headings: [],
+          hasText: false,
+        };
+  const totalCharacters =
+    typeof record.checkpoint.sourceCharacterCount === "number"
+      ? record.checkpoint.sourceCharacterCount
+      : state.offset;
+  return {
+    ...manuscriptChaptersFromScan(
+      state,
+      totalCharacters,
+      record.sourceName?.replace(/\.[^.]+$/u, "") || "全文",
+    ),
+    totalCharacters,
+  };
+}
+
+function sourceCharacterCount(record: ManuscriptImportJobRecord): number {
+  const value = record.checkpoint.sourceCharacterCount;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
 }
 
 function withSourceRanges(
@@ -339,7 +525,30 @@ function toChunkedProgress(record: ManuscriptImportJobRecord): ChunkedImportProg
     importId: record.id,
     status,
     chunkCount: record.chunkCount,
+    uploadedChunks:
+      typeof record.checkpoint.uploadedChunks === "number"
+        ? record.checkpoint.uploadedChunks
+        : record.processedChunks,
     processedChunks: record.processedChunks,
     canConfirm: status === "awaiting_confirmation",
   };
+}
+
+function validateChapterRanges(
+  chapters: Array<{ sourceRange: ManuscriptSourceRange }>,
+  totalCharacters: number,
+): void {
+  let expectedStart = 0;
+  for (const chapter of chapters) {
+    if (
+      chapter.sourceRange.start !== expectedStart ||
+      chapter.sourceRange.end <= chapter.sourceRange.start
+    ) {
+      throw new ApiError(400, "VALIDATION_INVALID", "章节范围必须连续覆盖旧稿原文");
+    }
+    expectedStart = chapter.sourceRange.end;
+  }
+  if (expectedStart !== totalCharacters) {
+    throw new ApiError(400, "VALIDATION_INVALID", "章节范围必须连续覆盖旧稿原文");
+  }
 }

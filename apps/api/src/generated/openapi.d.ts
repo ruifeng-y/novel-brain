@@ -1460,6 +1460,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/imports/manuscripts/{importId}/confirm-chunked": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_confirmChunked"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works": {
     parameters: {
       query?: never;
@@ -17049,6 +17065,7 @@ export interface operations {
                 | "cancelled"
                 | "completed";
               chunkCount: number;
+              uploadedChunks: number;
               processedChunks: number;
               canConfirm: boolean;
             };
@@ -17101,6 +17118,7 @@ export interface operations {
                 | "cancelled"
                 | "completed";
               chunkCount: number;
+              uploadedChunks: number;
               processedChunks: number;
               canConfirm: boolean;
             };
@@ -17153,6 +17171,7 @@ export interface operations {
                 | "cancelled"
                 | "completed";
               chunkCount: number;
+              uploadedChunks: number;
               processedChunks: number;
               canConfirm: boolean;
             };
@@ -17202,6 +17221,10 @@ export interface operations {
                 title: string;
                 content: string;
                 wordCount: number;
+                sourceRange: {
+                  start: number;
+                  end: number;
+                };
               }[];
               warnings: {
                 sourceExcerpt: string;
@@ -17253,6 +17276,10 @@ export interface operations {
                 title: string;
                 content: string;
                 wordCount: number;
+                sourceRange: {
+                  start: number;
+                  end: number;
+                };
               }[];
               warnings: {
                 sourceExcerpt: string;
@@ -17305,6 +17332,7 @@ export interface operations {
                 | "cancelled"
                 | "completed";
               chunkCount: number;
+              uploadedChunks: number;
               processedChunks: number;
               canConfirm: boolean;
             };
@@ -17350,6 +17378,7 @@ export interface operations {
                 | "cancelled"
                 | "completed";
               chunkCount: number;
+              uploadedChunks: number;
               processedChunks: number;
               canConfirm: boolean;
             };
@@ -17395,6 +17424,7 @@ export interface operations {
                 | "cancelled"
                 | "completed";
               chunkCount: number;
+              uploadedChunks: number;
               processedChunks: number;
               canConfirm: boolean;
             };
@@ -17440,6 +17470,7 @@ export interface operations {
                 | "cancelled"
                 | "completed";
               chunkCount: number;
+              uploadedChunks: number;
               processedChunks: number;
               canConfirm: boolean;
             };
@@ -17485,6 +17516,7 @@ export interface operations {
                 | "cancelled"
                 | "completed";
               chunkCount: number;
+              uploadedChunks: number;
               processedChunks: number;
               canConfirm: boolean;
             };
@@ -17690,6 +17722,179 @@ export interface operations {
                 /** Format: date-time */
                 createdAt: string;
               }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_confirmChunked: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Idempotency-Key"?: string;
+      };
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          title: string;
+          penName?: string;
+          /**
+           * @default xianxia
+           * @enum {string}
+           */
+          genre: "xianxia" | "history" | "urban";
+          /**
+           * @default long
+           * @enum {string}
+           */
+          scaleTarget: "short" | "medium" | "long" | "epic";
+          /** @default 3000 */
+          chapterLengthTarget: number;
+          chapters: {
+            title: string;
+            sourceRange: {
+              start: number;
+              end: number;
+            };
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Created work from range-based chunked manuscript import */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** @default null */
+              coverImageUrl: string | null;
+              /** @default [] */
+              tags: string[];
+              /** @default 1 */
+              version: number;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              archivedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              deletedAt: string | null;
+              /**
+               * Format: date-time
+               * @default null
+               */
+              purgeAfter: string | null;
+              /** @default false */
+              exportReady: boolean;
+              /** @default false */
+              canPurge: boolean;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
             };
             /** Format: starts_with */
             requestId: string;

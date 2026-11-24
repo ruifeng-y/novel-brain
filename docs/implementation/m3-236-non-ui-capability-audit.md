@@ -1,10 +1,10 @@
 # M3-07c-01 Non-UI V1 Capability Evidence Audit
 
 > Issue: #236
-> Audited: 2026-11-23
+> Audited: 2026-11-24
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
-> Verification: [Production CI #45195110712](https://github.com/ruifeng-y/novel-brain/actions/runs/45195110712) on code head `91f7956`
-> Result: 97 / 107 non-UI V1 capabilities verified; 10 retained as implemented with bounded gaps.
+> Verification: [Production CI #45286994401](https://github.com/ruifeng-y/novel-brain/actions/runs/45286994401) on code head `d03b3ce`
+> Result: 99 / 107 non-UI V1 capabilities verified; 8 retained as implemented with bounded gaps.
 
 ## 1. Audit Rule
 
@@ -27,16 +27,14 @@ The release gate now validates:
 
 | Status | Count |
 | --- | ---: |
-| Verified | 97 |
-| Blocked by a bounded gap | 10 |
+| Verified | 99 |
+| Blocked by a bounded gap | 8 |
 | Missing audit record | 0 |
 
 The ten blocked capabilities are:
 
 | Capability | Gap | Follow-up |
 | --- | --- | --- |
-| WORK-002 | Large-file chunked import and interruption recovery are not proven. | #262 |
-| IO-003 | No generated 10M-character, bounded-memory and crash-resume evidence. | #262 |
 | CHANGE-004 | Branch creation from an arbitrary historical node is not proven. | #263 |
 | CHANGE-005 | The five-object comparison matrix is not proven. | #263 |
 | CHANGE-006 | Per-object accept/reject/apply across all five object types is not proven. | #263 |
@@ -76,9 +74,9 @@ Expected release result after this audit:
 
 ```text
 V1 RELEASE BLOCKED
-- capability-verification:19
-  WORK-002, IO-003, CHANGE-004..CHANGE-007, UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
+- capability-verification:17
+  CHANGE-004..CHANGE-007, UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
 ```
 
-The remaining non-UI blockers are tracked by #239, #240, #241, #262 and #263. UI capability
+The remaining non-UI blockers are tracked by #239, #240, #241 and #263. UI capability
 closure remains #238; final release evidence and CI remain #242.

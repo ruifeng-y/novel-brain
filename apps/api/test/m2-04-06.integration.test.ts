@@ -3,6 +3,7 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  PROCESS_IMPORT_JOB,
   branchComparisonResponseSchema,
   branchCreateResponseSchema,
   changeAnalysisResponseSchema,
@@ -27,6 +28,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../src/app.module";
 import { MAIL_GATEWAY, type MailGateway } from "../src/auth/mail.gateway";
 import { ApiExceptionFilter } from "../src/common/api-exception.filter";
+import { ManuscriptImportProcessor } from "../../worker/src/imports/manuscript-import.processor";
+import { WorkerManuscriptImportRepository } from "../../worker/src/imports/manuscript-import.repository";
 
 const databaseUrl =
   process.env.TEST_DATABASE_URL ??
@@ -46,6 +49,8 @@ describe("M2 change, branch, search and chunked import integration", () => {
   let app: INestApplication;
   let databasePool: ReturnType<typeof createDatabasePool>;
   let redis: Redis;
+  let importRepository: WorkerManuscriptImportRepository;
+  let importProcessor: ManuscriptImportProcessor;
   const mail = new CapturingMailGateway();
 
   beforeAll(async () => {
@@ -76,6 +81,8 @@ describe("M2 change, branch, search and chunked import integration", () => {
     app.setGlobalPrefix("api/v1");
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.init();
+    importRepository = new WorkerManuscriptImportRepository();
+    importProcessor = new ManuscriptImportProcessor(importRepository);
   });
 
   beforeEach(async () => {
@@ -85,6 +92,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
   });
 
   afterAll(async () => {
+    await importRepository?.onModuleDestroy();
     await app?.close();
     await databasePool?.end();
     redis?.disconnect();
@@ -463,6 +471,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
   it("creates and resumes a chunked manuscript import", async () => {
     const owner = await createAuthenticatedAgent("m2-chunk-import@example.com");
     const token = await csrf(owner);
+    const ownerId = (await owner.get("/api/v1/auth/me").expect(200)).body.data.user.id as string;
     const created = chunkedImportProgressResponseSchema.parse(
       (
         await owner
@@ -532,28 +541,12 @@ describe("M2 change, branch, search and chunked import integration", () => {
       ).body,
     ).data;
     expect(resumed.status).toBe("queued");
-    const first = chunkedImportProgressResponseSchema.parse(
-      (
-        await owner
-          .post(`/api/v1/imports/manuscripts/${created.importId}/process`)
-          .set("Origin", origin)
-          .set("X-CSRF-Token", token)
-          .send({})
-          .expect(200)
-      ).body,
+    await processImport(ownerId, created.importId);
+    const completed = chunkedImportProgressResponseSchema.parse(
+      (await owner.get(`/api/v1/imports/manuscripts/${created.importId}/progress`).expect(200))
+        .body,
     ).data;
-    expect(first.processedChunks).toBe(1);
-    const second = chunkedImportProgressResponseSchema.parse(
-      (
-        await owner
-          .post(`/api/v1/imports/manuscripts/${created.importId}/process`)
-          .set("Origin", origin)
-          .set("X-CSRF-Token", token)
-          .send({})
-          .expect(200)
-      ).body,
-    ).data;
-    expect(second).toMatchObject({
+    expect(completed).toMatchObject({
       status: "awaiting_confirmation",
       processedChunks: 2,
       canConfirm: true,
@@ -593,21 +586,10 @@ describe("M2 change, branch, search and chunked import integration", () => {
         .send({ sequence, sourceText })
         .expect(200);
     }
-    await owner
-      .post(`/api/v1/imports/manuscripts/${streamed.importId}/process`)
-      .set("Origin", origin)
-      .set("X-CSRF-Token", token)
-      .send({})
-      .expect(200);
+    await processImport(ownerId, streamed.importId);
     const streamedDone = chunkedImportProgressResponseSchema.parse(
-      (
-        await owner
-          .post(`/api/v1/imports/manuscripts/${streamed.importId}/process`)
-          .set("Origin", origin)
-          .set("X-CSRF-Token", token)
-          .send({})
-          .expect(200)
-      ).body,
+      (await owner.get(`/api/v1/imports/manuscripts/${streamed.importId}/progress`).expect(200))
+        .body,
     ).data;
     expect(streamedDone.status).toBe("awaiting_confirmation");
   });
@@ -654,6 +636,26 @@ describe("M2 change, branch, search and chunked import integration", () => {
       })
       .expect(200);
     return agent;
+  }
+
+  async function processImport(actorId: string, importId: string) {
+    await expect(
+      importProcessor.process({
+        jobType: PROCESS_IMPORT_JOB,
+        workId: null,
+        branchId: null,
+        actorId,
+        importId,
+        idempotencyKey: `m2-integration-${importId}`,
+        checkpoint: {
+          schemaVersion: 1,
+          revision: 0,
+          nextProcessSequence: 0,
+          uploadedChunks: 0,
+          processedChunks: 0,
+        },
+      }),
+    ).resolves.toBe("succeeded");
   }
 
   async function csrf(agent: SuperAgentTest): Promise<string> {

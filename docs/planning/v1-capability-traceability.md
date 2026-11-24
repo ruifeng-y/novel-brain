@@ -1,6 +1,6 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-23。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 97 个已有可执行证据并标为 `verified`，10 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
+> 状态：V1 delivery ledger，2026-11-24。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 99 个已有可执行证据并标为 `verified`，8 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
 > `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
 
 ## 状态定义
@@ -29,7 +29,7 @@
 | ACCT-008 | 模型连接测试/错误状态 | V1 | verified | #69 | — | M0 Spec #66; M0 Protocol Freeze; ADR 0023 where security/deletion applies | `docs/implementation/m3-236-non-ui-capability-evidence.json#ACCT-008` | M0 |
 | ACCT-009 | 限流/安全状态/无管理员越权 | V1 | verified | #68 | — | M0 Spec #66; M0 Protocol Freeze; ADR 0023 where security/deletion applies | `docs/implementation/m3-236-non-ui-capability-evidence.json#ACCT-009` | M0 |
 | WORK-001 | 从想法/空白/模板/部分或完整设定创建作品 | V1 | verified | #70 | #71, #72, #84 | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | `docs/implementation/m3-236-non-ui-capability-evidence.json#WORK-001` | M0 |
-| WORK-002 | 默认文本导入：解析/切分/标题/保留原文 | V1 | implemented | #72 | #72 | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | `docs/implementation/m3-236-non-ui-capability-evidence.json#WORK-002`; gap #262 | M0 |
+| WORK-002 | 默认文本导入：解析/切分/标题/保留原文 | V1 | verified | #72 | #72 | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | `docs/implementation/m3-236-non-ui-capability-evidence.json#WORK-002` | M0 |
 | WORK-003 | 可选设定提取：候选/冲突/报告/确认 | V1 | verified | #71 | #71, #127 | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | `docs/implementation/m3-236-non-ui-capability-evidence.json#WORK-003` | M0 |
 | WORK-004 | 作品列表/搜索/筛选/排序 | V1 | verified | #70 | — | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | `docs/implementation/m3-236-non-ui-capability-evidence.json#WORK-004` | M0 |
 | WORK-005 | 作品总览/进度/最近修改 | V1 | verified | #70 | — | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | `docs/implementation/m3-236-non-ui-capability-evidence.json#WORK-005` | M0 |
@@ -106,7 +106,7 @@
 | CHANGE-009 | 全局当前分支/分支切换 | V1 | verified | #123 | — | M2 Spec #81; Changes/version contract; ADR 0016, 0020 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CHANGE-009` | M2 |
 | IO-001 | TXT/Markdown/DOCX 解析/切分/合并/拆分 | V1 | verified | #126 | #72 | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-001` | M2 |
 | IO-002 | 可选设定提取/候选/冲突/报告 | V1 | verified | #127 | #71 | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-002` | M2 |
-| IO-003 | 导入后台任务/断点/进度 | V1 | implemented | #126 | — | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-003`; gap #262 | M2 |
+| IO-003 | 导入后台任务/断点/进度 | V1 | verified | #126 | — | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-003` | M2 |
 | IO-004 | 导出格式/范围/历史/下载/过期 | V1 | verified | #129 | — | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-004` | M3 |
 | IO-005 | 发布检查/预览/文案/标签 | V1 | verified | #130 | — | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-005` | M3 |
 | IO-006 | 账号完整导出 | V1 | verified | #134 | — | M0/M2/M3 specs; Import/Export contracts; ADR 0018, 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#IO-006` | M3 |

@@ -21,6 +21,7 @@ The repository contains product/technical documentation, accepted ADRs, a signed
 - Provider smoke, canary and rollback strategy: `docs/implementation/m3-06b-provider-canary.md`.
 - V1 UI/release closeout and final checklist: `docs/implementation/m3-104-v1-closeout.md`, `docs/implementation/v1-release-checklist.md`.
 - Non-UI capability evidence audit: `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/m3-236-non-ui-capability-evidence.json`.
+- Chunked import and recovery evidence: `docs/implementation/m3-262-import-recovery.md`.
 
 M1/M2/M3 package parents are not single /implement tasks: #84–#89, #91, #93–#96 and #98–#103. Implement their bounded child issues first, then close each parent with integration evidence. #90, #97 and #104 are integration/release gates. The new leaf issues are mapped, not automatically ready or verified. Never infer readiness from labels alone.
 

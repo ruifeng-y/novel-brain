@@ -35,6 +35,8 @@ import { WorkExportProcessor } from "./exports/work-export.processor";
 import { WorkerWorkExportRepository } from "./exports/work-export.repository";
 import { WorkPurgeProcessor } from "./works/work-purge.processor";
 import { WorkerWorkPurgeRepository } from "./works/work-purge.repository";
+import { ManuscriptImportProcessor } from "./imports/manuscript-import.processor";
+import { WorkerManuscriptImportRepository } from "./imports/manuscript-import.repository";
 
 @Module({
   providers: [
@@ -115,6 +117,8 @@ import { WorkerWorkPurgeRepository } from "./works/work-purge.repository";
     WorkerWorkExportRepository,
     WorkerWorkPurgeRepository,
     WorkPurgeProcessor,
+    WorkerManuscriptImportRepository,
+    ManuscriptImportProcessor,
     {
       provide: OBJECT_STORAGE,
       useFactory: () => createObjectStorageFromEnvironment(),
