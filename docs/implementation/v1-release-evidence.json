@@ -23,7 +23,7 @@
         "docs/ui/v1-ui-parity-matrix.md",
         "docs/implementation/v1-action-evidence.json",
         "docs/implementation/m3-238-ui-capability-evidence.json",
-        "https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381"
+        ".github/workflows/ci.yml"
       ]
     },
     {

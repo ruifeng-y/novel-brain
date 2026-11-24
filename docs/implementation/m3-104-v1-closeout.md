@@ -8,7 +8,7 @@
 
 - 17 个生产页面均有唯一 owner、production Playwright spec、四档生产 Golden 和 `parity-verified` 状态。
 - 15 个非静态页面均有完整 action contract 与 `verified` action evidence，不再存在 pending 页面；`auth.spec.ts` 包含直接 `toHaveScreenshot` 与 `prototype_only` 扫描。
-- UI-001..UI-009 已由 #238 收口到 `docs/implementation/m3-238-ui-capability-evidence.json`；机器账本把每项 UI capability 绑定到可执行 guardrail、页面 Playwright 证据和绿色 Production CI `45332565381`。
+- UI-001..UI-009 已由 #238 收口到 `docs/implementation/m3-238-ui-capability-evidence.json`；机器账本把每项 UI capability 绑定到可执行 guardrail、页面 Playwright 证据，并由 release gate 校验当前 HEAD 的绿色 Production CI。
 - `scripts/validate-readiness.mjs` 校验页面、依赖和 Golden 结构；`pnpm release:check` 才负责要求所有生产页面为 `parity-verified` 或 `deviation-approved`。
 - `docs/ui/prototype-contract.md` 与 `docs/ui/v1-ui-parity-matrix.md` 已对齐 M0–M3 当前生产状态。
 - `#98/#99/#100/#101/#103` package parents 已用子项合并与 CI 证据关闭。

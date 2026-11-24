@@ -549,6 +549,75 @@ test("shows empty and error states for the batch review queue", async ({ page, c
   await expect(page.getByRole("button", { name: "刷新队列" })).toBeVisible();
 });
 
+test("shows loading and long content states without horizontal overflow", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "批量长内容状态",
+  });
+  const queuePath = `**/api/v1/works/${work.id}/branches/${work.mainBranch.id}/review-queue?**`;
+  const longTitle =
+    "第一百二十八章 · 在漫长雪夜里穿过北境七城之后终于抵达天门山脚并发现守门人已经换成了失忆的旧友";
+  const longVolume = "第七卷 · 北境风雪与故人重逢的漫长归途";
+  let releaseQueue!: () => void;
+  const queueGate = new Promise<void>((resolve) => {
+    releaseQueue = resolve;
+  });
+
+  await page.route(queuePath, async (route) => {
+    await queueGate;
+    const response = queueResponse("pending", 1);
+    const item = response.data[0]!;
+    const riskCodes = [
+      "QUALITY_REPORT_MISSING",
+      "QUALITY_REPORT_STALE",
+      "UNRESOLVED_P0",
+      "UNRESOLVED_P1",
+      "STRUCTURAL_FINDING",
+      "QUALITY_BELOW_THRESHOLD",
+    ] as const;
+    item.chapterTitle = longTitle;
+    item.volumeTitle = longVolume;
+    item.riskReasons = riskCodes.map((code) => ({
+      code,
+      message:
+        "这一段风险说明用于验证较长正文、卷名和多条人工确认原因不会挤压审核操作，也不会造成横向滚动。",
+    }));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(response),
+    });
+  });
+
+  const navigation = page.goto(`/workspace/${work.id}/batch`, {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.getByText("正在加载审核队列")).toBeVisible();
+  releaseQueue();
+  await navigation;
+
+  await expect(page.getByRole("heading", { name: "审核队列" })).toBeVisible();
+  await expect(page.locator(".batch-review-item")).toContainText(longTitle);
+  await page.locator(".batch-review-item").click();
+  await expect(page.getByRole("heading", { name: longTitle })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "人工确认原因" })).toBeVisible();
+  await expect(
+    page.getByText(
+      "这一段风险说明用于验证较长正文、卷名和多条人工确认原因不会挤压审核操作，也不会造成横向滚动。",
+    ),
+  ).toHaveCount(6);
+  await expectAuthorFacingLanguage(page);
+  await expectNoPrototypeOnlyLeakage(page);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("claims a review item and shows partial decision feedback", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const work = await createWork(page.request, {

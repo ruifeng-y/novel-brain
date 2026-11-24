@@ -3,10 +3,9 @@
   "issue": "#238",
   "auditedAt": "2026-11-24",
   "verification": {
-    "kind": "ci",
+    "kind": "github-actions-current-head",
     "status": "passed",
-    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381",
-    "headSha": "491d059e2d08c787758b31f1a72c5ef652800570"
+    "workflow": ".github/workflows/ci.yml"
   },
   "evidence": {
     "ui-closeout-guardrail": {
@@ -79,12 +78,12 @@
         "action-ledger",
         "parity-matrix"
       ],
-      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+      "tests": ["keeps the 17-page matrix, per-action evidence and release ledger aligned"]
     },
     "UI-002": {
       "status": "verified",
       "evidence": ["ui-closeout-guardrail", "prototype-contract"],
-      "test": "keeps UI contract tokens and the component inventory executable"
+      "tests": ["keeps UI contract tokens and the component inventory executable"]
     },
     "UI-003": {
       "status": "verified",
@@ -94,16 +93,17 @@
         "new-project-parity",
         "settings-parity"
       ],
-      "test": "keeps UI contract tokens and the component inventory executable"
+      "tests": ["keeps seven setting columns and three genre packs aligned with production specs"]
     },
     "UI-004": {
       "status": "verified",
       "evidence": [
         "ui-closeout-guardrail",
         "parity-matrix",
-        "writing-parity"
+        "batch-parity",
+        "help-parity"
       ],
-      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+      "tests": ["verifies required page states including batch loading and long content"]
     },
     "UI-005": {
       "status": "verified",
@@ -112,7 +112,7 @@
         "auth-parity",
         "work-settings-parity"
       ],
-      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+      "tests": ["verifies four viewport coverage for every production page"]
     },
     "UI-006": {
       "status": "verified",
@@ -121,17 +121,17 @@
         "release-gate-guardrail",
         "help-parity"
       ],
-      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+      "tests": ["verifies Playwright screenshot baselines for every production page"]
     },
     "UI-007": {
       "status": "verified",
       "evidence": ["ui-closeout-guardrail", "writing-parity", "batch-parity", "changes-parity"],
-      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+      "tests": ["verifies Agent UX evidence on writing batch and changes pages"]
     },
     "UI-008": {
       "status": "verified",
       "evidence": ["ui-closeout-guardrail", "new-project-parity", "outline-parity", "changes-parity"],
-      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+      "tests": ["verifies import golden-three and branch comparison surface evidence"]
     },
     "UI-009": {
       "status": "verified",
@@ -142,7 +142,7 @@
         "help-parity",
         "legal-parity"
       ],
-      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+      "tests": ["verifies author language and prototype-only scans across all production pages"]
     }
   }
 }

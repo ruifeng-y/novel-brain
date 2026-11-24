@@ -20,7 +20,7 @@
 - #136 backup/restore/RPO/RTO is closed through PR #200.
 - #129 export formats, scope selection, durable job recovery and version manifests is closed through PR #201.
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
-- #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207. `legal` and `export-publish` have formal Linux Golden evidence, but current release status is matrix-owned: only `legal` is `parity-verified`, and #104 removed the earlier `help` verification because no real route-level error-boundary evidence exists.
+- #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207. `help`, `legal` and `export-publish` have formal Linux Golden evidence; #220 added the real `/help` route error-boundary and retry-recovery proof. Current release status is matrix-owned: all 17 production pages are `parity-verified`.
 - Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142, #138, #139 and #140 are closed; #98–#103 package parents are closed with child evidence; #137/#102 are explicitly deferred from V1 and the V1 capacity claim is excluded.
 - #104 is in final release closeout: all 17 production pages are `parity-verified`, the page-level action audit is complete, and #238 records UI-001..UI-009 as `verified`. The total ledger records 112 of 116 V1 capabilities as `verified`. EVAL-002, EVAL-003, EVAL-004 and CONT-001 remain open with bounded follow-ups.
 - PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.

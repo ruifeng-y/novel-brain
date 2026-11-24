@@ -27,10 +27,9 @@ const traceability = [
 const completeAudit = {
   schemaVersion: 1,
   verification: {
-    kind: "ci",
+    kind: "github-actions-current-head",
     status: "passed",
-    path: "https://github.com/ruifeng-y/novel-brain/actions/runs/123",
-    headSha: "a".repeat(40),
+    workflow: ".github/workflows/ci.yml",
   },
   evidence: {
     surface: {
@@ -48,6 +47,7 @@ const completeAudit = {
       {
         status: "verified",
         evidence: ["surface", "guardrail"],
+        tests: [`${id} executable evidence`],
       },
     ]),
   ),
@@ -56,8 +56,9 @@ const completeAudit = {
 const validate = (audit = completeAudit, overrides = {}) =>
   validateUiCapabilityEvidence(traceability, audit, {
     evidenceExists: () => true,
-    auditCiRunIsValid: () => true,
-    githubRunIsSuccessful: () => true,
+    currentHeadCiIsSuccessful: () => true,
+    expectedCommit: "a".repeat(40),
+    fileContains: () => true,
     ...overrides,
   });
 
@@ -86,16 +87,21 @@ describe("UI capability evidence audit", () => {
     );
   });
 
-  it("requires a successful CI run bound to the audited head", () => {
+  it("requires a successful GitHub Actions run for the current head", () => {
     const audit = structuredClone(completeAudit);
     delete audit.verification;
 
     expect(validate(audit)).toContain("capability-audit:verification-missing");
     expect(
       validate(completeAudit, {
-        auditCiRunIsValid: () => false,
+        currentHeadCiIsSuccessful: () => false,
       }),
     ).toContain("capability-audit:verification-evidence-missing");
+    expect(
+      validate(completeAudit, {
+        expectedCommit: undefined,
+      }),
+    ).toContain("capability-audit:verification-head-missing");
   });
 
   it("requires executable evidence and exact traceability status parity", () => {
@@ -118,10 +124,21 @@ describe("UI capability evidence audit", () => {
       ]),
     );
   });
+
+  it("requires every verified UI capability to name an executable test marker", () => {
+    const audit = structuredClone(completeAudit);
+    audit.capabilities["UI-001"].tests = ["missing UI evidence test"];
+
+    expect(validate(audit, { fileContains: () => false })).toContain(
+      "capability-audit:test-missing:UI-001:missing UI evidence test",
+    );
+    delete audit.capabilities["UI-002"].tests;
+    expect(validate(audit)).toContain("capability-audit:test-marker-missing:UI-002");
+  });
 });
 
 describe("M3-238 UI capability closeout", () => {
-  it("binds every UI capability to reproducible tests and the current green CI baseline", () => {
+  it("requires every UI capability to bind to the current-head CI and executable tests", () => {
     const auditPath = new URL("docs/implementation/m3-238-ui-capability-evidence.json", rootUrl);
     expect(existsSync(auditPath), `${auditPath.pathname} must exist`).toBe(true);
     if (!existsSync(auditPath)) return;
@@ -130,11 +147,15 @@ describe("M3-238 UI capability closeout", () => {
     expect(
       validateUiCapabilityEvidence(readRoot("docs/planning/v1-capability-traceability.md"), audit, {
         evidenceExists: (path) => existsSync(new URL(path, rootUrl)),
-        auditCiRunIsValid: () => true,
-        githubRunIsSuccessful: () => true,
+        currentHeadCiIsSuccessful: () => true,
+        expectedCommit: "a".repeat(40),
+        fileContains: (path, marker) => readRoot(path).includes(marker),
       }),
     ).toEqual([]);
-    expect(audit.verification.headSha).toBe("491d059e2d08c787758b31f1a72c5ef652800570");
+    expect(audit.verification).toMatchObject({
+      kind: "github-actions-current-head",
+      workflow: ".github/workflows/ci.yml",
+    });
   });
 
   it("keeps the 17-page matrix, per-action evidence and release ledger aligned", () => {
@@ -147,30 +168,12 @@ describe("M3-238 UI capability closeout", () => {
       expect(row.requiredStates.trim().length).toBeGreaterThan(0);
       const specPath = row.playwrightSpecPath.match(/`([^`]+)`/u)?.[1];
       expect(specPath).toBeTruthy();
-      const source = readRoot(specPath);
-      const screenshotSource = source.includes("toHaveScreenshot")
-        ? source
-        : readRoot("apps/web/e2e/parity/m0-closeout.spec.ts");
-      expect(screenshotSource, `${row.page} must compare production screenshots`).toContain(
-        "toHaveScreenshot",
-      );
-      if (!source.includes("toHaveScreenshot")) {
-        expect(
-          screenshotSource,
-          `${row.page} screenshot comparison must live in an aggregate M0 spec`,
-        ).toContain(row.page);
-      }
-      expect(source, `${row.page} must scan author-facing language`).toContain(
-        "expectAuthorFacingLanguage",
-      );
-      expect(source, `${row.page} must scan prototype-only leakage`).toContain(
-        "expectNoPrototypeOnlyLeakage",
-      );
-      for (const viewport of ["390", "900", "1180", "1440"]) {
-        expect(source, `${row.page} must cover ${viewport}px`).toContain(viewport);
-      }
     }
 
+    const actionEvidence = readRootJson("docs/implementation/v1-action-evidence.json");
+    expect(Object.values(actionEvidence.pages).every((page) => page.status === "verified")).toBe(
+      true,
+    );
     const releaseEvidence = readRootJson("docs/implementation/v1-release-evidence.json");
     expect(releaseEvidence.gates.find((gate) => gate.id === "ui-parity")).toMatchObject({
       status: "pass",
@@ -194,6 +197,7 @@ describe("M3-238 UI capability closeout", () => {
       evidenceExists: () => true,
       githubRunIsSuccessful: () => true,
       auditCiRunIsValid: () => true,
+      currentHeadCiIsSuccessful: () => true,
       gapIssueIsValid: () => true,
       fileContains: () => true,
       goldenIsValid: () => true,
@@ -239,20 +243,106 @@ describe("M3-238 UI capability closeout", () => {
     }
   });
 
+  it("keeps seven setting columns and three genre packs aligned with production specs", () => {
+    const contract = readRoot("docs/ui/prototype-contract.md");
+    expect(contract).toContain("7 栏、3 题材");
+    const newProjectSource = readRoot("apps/web/e2e/parity/new-project.spec.ts");
+    for (const genre of ["xianxia", "history"]) {
+      expect(newProjectSource).toContain(genre);
+    }
+    expect(readRoot("apps/web/e2e/parity/settings.spec.ts")).toContain("character");
+    expect(readRoot("apps/web/e2e/parity/entity-detail.spec.ts")).toContain("urban");
+  });
+
+  it("verifies required page states including batch loading and long content", () => {
+    const { productionRows } = parseUiMatrix(readRoot("docs/ui/v1-ui-parity-matrix.md"));
+    const batch = productionRows.find((row) => row.page === "batch");
+    expect(batch?.requiredStates).toContain("loading");
+    expect(batch?.requiredStates).toContain("long");
+    const batchSource = readRoot("apps/web/e2e/parity/batch.spec.ts");
+    expect(batchSource).toContain(
+      "shows loading and long content states without horizontal overflow",
+    );
+    expect(batchSource).toContain("正在加载审核队列");
+
+    const helpSource = readRoot("apps/web/e2e/parity/help.spec.ts");
+    expect(helpSource).toContain("recovers from a production help navigation error");
+    expect(helpSource).toContain("模拟真实浏览器运行时故障。");
+    expect(helpSource).toContain("重新加载");
+  });
+
+  it("verifies four viewport coverage for every production page", () => {
+    const { productionRows } = parseUiMatrix(readRoot("docs/ui/v1-ui-parity-matrix.md"));
+    for (const row of productionRows) {
+      const specPath = row.playwrightSpecPath.match(/`([^`]+)`/u)?.[1];
+      const source = readRoot(specPath);
+      for (const viewport of ["390", "900", "1180", "1440"]) {
+        expect(source, `${row.page} must cover ${viewport}px`).toContain(viewport);
+      }
+    }
+  });
+
+  it("verifies Playwright screenshot baselines for every production page", () => {
+    const { productionRows } = parseUiMatrix(readRoot("docs/ui/v1-ui-parity-matrix.md"));
+    for (const row of productionRows) {
+      const specPath = row.playwrightSpecPath.match(/`([^`]+)`/u)?.[1];
+      const source = readRoot(specPath);
+      const screenshotSource = source.includes("toHaveScreenshot")
+        ? source
+        : readRoot("apps/web/e2e/parity/m0-closeout.spec.ts");
+      expect(screenshotSource, `${row.page} must compare production screenshots`).toContain(
+        "toHaveScreenshot",
+      );
+      if (!source.includes("toHaveScreenshot")) {
+        expect(
+          screenshotSource,
+          `${row.page} screenshot comparison must live in an aggregate M0 spec`,
+        ).toContain(row.page);
+      }
+    }
+  });
+
+  it("verifies Agent UX evidence on writing batch and changes pages", () => {
+    expect(readRoot("apps/web/e2e/parity/writing.spec.ts")).toContain("本章参考");
+    expect(readRoot("apps/web/e2e/parity/batch.spec.ts")).toContain("任务报告");
+    expect(readRoot("apps/web/e2e/parity/changes.spec.ts")).toContain("逐对象");
+  });
+
+  it("verifies import golden-three and branch comparison surface evidence", () => {
+    expect(readRoot("apps/web/e2e/parity/new-project.spec.ts")).toContain("导入");
+    expect(readRoot("apps/web/e2e/parity/outline.spec.ts")).toContain("seedGoldenThree");
+    expect(readRoot("apps/web/e2e/parity/changes.spec.ts")).toContain("平行版本");
+  });
+
+  it("verifies author language and prototype-only scans across all production pages", () => {
+    const { productionRows } = parseUiMatrix(readRoot("docs/ui/v1-ui-parity-matrix.md"));
+    for (const row of productionRows) {
+      const specPath = row.playwrightSpecPath.match(/`([^`]+)`/u)?.[1];
+      const source = readRoot(specPath);
+      expect(source, `${row.page} must scan author-facing language`).toContain(
+        "expectAuthorFacingLanguage",
+      );
+      expect(source, `${row.page} must scan prototype-only leakage`).toContain(
+        "expectNoPrototypeOnlyLeakage",
+      );
+    }
+  });
+
   it("keeps GitHub Actions evidence validation fail-closed", () => {
-    const reference = "https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381";
+    const reference = "https://github.com/ruifeng-y/novel-brain/actions/runs/123";
+    const headSha = "a".repeat(40);
     const run = {
       status: "completed",
       conclusion: "success",
       url: reference,
       path: ".github/workflows/ci.yml",
-      headSha: "491d059e2d08c787758b31f1a72c5ef652800570",
+      headSha,
       event: "pull_request",
     };
     expect(
       isValidGithubActionsRunData(reference, run, {
         gateId: "final-production-ci",
-        expectedCommit: "491d059e2d08c787758b31f1a72c5ef652800570",
+        expectedCommit: headSha,
       }),
     ).toBe(true);
     expect(
@@ -261,12 +351,12 @@ describe("M3-238 UI capability closeout", () => {
         { ...run, conclusion: "failure" },
         {
           gateId: "final-production-ci",
-          expectedCommit: "491d059e2d08c787758b31f1a72c5ef652800570",
+          expectedCommit: headSha,
         },
       ),
     ).toBe(false);
-    expect(
-      isSuccessfulGithubActionsRun("https://github.com/example/other/actions/runs/45332565381"),
-    ).toBe(false);
+    expect(isSuccessfulGithubActionsRun("https://github.com/example/other/actions/runs/123")).toBe(
+      false,
+    );
   });
 });

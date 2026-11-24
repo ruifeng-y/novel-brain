@@ -2,7 +2,7 @@
 
 > Issue: #238
 > Parent: #104
-> Status: implementation complete; PR Production CI and merge evidence are recorded before handoff.
+> Status: implementation complete; current-head PR Production CI and merge evidence are recorded before handoff.
 > Machine-readable UI evidence: `docs/implementation/m3-238-ui-capability-evidence.json`
 
 ## 1. Scope
@@ -66,20 +66,22 @@ The UI capability audit verifies:
 - complete action evidence with no pending pages;
 - documented design tokens/components that also exist in production CSS.
 
-The evidence baseline is Production CI
-[45332565381](https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381)
-on head `491d059e2d08c787758b31f1a72c5ef652800570`.
+The release gate resolves a completed successful Production CI run for the
+current Git HEAD, rather than trusting a fixed historical SHA. The final PR run
+and head are recorded in the PR evidence before merge.
 
 Local verification:
 
-- UI/release targeted Vitest: 43/43 passed.
-- Guardrails: 16 files, 104/104 tests passed.
-- Full Vitest: 126 files, 647/647 tests passed.
+- UI/release targeted Vitest passed.
+- Guardrails: 16 files, 113/113 tests passed.
+- Full Vitest: 126 files, 656/656 tests passed.
+- Targeted `batch.spec.ts` loading/long-content Playwright test: 1/1 passed.
 - `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm check:migrations` and
   `node scripts/validate-readiness.mjs` passed.
-- `pnpm release:check` returns the expected release-level blockers only:
-  blocked release status, final Production CI, real-provider smoke,
-  human blind review and the four bounded non-UI capability gaps.
+- `pnpm release:check` is rerun after the current-head Production CI completes;
+  it must remove UI capability blockers and leave only blocked release status,
+  final Production CI, real-provider smoke, human blind review and the four
+  bounded non-UI capability gaps.
 
 ## 5. Boundary
 
