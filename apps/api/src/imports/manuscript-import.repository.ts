@@ -918,6 +918,8 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
                 importId: input.importId,
                 source: "manuscript_import",
                 chapterNumber,
+                title: chapterInput.title,
+                objectKey: `chapter:number:${chapterNumber}`,
                 sourceRange: chapterInput.sourceRange,
               },
               actorId: input.userId,

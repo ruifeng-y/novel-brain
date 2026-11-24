@@ -635,7 +635,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
     );
 
     const acceptedIds: string[] = [];
-    for (const objectType of ["chapter", "entity", "outline", "ledger"] as const) {
+    for (const objectType of ["chapter", "entity", "fact", "outline", "ledger"] as const) {
       const item = itemsByType.get(objectType)!;
       const decision = mergeItemDecisionResponseSchema.parse(
         (
@@ -654,100 +654,128 @@ describe("M2 change, branch, search and chunked import integration", () => {
     }
 
     const factItem = itemsByType.get("fact")!;
-    const factAccepted = mergeItemDecisionResponseSchema.parse(
+    const acceptedObjectiveIds = (["chapter", "entity", "outline", "ledger"] as const).map(
+      (objectType) => itemsByType.get(objectType)!.id,
+    );
+    const rejectedItem = comparison.items.find(
+      (item) => !acceptedIds.includes(item.id) && item.changeKind === "changed",
+    );
+    if (!rejectedItem) {
+      throw new Error("Expected an extra comparison item for reject-only evidence");
+    }
+    const rejectedDecision = mergeItemDecisionResponseSchema.parse(
       (
         await owner
           .post(
-            `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/${factItem.id}/decision`,
-          )
-          .set("Origin", origin)
-          .set("X-CSRF-Token", token)
-          .send({ version: factItem.version, action: "accept", reason: "保留事实门禁验证" })
-          .expect(200)
-      ).body,
-    ).data;
-    expect(factAccepted.status).toBe("accepted");
-    const mainBeforeApply = workResponseSchema.parse(
-      (await owner.get(`/api/v1/works/${work.id}`).expect(200)).body,
-    ).data.mainBranch;
-    const factGate = await owner
-      .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
-      .set("Origin", origin)
-      .set("X-CSRF-Token", token)
-      .send({
-        itemIds: [factItem.id],
-        expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
-        confirmHighRisk: true,
-      })
-      .expect(409);
-    expect(factGate.body.error.code).toBe("FACT_DECISION_REQUIRED");
-    expect(
-      workResponseSchema.parse((await owner.get(`/api/v1/works/${work.id}`).expect(200)).body).data
-        .mainBranch.headNodeId,
-    ).toBe(mainBeforeApply.headNodeId);
-
-    const factRejected = mergeItemDecisionResponseSchema.parse(
-      (
-        await owner
-          .post(
-            `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/${factItem.id}/decision`,
+            `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/${rejectedItem.id}/decision`,
           )
           .set("Origin", origin)
           .set("X-CSRF-Token", token)
           .send({
-            version: factAccepted.version,
+            version: rejectedItem.version,
             action: "reject",
-            reason: "事实摘取必须走独立正史提交",
+            reason: "验证拒绝项不会进入摘取应用",
           })
           .expect(200)
       ).body,
     ).data;
-    expect(factRejected.status).toBe("rejected");
+    expect(rejectedDecision.status).toBe("rejected");
 
+    const mainBeforeApply = workResponseSchema.parse(
+      (await owner.get(`/api/v1/works/${work.id}`).expect(200)).body,
+    ).data.mainBranch;
     const mixedSelection = await owner
       .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        itemIds: [...acceptedIds, factItem.id],
+        itemIds: [...acceptedIds, rejectedItem.id],
         expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
         confirmHighRisk: true,
       })
       .expect(409);
     expect(mixedSelection.body.error.code).toBe("VERSION_CONFLICT");
 
-    const highRiskGate = await owner
+    const missingConfirmation = await owner
       .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        itemIds: acceptedIds,
+        itemIds: [factItem.id],
+        expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
+      })
+      .expect(409);
+    expect(missingConfirmation.body.error.code).toBe("CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED");
+    const falseConfirmation = await owner
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        itemIds: [factItem.id],
         expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
         confirmHighRisk: false,
       })
       .expect(409);
-    expect(highRiskGate.body.error.code).toBe("CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED");
+    expect(falseConfirmation.body.error.code).toBe("CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED");
 
-    const mergeApplied = mergeApplyResponseSchema.parse(
+    const factMergeApplied = mergeApplyResponseSchema.parse(
       (
         await owner
           .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
           .set("Origin", origin)
           .set("X-CSRF-Token", token)
           .send({
-            itemIds: acceptedIds,
+            itemIds: [factItem.id],
             expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
             confirmHighRisk: true,
           })
           .expect(200)
       ).body,
     ).data;
-    expect(mergeApplied.applied).toEqual(acceptedIds);
-    expect(mergeApplied.versionNodeId).not.toBe(mainBeforeApply.headNodeId);
+    expect(factMergeApplied.applied).toEqual([factItem.id]);
+    const factHistory = await databasePool.query<{
+      id: string;
+      parent_node_id: string | null;
+      node_type: string;
+    }>(
+      `SELECT id, parent_node_id, node_type
+       FROM version_nodes
+       WHERE work_id = $1 AND branch_id = $2
+       ORDER BY created_at DESC LIMIT 2`,
+      [work.id, work.mainBranch.id],
+    );
+    const factCanonNode = factHistory.rows.find((node) => node.node_type === "canon_commit");
+    const factMergeNode = factHistory.rows.find((node) => node.node_type === "branch_merge");
+    expect(factCanonNode).toMatchObject({
+      node_type: "canon_commit",
+      parent_node_id: mainBeforeApply.headNodeId,
+    });
+    expect(factMergeNode).toMatchObject({
+      id: factMergeApplied.versionNodeId,
+      node_type: "branch_merge",
+      parent_node_id: factCanonNode?.id,
+    });
+
+    const objectMergeApplied = mergeApplyResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({
+            itemIds: acceptedObjectiveIds,
+            expectedTargetHeadNodeId: factMergeApplied.versionNodeId,
+            confirmHighRisk: true,
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(objectMergeApplied.applied).toEqual(acceptedObjectiveIds);
+    expect(objectMergeApplied.versionNodeId).not.toBe(factMergeApplied.versionNodeId);
     const mainAfterMerge = workResponseSchema.parse(
       (await owner.get(`/api/v1/works/${work.id}`).expect(200)).body,
     ).data.mainBranch;
-    expect(mainAfterMerge.headNodeId).toBe(mergeApplied.versionNodeId);
+    expect(mainAfterMerge.headNodeId).toBe(objectMergeApplied.versionNodeId);
 
     expect(
       chapterWorkspaceResponseSchema.parse(
@@ -775,8 +803,20 @@ describe("M2 change, branch, search and chunked import integration", () => {
        ORDER BY created_at DESC LIMIT 1`,
       [work.id, work.mainBranch.id, mainCommit.facts[0]?.subject],
     );
-    expect(mainFactAfterMerge.rows[0]?.object).toBe(mainFactObject);
+    expect(mainFactAfterMerge.rows[0]?.object).toBe(branchFactObject);
 
+    const objectMergeBeforeRollback = await databasePool.query<{
+      id: string;
+      parent_node_id: string | null;
+      node_type: string;
+      payload: Record<string, unknown>;
+    }>(
+      `SELECT id, parent_node_id, node_type, payload
+       FROM version_nodes
+       WHERE work_id = $1 AND id = $2`,
+      [work.id, objectMergeApplied.versionNodeId],
+    );
+    expect(objectMergeBeforeRollback.rows[0]).toBeDefined();
     const rollback = versionRollbackResponseSchema.parse(
       (
         await owner
@@ -784,36 +824,35 @@ describe("M2 change, branch, search and chunked import integration", () => {
           .set("Origin", origin)
           .set("X-CSRF-Token", token)
           .send({
-            targetNodeId: mergeApplied.versionNodeId,
-            expectedHeadNodeId: mergeApplied.versionNodeId,
+            targetNodeId: objectMergeApplied.versionNodeId,
+            expectedHeadNodeId: objectMergeApplied.versionNodeId,
             reason: "验证摘取回滚追加新节点",
           })
           .expect(200)
       ).body,
     ).data;
     expect(rollback.nodeType).toBe("rollback");
-    expect(rollback.versionNodeId).not.toBe(mergeApplied.versionNodeId);
+    expect(rollback.versionNodeId).not.toBe(objectMergeApplied.versionNodeId);
     const versionHistory = await databasePool.query<{
       id: string;
       parent_node_id: string | null;
       node_type: string;
+      payload: Record<string, unknown>;
     }>(
-      `SELECT id, parent_node_id, node_type
+      `SELECT id, parent_node_id, node_type, payload
        FROM version_nodes
        WHERE work_id = $1 AND id = ANY($2::uuid[])`,
-      [work.id, [mergeApplied.versionNodeId, rollback.versionNodeId]],
+      [work.id, [objectMergeApplied.versionNodeId, rollback.versionNodeId]],
     );
-    const mergeNode = versionHistory.rows.find((node) => node.id === mergeApplied.versionNodeId);
+    const mergeNode = versionHistory.rows.find(
+      (node) => node.id === objectMergeApplied.versionNodeId,
+    );
     const rollbackNode = versionHistory.rows.find((node) => node.id === rollback.versionNodeId);
-    expect(mergeNode).toMatchObject({
-      id: mergeApplied.versionNodeId,
-      node_type: "branch_merge",
-      parent_node_id: mainBeforeApply.headNodeId,
-    });
+    expect(mergeNode).toEqual(objectMergeBeforeRollback.rows[0]);
     expect(rollbackNode).toMatchObject({
       id: rollback.versionNodeId,
       node_type: "rollback",
-      parent_node_id: mergeApplied.versionNodeId,
+      parent_node_id: objectMergeApplied.versionNodeId,
     });
     expect(
       chapterWorkspaceResponseSchema.parse(
@@ -855,9 +894,20 @@ describe("M2 change, branch, search and chunked import integration", () => {
       )
       .set("Origin", origin)
       .set("X-CSRF-Token", otherToken)
-      .send({ version: factRejected.version, action: "accept", reason: "越权验证" })
+      .send({ version: factItem.version, action: "accept", reason: "越权验证" })
       .expect(404);
     expect(forbiddenDecision.body.error.code).toBe("CHANGE_NOT_FOUND");
+    const forbiddenApply = await other
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({
+        itemIds: [factItem.id],
+        expectedTargetHeadNodeId: rollback.versionNodeId,
+        confirmHighRisk: true,
+      })
+      .expect(404);
+    expect(forbiddenApply.body.error.code).toBe("BRANCH_SOURCE_NOT_FOUND");
 
     async function createReadyChapter(
       agent: SuperAgentTest,
