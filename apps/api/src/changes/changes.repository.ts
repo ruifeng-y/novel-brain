@@ -51,6 +51,7 @@ type ChangeRecord = typeof changeRequests.$inferSelect;
 type MergeItemRecord = typeof mergeItems.$inferSelect;
 interface MergeCandidate {
   node: typeof versionNodes.$inferSelect;
+  objectId: string;
   payload: Record<string, unknown>;
 }
 
@@ -857,17 +858,19 @@ export class ChangesRepository implements OnModuleDestroy {
       const targetByKey = new Map<string, MergeCandidate>();
       const sourceByKey = new Map<string, MergeCandidate>();
       for (const node of sourceCurrent) {
-        const payload = await loadMergePayload(transaction, userId, workId, node);
-        const key = mergeObjectKey(node.objectType, node.objectId, payload);
-        if (!sourceByKey.has(key)) {
-          sourceByKey.set(key, { node, payload });
+        for (const candidate of await loadMergeCandidates(transaction, userId, workId, node)) {
+          const key = mergeObjectKey(node.objectType, candidate.objectId, candidate.payload);
+          if (!sourceByKey.has(key)) {
+            sourceByKey.set(key, candidate);
+          }
         }
       }
       for (const node of targetCurrent) {
-        const payload = await loadMergePayload(transaction, userId, workId, node);
-        const key = mergeObjectKey(node.objectType, node.objectId, payload);
-        if (!targetByKey.has(key)) {
-          targetByKey.set(key, { node, payload });
+        for (const candidate of await loadMergeCandidates(transaction, userId, workId, node)) {
+          const key = mergeObjectKey(node.objectType, candidate.objectId, candidate.payload);
+          if (!targetByKey.has(key)) {
+            targetByKey.set(key, candidate);
+          }
         }
       }
       await transaction
@@ -919,7 +922,7 @@ export class ChangesRepository implements OnModuleDestroy {
             sourceNodeId: sourceNode?.node.id ?? null,
             targetNodeId: targetNode?.node.id ?? null,
             objectType,
-            objectId: representative.node.objectId,
+            objectId: representative.objectId,
             objectKey,
             sourcePayload: sourceNode?.payload ?? {},
             targetPayload: targetNode?.payload ?? {},
@@ -1414,13 +1417,10 @@ async function applyFactMergeItems(
   const plans: Array<{
     item: MergeItemRecord;
     chapter: typeof chapters.$inferSelect;
-    targetCommit: typeof canonCommits.$inferSelect;
     sourceFacts: Array<typeof facts.$inferSelect>;
     proposals: Array<typeof factProposals.$inferSelect>;
     decisions: Array<typeof factDecisions.$inferSelect>;
     sourceCommitId: string;
-    decisionSnapshot: Array<Record<string, unknown>>;
-    summary: Record<string, unknown>;
   }> = [];
 
   for (const item of items) {
@@ -1474,21 +1474,6 @@ async function applyFactMergeItems(
     ) {
       return "canon_gate_required";
     }
-    const [targetCommit] = await transaction
-      .select()
-      .from(canonCommits)
-      .where(
-        and(
-          eq(canonCommits.chapterId, chapter.id),
-          eq(canonCommits.userId, userId),
-          eq(canonCommits.workId, workId),
-          eq(canonCommits.branchId, targetBranchId),
-        ),
-      )
-      .limit(1);
-    if (!targetCommit) {
-      return "canon_gate_required";
-    }
     const sourceFacts = await transaction
       .select()
       .from(facts)
@@ -1508,39 +1493,63 @@ async function applyFactMergeItems(
       .select()
       .from(factProposals)
       .where(
-        inArray(
-          factProposals.id,
-          sourceFacts.map((fact) => fact.factProposalId),
+        and(
+          inArray(
+            factProposals.id,
+            sourceFacts.map((fact) => fact.factProposalId),
+          ),
+          eq(factProposals.userId, userId),
+          eq(factProposals.workId, workId),
+          eq(factProposals.branchId, item.sourceBranchId),
         ),
       );
     const decisions = await transaction
       .select()
       .from(factDecisions)
       .where(
-        inArray(
-          factDecisions.id,
-          sourceFacts.map((fact) => fact.decisionId),
+        and(
+          inArray(
+            factDecisions.id,
+            sourceFacts.map((fact) => fact.decisionId),
+          ),
+          eq(factDecisions.userId, userId),
+          eq(factDecisions.workId, workId),
+          eq(factDecisions.branchId, item.sourceBranchId),
         ),
       );
-    if (proposals.length !== sourceFacts.length || decisions.length !== sourceFacts.length) {
+    const proposalById = new Map(proposals.map((proposal) => [proposal.id, proposal] as const));
+    const decisionById = new Map(decisions.map((decision) => [decision.id, decision] as const));
+    const sourceFact = sourceFacts.find((fact) => {
+      const proposal = proposalById.get(fact.factProposalId);
+      return (
+        fact.subject === item.sourcePayload.subject &&
+        fact.predicate === item.sourcePayload.predicate &&
+        fact.object === item.sourcePayload.object &&
+        proposal?.sourceSentence === item.sourcePayload.sourceSentence
+      );
+    });
+    if (!sourceFact) {
+      return "target_not_found";
+    }
+    const proposal = proposalById.get(sourceFact.factProposalId);
+    const decision = decisionById.get(sourceFact.decisionId);
+    if (!proposal || !decision) {
       return "target_not_found";
     }
     plans.push({
       item,
       chapter,
-      targetCommit,
-      sourceFacts,
-      proposals,
-      decisions,
+      sourceFacts: [sourceFact],
+      proposals: [proposal],
+      decisions: [decision],
       sourceCommitId: sourceCommit.id,
-      decisionSnapshot: sourceCommit.decisionSnapshot,
-      summary: sourceCommit.summary,
     });
   }
 
   let nextParentNodeId = parentNodeId;
   for (const plan of plans) {
     const versionNodeId = uuidv7();
+    const commitId = uuidv7();
     const proposalById = new Map(
       plan.proposals.map((proposal) => [proposal.id, proposal] as const),
     );
@@ -1593,6 +1602,31 @@ async function applyFactMergeItems(
         decidedAt: now,
       };
     });
+    const sourceFact = plan.sourceFacts[0]!;
+    const sourceProposal = plan.proposals[0]!;
+    const sourceDecision = plan.decisions[0]!;
+    const clonedProposal = clonedProposals[0]!;
+    const clonedDecision = clonedDecisions[0]!;
+    const decisionSnapshot = {
+      proposalId: clonedProposal.id,
+      decisionId: clonedDecision.id,
+      action: sourceDecision.action,
+      resultingStatus: sourceProposal.status,
+      subject: sourceFact.subject,
+      predicate: sourceFact.predicate,
+      object: sourceFact.object,
+      risk: sourceFact.risk,
+      required: sourceFact.required,
+      sourceSentence: sourceProposal.sourceSentence,
+      actorName: sourceDecision.actorName,
+      reason: sourceDecision.reason,
+      decidedAt: now.toISOString(),
+    };
+    const summary = {
+      factCount: 1,
+      rejectedCount: 0,
+      text: `摘取事实：${sourceFact.subject} ${sourceFact.predicate} ${sourceFact.object}`,
+    };
     await transaction.insert(versionNodes).values({
       id: versionNodeId,
       workId,
@@ -1603,21 +1637,48 @@ async function applyFactMergeItems(
       objectType: "chapter",
       objectId: plan.chapter.id,
       objectVersion: plan.chapter.version,
-      snapshotId: plan.targetCommit.id,
+      snapshotId: commitId,
       payload: {
         sourceBranchId: plan.item.sourceBranchId,
         sourceNodeId: plan.item.sourceNodeId,
         sourceCommitId: plan.sourceCommitId,
-        targetSnapshotId: plan.targetCommit.id,
         mergeItemId: plan.item.id,
-        decisions: plan.decisionSnapshot,
-        summary: plan.summary,
+        decisions: [decisionSnapshot],
+        summary,
         cherryPick: true,
       },
       actorId: userId,
       message: `摘取事实到第 ${plan.chapter.number} 章`,
       createdAt: now,
     });
+    await transaction.insert(canonCommits).values({
+      id: commitId,
+      workId,
+      branchId: targetBranchId,
+      userId,
+      chapterId: plan.chapter.id,
+      chapterVersionId: plan.chapter.currentVersionId!,
+      versionNodeId,
+      idempotencyKey: `merge:${plan.item.id}`,
+      decisionSnapshot: [decisionSnapshot],
+      summary,
+      actorId: userId,
+      createdAt: now,
+    });
+    await transaction
+      .update(facts)
+      .set({ status: "superseded" })
+      .where(
+        and(
+          eq(facts.userId, userId),
+          eq(facts.workId, workId),
+          eq(facts.branchId, targetBranchId),
+          eq(facts.chapterId, plan.chapter.id),
+          eq(facts.subject, sourceFact.subject),
+          eq(facts.predicate, sourceFact.predicate),
+          eq(facts.status, "active"),
+        ),
+      );
     await transaction.insert(factProposals).values(clonedProposals);
     await transaction.insert(factDecisions).values(clonedDecisions);
     await transaction.insert(facts).values(
@@ -1630,7 +1691,7 @@ async function applyFactMergeItems(
         factProposalId: clonedProposals[index]!.id,
         decisionId: clonedDecisions[index]!.id,
         sourceVersionId: plan.chapter.currentVersionId!,
-        canonCommitId: plan.targetCommit.id,
+        canonCommitId: commitId,
         subject: fact.subject,
         predicate: fact.predicate,
         object: fact.object,
@@ -1749,6 +1810,83 @@ function mergeObjectType(objectType: string, nodeType: string): MergeItem["objec
     default:
       return null;
   }
+}
+
+async function loadMergeCandidates(
+  transaction: DatabaseTransaction,
+  userId: string,
+  workId: string,
+  node: typeof versionNodes.$inferSelect,
+): Promise<MergeCandidate[]> {
+  if (node.nodeType !== "canon_commit") {
+    return [
+      {
+        node,
+        objectId: node.objectId,
+        payload: await loadMergePayload(transaction, userId, workId, node),
+      },
+    ];
+  }
+  const chapterNumber =
+    typeof node.payload.sourceChapterNumber === "number" ? node.payload.sourceChapterNumber : null;
+  const [commit] = await transaction
+    .select({ id: canonCommits.id })
+    .from(canonCommits)
+    .where(
+      and(
+        eq(canonCommits.versionNodeId, node.id),
+        eq(canonCommits.userId, userId),
+        eq(canonCommits.workId, workId),
+        eq(canonCommits.branchId, node.branchId),
+      ),
+    )
+    .limit(1);
+  if (!chapterNumber || !commit) {
+    return [{ node, objectId: node.objectId, payload: node.payload }];
+  }
+  const committedFacts = await transaction
+    .select()
+    .from(facts)
+    .where(
+      and(
+        eq(facts.canonCommitId, commit.id),
+        eq(facts.userId, userId),
+        eq(facts.workId, workId),
+        eq(facts.branchId, node.branchId),
+        eq(facts.status, "active"),
+      ),
+    )
+    .orderBy(facts.createdAt);
+  const proposals = committedFacts.length
+    ? await transaction
+        .select()
+        .from(factProposals)
+        .where(
+          inArray(
+            factProposals.id,
+            committedFacts.map((fact) => fact.factProposalId),
+          ),
+        )
+    : [];
+  const proposalById = new Map(proposals.map((proposal) => [proposal.id, proposal] as const));
+  return committedFacts.map((fact) => {
+    const sourceSentence = proposalById.get(fact.factProposalId)?.sourceSentence ?? "";
+    return {
+      node,
+      objectId: fact.id,
+      payload: {
+        objectKey: `fact:chapter:${chapterNumber}:${fact.subject}:${fact.predicate}:${sourceSentence}`,
+        chapterNumber,
+        sourceSentence,
+        subject: fact.subject,
+        predicate: fact.predicate,
+        object: fact.object,
+        risk: fact.risk,
+        required: fact.required,
+        status: fact.status,
+      },
+    };
+  });
 }
 
 async function loadMergePayload(

@@ -611,12 +611,11 @@ describe("M2 change, branch, search and chunked import integration", () => {
     const expectedKeys = {
       chapter: "chapter:number:1",
       entity: `entity:name:${entityName}`,
-      fact: "fact:chapter:1",
       ledger: `ledger:name:${ledgerTitle}`,
       outline: `outline:name:${outlineTitle}`,
     } as const;
     const itemsByType = new Map(
-      (["chapter", "entity", "fact", "outline", "ledger"] as const).map((objectType) => {
+      (["chapter", "entity", "outline", "ledger"] as const).map((objectType) => {
         const candidates = comparison.items.filter(
           (item) => item.objectType === objectType && item.objectKey === expectedKeys[objectType],
         );
@@ -633,10 +632,44 @@ describe("M2 change, branch, search and chunked import integration", () => {
         return [objectType, item] as const;
       }),
     );
+    const factItem = comparison.items.find(
+      (item) =>
+        item.objectType === "fact" &&
+        item.sourcePayload.object === branchFactObject &&
+        item.targetPayload.object === mainFactObject,
+    );
+    if (!factItem) {
+      throw new Error("Expected a fact-level merge item");
+    }
+    expect(factItem.objectKey).toBe(
+      `fact:chapter:1:${factItem.sourcePayload.subject}:${factItem.sourcePayload.predicate}:${factItem.sourcePayload.sourceSentence}`,
+    );
+    expect(factItem).toMatchObject({
+      changeKind: "changed",
+      conflict: true,
+      risk: "high",
+    });
 
     const acceptedIds: string[] = [];
-    for (const objectType of ["chapter", "entity", "fact", "outline", "ledger"] as const) {
-      const item = itemsByType.get(objectType)!;
+    const allItems = [...itemsByType.values(), factItem];
+    for (const item of allItems) {
+      const rejected = mergeItemDecisionResponseSchema.parse(
+        (
+          await owner
+            .post(
+              `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/${item.id}/decision`,
+            )
+            .set("Origin", origin)
+            .set("X-CSRF-Token", token)
+            .send({
+              version: item.version,
+              action: "reject",
+              reason: `验证 ${item.objectType} 单项拒绝`,
+            })
+            .expect(200)
+        ).body,
+      ).data;
+      expect(rejected.status).toBe("rejected");
       const decision = mergeItemDecisionResponseSchema.parse(
         (
           await owner
@@ -645,7 +678,11 @@ describe("M2 change, branch, search and chunked import integration", () => {
             )
             .set("Origin", origin)
             .set("X-CSRF-Token", token)
-            .send({ version: item.version, action: "accept", reason: `接受${objectType}对象` })
+            .send({
+              version: rejected.version,
+              action: "accept",
+              reason: `接受 ${item.objectType} 对象`,
+            })
             .expect(200)
         ).body,
       ).data;
@@ -653,7 +690,6 @@ describe("M2 change, branch, search and chunked import integration", () => {
       acceptedIds.push(item.id);
     }
 
-    const factItem = itemsByType.get("fact")!;
     const acceptedObjectiveIds = (["chapter", "entity", "outline", "ledger"] as const).map(
       (objectType) => itemsByType.get(objectType)!.id,
     );
@@ -755,6 +791,42 @@ describe("M2 change, branch, search and chunked import integration", () => {
       node_type: "branch_merge",
       parent_node_id: factCanonNode?.id,
     });
+    const factCommit = await databasePool.query<{
+      id: string;
+      version_node_id: string;
+      idempotency_key: string;
+    }>(
+      `SELECT id, version_node_id, idempotency_key
+       FROM canon_commits
+       WHERE work_id = $1 AND branch_id = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [work.id, work.mainBranch.id],
+    );
+    expect(factCommit.rows[0]).toMatchObject({
+      version_node_id: factCanonNode?.id,
+      idempotency_key: `merge:${factItem.id}`,
+    });
+    const mergedFact = await databasePool.query<{
+      canon_commit_id: string;
+      status: string;
+    }>(
+      `SELECT canon_commit_id, status
+       FROM facts
+       WHERE work_id = $1 AND branch_id = $2 AND object = $3 AND status = 'active'
+       ORDER BY created_at DESC LIMIT 1`,
+      [work.id, work.mainBranch.id, branchFactObject],
+    );
+    expect(mergedFact.rows[0]).toMatchObject({
+      canon_commit_id: factCommit.rows[0]?.id,
+      status: "active",
+    });
+    const supersededFact = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM facts
+       WHERE work_id = $1 AND branch_id = $2 AND object = $3 AND status = 'superseded'`,
+      [work.id, work.mainBranch.id, mainFactObject],
+    );
+    expect(supersededFact.rows[0]?.count).toBe("1");
 
     const objectMergeApplied = mergeApplyResponseSchema.parse(
       (
@@ -799,7 +871,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
     ).toBe("平行版本新伏笔");
     const mainFactAfterMerge = await databasePool.query<{ object: string }>(
       `SELECT object FROM facts
-       WHERE work_id = $1 AND branch_id = $2 AND subject = $3
+       WHERE work_id = $1 AND branch_id = $2 AND subject = $3 AND status = 'active'
        ORDER BY created_at DESC LIMIT 1`,
       [work.id, work.mainBranch.id, mainCommit.facts[0]?.subject],
     );

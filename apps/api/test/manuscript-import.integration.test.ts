@@ -252,6 +252,8 @@ describe("manuscript import HTTP integration", () => {
         sourceRange?: { start: number; end: number };
         source?: string;
         chapterNumber?: number;
+        objectKey?: string;
+        title?: string;
       };
     }>(
       `SELECT object_id, payload
@@ -266,6 +268,8 @@ describe("manuscript import HTTP integration", () => {
         importId: created.body.data.id,
         source: "manuscript_import",
         chapterNumber: 1,
+        objectKey: "chapter:number:1",
+        title: "断碑夜雨",
         sourceRange: { start: 0, end: 17 },
       },
       {
@@ -273,6 +277,8 @@ describe("manuscript import HTTP integration", () => {
         importId: created.body.data.id,
         source: "manuscript_import",
         chapterNumber: 2,
+        objectKey: "chapter:number:2",
+        title: "夜船",
         sourceRange: { start: 17, end: expectedText.length },
       },
     ]);
