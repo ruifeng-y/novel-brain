@@ -796,9 +796,10 @@ describe("M2 change, branch, search and chunked import integration", () => {
     const factCommit = await databasePool.query<{
       id: string;
       version_node_id: string;
+      chapter_version_id: string;
       idempotency_key: string;
     }>(
-      `SELECT id, version_node_id, idempotency_key
+      `SELECT id, version_node_id, chapter_version_id, idempotency_key
        FROM canon_commits
        WHERE work_id = $1 AND branch_id = $2
        ORDER BY created_at DESC LIMIT 1`,
@@ -840,6 +841,14 @@ describe("M2 change, branch, search and chunked import integration", () => {
       code: "CANON_IDEMPOTENCY_CONFLICT",
       details: { commitId: mainCommit.id },
     });
+    const cherryPickVersionReplay = await owner
+      .post(`${mainPath}/chapters/${mainChapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "m3-263-cherry-version-replay")
+      .send({ chapterVersionId: factCommit.rows[0]?.chapter_version_id })
+      .expect(409);
+    expect(cherryPickVersionReplay.body.error.code).not.toBe("CANON_IDEMPOTENCY_CONFLICT");
     const supersededFact = await databasePool.query<{ count: string }>(
       `SELECT count(*)::text AS count
        FROM facts
@@ -908,6 +917,13 @@ describe("M2 change, branch, search and chunked import integration", () => {
       node_type: "rollback",
       parent_node_id: factRollbackCanon.rows[0]?.id,
     });
+    const factRollbackProjection = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM character_knowledge_states
+       WHERE work_id = $1 AND branch_id = $2 AND version_node_id = $3`,
+      [work.id, work.mainBranch.id, factRollbackCanon.rows[0]?.id],
+    );
+    expect(Number(factRollbackProjection.rows[0]?.count ?? 0)).toBeGreaterThan(0);
     const restoredFact = await databasePool.query<{ object: string }>(
       `SELECT object FROM facts
        WHERE work_id = $1 AND branch_id = $2 AND subject = $3 AND status = 'active'

@@ -1443,6 +1443,7 @@ async function rollbackFactMergeItems(
 > {
   const plans: Array<{
     item: MergeItemRecord;
+    chapter: typeof chapters.$inferSelect;
     mergeCommit: typeof canonCommits.$inferSelect;
     mergedFacts: Array<typeof facts.$inferSelect>;
     previousCommit: typeof canonCommits.$inferSelect;
@@ -1556,8 +1557,24 @@ async function rollbackFactMergeItems(
     if (!previousProposal || !previousDecision) {
       return "target_not_found";
     }
+    const [chapter] = await transaction
+      .select()
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.id, previousFact.chapterId),
+          eq(chapters.userId, userId),
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    if (!chapter) {
+      return "target_not_found";
+    }
     plans.push({
       item,
+      chapter,
       mergeCommit,
       mergedFacts,
       previousCommit,
@@ -1673,25 +1690,41 @@ async function rollbackFactMergeItems(
       resultingPayload: plan.previousDecision.resultingPayload,
       decidedAt: now,
     });
-    await transaction.insert(facts).values({
-      id: uuidv7(),
-      workId,
-      branchId: targetBranchId,
+    const [restoredFact] = await transaction
+      .insert(facts)
+      .values({
+        id: uuidv7(),
+        workId,
+        branchId: targetBranchId,
+        userId,
+        chapterId: plan.previousFact.chapterId,
+        factProposalId: proposalId,
+        decisionId,
+        sourceVersionId: plan.previousFact.sourceVersionId,
+        canonCommitId: commitId,
+        subject: plan.previousFact.subject,
+        predicate: plan.previousFact.predicate,
+        object: plan.previousFact.object,
+        risk: plan.previousFact.risk,
+        required: plan.previousFact.required,
+        status: "active",
+        validFromChapter: plan.previousFact.validFromChapter,
+        createdAt: now,
+      })
+      .returning();
+    if (!restoredFact) {
+      throw new Error("Failed to persist restored fact");
+    }
+    await projectSubmittedFactsToPov(
+      transaction,
       userId,
-      chapterId: plan.previousFact.chapterId,
-      factProposalId: proposalId,
-      decisionId,
-      sourceVersionId: plan.previousFact.sourceVersionId,
-      canonCommitId: commitId,
-      subject: plan.previousFact.subject,
-      predicate: plan.previousFact.predicate,
-      object: plan.previousFact.object,
-      risk: plan.previousFact.risk,
-      required: plan.previousFact.required,
-      status: "active",
-      validFromChapter: plan.previousFact.validFromChapter,
-      createdAt: now,
-    });
+      workId,
+      targetBranchId,
+      plan.chapter,
+      versionNodeId,
+      [restoredFact],
+      now,
+    );
     versionNodeIds.push(versionNodeId);
     nextParentNodeId = versionNodeId;
   }

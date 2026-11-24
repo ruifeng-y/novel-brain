@@ -92,6 +92,7 @@ export class CanonRepository implements OnModuleDestroy {
         branchId,
         chapterId,
         chapterVersionId,
+        idempotencyKey,
       );
       if (existing) {
         if (existing.chapterVersionId !== chapterVersionId) {
@@ -639,8 +640,9 @@ async function findCommit(
   branchId: string,
   chapterId: string,
   chapterVersionId: string,
+  idempotencyKey: string,
 ): Promise<CanonCommitRecord | undefined> {
-  const [commit] = await transaction
+  const [replayed] = await transaction
     .select()
     .from(canonCommits)
     .where(
@@ -650,11 +652,31 @@ async function findCommit(
         eq(canonCommits.branchId, branchId),
         eq(canonCommits.chapterId, chapterId),
         eq(canonCommits.chapterVersionId, chapterVersionId),
+        eq(canonCommits.idempotencyKey, idempotencyKey),
       ),
     )
     .orderBy(desc(canonCommits.createdAt), desc(canonCommits.id))
     .limit(1);
-  return commit;
+  if (replayed) {
+    return replayed;
+  }
+  const [normalCommit] = await transaction
+    .select()
+    .from(canonCommits)
+    .where(
+      and(
+        eq(canonCommits.userId, userId),
+        eq(canonCommits.workId, workId),
+        eq(canonCommits.branchId, branchId),
+        eq(canonCommits.chapterId, chapterId),
+        eq(canonCommits.chapterVersionId, chapterVersionId),
+        sql`${canonCommits.idempotencyKey} not like 'merge:%'`,
+        sql`${canonCommits.idempotencyKey} not like 'merge-rollback:%'`,
+      ),
+    )
+    .orderBy(desc(canonCommits.createdAt), desc(canonCommits.id))
+    .limit(1);
+  return normalCommit;
 }
 
 async function findChapter(
