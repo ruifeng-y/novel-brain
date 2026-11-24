@@ -641,9 +641,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
     if (!factItem) {
       throw new Error("Expected a fact-level merge item");
     }
-    expect(factItem.objectKey).toBe(
-      `fact:chapter:1:${factItem.sourcePayload.subject}:${factItem.sourcePayload.predicate}:${factItem.sourcePayload.sourceSentence}`,
-    );
+    expect(factItem.objectKey).toBe("fact:chapter:1:未明人物:事件:1");
     expect(factItem).toMatchObject({
       changeKind: "changed",
       conflict: true,
@@ -832,6 +830,67 @@ describe("M2 change, branch, search and chunked import integration", () => {
     );
     expect(supersededFact.rows[0]?.count).toBe("1");
 
+    const factMergeBeforeRollback = await databasePool.query<{
+      id: string;
+      parent_node_id: string | null;
+      node_type: string;
+      payload: Record<string, unknown>;
+    }>(
+      `SELECT id, parent_node_id, node_type, payload
+       FROM version_nodes
+       WHERE work_id = $1 AND id = $2`,
+      [work.id, factMergeApplied.versionNodeId],
+    );
+    const factRollback = versionRollbackResponseSchema.parse(
+      (
+        await owner
+          .post(`${mainPath}/rollback`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({
+            targetNodeId: factMergeApplied.versionNodeId,
+            expectedHeadNodeId: factMergeApplied.versionNodeId,
+            reason: "验证事实摘取回滚也追加节点",
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(factRollback.nodeType).toBe("rollback");
+    const factRollbackHistory = await databasePool.query<{
+      id: string;
+      parent_node_id: string | null;
+      node_type: string;
+      payload: Record<string, unknown>;
+    }>(
+      `SELECT id, parent_node_id, node_type, payload
+       FROM version_nodes
+       WHERE work_id = $1 AND id = ANY($2::uuid[])`,
+      [work.id, [factMergeApplied.versionNodeId, factRollback.versionNodeId]],
+    );
+    expect(
+      factRollbackHistory.rows.find((node) => node.id === factMergeApplied.versionNodeId),
+    ).toEqual(factMergeBeforeRollback.rows[0]);
+    const factRollbackCanon = await databasePool.query<{ id: string }>(
+      `SELECT id
+       FROM version_nodes
+       WHERE work_id = $1 AND branch_id = $2 AND node_type = 'canon_commit' AND payload->>'rollback' = 'true'
+       ORDER BY created_at DESC LIMIT 1`,
+      [work.id, work.mainBranch.id],
+    );
+    expect(
+      factRollbackHistory.rows.find((node) => node.id === factRollback.versionNodeId),
+    ).toMatchObject({
+      node_type: "rollback",
+      parent_node_id: factRollbackCanon.rows[0]?.id,
+    });
+    const restoredFact = await databasePool.query<{ object: string }>(
+      `SELECT object FROM facts
+       WHERE work_id = $1 AND branch_id = $2 AND subject = $3 AND status = 'active'
+       ORDER BY created_at DESC LIMIT 1`,
+      [work.id, work.mainBranch.id, mainCommit.facts[0]?.subject],
+    );
+    expect(restoredFact.rows[0]?.object).toBe(mainFactObject);
+
     const objectMergeApplied = mergeApplyResponseSchema.parse(
       (
         await owner
@@ -840,7 +899,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
           .set("X-CSRF-Token", token)
           .send({
             itemIds: acceptedObjectiveIds,
-            expectedTargetHeadNodeId: factMergeApplied.versionNodeId,
+            expectedTargetHeadNodeId: factRollback.versionNodeId,
             confirmHighRisk: true,
           })
           .expect(200)
@@ -879,7 +938,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
        ORDER BY created_at DESC LIMIT 1`,
       [work.id, work.mainBranch.id, mainCommit.facts[0]?.subject],
     );
-    expect(mainFactAfterMerge.rows[0]?.object).toBe(branchFactObject);
+    expect(mainFactAfterMerge.rows[0]?.object).toBe(mainFactObject);
 
     const objectMergeBeforeRollback = await databasePool.query<{
       id: string;
