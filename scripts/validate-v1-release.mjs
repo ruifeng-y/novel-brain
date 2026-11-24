@@ -37,6 +37,11 @@ const GITHUB_ISSUE_REFERENCE = /^#(\d+)$/u;
 const EXPECTED_GITHUB_REPOSITORY = "ruifeng-y/novel-brain";
 const BOUNDED_GAP_LABELS = new Set(["ready-for-agent", "ready-for-human"]);
 const AUTHORIZED_DEFERRAL_IDS = new Set(["PERF-001", "AGENT-007", "QUALITY-009"]);
+const CURRENT_HEAD_CI_WORKFLOWS = [
+  ".github/workflows/ci.yml",
+  ".github/workflows/deployment-smoke.yml",
+  ".github/workflows/readiness-validation.yml",
+];
 const DEVIATION_DOCUMENTS = [
   "docs/ui/prototype-contract.md",
   "docs/ui/v1-ui-parity-matrix.md",
@@ -574,21 +579,30 @@ function isAuditCiRun(reference, expectedHeadSha) {
   }
 }
 
-function isCurrentHeadCiSuccessful(workflow, expectedHeadSha) {
-  if (workflow !== ".github/workflows/ci.yml" || !expectedHeadSha) return false;
+export function hasRequiredCurrentHeadCiEvidence(runs, expectedHeadSha) {
+  if (!expectedHeadSha || !Array.isArray(runs)) return false;
+  const successfulPullRequestRuns = new Set(
+    runs
+      .filter(
+        (run) =>
+          run?.headSha === expectedHeadSha &&
+          run?.event === "pull_request" &&
+          run?.status === "completed" &&
+          run?.conclusion === "success",
+      )
+      .map((run) => run.path),
+  );
+  return CURRENT_HEAD_CI_WORKFLOWS.every((workflow) => successfulPullRequestRuns.has(workflow));
+}
+
+function isCurrentHeadCiSuccessful(_workflows, expectedHeadSha) {
+  if (!expectedHeadSha) return false;
   try {
     const runs = queryGithubApi(
       `repos/${EXPECTED_GITHUB_REPOSITORY}/actions/runs?head_sha=${expectedHeadSha}&per_page=100`,
       "{workflow_runs: [.workflow_runs[] | {status: .status, conclusion: .conclusion, headSha: .head_sha, path: .path, event: .event}]}",
     );
-    return runs.workflow_runs.some(
-      (run) =>
-        run.status === "completed" &&
-        run.conclusion === "success" &&
-        run.headSha === expectedHeadSha &&
-        run.path === workflow &&
-        ["pull_request", "push"].includes(run.event),
-    );
+    return hasRequiredCurrentHeadCiEvidence(runs.workflow_runs, expectedHeadSha);
   } catch {
     return false;
   }

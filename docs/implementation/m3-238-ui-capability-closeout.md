@@ -2,7 +2,7 @@
 
 > Issue: #238
 > Parent: #104
-> Status: implementation complete; current-head PR Production CI and merge evidence are recorded before handoff.
+> Status: implementation scope complete; current-head PR CI and merge are tracked in PR #268.
 > Machine-readable UI evidence: `docs/implementation/m3-238-ui-capability-evidence.json`
 
 ## 1. Scope
@@ -66,15 +66,16 @@ The UI capability audit verifies:
 - complete action evidence with no pending pages;
 - documented design tokens/components that also exist in production CSS.
 
-The release gate resolves a completed successful Production CI run for the
-current Git HEAD, rather than trusting a fixed historical SHA. The final PR run
-and head are recorded in the PR evidence before merge.
+The release gate resolves completed successful pull-request runs for Production
+CI, Deployment Smoke and Readiness on the current Git HEAD, rather than trusting
+a fixed historical SHA or a push-only run. The final PR runs and head are
+recorded in the PR evidence before merge.
 
 Local verification:
 
 - UI/release targeted Vitest passed.
-- Guardrails: 16 files, 113/113 tests passed.
-- Full Vitest: 126 files, 656/656 tests passed.
+- Guardrails: 16 files, 114/114 tests passed.
+- Full Vitest: 126 files, 657/657 tests passed.
 - Targeted `batch.spec.ts` loading/long-content Playwright test: 1/1 passed.
 - `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm check:migrations` and
   `node scripts/validate-readiness.mjs` passed.

@@ -110,8 +110,12 @@ const passingUiCapabilityEvidence = () => ({
   schemaVersion: 1,
   verification: {
     kind: "github-actions-current-head",
-    status: "passed",
-    workflow: ".github/workflows/ci.yml",
+    status: "required",
+    workflows: [
+      ".github/workflows/ci.yml",
+      ".github/workflows/deployment-smoke.yml",
+      ".github/workflows/readiness-validation.yml",
+    ],
   },
   evidence: {
     auth: {

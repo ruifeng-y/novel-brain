@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
+  hasRequiredCurrentHeadCiEvidence,
   isSuccessfulGithubActionsRun,
   isValidGithubActionsRunData,
   evaluateV1Release,
@@ -28,8 +29,12 @@ const completeAudit = {
   schemaVersion: 1,
   verification: {
     kind: "github-actions-current-head",
-    status: "passed",
-    workflow: ".github/workflows/ci.yml",
+    status: "required",
+    workflows: [
+      ".github/workflows/ci.yml",
+      ".github/workflows/deployment-smoke.yml",
+      ".github/workflows/readiness-validation.yml",
+    ],
   },
   evidence: {
     surface: {
@@ -154,7 +159,8 @@ describe("M3-238 UI capability closeout", () => {
     ).toEqual([]);
     expect(audit.verification).toMatchObject({
       kind: "github-actions-current-head",
-      workflow: ".github/workflows/ci.yml",
+      status: "required",
+      workflows: expect.arrayContaining([".github/workflows/ci.yml"]),
     });
   });
 
@@ -358,5 +364,41 @@ describe("M3-238 UI capability closeout", () => {
     expect(isSuccessfulGithubActionsRun("https://github.com/example/other/actions/runs/123")).toBe(
       false,
     );
+  });
+
+  it("requires pull-request CI, deployment smoke and readiness for the current head", () => {
+    const headSha = "a".repeat(40);
+    const requiredRuns = [
+      {
+        headSha,
+        path: ".github/workflows/ci.yml",
+        event: "pull_request",
+        status: "completed",
+        conclusion: "success",
+      },
+      {
+        headSha,
+        path: ".github/workflows/deployment-smoke.yml",
+        event: "pull_request",
+        status: "completed",
+        conclusion: "success",
+      },
+      {
+        headSha,
+        path: ".github/workflows/readiness-validation.yml",
+        event: "pull_request",
+        status: "completed",
+        conclusion: "success",
+      },
+    ];
+
+    expect(hasRequiredCurrentHeadCiEvidence(requiredRuns, headSha)).toBe(true);
+    expect(
+      hasRequiredCurrentHeadCiEvidence(
+        requiredRuns.map((run, index) => (index === 0 ? { ...run, event: "push" } : run)),
+        headSha,
+      ),
+    ).toBe(false);
+    expect(hasRequiredCurrentHeadCiEvidence(requiredRuns.slice(0, 2), headSha)).toBe(false);
   });
 });

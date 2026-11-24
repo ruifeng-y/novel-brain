@@ -252,7 +252,7 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 ## 2026-11-24 UI capability 总收口引用
 
-#238 不改变已签收的生产布局或 Golden。作者既有 17 个生产页的四档 Golden 签收继续有效；UI-001..UI-009 的可复现证据、页面 action contract 和当前绿色 Production CI 已登记在 `docs/implementation/m3-238-ui-capability-evidence.json`。后续任何页面结构、动作或 Golden 变化仍须按 ADR 0027 重新签收，不能沿用本次账本结论。
+#238 不改变已签收的生产布局或 Golden。作者既有 17 个生产页的四档 Golden 签收继续有效；UI-001..UI-009 的可复现证据和页面 action contract 登记在 `docs/implementation/m3-238-ui-capability-evidence.json`，release gate 动态要求当前 HEAD 的正常 PR Production CI、Deployment Smoke 与 Readiness 全部成功。后续任何页面结构、动作或 Golden 变化仍须按 ADR 0027 重新签收，不能沿用本次账本结论。
 
 ## 变更规则
 

@@ -20,7 +20,11 @@ export const EXECUTABLE_EVIDENCE_KINDS = new Set(
 );
 const CAPABILITY_STATUSES = new Set(["verified", "implemented"]);
 const GAP_ISSUE = /^#\d+$/u;
-const CURRENT_HEAD_CI_WORKFLOW = ".github/workflows/ci.yml";
+const CURRENT_HEAD_CI_WORKFLOWS = [
+  ".github/workflows/ci.yml",
+  ".github/workflows/deployment-smoke.yml",
+  ".github/workflows/readiness-validation.yml",
+];
 
 function isNonUiV1Capability(row) {
   return row.scope === "V1" && !row.id.startsWith("UI-");
@@ -111,8 +115,10 @@ function validateCurrentHeadVerification(
   }
   if (
     verification.kind !== "github-actions-current-head" ||
-    verification.status !== "passed" ||
-    verification.workflow !== CURRENT_HEAD_CI_WORKFLOW ||
+    verification.status !== "required" ||
+    !Array.isArray(verification.workflows) ||
+    verification.workflows.length !== CURRENT_HEAD_CI_WORKFLOWS.length ||
+    !CURRENT_HEAD_CI_WORKFLOWS.every((workflow) => verification.workflows.includes(workflow)) ||
     !/^[0-9a-f]{40}$/u.test(expectedCommit ?? "")
   ) {
     blockers.push("capability-audit:verification-invalid");
@@ -121,7 +127,7 @@ function validateCurrentHeadVerification(
     blockers.push("capability-audit:verification-head-missing");
     return;
   }
-  if (!currentHeadCiIsSuccessful(verification.workflow, expectedCommit)) {
+  if (!currentHeadCiIsSuccessful(verification.workflows, expectedCommit)) {
     blockers.push("capability-audit:verification-evidence-missing");
   }
 }
