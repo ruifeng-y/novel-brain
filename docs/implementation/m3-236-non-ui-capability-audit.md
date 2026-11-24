@@ -36,7 +36,7 @@ The four blocked capabilities are:
 | Capability | Gap | Follow-up |
 | --- | --- | --- |
 | EVAL-002 | The release-level inter-rater variance threshold is not approved. | #240 |
-| EVAL-003 | The protected real DeepSeek smoke has not run for the release candidate. | #241 |
+| EVAL-003 | The provider-smoke environment real DeepSeek smoke has not produced network-call evidence; the latest run had no protection rules and failed with `DEEPSEEK_API_KEY_MISSING`. | #241 |
 | EVAL-004 | Canary/rollback tests pass, but release use still requires real-provider and approved quality evidence. | #241 |
 | CONT-001 | Deterministic continuity evaluation passes, but real human blind review is absent. | #239 |
 

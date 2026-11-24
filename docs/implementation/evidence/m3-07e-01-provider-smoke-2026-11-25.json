@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "issue": "#241",
+  "capturedAt": "2026-11-24T19:21:41.987Z",
+  "workflow": "Provider Smoke",
+  "runUrl": "https://github.com/ruifeng-y/novel-brain/actions/runs/45469254950",
+  "headSha": "20ecf9bdc2874b8267c51395a26286ee03e7af8d",
+  "headBranch": "codex/m3-07e-01-provider-smoke",
+  "event": "workflow_dispatch",
+  "environment": "provider-smoke",
+  "environmentProtectionRules": [],
+  "provider": "deepseek",
+  "interface": "DeepSeek official HTTPS API",
+  "model": "deepseek-chat",
+  "promptVersion": "m1-writing-prompts-v1",
+  "maxBudgetCny": "0.01",
+  "status": "failed",
+  "smokeStatus": "skipped",
+  "failureClass": "DEEPSEEK_API_KEY_MISSING",
+  "networkCalls": 0,
+  "redaction": {
+    "containsApiKey": false,
+    "containsPrompt": false,
+    "containsManuscript": false,
+    "containsPrivateContext": false
+  }
+}
