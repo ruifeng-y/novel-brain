@@ -274,6 +274,18 @@ describe("M3-238 UI capability closeout", () => {
     ]) {
       expect(chapterStatusSource).toContain(status);
     }
+    const contracts = readRoot("packages/contracts/src/index.ts");
+    for (const schema of [
+      "workStatusSchema",
+      "chapterStatusSchema",
+      "changeStatusSchema",
+      "generationJobStatusSchema",
+      "settingStatusSchema",
+      "chunkedImportProgressSchema",
+      "mergeItemSchema",
+    ]) {
+      expect(contracts, `shared contracts must define ${schema}`).toContain(schema);
+    }
   });
 
   it("verifies required page states for every production page", () => {
@@ -301,12 +313,17 @@ describe("M3-238 UI capability closeout", () => {
       confirmation: ["dialog", "确认"],
       static: ["test("],
     };
+    const pageStateEvidence = {
+      "work-overview": {
+        partial: ["shows partial overview when optional style data fails"],
+      },
+    };
 
     for (const row of productionRows) {
       const specPath = row.playwrightSpecPath.match(/`([^`]+)`/u)?.[1];
       const source = readRoot(specPath).toLowerCase();
       for (const state of row.requiredStates.split("/").map((entry) => entry.trim())) {
-        const markers = stateMarkers[state];
+        const markers = pageStateEvidence[row.page]?.[state] ?? stateMarkers[state];
         expect(markers, `${row.page} has no state evidence mapping for ${state}`).toBeTruthy();
         expect(
           markers.some((marker) => source.includes(marker)),

@@ -301,6 +301,38 @@ test("overview handles error and four viewports", async ({ page, context }) => {
   }
 });
 
+test("shows partial overview when optional style data fails", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "部分加载作品",
+  });
+  const stylePath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/style`;
+  await page.route(`**${stylePath}`, async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "文风与声线数据暂时不可用。",
+          details: {},
+          requestId: "req_overview_partial_style",
+        },
+      }),
+    });
+  });
+
+  await page.goto(`/workspace/${work.id}/overview`);
+  await expect(page.getByRole("heading", { name: "部分加载作品" })).toBeVisible();
+  await expect(page.getByLabel("当前作品与创作线")).toContainText("部分加载作品");
+  await expect(page.getByText("文风与声线数据暂时不可用。")).toBeVisible();
+  await expect(page.getByText("作品总览加载失败。")).toHaveCount(0);
+  await expect(page.getByText("准备度", { exact: false }).first()).toBeVisible();
+  await expectAuthorFacingLanguage(page);
+  await expectNoPrototypeOnlyLeakage(page);
+});
+
 test("shows loading and archived read-only states", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const work = await createWork(page.request, {
