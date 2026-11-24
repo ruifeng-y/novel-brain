@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "issue": "#238",
+  "auditedAt": "2026-11-24",
+  "verification": {
+    "kind": "ci",
+    "status": "passed",
+    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381",
+    "headSha": "491d059e2d08c787758b31f1a72c5ef652800570"
+  },
+  "evidence": {
+    "ui-closeout-guardrail": {
+      "kind": "guardrail",
+      "path": "scripts/test/v1-ui-capability-evidence.test.mjs"
+    },
+    "release-gate-guardrail": {
+      "kind": "guardrail",
+      "path": "scripts/test/v1-release-gate.test.mjs"
+    },
+    "action-ledger": {
+      "kind": "manual_signoff",
+      "path": "docs/implementation/v1-action-evidence.json"
+    },
+    "parity-matrix": {
+      "kind": "manual_signoff",
+      "path": "docs/ui/v1-ui-parity-matrix.md"
+    },
+    "prototype-contract": {
+      "kind": "manual_signoff",
+      "path": "docs/ui/prototype-contract.md"
+    },
+    "auth-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/auth.spec.ts"
+    },
+    "new-project-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/new-project.spec.ts"
+    },
+    "settings-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/settings.spec.ts"
+    },
+    "outline-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/outline.spec.ts"
+    },
+    "writing-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/writing.spec.ts"
+    },
+    "batch-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/batch.spec.ts"
+    },
+    "changes-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/changes.spec.ts"
+    },
+    "work-settings-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/work-settings.spec.ts"
+    },
+    "help-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/help.spec.ts"
+    },
+    "legal-parity": {
+      "kind": "e2e",
+      "path": "apps/web/e2e/parity/legal.spec.ts"
+    }
+  },
+  "capabilities": {
+    "UI-001": {
+      "status": "verified",
+      "evidence": [
+        "ui-closeout-guardrail",
+        "release-gate-guardrail",
+        "action-ledger",
+        "parity-matrix"
+      ],
+      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+    },
+    "UI-002": {
+      "status": "verified",
+      "evidence": ["ui-closeout-guardrail", "prototype-contract"],
+      "test": "keeps UI contract tokens and the component inventory executable"
+    },
+    "UI-003": {
+      "status": "verified",
+      "evidence": [
+        "ui-closeout-guardrail",
+        "prototype-contract",
+        "new-project-parity",
+        "settings-parity"
+      ],
+      "test": "keeps UI contract tokens and the component inventory executable"
+    },
+    "UI-004": {
+      "status": "verified",
+      "evidence": [
+        "ui-closeout-guardrail",
+        "parity-matrix",
+        "writing-parity"
+      ],
+      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+    },
+    "UI-005": {
+      "status": "verified",
+      "evidence": [
+        "ui-closeout-guardrail",
+        "auth-parity",
+        "work-settings-parity"
+      ],
+      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+    },
+    "UI-006": {
+      "status": "verified",
+      "evidence": [
+        "ui-closeout-guardrail",
+        "release-gate-guardrail",
+        "help-parity"
+      ],
+      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+    },
+    "UI-007": {
+      "status": "verified",
+      "evidence": ["ui-closeout-guardrail", "writing-parity", "batch-parity", "changes-parity"],
+      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+    },
+    "UI-008": {
+      "status": "verified",
+      "evidence": ["ui-closeout-guardrail", "new-project-parity", "outline-parity", "changes-parity"],
+      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+    },
+    "UI-009": {
+      "status": "verified",
+      "evidence": [
+        "ui-closeout-guardrail",
+        "auth-parity",
+        "writing-parity",
+        "help-parity",
+        "legal-parity"
+      ],
+      "test": "keeps the 17-page matrix, per-action evidence and release ledger aligned"
+    }
+  }
+}

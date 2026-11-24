@@ -1,6 +1,6 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-24。共 **119 个唯一能力 ID**；107 个非 UI V1 能力中 103 个已有可执行证据并标为 `verified`，4 个保留有界缺口；PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
+> 状态：V1 delivery ledger，2026-11-24。共 **119 个唯一能力 ID**；116 个 V1 能力中 112 个已有可执行证据并标为 `verified`，4 个保留有界缺口。107 个非 UI V1 能力中 103 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 已按产品决定延期，CONT-001 的人工盲评仍是发布阻塞项。
 > `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
 
 ## 状态定义
@@ -120,15 +120,15 @@
 | SEC-004 | 删除/备份过期/孤儿数据清理 | V1 | verified | #134 | — | ADR 0023; M0 Protocol Freeze §§3, 8 | `docs/implementation/m3-236-non-ui-capability-evidence.json#SEC-004` | M3 |
 | SEC-005 | 内容安全/AI 标识/申诉 | V1 | verified | #131 | — | ADR 0023; M0 Protocol Freeze §§3, 8 | `docs/implementation/m3-236-non-ui-capability-evidence.json#SEC-005` | M3 |
 | SEC-006 | 限流/审计/无管理员越权 | V1 | verified | #132 | — | ADR 0023; M0 Protocol Freeze §§3, 8 | `docs/implementation/m3-236-non-ui-capability-evidence.json#SEC-006` | M3 |
-| UI-001 | 页面/动作/API/状态矩阵 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 矩阵完整，等待最终 Production CI | M0–M3 |
-| UI-002 | 设计令牌/组件清单 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 组件对照，等待最终 Production CI | M0–M3 |
-| UI-003 | 7 栏/3 题材/统一状态枚举 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 信息架构，等待最终 Production CI | M0–M3 |
-| UI-004 | 逐页 loading/empty/error/disabled/permission/partial/long | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | help 的真实路由错误态与重试恢复仍待补 | M0–M3 |
-| UI-005 | 1440/1180/900/390 响应式 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | auth 与 help 等待最终 Production CI | M0–M3 |
-| UI-006 | Playwright 结构/截图基线 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | 等待最终 Production CI | M0–M3 |
-| UI-007 | Agent UX：本章参考/来源/冲突/修订/成本/失败/确认 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 页面验收待最终 CI | M0–M3 |
-| UI-008 | 导入报告/黄金三章/分支比较页面 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 页面验收待最终 CI | M0–M3 |
-| UI-009 | 作者语言/无内部术语/prototype_only 登记 | V1 | implemented | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | —; 术语扫描待最终 CI | M0–M3 |
+| UI-001 | 页面/动作/API/状态矩阵 | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-001`; 17 页 action evidence 无 pending，matrix 与 gate 一致 | M0–M3 |
+| UI-002 | 设计令牌/组件清单 | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-002`; token/component guardrail | M0–M3 |
+| UI-003 | 7 栏/3 题材/统一状态枚举 | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-003`; contract/spec guardrail | M0–M3 |
+| UI-004 | 逐页 loading/empty/error/disabled/permission/partial/long | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-004`; help 路由错误态/重试恢复已由 #220 验证 | M0–M3 |
+| UI-005 | 1440/1180/900/390 响应式 | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-005`; 17 页四档 Playwright 与 Golden | M0–M3 |
+| UI-006 | Playwright 结构/截图基线 | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-006`; 68 张 Golden 与 Production CI | M0–M3 |
+| UI-007 | Agent UX：本章参考/来源/冲突/修订/成本/失败/确认 | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-007`; writing/batch/changes 真实动作证据 | M0–M3 |
+| UI-008 | 导入报告/黄金三章/分支比较页面 | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-008`; new-project/outline/changes 页面证据 | M0–M3 |
+| UI-009 | 作者语言/无内部术语/prototype_only 登记 | V1 | verified | #104 | #79 + page feature issues | Prototype Contract; V1 Prototype Sign-off; UI Parity Matrix | `docs/implementation/m3-238-ui-capability-evidence.json#UI-009`; 全页 author-language/prototype-only 扫描 | M0–M3 |
 | OPS-001 | 健康检查/局域网与云部署 | V1 | verified | #135 | #67 | Backend design §§11–13; ADR 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#OPS-001` | M3 |
 | OPS-002 | 备份/恢复演练 | V1 | verified | #136 | — | Backend design §§11–13; ADR 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#OPS-002` | M3 |
 | OPS-003 | 监控/日志/成本告警 | V1 | verified | #135 | — | Backend design §§11–13; ADR 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#OPS-003` | M3 |

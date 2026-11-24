@@ -16,10 +16,10 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 
 | Gate | Evidence | Status |
 | --- | --- | --- |
-| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`; `node scripts/validate-readiness.mjs` | structure pass; 103/107 non-UI V1 capabilities verified; 4 bounded gaps remain |
-| UI parity | `docs/ui/v1-ui-parity-matrix.md`; 17 production page specs; 76 production Golden files at 390/900/1180/1440 | all 17 non-static production pages are `parity-verified`; global release evidence remains blocked |
-| Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | existing Golden baseline evidence pass; final normal PR CI pending |
-| Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | implemented; final normal PR CI pending |
+| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/m3-238-ui-capability-evidence.json`; `node scripts/validate-readiness.mjs` | structure pass; 112/116 V1 capabilities verified; EVAL-002/003/004 and CONT-001 have bounded gaps |
+| UI parity | `docs/ui/v1-ui-parity-matrix.md`, `docs/implementation/m3-238-ui-capability-evidence.json`; 17 production page specs; 68 required production Golden files at 390/900/1180/1440 | all 17 production pages are `parity-verified`; UI-001..UI-009 are verified; release-level evidence remains blocked |
+| Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | current UI capability evidence binds green Production CI `45332565381`; final #104 normal PR CI pending |
+| Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | current UI capability evidence pass; final #104 normal PR CI pending |
 | Per-action API and persistence evidence | `docs/ui/v1-action-contract.json` + `docs/implementation/v1-action-evidence.json`; every required action must bind to its owner spec, `/api/v1/*` and persisted-result Playwright assertions | pass / no pending pages |
 | Auth, password and session lifecycle | `docs/implementation/m0-02-email-auth-sessions.md`, `docs/implementation/m1-141-account-security.md`, `apps/web/e2e/parity/auth.spec.ts` | pass |
 | Account export, deletion and purge | `docs/implementation/m3-03c-account-lifecycle.md`, tenant RLS audit and lifecycle integration tests | pass |
@@ -58,10 +58,9 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 ## 4. Remaining blockers
 
 1. Complete the remaining non-UI capability gaps: approved variance threshold (#240), real provider smoke (#241) and human blind review (#239). EVAL-002, EVAL-003, EVAL-004 and CONT-001 remain non-verified.
-2. Complete #238 UI capability and total traceability closeout, including replacing the stale `help` release-evidence rationale with its recorded green CI evidence.
-3. Record actual human blind-review scores for the frozen quality packet.
-4. Approve and record the inter-rater variance threshold with an owner and rationale.
-5. Run the manual real-provider smoke against the approved commit/config and attach its redacted evidence.
-6. Run the final #104 Production CI and update the `final-production-ci` evidence gate with the green run URL.
+2. Record actual human blind-review scores for the frozen quality packet.
+3. Approve and record the inter-rater variance threshold with an owner and rationale.
+4. Run the manual real-provider smoke against the approved commit/config and attach its redacted evidence.
+5. Run the final #104 Production CI and update the `final-production-ci` evidence gate with the green run URL.
 
 Until then the release decision is **BLOCKED**, and no V1 quality or capacity claim may be made.

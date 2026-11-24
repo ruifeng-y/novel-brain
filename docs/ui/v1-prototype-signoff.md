@@ -250,6 +250,10 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 正常 PR Production CI [44892673559](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673559) 的 `check` 与 `playwright`、Prototype Parity [44892673586](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673586) 和 Deployment Smoke [44892673403](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673403) 均通过；现有四档 Golden 在该文本修正下仍满足正式比较容差，无需更新，`entity-detail` 提升为 `parity-verified`。
 
+## 2026-11-24 UI capability 总收口引用
+
+#238 不改变已签收的生产布局或 Golden。作者既有 17 个生产页的四档 Golden 签收继续有效；UI-001..UI-009 的可复现证据、页面 action contract 和当前绿色 Production CI 已登记在 `docs/implementation/m3-238-ui-capability-evidence.json`。后续任何页面结构、动作或 Golden 变化仍须按 ADR 0027 重新签收，不能沿用本次账本结论。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

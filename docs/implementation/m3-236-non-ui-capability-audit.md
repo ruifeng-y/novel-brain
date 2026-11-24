@@ -66,13 +66,17 @@ node scripts/validate-readiness.mjs
 pnpm release:check
 ```
 
-Expected release result after this audit:
+Expected release result after the #238 UI closeout:
 
 ```text
 V1 RELEASE BLOCKED
-- capability-verification:13
-  UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
+- release-evidence:status-blocked
+- final-production-ci:blocked
+- real-provider-smoke:blocked
+- human-blind-review:blocked
+- capability-verification:4
+  EVAL-002, EVAL-003, EVAL-004, CONT-001
 ```
 
 The remaining non-UI blockers are tracked by #239, #240 and #241. UI capability
-closure remains #238; final release evidence and CI remain #242.
+closure was completed by #238; final release evidence and CI remain #242.

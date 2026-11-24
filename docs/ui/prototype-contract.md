@@ -101,3 +101,4 @@
 - 视觉证据：Playwright Chromium 生成 18 页 × 4 档共 72 张截图；CI 工作流已建立。
 - V1 基线已签收：见 `docs/ui/v1-prototype-signoff.md`。
 - 完整组件变体和真实后端数据属于实现阶段验证，不回退原型基线。
+- 2026-11-24：#238 已把 UI-001..UI-009 收口到 `docs/implementation/m3-238-ui-capability-evidence.json`；17 个生产页仍以本契约和 parity matrix 为事实源。

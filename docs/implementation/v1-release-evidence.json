@@ -11,18 +11,19 @@
       "evidence": [
         "docs/planning/v1-capability-manifest.md",
         "docs/planning/v1-capability-traceability.md",
+        "docs/implementation/m3-238-ui-capability-evidence.json",
         "scripts/validate-readiness.mjs"
       ]
     },
     {
       "id": "ui-parity",
-      "status": "blocked",
+      "status": "pass",
       "owner": "#104",
-      "rationale": "The help route's production error-boundary trigger and retry recovery are not yet covered by a reproducible route-level Playwright test.",
       "evidence": [
         "docs/ui/v1-ui-parity-matrix.md",
-        "apps/web/e2e/parity",
-        "artifacts/ui/golden"
+        "docs/implementation/v1-action-evidence.json",
+        "docs/implementation/m3-238-ui-capability-evidence.json",
+        "https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381"
       ]
     },
     {

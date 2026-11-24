@@ -1,5 +1,11 @@
 {
   "schemaVersion": 1,
+  "capabilityAudit": {
+    "issue": "#238",
+    "path": "docs/implementation/m3-238-ui-capability-evidence.json",
+    "status": "verified",
+    "verifiedAt": "2026-11-24"
+  },
   "pages": {
     "auth": {
       "status": "verified",

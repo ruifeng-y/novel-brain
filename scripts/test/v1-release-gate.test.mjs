@@ -100,10 +100,33 @@ const passingDeferrals = () => ({
   ],
 });
 
+const passingUiCapabilityEvidence = () => ({
+  schemaVersion: 1,
+  verification: {
+    kind: "ci",
+    status: "passed",
+    path: "https://github.com/ruifeng-y/novel-brain/actions/runs/123",
+    headSha: "a".repeat(40),
+  },
+  evidence: {
+    auth: {
+      kind: "e2e",
+      path: "apps/web/e2e/parity/auth.spec.ts",
+    },
+  },
+  capabilities: {
+    "UI-001": {
+      status: "verified",
+      evidence: ["auth"],
+    },
+  },
+});
+
 const evaluate = (overrides = {}) =>
   evaluateV1Release({
     evidence: passingEvidence(),
     traceability: verifiedTraceability,
+    uiCapabilityEvidence: passingUiCapabilityEvidence(),
     uiMatrix,
     deferrals: passingDeferrals(),
     actionContract: passingActionContract(),
@@ -111,6 +134,7 @@ const evaluate = (overrides = {}) =>
     deviationApprovals: passingDeviationApprovals(),
     evidenceExists: () => true,
     githubRunIsSuccessful: () => true,
+    auditCiRunIsValid: () => true,
     fileContains: () => true,
     goldenIsValid: () => true,
     expectedCommit: "abc123",
@@ -366,6 +390,18 @@ describe("V1 release gate", () => {
     });
 
     expect(result.blockers).toContain("capability-audit:missing:IO-001");
+  });
+
+  it("propagates UI capability audit blockers through the release gate", () => {
+    const result = evaluate({
+      uiCapabilityEvidence: {
+        schemaVersion: 1,
+        evidence: {},
+        capabilities: {},
+      },
+    });
+
+    expect(result.blockers).toContain("capability-audit:missing:UI-001");
   });
 
   it("requires action evidence to cover the declared required action IDs", () => {

@@ -25,6 +25,10 @@ function isNonUiV1Capability(row) {
   return row.scope === "V1" && !row.id.startsWith("UI-");
 }
 
+function isUiV1Capability(row) {
+  return row.scope === "V1" && row.id.startsWith("UI-");
+}
+
 function validateEvidenceReferences(
   id,
   record,
@@ -92,9 +96,10 @@ function validateVerification(verification, auditCiRunIsValid, blockers) {
   }
 }
 
-export function validateNonUiCapabilityEvidence(
+function validateCapabilityEvidence(
   traceability,
   audit,
+  isExpectedCapability,
   {
     evidenceExists = () => false,
     githubRunIsSuccessful = () => false,
@@ -107,7 +112,7 @@ export function validateNonUiCapabilityEvidence(
     blockers.push("capability-audit:schema-invalid");
   }
 
-  const traceRows = parseTraceabilityRows(traceability).filter(isNonUiV1Capability);
+  const traceRows = parseTraceabilityRows(traceability).filter(isExpectedCapability);
   const expectedIds = new Set(traceRows.map((row) => row.id));
   const capabilities = audit?.capabilities;
   const evidence = audit?.evidence;
@@ -166,4 +171,12 @@ export function validateNonUiCapabilityEvidence(
   }
 
   return blockers;
+}
+
+export function validateNonUiCapabilityEvidence(traceability, audit, options = {}) {
+  return validateCapabilityEvidence(traceability, audit, isNonUiV1Capability, options);
+}
+
+export function validateUiCapabilityEvidence(traceability, audit, options = {}) {
+  return validateCapabilityEvidence(traceability, audit, isUiV1Capability, options);
 }

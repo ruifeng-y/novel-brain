@@ -2,7 +2,10 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 
 import { runCli } from "./cli-entry.mjs";
-import { validateNonUiCapabilityEvidence } from "./v1-capability-evidence.mjs";
+import {
+  validateNonUiCapabilityEvidence,
+  validateUiCapabilityEvidence,
+} from "./v1-capability-evidence.mjs";
 import {
   GOLDEN_VIEWPORTS,
   PRODUCTION_PAGE_IDS,
@@ -409,6 +412,7 @@ export function evaluateV1Release({
   evidence,
   traceability,
   capabilityEvidence = { schemaVersion: 1, evidence: {}, capabilities: {} },
+  uiCapabilityEvidence = { schemaVersion: 1, evidence: {}, capabilities: {} },
   uiMatrix,
   deferrals,
   deviationApprovals,
@@ -434,6 +438,12 @@ export function evaluateV1Release({
       githubRunIsSuccessful,
     }),
     ...validateNonUiCapabilityEvidence(traceability, capabilityEvidence, {
+      evidenceExists,
+      githubRunIsSuccessful,
+      auditCiRunIsValid,
+      gapIssueIsValid,
+    }),
+    ...validateUiCapabilityEvidence(traceability, uiCapabilityEvidence, {
       evidenceExists,
       githubRunIsSuccessful,
       auditCiRunIsValid,
@@ -568,6 +578,9 @@ function main() {
     traceability: readFileSync("docs/planning/v1-capability-traceability.md", "utf8"),
     capabilityEvidence: JSON.parse(
       readFileSync("docs/implementation/m3-236-non-ui-capability-evidence.json", "utf8"),
+    ),
+    uiCapabilityEvidence: JSON.parse(
+      readFileSync("docs/implementation/m3-238-ui-capability-evidence.json", "utf8"),
     ),
     uiMatrix: readFileSync("docs/ui/v1-ui-parity-matrix.md", "utf8"),
     deferrals: JSON.parse(readFileSync("docs/planning/v1-deferrals.json", "utf8")),
