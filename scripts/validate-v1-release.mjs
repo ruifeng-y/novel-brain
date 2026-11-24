@@ -344,6 +344,8 @@ function validateActionEvidence(
     capabilityAudit.issue !== "#238" ||
     capabilityAudit.status !== "verified" ||
     !capabilityAudit.verifiedAt?.trim() ||
+    normalizeRepositoryPath(capabilityAudit.path) !==
+      "docs/implementation/m3-238-ui-capability-evidence.json" ||
     !evidenceExists(normalizeRepositoryPath(capabilityAudit.path))
   ) {
     blockers.push("action-evidence:capability-audit-missing");

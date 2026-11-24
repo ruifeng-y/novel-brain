@@ -440,6 +440,15 @@ describe("V1 release gate", () => {
     expect(result.blockers).toContain("action-evidence:capability-audit-missing");
   });
 
+  it("rejects a UI capability audit path that drifts from #238", () => {
+    const actionEvidence = passingActionEvidence();
+    actionEvidence.capabilityAudit.path = "docs/implementation/other-audit.json";
+
+    const result = evaluate({ actionEvidence });
+
+    expect(result.blockers).toContain("action-evidence:capability-audit-missing");
+  });
+
   it("validates four real Golden images for every release-approved page", () => {
     const result = evaluate({
       goldenIsValid: (path) => !path.includes("/auth/"),
