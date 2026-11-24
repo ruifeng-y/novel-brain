@@ -270,6 +270,10 @@ export class OutlineRepository implements OnModuleDestroy {
           parentId: input.parentId,
           sortOrder: plan.insertAt,
           chapterId: chapter?.id ?? null,
+          title: chapter?.title ?? input.title ?? input.sceneCard?.title ?? "",
+          summary: input.summary,
+          status: input.status,
+          tension: input.tension,
         },
         now,
       );

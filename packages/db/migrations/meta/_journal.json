@@ -547,6 +547,13 @@
       "when": 1795462834854,
       "tag": "0077_import_recovery_system_role",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795491682668,
+      "tag": "0078_pale_nova",
+      "breakpoints": true
     }
   ]
 }

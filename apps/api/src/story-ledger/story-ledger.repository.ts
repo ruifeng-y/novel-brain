@@ -248,7 +248,15 @@ export class StoryLedgerRepository implements OnModuleDestroy {
         "ledger.entry_created",
         "创建剧情账本条目",
         now,
-        { status: input.status, title: input.title },
+        {
+          status: input.status,
+          title: input.title,
+          summary: input.summary,
+          responsibleRole: input.responsibleRole,
+          targetWindow: input.targetWindow,
+          ...("importance" in input ? { importance: input.importance } : {}),
+          ...("readerPromise" in input ? { readerPromise: input.readerPromise } : {}),
+        },
       );
       switch (input.kind) {
         case "plot_thread":
@@ -382,7 +390,14 @@ export class StoryLedgerRepository implements OnModuleDestroy {
         "ledger.entry_updated",
         "更新剧情账本条目",
         now,
-        { status: loaded.row.status },
+        {
+          status: loaded.row.status,
+          title: base.title,
+          summary: base.summary,
+          responsibleRole: base.responsibleRole,
+          targetFromChapter: base.targetFromChapter,
+          targetToChapter: base.targetToChapter,
+        },
       );
       switch (input.kind) {
         case "plot_thread": {

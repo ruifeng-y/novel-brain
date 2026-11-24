@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "auditedAt": "2026-11-23",
+  "auditedAt": "2026-11-24",
   "issue": "#236",
   "verification": {
     "kind": "ci",
     "status": "passed",
-    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45286994401",
-    "headSha": "d03b3ce9a4022b0a66543b63f3e2d83ea06aa1ce"
+    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381",
+    "headSha": "491d059e2d08c787758b31f1a72c5ef652800570"
   },
   "evidence": {
     "auth-http": { "kind": "integration", "path": "apps/api/test/auth.integration.test.ts" },
@@ -155,6 +155,10 @@
       "kind": "integration",
       "path": "apps/api/test/m2-04-06.integration.test.ts"
     },
+    "changes-five-object-http": {
+      "kind": "integration",
+      "path": "apps/api/test/m2-04-06.integration.test.ts"
+    },
     "changes-contract": {
       "kind": "contract",
       "path": "packages/contracts/test/changes-search.test.ts"
@@ -178,6 +182,10 @@
     "production-ci-262": {
       "kind": "ci",
       "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45286994401"
+    },
+    "production-ci-263": {
+      "kind": "ci",
+      "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381"
     },
     "notifications-http": {
       "kind": "integration",
@@ -385,36 +393,20 @@
     "CHANGE-002": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-003": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-004": {
-      "status": "implemented",
-      "evidence": ["changes-http"],
-      "gap": {
-        "reason": "现有测试只从当前 head 建分支，尚未证明从任意历史版本节点建平行版本。",
-        "issue": "#263"
-      }
+      "status": "verified",
+      "evidence": ["changes-five-object-http", "production-ci-263"]
     },
     "CHANGE-005": {
-      "status": "implemented",
-      "evidence": ["changes-http", "changes-contract"],
-      "gap": {
-        "reason": "现有比较测试只覆盖 entity，尚未覆盖正文、事实、设定、大纲和伏笔/账本五类对象矩阵。",
-        "issue": "#263"
-      }
+      "status": "verified",
+      "evidence": ["changes-five-object-http", "production-ci-263"]
     },
     "CHANGE-006": {
-      "status": "implemented",
-      "evidence": ["changes-http", "changes-contract"],
-      "gap": {
-        "reason": "现有摘取测试只覆盖单个 entity，尚未证明五类对象逐项接受/拒绝与应用。",
-        "issue": "#263"
-      }
+      "status": "verified",
+      "evidence": ["changes-five-object-http", "production-ci-263"]
     },
     "CHANGE-007": {
-      "status": "implemented",
-      "evidence": ["changes-http"],
-      "gap": {
-        "reason": "现有测试只覆盖 confirmHighRisk=true 的成功路径，未覆盖缺失或 false 时的稳定拒绝。",
-        "issue": "#263"
-      }
+      "status": "verified",
+      "evidence": ["changes-five-object-http", "production-ci-263"]
     },
     "CHANGE-008": { "status": "verified", "evidence": ["changes-http"] },
     "CHANGE-009": { "status": "verified", "evidence": ["changes-http", "work-overview-e2e"] },

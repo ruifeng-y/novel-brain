@@ -85,7 +85,15 @@ export class CanonRepository implements OnModuleDestroy {
   ): Promise<CanonSubmissionResult> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
-      const existing = await findCommit(transaction, userId, workId, branchId, chapterId);
+      const existing = await findCommit(
+        transaction,
+        userId,
+        workId,
+        branchId,
+        chapterId,
+        chapterVersionId,
+        idempotencyKey,
+      );
       if (existing) {
         if (existing.chapterVersionId !== chapterVersionId) {
           return { kind: "version_conflict" };
@@ -572,7 +580,7 @@ function proposalStatus(proposal: FactProposalRecord | undefined): CanonCommitFa
   return "confirmed";
 }
 
-async function projectSubmittedFactsToPov(
+export async function projectSubmittedFactsToPov(
   transaction: DatabaseTransaction,
   userId: string,
   workId: string,
@@ -631,8 +639,10 @@ async function findCommit(
   workId: string,
   branchId: string,
   chapterId: string,
+  chapterVersionId: string,
+  idempotencyKey: string,
 ): Promise<CanonCommitRecord | undefined> {
-  const [commit] = await transaction
+  const [replayed] = await transaction
     .select()
     .from(canonCommits)
     .where(
@@ -641,10 +651,31 @@ async function findCommit(
         eq(canonCommits.workId, workId),
         eq(canonCommits.branchId, branchId),
         eq(canonCommits.chapterId, chapterId),
+        eq(canonCommits.chapterVersionId, chapterVersionId),
+        eq(canonCommits.idempotencyKey, idempotencyKey),
       ),
     )
+    .orderBy(desc(canonCommits.createdAt), desc(canonCommits.id))
     .limit(1);
-  return commit;
+  if (replayed) {
+    return replayed;
+  }
+  const [normalCommit] = await transaction
+    .select()
+    .from(canonCommits)
+    .where(
+      and(
+        eq(canonCommits.userId, userId),
+        eq(canonCommits.workId, workId),
+        eq(canonCommits.branchId, branchId),
+        eq(canonCommits.chapterId, chapterId),
+        sql`${canonCommits.idempotencyKey} not like 'merge:%'`,
+        sql`${canonCommits.idempotencyKey} not like 'merge-rollback:%'`,
+      ),
+    )
+    .orderBy(desc(canonCommits.createdAt), desc(canonCommits.id))
+    .limit(1);
+  return normalCommit;
 }
 
 async function findChapter(

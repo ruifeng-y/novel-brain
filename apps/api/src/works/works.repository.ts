@@ -2634,7 +2634,12 @@ export class WorksRepository implements OnModuleDestroy {
             objectId: copiedChapter.id,
             objectVersion: version.version,
             snapshotId: copiedVersionId,
-            payload: { copiedFrom: version.id },
+            payload: {
+              copiedFrom: version.id,
+              chapterNumber: copiedChapter.number,
+              title: copiedChapter.title,
+              objectKey: `chapter:number:${copiedChapter.number}`,
+            },
             actorId: input.userId,
             message: "复制正文",
           });

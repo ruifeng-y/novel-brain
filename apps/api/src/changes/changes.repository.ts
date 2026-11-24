@@ -16,6 +16,7 @@ import type {
 } from "@novel-brain/contracts";
 import {
   auditLogs,
+  canonCommits,
   chapterVersions,
   changeImpacts,
   changeRequests,
@@ -24,6 +25,8 @@ import {
   createDatabasePool,
   entityVersions,
   entities,
+  factDecisions,
+  factProposals,
   facts,
   foreshadows,
   mapNodes,
@@ -42,10 +45,16 @@ import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
+import { projectSubmittedFactsToPov } from "../canon/canon.repository";
 
 type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
 type ChangeRecord = typeof changeRequests.$inferSelect;
 type MergeItemRecord = typeof mergeItems.$inferSelect;
+interface MergeCandidate {
+  node: typeof versionNodes.$inferSelect;
+  objectId: string;
+  payload: Record<string, unknown>;
+}
 
 class MergeApplyAbort extends Error {
   constructor(readonly result: "version_conflict") {
@@ -570,9 +579,14 @@ export class ChangesRepository implements OnModuleDestroy {
           expectedVersion: number;
           payload: Record<string, unknown>;
         }> = [];
+        const factItemsToRestore: MergeItemRecord[] = [];
         for (const item of mergeItemsToRestore) {
           if (!item.targetNodeId) {
             return "target_not_found";
+          }
+          if (item.objectType === "fact") {
+            factItemsToRestore.push(item);
+            continue;
           }
           const [itemNode] = await transaction
             .select()
@@ -590,7 +604,7 @@ export class ChangesRepository implements OnModuleDestroy {
             return "target_not_found";
           }
           const targetType = targetTypeForVersionNode(itemNode);
-          if (!targetType || targetType === "fact") {
+          if (!targetType) {
             return "canon_gate_required";
           }
           const current = await loadTargetVersion(
@@ -604,21 +618,35 @@ export class ChangesRepository implements OnModuleDestroy {
           if (!current) {
             return "target_not_found";
           }
+          const restorePayload =
+            Object.keys(item.targetPayload).length > 0 ? item.targetPayload : itemNode.payload;
           restoreTargets.push({
             targetType,
             targetId: itemNode.objectId,
             expectedVersion: current.version,
-            payload: extractObjectPayload(itemNode.payload),
+            payload: extractObjectPayload(restorePayload),
           });
         }
-        const versionNodeId = uuidv7();
         const now = new Date();
+        const factRollback = await rollbackFactMergeItems(
+          transaction,
+          userId,
+          workId,
+          branchId,
+          factItemsToRestore,
+          context.branch.headNodeId,
+          now,
+        );
+        if (factRollback === "target_not_found" || factRollback === "canon_gate_required") {
+          return factRollback;
+        }
+        const versionNodeId = uuidv7();
         await transaction.insert(versionNodes).values({
           id: versionNodeId,
           workId,
           branchId,
           userId,
-          parentNodeId: context.branch.headNodeId,
+          parentNodeId: factRollback.parentNodeId,
           nodeType: "rollback",
           objectType: "branch",
           objectId: branchId,
@@ -628,6 +656,7 @@ export class ChangesRepository implements OnModuleDestroy {
             targetNodeId: targetNode.id,
             priorHeadNodeId: context.branch.headNodeId,
             restoredItems: mergeItemsToRestore.map((item) => item.id),
+            restoredFactNodes: factRollback.versionNodeIds,
             reason: input.reason,
           },
           actorId: userId,
@@ -845,18 +874,22 @@ export class ChangesRepository implements OnModuleDestroy {
         .orderBy(desc(versionNodes.createdAt));
       const targetCurrent = nodesAlongHead(allNodes, context.branch.headNodeId);
       const sourceCurrent = nodesAlongHead(allNodes, source.branch.headNodeId);
-      const targetByKey = new Map<string, (typeof allNodes)[number]>();
-      const sourceByKey = new Map<string, (typeof allNodes)[number]>();
+      const targetByKey = new Map<string, MergeCandidate>();
+      const sourceByKey = new Map<string, MergeCandidate>();
       for (const node of sourceCurrent) {
-        const key = mergeObjectKey(node.objectType, node.objectId, node.payload);
-        if (!sourceByKey.has(key)) {
-          sourceByKey.set(key, node);
+        for (const candidate of await loadMergeCandidates(transaction, userId, workId, node)) {
+          const key = mergeObjectKey(node.objectType, candidate.objectId, candidate.payload);
+          if (!sourceByKey.has(key)) {
+            sourceByKey.set(key, candidate);
+          }
         }
       }
       for (const node of targetCurrent) {
-        const key = mergeObjectKey(node.objectType, node.objectId, node.payload);
-        if (!targetByKey.has(key)) {
-          targetByKey.set(key, node);
+        for (const candidate of await loadMergeCandidates(transaction, userId, workId, node)) {
+          const key = mergeObjectKey(node.objectType, candidate.objectId, candidate.payload);
+          if (!targetByKey.has(key)) {
+            targetByKey.set(key, candidate);
+          }
         }
       }
       await transaction
@@ -880,16 +913,20 @@ export class ChangesRepository implements OnModuleDestroy {
         if (!representative) {
           continue;
         }
-        const changeKind = mergeChangeKind(sourceNode, targetNode);
+        const changeKind = mergeChangeKind(sourceNode?.payload, targetNode?.payload);
         const conflict =
           Boolean(targetNode) && (changeKind === "changed" || changeKind === "removed");
+        const sourceRisk = representative.payload.risk;
         const risk =
-          conflict || changeKind === "removed"
+          conflict || changeKind === "removed" || sourceRisk === "high"
             ? "high"
-            : representative.nodeType === "canon_commit"
+            : sourceRisk === "medium" || representative.node.nodeType === "canon_commit"
               ? "medium"
               : "low";
-        const objectType = mergeObjectType(representative.objectType, representative.nodeType);
+        const objectType = mergeObjectType(
+          representative.node.objectType,
+          representative.node.nodeType,
+        );
         if (!objectType) {
           continue;
         }
@@ -902,8 +939,8 @@ export class ChangesRepository implements OnModuleDestroy {
             sourceBranchId,
             targetBranchId,
             userId,
-            sourceNodeId: sourceNode?.id ?? null,
-            targetNodeId: targetNode?.id ?? null,
+            sourceNodeId: sourceNode?.node.id ?? null,
+            targetNodeId: targetNode?.node.id ?? null,
             objectType,
             objectId: representative.objectId,
             objectKey,
@@ -927,8 +964,8 @@ export class ChangesRepository implements OnModuleDestroy {
               mergeItems.objectKey,
             ],
             set: {
-              sourceNodeId: sourceNode?.id ?? null,
-              targetNodeId: targetNode?.id ?? null,
+              sourceNodeId: sourceNode?.node.id ?? null,
+              targetNodeId: targetNode?.node.id ?? null,
               sourcePayload: sourceNode?.payload ?? {},
               targetPayload: targetNode?.payload ?? {},
               diff: objectDiff(targetNode?.payload ?? {}, sourceNode?.payload ?? {}),
@@ -1053,9 +1090,6 @@ export class ChangesRepository implements OnModuleDestroy {
         if (items.some((item) => item.risk === "high") && !input.confirmHighRisk) {
           return "high_risk_confirmation_required";
         }
-        if (items.some((item) => item.objectType === "fact")) {
-          return "canon_gate_required";
-        }
         const branch = context.branch;
         if (!branch.headNodeId) {
           return "not_found";
@@ -1070,6 +1104,9 @@ export class ChangesRepository implements OnModuleDestroy {
           expectedVersion: number;
         }> = [];
         for (const item of items) {
+          if (item.objectType === "fact") {
+            continue;
+          }
           if (!item.targetNodeId) {
             return "target_not_found";
           }
@@ -1117,14 +1154,26 @@ export class ChangesRepository implements OnModuleDestroy {
             expectedVersion,
           });
         }
-        const versionNodeId = uuidv7();
         const now = new Date();
+        const factParentNodeId = await applyFactMergeItems(
+          transaction,
+          userId,
+          workId,
+          targetBranchId,
+          items.filter((item) => item.objectType === "fact"),
+          branch.headNodeId,
+          now,
+        );
+        if (factParentNodeId === "canon_gate_required" || factParentNodeId === "target_not_found") {
+          return factParentNodeId;
+        }
+        const versionNodeId = uuidv7();
         await transaction.insert(versionNodes).values({
           id: versionNodeId,
           workId,
           branchId: targetBranchId,
           userId,
-          parentNodeId: branch.headNodeId,
+          parentNodeId: factParentNodeId,
           nodeType: "branch_merge",
           objectType: "branch",
           objectId: targetBranchId,
@@ -1376,6 +1425,701 @@ export class ChangesRepository implements OnModuleDestroy {
   }
 }
 
+async function rollbackFactMergeItems(
+  transaction: DatabaseTransaction,
+  userId: string,
+  workId: string,
+  targetBranchId: string,
+  items: MergeItemRecord[],
+  parentNodeId: string,
+  now: Date,
+): Promise<
+  | {
+      parentNodeId: string;
+      versionNodeIds: string[];
+    }
+  | "target_not_found"
+  | "canon_gate_required"
+> {
+  const plans: Array<{
+    item: MergeItemRecord;
+    chapter: typeof chapters.$inferSelect;
+    mergeCommit: typeof canonCommits.$inferSelect;
+    mergedFacts: Array<typeof facts.$inferSelect>;
+    previousCommit: typeof canonCommits.$inferSelect;
+    previousFact: typeof facts.$inferSelect;
+    previousProposal: typeof factProposals.$inferSelect;
+    previousDecision: typeof factDecisions.$inferSelect;
+  }> = [];
+
+  for (const item of items) {
+    if (!item.targetNodeId) {
+      return "target_not_found";
+    }
+    const [mergeNode] = await transaction
+      .select()
+      .from(versionNodes)
+      .where(
+        and(
+          eq(versionNodes.userId, userId),
+          eq(versionNodes.workId, workId),
+          eq(versionNodes.branchId, targetBranchId),
+          eq(versionNodes.nodeType, "canon_commit"),
+          sql`${versionNodes.payload}->>'mergeItemId' = ${item.id}`,
+        ),
+      )
+      .orderBy(desc(versionNodes.createdAt), desc(versionNodes.id))
+      .limit(1);
+    const [previousCommit] = await transaction
+      .select()
+      .from(canonCommits)
+      .where(
+        and(
+          eq(canonCommits.versionNodeId, item.targetNodeId),
+          eq(canonCommits.userId, userId),
+          eq(canonCommits.workId, workId),
+          eq(canonCommits.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    if (!mergeNode || !previousCommit) {
+      return "target_not_found";
+    }
+    const [mergeCommit] = await transaction
+      .select()
+      .from(canonCommits)
+      .where(
+        and(
+          eq(canonCommits.versionNodeId, mergeNode.id),
+          eq(canonCommits.userId, userId),
+          eq(canonCommits.workId, workId),
+          eq(canonCommits.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    if (!mergeCommit) {
+      return "target_not_found";
+    }
+    const mergedFacts = await transaction
+      .select()
+      .from(facts)
+      .where(
+        and(
+          eq(facts.canonCommitId, mergeCommit.id),
+          eq(facts.userId, userId),
+          eq(facts.workId, workId),
+          eq(facts.branchId, targetBranchId),
+        ),
+      )
+      .for("update");
+    const previousFacts = await transaction
+      .select()
+      .from(facts)
+      .where(
+        and(
+          eq(facts.canonCommitId, previousCommit.id),
+          eq(facts.userId, userId),
+          eq(facts.workId, workId),
+          eq(facts.branchId, targetBranchId),
+          eq(facts.subject, stringValue(item.targetPayload, "subject", "")),
+          eq(facts.predicate, stringValue(item.targetPayload, "predicate", "")),
+          eq(facts.object, stringValue(item.targetPayload, "object", "")),
+        ),
+      );
+    const previousFact = previousFacts[0];
+    if (mergedFacts.length === 0 || !previousFact) {
+      return "target_not_found";
+    }
+    const [previousProposal] = await transaction
+      .select()
+      .from(factProposals)
+      .where(
+        and(
+          eq(factProposals.id, previousFact.factProposalId),
+          eq(factProposals.userId, userId),
+          eq(factProposals.workId, workId),
+          eq(factProposals.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    const [previousDecision] = await transaction
+      .select()
+      .from(factDecisions)
+      .where(
+        and(
+          eq(factDecisions.id, previousFact.decisionId),
+          eq(factDecisions.userId, userId),
+          eq(factDecisions.workId, workId),
+          eq(factDecisions.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    if (!previousProposal || !previousDecision) {
+      return "target_not_found";
+    }
+    const [chapter] = await transaction
+      .select()
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.id, previousFact.chapterId),
+          eq(chapters.userId, userId),
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    if (!chapter) {
+      return "target_not_found";
+    }
+    plans.push({
+      item,
+      chapter,
+      mergeCommit,
+      mergedFacts,
+      previousCommit,
+      previousFact,
+      previousProposal,
+      previousDecision,
+    });
+  }
+
+  let nextParentNodeId = parentNodeId;
+  const versionNodeIds: string[] = [];
+  for (const plan of plans) {
+    const versionNodeId = uuidv7();
+    const commitId = uuidv7();
+    const proposalId = uuidv7();
+    const decisionId = uuidv7();
+    const decisionSnapshot = {
+      proposalId,
+      decisionId,
+      action: plan.previousDecision.action,
+      resultingStatus: plan.previousProposal.status,
+      subject: plan.previousFact.subject,
+      predicate: plan.previousFact.predicate,
+      object: plan.previousFact.object,
+      risk: plan.previousFact.risk,
+      required: plan.previousFact.required,
+      sourceSentence: plan.previousProposal.sourceSentence,
+      actorName: plan.previousDecision.actorName,
+      reason: plan.previousDecision.reason,
+      decidedAt: now.toISOString(),
+    };
+    const summary = {
+      factCount: 1,
+      rejectedCount: 0,
+      text: `回滚摘取事实：${plan.previousFact.subject} ${plan.previousFact.predicate} ${plan.previousFact.object}`,
+    };
+    await transaction.insert(versionNodes).values({
+      id: versionNodeId,
+      workId,
+      branchId: targetBranchId,
+      userId,
+      parentNodeId: nextParentNodeId,
+      nodeType: "canon_commit",
+      objectType: "chapter",
+      objectId: plan.previousCommit.chapterId,
+      objectVersion: plan.mergedFacts[0]!.validFromChapter,
+      snapshotId: commitId,
+      payload: {
+        mergeItemId: plan.item.id,
+        sourceChapterNumber: plan.mergedFacts[0]!.validFromChapter,
+        decisions: [decisionSnapshot],
+        summary,
+        rollback: true,
+      },
+      actorId: userId,
+      message: "回滚摘取事实",
+      createdAt: now,
+    });
+    await transaction.insert(canonCommits).values({
+      id: commitId,
+      workId,
+      branchId: targetBranchId,
+      userId,
+      chapterId: plan.previousCommit.chapterId,
+      chapterVersionId: plan.previousCommit.chapterVersionId,
+      versionNodeId,
+      idempotencyKey: `merge-rollback:${plan.item.id}`,
+      decisionSnapshot: [decisionSnapshot],
+      summary,
+      actorId: userId,
+      createdAt: now,
+    });
+    await transaction
+      .update(facts)
+      .set({ status: "superseded" })
+      .where(
+        inArray(
+          facts.id,
+          plan.mergedFacts.map((fact) => fact.id),
+        ),
+      );
+    await transaction.insert(factProposals).values({
+      id: proposalId,
+      workId,
+      branchId: targetBranchId,
+      userId,
+      chapterId: plan.previousFact.chapterId,
+      sourceVersionId: plan.previousFact.sourceVersionId,
+      extractionKey: `merge-rollback:${plan.item.id}:${plan.previousProposal.extractionKey}`,
+      subject: plan.previousFact.subject,
+      predicate: plan.previousFact.predicate,
+      object: plan.previousFact.object,
+      sourceSentence: plan.previousProposal.sourceSentence,
+      status: plan.previousProposal.status,
+      confidence: plan.previousProposal.confidence,
+      risk: plan.previousFact.risk,
+      required: plan.previousFact.required,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await transaction.insert(factDecisions).values({
+      id: decisionId,
+      workId,
+      branchId: targetBranchId,
+      userId,
+      chapterId: plan.previousFact.chapterId,
+      factProposalId: proposalId,
+      action: plan.previousDecision.action,
+      actorId: userId,
+      actorName: plan.previousDecision.actorName,
+      reason: plan.previousDecision.reason,
+      originalPayload: plan.previousDecision.originalPayload,
+      resultingPayload: plan.previousDecision.resultingPayload,
+      decidedAt: now,
+    });
+    const [restoredFact] = await transaction
+      .insert(facts)
+      .values({
+        id: uuidv7(),
+        workId,
+        branchId: targetBranchId,
+        userId,
+        chapterId: plan.previousFact.chapterId,
+        factProposalId: proposalId,
+        decisionId,
+        sourceVersionId: plan.previousFact.sourceVersionId,
+        canonCommitId: commitId,
+        subject: plan.previousFact.subject,
+        predicate: plan.previousFact.predicate,
+        object: plan.previousFact.object,
+        risk: plan.previousFact.risk,
+        required: plan.previousFact.required,
+        status: "active",
+        validFromChapter: plan.previousFact.validFromChapter,
+        createdAt: now,
+      })
+      .returning();
+    if (!restoredFact) {
+      throw new Error("Failed to persist restored fact");
+    }
+    await projectSubmittedFactsToPov(
+      transaction,
+      userId,
+      workId,
+      targetBranchId,
+      plan.chapter,
+      versionNodeId,
+      [restoredFact],
+      now,
+    );
+    versionNodeIds.push(versionNodeId);
+    nextParentNodeId = versionNodeId;
+  }
+  return { parentNodeId: nextParentNodeId, versionNodeIds };
+}
+
+async function applyFactMergeItems(
+  transaction: DatabaseTransaction,
+  userId: string,
+  workId: string,
+  targetBranchId: string,
+  items: MergeItemRecord[],
+  parentNodeId: string,
+  now: Date,
+): Promise<string | "target_not_found" | "canon_gate_required"> {
+  const plans: Array<{
+    item: MergeItemRecord;
+    chapter: typeof chapters.$inferSelect;
+    targetFact: typeof facts.$inferSelect;
+    sourceFacts: Array<typeof facts.$inferSelect>;
+    proposals: Array<typeof factProposals.$inferSelect>;
+    decisions: Array<typeof factDecisions.$inferSelect>;
+    sourceCommitId: string;
+  }> = [];
+
+  for (const item of items) {
+    if (!item.sourceNodeId || !item.targetNodeId) {
+      return "target_not_found";
+    }
+    const [sourceCommit] = await transaction
+      .select()
+      .from(canonCommits)
+      .where(
+        and(
+          eq(canonCommits.versionNodeId, item.sourceNodeId),
+          eq(canonCommits.userId, userId),
+          eq(canonCommits.workId, workId),
+          eq(canonCommits.branchId, item.sourceBranchId),
+        ),
+      )
+      .limit(1);
+    const [targetNode] = await transaction
+      .select()
+      .from(versionNodes)
+      .where(
+        and(
+          eq(versionNodes.id, item.targetNodeId),
+          eq(versionNodes.userId, userId),
+          eq(versionNodes.workId, workId),
+          eq(versionNodes.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    if (!sourceCommit || !targetNode) {
+      return "target_not_found";
+    }
+    const [chapter] = await transaction
+      .select()
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.id, targetNode.objectId),
+          eq(chapters.userId, userId),
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, targetBranchId),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (
+      !chapter ||
+      !chapter.currentVersionId ||
+      !["approved", "locked", "published"].includes(chapter.status)
+    ) {
+      return "canon_gate_required";
+    }
+    const [pendingRequiredFacts] = await transaction
+      .select({ count: sql<number>`count(*)::int` })
+      .from(factProposals)
+      .where(
+        and(
+          eq(factProposals.userId, userId),
+          eq(factProposals.workId, workId),
+          eq(factProposals.branchId, targetBranchId),
+          eq(factProposals.chapterId, chapter.id),
+          eq(factProposals.required, true),
+          eq(factProposals.status, "proposed"),
+        ),
+      );
+    if ((pendingRequiredFacts?.count ?? 0) > 0) {
+      return "canon_gate_required";
+    }
+    const [targetCommit] = await transaction
+      .select()
+      .from(canonCommits)
+      .where(
+        and(
+          eq(canonCommits.versionNodeId, targetNode.id),
+          eq(canonCommits.userId, userId),
+          eq(canonCommits.workId, workId),
+          eq(canonCommits.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    if (!targetCommit) {
+      return "target_not_found";
+    }
+    const targetFacts = await transaction
+      .select()
+      .from(facts)
+      .where(
+        and(
+          eq(facts.canonCommitId, targetCommit.id),
+          eq(facts.userId, userId),
+          eq(facts.workId, workId),
+          eq(facts.branchId, targetBranchId),
+          eq(facts.subject, stringValue(item.targetPayload, "subject", "")),
+          eq(facts.predicate, stringValue(item.targetPayload, "predicate", "")),
+        ),
+      );
+    const targetProposals = targetFacts.length
+      ? await transaction
+          .select()
+          .from(factProposals)
+          .where(
+            and(
+              inArray(
+                factProposals.id,
+                targetFacts.map((fact) => fact.factProposalId),
+              ),
+              eq(factProposals.userId, userId),
+              eq(factProposals.workId, workId),
+              eq(factProposals.branchId, targetBranchId),
+            ),
+          )
+      : [];
+    const targetProposalById = new Map(
+      targetProposals.map((proposal) => [proposal.id, proposal] as const),
+    );
+    const targetFact = targetFacts.find(
+      (fact) =>
+        fact.object === stringValue(item.targetPayload, "object", "") &&
+        targetProposalById.get(fact.factProposalId)?.sourceSentence ===
+          stringValue(item.targetPayload, "sourceSentence", ""),
+    );
+    if (!targetFact) {
+      return "target_not_found";
+    }
+    const sourceFacts = await transaction
+      .select()
+      .from(facts)
+      .where(
+        and(
+          eq(facts.canonCommitId, sourceCommit.id),
+          eq(facts.userId, userId),
+          eq(facts.workId, workId),
+          eq(facts.branchId, item.sourceBranchId),
+        ),
+      )
+      .orderBy(facts.createdAt);
+    if (sourceFacts.length === 0) {
+      return "target_not_found";
+    }
+    const proposals = await transaction
+      .select()
+      .from(factProposals)
+      .where(
+        and(
+          inArray(
+            factProposals.id,
+            sourceFacts.map((fact) => fact.factProposalId),
+          ),
+          eq(factProposals.userId, userId),
+          eq(factProposals.workId, workId),
+          eq(factProposals.branchId, item.sourceBranchId),
+        ),
+      );
+    const decisions = await transaction
+      .select()
+      .from(factDecisions)
+      .where(
+        and(
+          inArray(
+            factDecisions.id,
+            sourceFacts.map((fact) => fact.decisionId),
+          ),
+          eq(factDecisions.userId, userId),
+          eq(factDecisions.workId, workId),
+          eq(factDecisions.branchId, item.sourceBranchId),
+        ),
+      );
+    const proposalById = new Map(proposals.map((proposal) => [proposal.id, proposal] as const));
+    const decisionById = new Map(decisions.map((decision) => [decision.id, decision] as const));
+    const sourceFact = sourceFacts.find((fact) => {
+      const proposal = proposalById.get(fact.factProposalId);
+      return (
+        fact.subject === item.sourcePayload.subject &&
+        fact.predicate === item.sourcePayload.predicate &&
+        fact.object === item.sourcePayload.object &&
+        proposal?.sourceSentence === item.sourcePayload.sourceSentence
+      );
+    });
+    if (!sourceFact) {
+      return "target_not_found";
+    }
+    const proposal = proposalById.get(sourceFact.factProposalId);
+    const decision = decisionById.get(sourceFact.decisionId);
+    if (
+      !proposal ||
+      !decision ||
+      !["confirmed", "modified_confirmed"].includes(proposal.status) ||
+      !["confirm", "modify_confirm"].includes(decision.action)
+    ) {
+      return "target_not_found";
+    }
+    plans.push({
+      item,
+      chapter,
+      targetFact,
+      sourceFacts: [sourceFact],
+      proposals: [proposal],
+      decisions: [decision],
+      sourceCommitId: sourceCommit.id,
+    });
+  }
+
+  let nextParentNodeId = parentNodeId;
+  for (const plan of plans) {
+    const versionNodeId = uuidv7();
+    const commitId = uuidv7();
+    const proposalById = new Map(
+      plan.proposals.map((proposal) => [proposal.id, proposal] as const),
+    );
+    const decisionById = new Map(
+      plan.decisions.map((decision) => [decision.id, decision] as const),
+    );
+    const clonedProposals = plan.sourceFacts.map((fact) => {
+      const proposal = proposalById.get(fact.factProposalId);
+      if (!proposal) {
+        throw new Error("Source fact proposal missing during merge apply");
+      }
+      return {
+        id: uuidv7(),
+        workId,
+        branchId: targetBranchId,
+        userId,
+        chapterId: plan.chapter.id,
+        sourceVersionId: plan.chapter.currentVersionId!,
+        extractionKey: `merge:${plan.item.id}:${proposal.extractionKey}`,
+        subject: proposal.subject,
+        predicate: proposal.predicate,
+        object: proposal.object,
+        sourceSentence: proposal.sourceSentence,
+        status: proposal.status,
+        confidence: proposal.confidence,
+        risk: proposal.risk,
+        required: proposal.required,
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+    const clonedDecisions = plan.sourceFacts.map((fact, index) => {
+      const decision = decisionById.get(fact.decisionId);
+      if (!decision) {
+        throw new Error("Source fact decision missing during merge apply");
+      }
+      return {
+        id: uuidv7(),
+        workId,
+        branchId: targetBranchId,
+        userId,
+        chapterId: plan.chapter.id,
+        factProposalId: clonedProposals[index]!.id,
+        action: decision.action,
+        actorId: userId,
+        actorName: decision.actorName,
+        reason: decision.reason,
+        originalPayload: decision.originalPayload,
+        resultingPayload: decision.resultingPayload,
+        decidedAt: now,
+      };
+    });
+    const sourceFact = plan.sourceFacts[0]!;
+    const sourceProposal = plan.proposals[0]!;
+    const sourceDecision = plan.decisions[0]!;
+    const clonedProposal = clonedProposals[0]!;
+    const clonedDecision = clonedDecisions[0]!;
+    const decisionSnapshot = {
+      proposalId: clonedProposal.id,
+      decisionId: clonedDecision.id,
+      action: sourceDecision.action,
+      resultingStatus: sourceProposal.status,
+      subject: sourceFact.subject,
+      predicate: sourceFact.predicate,
+      object: sourceFact.object,
+      risk: sourceFact.risk,
+      required: sourceFact.required,
+      sourceSentence: sourceProposal.sourceSentence,
+      actorName: sourceDecision.actorName,
+      reason: sourceDecision.reason,
+      decidedAt: now.toISOString(),
+    };
+    const summary = {
+      factCount: 1,
+      rejectedCount: 0,
+      text: `摘取事实：${sourceFact.subject} ${sourceFact.predicate} ${sourceFact.object}`,
+    };
+    await transaction.insert(versionNodes).values({
+      id: versionNodeId,
+      workId,
+      branchId: targetBranchId,
+      userId,
+      parentNodeId: nextParentNodeId,
+      nodeType: "canon_commit",
+      objectType: "chapter",
+      objectId: plan.chapter.id,
+      objectVersion: plan.chapter.version,
+      snapshotId: commitId,
+      payload: {
+        sourceBranchId: plan.item.sourceBranchId,
+        sourceNodeId: plan.item.sourceNodeId,
+        sourceCommitId: plan.sourceCommitId,
+        mergeItemId: plan.item.id,
+        sourceChapterNumber: plan.chapter.number,
+        sourceChapterTitle: plan.chapter.title,
+        decisions: [decisionSnapshot],
+        summary,
+        cherryPick: true,
+      },
+      actorId: userId,
+      message: `摘取事实到第 ${plan.chapter.number} 章`,
+      createdAt: now,
+    });
+    await transaction.insert(canonCommits).values({
+      id: commitId,
+      workId,
+      branchId: targetBranchId,
+      userId,
+      chapterId: plan.chapter.id,
+      chapterVersionId: plan.chapter.currentVersionId!,
+      versionNodeId,
+      idempotencyKey: `merge:${plan.item.id}`,
+      decisionSnapshot: [decisionSnapshot],
+      summary,
+      actorId: userId,
+      createdAt: now,
+    });
+    await transaction
+      .update(facts)
+      .set({ status: "superseded" })
+      .where(eq(facts.id, plan.targetFact.id));
+    await transaction.insert(factProposals).values(clonedProposals);
+    await transaction.insert(factDecisions).values(clonedDecisions);
+    const [insertedFact] = await transaction
+      .insert(facts)
+      .values(
+        plan.sourceFacts.map((fact, index) => ({
+          id: uuidv7(),
+          workId,
+          branchId: targetBranchId,
+          userId,
+          chapterId: plan.chapter.id,
+          factProposalId: clonedProposals[index]!.id,
+          decisionId: clonedDecisions[index]!.id,
+          sourceVersionId: plan.chapter.currentVersionId!,
+          canonCommitId: commitId,
+          subject: fact.subject,
+          predicate: fact.predicate,
+          object: fact.object,
+          risk: fact.risk,
+          required: fact.required,
+          status: "active",
+          validFromChapter: plan.chapter.number,
+          createdAt: now,
+        })),
+      )
+      .returning();
+    if (!insertedFact) {
+      throw new Error("Failed to persist merged fact");
+    }
+    await projectSubmittedFactsToPov(
+      transaction,
+      userId,
+      workId,
+      targetBranchId,
+      plan.chapter,
+      versionNodeId,
+      [insertedFact],
+      now,
+    );
+    nextParentNodeId = versionNodeId;
+  }
+  return nextParentNodeId;
+}
+
 function toChangeRequest(record: ChangeRecord): ChangeRequest {
   return {
     id: record.id,
@@ -1437,8 +2181,33 @@ function toMergeItem(record: MergeItemRecord): MergeItem {
 }
 
 function mergeObjectType(objectType: string, nodeType: string): MergeItem["objectType"] | null {
-  if (["chapter", "entity", "fact", "outline", "ledger"].includes(objectType)) {
-    return objectType as MergeItem["objectType"];
+  if (nodeType === "canon_commit") {
+    return "fact";
+  }
+  if (objectType === "chapter" || objectType === "chapter_brief") {
+    return "chapter";
+  }
+  if (objectType === "entity" || objectType === "setting") {
+    return "entity";
+  }
+  if (objectType === "fact") {
+    return "fact";
+  }
+  if (
+    objectType === "outline" ||
+    objectType === "outline_node" ||
+    objectType === "volume_contract" ||
+    objectType === "scene_card"
+  ) {
+    return "outline";
+  }
+  if (
+    objectType === "ledger" ||
+    objectType === "foreshadow" ||
+    objectType === "plot_thread" ||
+    objectType === "character_arc"
+  ) {
+    return "ledger";
   }
   switch (nodeType) {
     case "chapter_version":
@@ -1454,6 +2223,179 @@ function mergeObjectType(objectType: string, nodeType: string): MergeItem["objec
     default:
       return null;
   }
+}
+
+async function loadMergeCandidates(
+  transaction: DatabaseTransaction,
+  userId: string,
+  workId: string,
+  node: typeof versionNodes.$inferSelect,
+): Promise<MergeCandidate[]> {
+  if (node.nodeType !== "canon_commit") {
+    return [
+      {
+        node,
+        objectId: node.objectId,
+        payload: await loadMergePayload(transaction, userId, workId, node),
+      },
+    ];
+  }
+  const chapterNumber =
+    typeof node.payload.sourceChapterNumber === "number" ? node.payload.sourceChapterNumber : null;
+  const [commit] = await transaction
+    .select({ id: canonCommits.id })
+    .from(canonCommits)
+    .where(
+      and(
+        eq(canonCommits.versionNodeId, node.id),
+        eq(canonCommits.userId, userId),
+        eq(canonCommits.workId, workId),
+        eq(canonCommits.branchId, node.branchId),
+      ),
+    )
+    .limit(1);
+  if (!chapterNumber || !commit) {
+    return [{ node, objectId: node.objectId, payload: node.payload }];
+  }
+  const committedFacts = await transaction
+    .select()
+    .from(facts)
+    .where(
+      and(
+        eq(facts.canonCommitId, commit.id),
+        eq(facts.userId, userId),
+        eq(facts.workId, workId),
+        eq(facts.branchId, node.branchId),
+      ),
+    )
+    .orderBy(facts.createdAt);
+  committedFacts.sort((left, right) => left.factProposalId.localeCompare(right.factProposalId));
+  const proposals = committedFacts.length
+    ? await transaction
+        .select()
+        .from(factProposals)
+        .where(
+          and(
+            inArray(
+              factProposals.id,
+              committedFacts.map((fact) => fact.factProposalId),
+            ),
+            eq(factProposals.userId, userId),
+            eq(factProposals.workId, workId),
+            eq(factProposals.branchId, node.branchId),
+          ),
+        )
+    : [];
+  const proposalById = new Map(proposals.map((proposal) => [proposal.id, proposal] as const));
+  const factOrdinals = new Map<string, number>();
+  return committedFacts.map((fact) => {
+    const sourceSentence = proposalById.get(fact.factProposalId)?.sourceSentence ?? "";
+    const factGroup = `${fact.subject}\u0000${fact.predicate}`;
+    const ordinal = (factOrdinals.get(factGroup) ?? 0) + 1;
+    factOrdinals.set(factGroup, ordinal);
+    return {
+      node,
+      objectId: fact.id,
+      payload: {
+        objectKey: `fact:chapter:${chapterNumber}:${fact.subject}:${fact.predicate}:${ordinal}`,
+        chapterNumber,
+        sourceSentence,
+        subject: fact.subject,
+        predicate: fact.predicate,
+        object: fact.object,
+        risk: fact.risk,
+        required: fact.required,
+        status: fact.status,
+      },
+    };
+  });
+}
+
+async function loadMergePayload(
+  transaction: DatabaseTransaction,
+  userId: string,
+  workId: string,
+  node: typeof versionNodes.$inferSelect,
+): Promise<Record<string, unknown>> {
+  if (node.nodeType === "canon_commit") {
+    const chapterNumber =
+      typeof node.payload.sourceChapterNumber === "number"
+        ? node.payload.sourceChapterNumber
+        : null;
+    return chapterNumber
+      ? {
+          ...node.payload,
+          objectKey: `fact:chapter:${chapterNumber}`,
+        }
+      : node.payload;
+  }
+
+  if (node.objectType === "chapter" || node.objectType === "chapter_brief") {
+    const chapterNumber =
+      typeof node.payload.chapterNumber === "number" ? node.payload.chapterNumber : null;
+    const payload: Record<string, unknown> = chapterNumber
+      ? {
+          ...node.payload,
+          objectKey: `chapter:number:${chapterNumber}`,
+        }
+      : { ...node.payload };
+    if (node.nodeType === "chapter_version") {
+      const [version] = await transaction
+        .select({ content: chapterVersions.content })
+        .from(chapterVersions)
+        .where(
+          and(
+            eq(chapterVersions.versionNodeId, node.id),
+            eq(chapterVersions.userId, userId),
+            eq(chapterVersions.workId, workId),
+            eq(chapterVersions.branchId, node.branchId),
+          ),
+        )
+        .limit(1);
+      if (version) {
+        payload.content = version.content;
+      }
+    }
+    return payload;
+  }
+
+  if (node.objectType === "outline_node") {
+    const title = typeof node.payload.title === "string" ? node.payload.title.trim() : "";
+    return title
+      ? {
+          ...node.payload,
+          objectKey: `outline:name:${title}`,
+        }
+      : node.payload;
+  }
+
+  if (node.objectType === "entity" || node.objectType === "setting") {
+    const name = typeof node.payload.name === "string" ? node.payload.name.trim() : "";
+    const type = typeof node.payload.type === "string" ? node.payload.type.trim() : "";
+    return name
+      ? {
+          ...node.payload,
+          objectKey: `entity:${type || "unknown"}:name:${name}`,
+        }
+      : node.payload;
+  }
+
+  if (
+    node.objectType === "ledger" ||
+    node.objectType === "foreshadow" ||
+    node.objectType === "plot_thread" ||
+    node.objectType === "character_arc"
+  ) {
+    const title = typeof node.payload.title === "string" ? node.payload.title.trim() : "";
+    return title
+      ? {
+          ...node.payload,
+          objectKey: `ledger:name:${title}`,
+        }
+      : node.payload;
+  }
+
+  return node.payload;
 }
 
 function mergeObjectKey(
@@ -1494,8 +2436,8 @@ function nodesAlongHead(
 }
 
 function mergeChangeKind(
-  source: typeof versionNodes.$inferSelect | undefined,
-  target: typeof versionNodes.$inferSelect | undefined,
+  source: Record<string, unknown> | undefined,
+  target: Record<string, unknown> | undefined,
 ): MergeItem["changeKind"] {
   if (!source) {
     return "removed";
@@ -1503,9 +2445,7 @@ function mergeChangeKind(
   if (!target) {
     return "added";
   }
-  return JSON.stringify(source.payload) === JSON.stringify(target.payload)
-    ? "unchanged"
-    : "changed";
+  return JSON.stringify(source) === JSON.stringify(target) ? "unchanged" : "changed";
 }
 
 interface TargetVersion {
@@ -1551,7 +2491,12 @@ async function loadTargetVersion(
     }
     case "chapter": {
       const [row] = await transaction
-        .select({ version: chapters.version, status: chapters.status, title: chapters.title })
+        .select({
+          version: chapters.version,
+          status: chapters.status,
+          title: chapters.title,
+          number: chapters.number,
+        })
         .from(chapters)
         .where(
           and(
@@ -1566,7 +2511,7 @@ async function loadTargetVersion(
         ? {
             version: row.version,
             locked: row.status === "locked" || row.status === "published",
-            objectKey: mergeObjectKey("chapter", targetId, { title: row.title }),
+            objectKey: `chapter:number:${row.number}`,
           }
         : undefined;
     }

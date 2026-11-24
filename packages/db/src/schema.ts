@@ -1182,7 +1182,7 @@ export const canonCommits = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("canon_commits_chapter_unique").on(table.chapterId),
+    index("canon_commits_chapter_idx").on(table.chapterId),
     uniqueIndex("canon_commits_version_node_unique").on(table.versionNodeId),
     uniqueIndex("canon_commits_user_chapter_idempotency_unique").on(
       table.userId,
