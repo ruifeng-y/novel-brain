@@ -286,6 +286,61 @@ describe("M3-238 UI capability closeout", () => {
     ]) {
       expect(contracts, `shared contracts must define ${schema}`).toContain(schema);
     }
+    const requiredStatusEnums = {
+      workStatusSchema: ["draft", "preparing", "serializing", "paused", "completed", "archived"],
+      chapterStatusSchema: [
+        "planned",
+        "writing",
+        "waiting_review",
+        "changes_requested",
+        "approved",
+        "locked",
+        "published",
+        "rejected",
+      ],
+      changeStatusSchema: [
+        "draft",
+        "analyzing",
+        "awaiting_confirmation",
+        "applying",
+        "applied",
+        "rejected",
+        "cancelled",
+        "failed",
+        "branched",
+      ],
+      generationJobStatusSchema: [
+        "queued",
+        "preparing",
+        "running",
+        "paused",
+        "waiting_review",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+      settingStatusSchema: ["draft", "proposed", "locked", "discarded"],
+      chunkedImportProgressSchema: [
+        "queued",
+        "processing",
+        "awaiting_confirmation",
+        "paused",
+        "partial",
+        "failed",
+        "cancelled",
+        "completed",
+      ],
+      mergeItemSchema: ["pending", "accepted", "rejected", "applied", "stale"],
+    };
+    for (const [schema, statuses] of Object.entries(requiredStatusEnums)) {
+      const start = contracts.indexOf(`export const ${schema}`);
+      const next = contracts.indexOf("export const ", start + 1);
+      const block = contracts.slice(start, next === -1 ? undefined : next);
+      expect(start, `shared contracts must define ${schema}`).toBeGreaterThanOrEqual(0);
+      for (const status of statuses) {
+        expect(block, `${schema} must include ${status}`).toContain(`"${status}"`);
+      }
+    }
   });
 
   it("verifies required page states for every production page", () => {
