@@ -6,20 +6,31 @@ import {
   PROCESS_IMPORT_JOB,
   branchComparisonResponseSchema,
   branchCreateResponseSchema,
+  canonCommitResponseSchema,
   changeAnalysisResponseSchema,
   changeApplyResponseSchema,
   changeRequestResponseSchema,
+  chapterWorkspaceResponseSchema,
   chunkedImportProgressResponseSchema,
+  factProposalListResponseSchema,
+  factProposalResponseSchema,
+  generateChapterJobSchema,
+  generationJobResponseSchema,
   mergeApplyResponseSchema,
   mergeItemDecisionResponseSchema,
   manuscriptImportResponseSchema,
   notificationListResponseSchema,
+  outlineNodeMutationResponseSchema,
+  outlineWorkspaceResponseSchema,
   searchRebuildResponseSchema,
   searchResponseSchema,
   settingEntityResponseSchema,
+  storyLedgerMutationResponseSchema,
+  storyLedgerWorkspaceResponseSchema,
   versionRollbackResponseSchema,
   workResponseSchema,
 } from "@novel-brain/contracts";
+import { FakeAiProvider } from "@novel-brain/ai";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
@@ -28,6 +39,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppModule } from "../src/app.module";
 import { MAIL_GATEWAY, type MailGateway } from "../src/auth/mail.gateway";
 import { ApiExceptionFilter } from "../src/common/api-exception.filter";
+import { GenerationJobProcessor } from "../../worker/src/generation/generation.processor";
+import { WorkerGenerationRepository } from "../../worker/src/generation/generation.repository";
 import { ManuscriptImportProcessor } from "../../worker/src/imports/manuscript-import.processor";
 import { WorkerManuscriptImportRepository } from "../../worker/src/imports/manuscript-import.repository";
 
@@ -65,7 +78,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
     process.env.MODEL_CONFIG_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
     process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
     process.env.MODEL_CONNECTION_TESTER = "fake";
-    process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1";
+    process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1,https://api.deepseek.com";
 
     await runMigrations(databaseUrl);
     databasePool = createDatabasePool(databaseUrl, {
@@ -400,6 +413,784 @@ describe("M2 change, branch, search and chunked import integration", () => {
       .send({ version: item.version, action: "accept", reason: "越权测试" })
       .expect(404);
     expect(branchPath).toContain(branch.id);
+  });
+
+  it("compares five object types from a historical node and applies only accepted append-only merge items", async () => {
+    const owner = await createAuthenticatedAgent("m3-263-matrix-owner@example.com");
+    const token = await csrf(owner);
+    const work = await createWork(owner, token, "历史分支五类对象矩阵");
+    const mainPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const chapterTitle = "共同章节";
+    const entityName = "墨玉令牌";
+    const outlineTitle = "第一卷 分叉";
+    const ledgerTitle = "玉佩裂痕";
+    const mainFactObject = "沈砚在主线决定返回荒寺。";
+    const branchFactObject = "沈砚在平行版本决定离开荒寺。";
+
+    await ensureModelConfig(owner, token);
+    await createGenerationPrerequisites(owner, token, mainPath);
+    const mainChapter = await createReadyChapter(owner, token, mainPath, chapterTitle);
+    const mainCommit = await generateAndCommitFact(
+      owner,
+      token,
+      mainPath,
+      mainChapter.id,
+      mainFactObject,
+    );
+    const mainChapterAfterCommit = chapterWorkspaceResponseSchema.parse(
+      (await owner.get(`${mainPath}/chapters/${mainChapter.id}`).expect(200)).body,
+    ).data;
+    const sourceNodeId = mainChapterAfterCommit.currentVersion?.versionNodeId;
+    if (!sourceNodeId) {
+      throw new Error("Expected the main chapter to have a committed version node");
+    }
+
+    const mainEntity = await createMatrixEntity(owner, token, mainPath, entityName, "主线旧设定");
+    const mainOutline = await createMatrixOutline(
+      owner,
+      token,
+      mainPath,
+      outlineTitle,
+      "主线旧大纲",
+    );
+    const mainLedger = await createMatrixLedger(owner, token, mainPath, ledgerTitle, "主线旧伏笔");
+    const mainBeforeBranch = workResponseSchema.parse(
+      (await owner.get(`/api/v1/works/${work.id}`).expect(200)).body,
+    ).data.mainBranch;
+    expect(sourceNodeId).not.toBe(mainBeforeBranch.headNodeId);
+
+    const branch = branchCreateResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/works/${work.id}/branches`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({
+            name: "历史节点分支",
+            sourceNodeId,
+            reason: "从明确历史版本验证五类对象比较与摘取",
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(branch.headNodeId).toBe(sourceNodeId);
+    const branchPath = `/api/v1/works/${work.id}/branches/${branch.id}`;
+
+    await createGenerationPrerequisites(owner, token, branchPath);
+    const branchChapter = await createReadyChapter(owner, token, branchPath, chapterTitle);
+    const branchCommit = await generateAndCommitFact(
+      owner,
+      token,
+      branchPath,
+      branchChapter.id,
+      branchFactObject,
+    );
+    expect(branchCommit.versionNodeId).not.toBe(mainCommit.versionNodeId);
+    expect(branchCommit.branchId).toBe(branch.id);
+    const branchChapterAfterCommit = chapterWorkspaceResponseSchema.parse(
+      (await owner.get(`${branchPath}/chapters/${branchChapter.id}`).expect(200)).body,
+    ).data;
+    const branchContent = branchChapterAfterCommit.currentVersion?.content;
+    if (!branchContent) {
+      throw new Error("Expected branch chapter content");
+    }
+    const branchEntity = await createMatrixEntity(
+      owner,
+      token,
+      branchPath,
+      entityName,
+      "平行版本新设定",
+    );
+    const branchOutline = await createMatrixOutline(
+      owner,
+      token,
+      branchPath,
+      outlineTitle,
+      "平行版本新大纲",
+    );
+    const branchLedger = await createMatrixLedger(
+      owner,
+      token,
+      branchPath,
+      ledgerTitle,
+      "平行版本新伏笔",
+    );
+
+    const mainChapterBeforeMerge = chapterWorkspaceResponseSchema.parse(
+      (await owner.get(`${mainPath}/chapters/${mainChapter.id}`).expect(200)).body,
+    ).data;
+    const mainContentBeforeMerge = "沈砚在主线第 2 版选择继续追查。";
+    const chapterChange = changeRequestResponseSchema.parse(
+      (
+        await owner
+          .post(`${mainPath}/changes`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "m3-263-main-chapter-change")
+          .send({
+            title: "修改主线章节正文",
+            reason: "构造五类对象冲突矩阵",
+            targetVersion: mainChapterBeforeMerge.version,
+            targetType: "chapter",
+            targetId: mainChapter.id,
+            objectType: "chapter",
+            before: {
+              title: mainChapterBeforeMerge.title,
+              content: mainChapterBeforeMerge.currentVersion?.content ?? "",
+            },
+            after: { title: mainChapterBeforeMerge.title, content: mainContentBeforeMerge },
+            risk: "high",
+            source: "author",
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    const chapterAnalysis = changeAnalysisResponseSchema.parse(
+      (
+        await owner
+          .post(`${mainPath}/changes/${chapterChange.id}/analyze`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({})
+          .expect(200)
+      ).body,
+    ).data;
+    await owner
+      .post(`${mainPath}/changes/${chapterChange.id}/apply`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: chapterAnalysis.change.version,
+        expectedTargetVersion: mainChapterBeforeMerge.version,
+        confirmHighRisk: true,
+        reason: "作者确认主线章节改写",
+      })
+      .expect(200);
+
+    const mainEntityUpdated = settingEntityResponseSchema.parse(
+      (
+        await owner
+          .patch(`${mainPath}/entities/${mainEntity.id}`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({ version: mainEntity.version, summary: "主线新设定" })
+          .expect(200)
+      ).body,
+    ).data;
+    const mainOutlineUpdated = outlineNodeMutationResponseSchema.parse(
+      (
+        await owner
+          .patch(`${mainPath}/outline/nodes/${mainOutline.node.id}`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({ version: mainOutline.node.version, summary: "主线新大纲" })
+          .expect(200)
+      ).body,
+    ).data;
+    const mainLedgerUpdated = storyLedgerMutationResponseSchema.parse(
+      (
+        await owner
+          .patch(`${mainPath}/ledger/entries/${mainLedger.entry.id}`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({ kind: "foreshadow", version: mainLedger.entry.version, summary: "主线新伏笔" })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(mainEntityUpdated.id).not.toBe(branchEntity.id);
+    expect(mainOutlineUpdated.node.id).not.toBe(branchOutline.node.id);
+    expect(mainLedgerUpdated.entry.id).not.toBe(branchLedger.entry.id);
+
+    const comparison = branchComparisonResponseSchema.parse(
+      (
+        await owner
+          .get(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/compare/${branch.id}`)
+          .expect(200)
+      ).body,
+    ).data;
+    const expectedKeys = {
+      chapter: "chapter:number:1",
+      entity: `entity:name:${entityName}`,
+      fact: "fact:chapter:1",
+      ledger: `ledger:name:${ledgerTitle}`,
+      outline: `outline:name:${outlineTitle}`,
+    } as const;
+    const itemsByType = new Map(
+      (["chapter", "entity", "fact", "outline", "ledger"] as const).map((objectType) => {
+        const candidates = comparison.items.filter(
+          (item) => item.objectType === objectType && item.objectKey === expectedKeys[objectType],
+        );
+        expect(
+          candidates,
+          `${objectType}: ${comparison.items
+            .map((item) => `${item.objectType}=${item.objectKey}`)
+            .join(", ")}`,
+        ).toHaveLength(1);
+        const item = candidates[0]!;
+        expect(item.changeKind, objectType).toBe("changed");
+        expect(item.conflict, objectType).toBe(true);
+        expect(item.risk, objectType).toBe("high");
+        return [objectType, item] as const;
+      }),
+    );
+
+    const acceptedIds: string[] = [];
+    for (const objectType of ["chapter", "entity", "outline", "ledger"] as const) {
+      const item = itemsByType.get(objectType)!;
+      const decision = mergeItemDecisionResponseSchema.parse(
+        (
+          await owner
+            .post(
+              `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/${item.id}/decision`,
+            )
+            .set("Origin", origin)
+            .set("X-CSRF-Token", token)
+            .send({ version: item.version, action: "accept", reason: `接受${objectType}对象` })
+            .expect(200)
+        ).body,
+      ).data;
+      expect(decision.status).toBe("accepted");
+      acceptedIds.push(item.id);
+    }
+
+    const factItem = itemsByType.get("fact")!;
+    const factAccepted = mergeItemDecisionResponseSchema.parse(
+      (
+        await owner
+          .post(
+            `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/${factItem.id}/decision`,
+          )
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({ version: factItem.version, action: "accept", reason: "保留事实门禁验证" })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(factAccepted.status).toBe("accepted");
+    const mainBeforeApply = workResponseSchema.parse(
+      (await owner.get(`/api/v1/works/${work.id}`).expect(200)).body,
+    ).data.mainBranch;
+    const factGate = await owner
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        itemIds: [factItem.id],
+        expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
+        confirmHighRisk: true,
+      })
+      .expect(409);
+    expect(factGate.body.error.code).toBe("FACT_DECISION_REQUIRED");
+    expect(
+      workResponseSchema.parse((await owner.get(`/api/v1/works/${work.id}`).expect(200)).body).data
+        .mainBranch.headNodeId,
+    ).toBe(mainBeforeApply.headNodeId);
+
+    const factRejected = mergeItemDecisionResponseSchema.parse(
+      (
+        await owner
+          .post(
+            `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/${factItem.id}/decision`,
+          )
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({
+            version: factAccepted.version,
+            action: "reject",
+            reason: "事实摘取必须走独立正史提交",
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(factRejected.status).toBe("rejected");
+
+    const mixedSelection = await owner
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        itemIds: [...acceptedIds, factItem.id],
+        expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
+        confirmHighRisk: true,
+      })
+      .expect(409);
+    expect(mixedSelection.body.error.code).toBe("VERSION_CONFLICT");
+
+    const highRiskGate = await owner
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        itemIds: acceptedIds,
+        expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
+        confirmHighRisk: false,
+      })
+      .expect(409);
+    expect(highRiskGate.body.error.code).toBe("CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED");
+
+    const mergeApplied = mergeApplyResponseSchema.parse(
+      (
+        await owner
+          .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/apply`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({
+            itemIds: acceptedIds,
+            expectedTargetHeadNodeId: mainBeforeApply.headNodeId,
+            confirmHighRisk: true,
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(mergeApplied.applied).toEqual(acceptedIds);
+    expect(mergeApplied.versionNodeId).not.toBe(mainBeforeApply.headNodeId);
+    const mainAfterMerge = workResponseSchema.parse(
+      (await owner.get(`/api/v1/works/${work.id}`).expect(200)).body,
+    ).data.mainBranch;
+    expect(mainAfterMerge.headNodeId).toBe(mergeApplied.versionNodeId);
+
+    expect(
+      chapterWorkspaceResponseSchema.parse(
+        (await owner.get(`${mainPath}/chapters/${mainChapter.id}`).expect(200)).body,
+      ).data.currentVersion?.content,
+    ).toBe(branchContent);
+    expect(
+      settingEntityResponseSchema.parse(
+        (await owner.get(`${mainPath}/entities/${mainEntity.id}`).expect(200)).body,
+      ).data.summary,
+    ).toBe("平行版本新设定");
+    expect(
+      outlineWorkspaceResponseSchema
+        .parse((await owner.get(`${mainPath}/outline`).expect(200)).body)
+        .data.nodes.find((node) => node.id === mainOutline.node.id)?.summary,
+    ).toBe("平行版本新大纲");
+    expect(
+      storyLedgerWorkspaceResponseSchema
+        .parse((await owner.get(`${mainPath}/ledger`).expect(200)).body)
+        .data.entries.find((entry) => entry.id === mainLedger.entry.id)?.summary,
+    ).toBe("平行版本新伏笔");
+    const mainFactAfterMerge = await databasePool.query<{ object: string }>(
+      `SELECT object FROM facts
+       WHERE work_id = $1 AND branch_id = $2 AND subject = $3
+       ORDER BY created_at DESC LIMIT 1`,
+      [work.id, work.mainBranch.id, mainCommit.facts[0]?.subject],
+    );
+    expect(mainFactAfterMerge.rows[0]?.object).toBe(mainFactObject);
+
+    const rollback = versionRollbackResponseSchema.parse(
+      (
+        await owner
+          .post(`${mainPath}/rollback`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({
+            targetNodeId: mergeApplied.versionNodeId,
+            expectedHeadNodeId: mergeApplied.versionNodeId,
+            reason: "验证摘取回滚追加新节点",
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(rollback.nodeType).toBe("rollback");
+    expect(rollback.versionNodeId).not.toBe(mergeApplied.versionNodeId);
+    const versionHistory = await databasePool.query<{
+      id: string;
+      parent_node_id: string | null;
+      node_type: string;
+    }>(
+      `SELECT id, parent_node_id, node_type
+       FROM version_nodes
+       WHERE work_id = $1 AND id = ANY($2::uuid[])`,
+      [work.id, [mergeApplied.versionNodeId, rollback.versionNodeId]],
+    );
+    const mergeNode = versionHistory.rows.find((node) => node.id === mergeApplied.versionNodeId);
+    const rollbackNode = versionHistory.rows.find((node) => node.id === rollback.versionNodeId);
+    expect(mergeNode).toMatchObject({
+      id: mergeApplied.versionNodeId,
+      node_type: "branch_merge",
+      parent_node_id: mainBeforeApply.headNodeId,
+    });
+    expect(rollbackNode).toMatchObject({
+      id: rollback.versionNodeId,
+      node_type: "rollback",
+      parent_node_id: mergeApplied.versionNodeId,
+    });
+    expect(
+      chapterWorkspaceResponseSchema.parse(
+        (await owner.get(`${mainPath}/chapters/${mainChapter.id}`).expect(200)).body,
+      ).data.currentVersion?.content,
+    ).toBe(mainContentBeforeMerge);
+    expect(
+      settingEntityResponseSchema.parse(
+        (await owner.get(`${mainPath}/entities/${mainEntity.id}`).expect(200)).body,
+      ).data.summary,
+    ).toBe("主线新设定");
+    expect(
+      outlineWorkspaceResponseSchema
+        .parse((await owner.get(`${mainPath}/outline`).expect(200)).body)
+        .data.nodes.find((node) => node.id === mainOutline.node.id)?.summary,
+    ).toBe("主线新大纲");
+    expect(
+      storyLedgerWorkspaceResponseSchema
+        .parse((await owner.get(`${mainPath}/ledger`).expect(200)).body)
+        .data.entries.find((entry) => entry.id === mainLedger.entry.id)?.summary,
+    ).toBe("主线新伏笔");
+
+    const other = await createAuthenticatedAgent("m3-263-matrix-other@example.com");
+    const otherToken = await csrf(other);
+    const forbiddenBranch = await other
+      .post(`/api/v1/works/${work.id}/branches`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({ name: "越权分支", sourceNodeId, reason: "越权验证" })
+      .expect(404);
+    expect(forbiddenBranch.body.error.code).toBe("BRANCH_SOURCE_NOT_FOUND");
+    const forbiddenCompare = await other
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/compare/${branch.id}`)
+      .expect(404);
+    expect(forbiddenCompare.body.error.code).toBe("BRANCH_SOURCE_NOT_FOUND");
+    const forbiddenDecision = await other
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/merge-items/${factItem.id}/decision`,
+      )
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({ version: factRejected.version, action: "accept", reason: "越权验证" })
+      .expect(404);
+    expect(forbiddenDecision.body.error.code).toBe("CHANGE_NOT_FOUND");
+
+    async function createReadyChapter(
+      agent: SuperAgentTest,
+      csrfToken: string,
+      branchPath: string,
+      title: string,
+    ) {
+      return chapterWorkspaceResponseSchema.parse(
+        (
+          await agent
+            .post(`${branchPath}/chapters`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", csrfToken)
+            .send({
+              number: 1,
+              title,
+              brief: {
+                goal: "让沈砚在荒寺外确认下一步行动。",
+                pov: "沈砚",
+                location: "荒寺外山道",
+                sceneBeats: ["沈砚握紧墨玉令牌。", "追兵逼近，他必须作出选择。"],
+                requiredFacts: ["墨玉令牌仍在沈砚手中"],
+              },
+            })
+            .expect(201)
+        ).body,
+      ).data;
+    }
+
+    async function createGenerationPrerequisites(
+      agent: SuperAgentTest,
+      csrfToken: string,
+      branchPath: string,
+    ) {
+      const generated = await agent
+        .post(`${branchPath}/story-bible/generate`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .send({})
+        .expect(200);
+      await agent
+        .post(`${branchPath}/story-bible/lock`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .send({ version: generated.body.data.version })
+        .expect(200);
+
+      for (const setting of [
+        {
+          type: "world_rule",
+          name: "令牌会记录真实选择",
+          aliases: [],
+          summary: "持有令牌者的选择会留下痕迹。",
+          description: "",
+          tags: [],
+          data: { rule: "令牌不能抹除已经发生的选择。" },
+        },
+        {
+          type: "character",
+          name: "沈砚",
+          aliases: [],
+          summary: "持有墨玉令牌的外门弟子。",
+          description: "",
+          tags: [],
+          data: {
+            bodyState: "左臂骨折。",
+            knowledgeBoundary: "不知道令牌完整来历。",
+            relationshipSummary: "与顾青互相试探。",
+          },
+        },
+        {
+          type: "golden_finger",
+          name: "墨玉令牌",
+          aliases: [],
+          summary: "记录并提示真实选择的令牌。",
+          description: "",
+          tags: [],
+          data: {
+            rules: "只能提示一次选择后果。",
+            cost: "每次提示消耗一段记忆。",
+            limits: "每日只能使用一次。",
+            growth: "完整选择会显现新的刻纹。",
+          },
+        },
+      ] as const) {
+        const created = settingEntityResponseSchema.parse(
+          (
+            await agent
+              .post(`${branchPath}/entities`)
+              .set("Origin", origin)
+              .set("X-CSRF-Token", csrfToken)
+              .send(setting)
+              .expect(201)
+          ).body,
+        ).data;
+        await agent
+          .post(`${branchPath}/entities/${created.id}/lock`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", csrfToken)
+          .send({ version: created.version })
+          .expect(200);
+      }
+    }
+
+    async function generateAndCommitFact(
+      agent: SuperAgentTest,
+      csrfToken: string,
+      branchPath: string,
+      chapterId: string,
+      modifiedObject: string,
+    ) {
+      const started = generationJobResponseSchema.parse(
+        (
+          await agent
+            .post(`${branchPath}/chapters/${chapterId}/generate`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", csrfToken)
+            .set("Idempotency-Key", crypto.randomUUID())
+            .send({
+              budget: {
+                maxCostCny: 2.5,
+                maxTokens: 12_000,
+                maxRevisionRounds: 2,
+              },
+            })
+            .expect(202)
+        ).body,
+      ).data;
+      const processor = new GenerationJobProcessor(
+        new WorkerGenerationRepository(),
+        new FakeAiProvider(),
+      );
+      await processor.process(await readWorkerPayload(started.id));
+      const waiting = chapterWorkspaceResponseSchema.parse(
+        (await agent.get(`${branchPath}/chapters/${chapterId}`).expect(200)).body,
+      ).data;
+      await agent
+        .post(`${branchPath}/chapters/${chapterId}/verify`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .set("Idempotency-Key", crypto.randomUUID())
+        .send({ chapterVersionId: waiting.currentVersionId })
+        .expect(200);
+      const reviewable = chapterWorkspaceResponseSchema.parse(
+        (await agent.get(`${branchPath}/chapters/${chapterId}`).expect(200)).body,
+      ).data;
+      await agent
+        .post(`${branchPath}/chapters/${chapterId}/review`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .send({ action: "approve", version: reviewable.version })
+        .expect(200);
+
+      const proposals = factProposalListResponseSchema.parse(
+        (await agent.get(`${branchPath}/chapters/${chapterId}/fact-proposals`).expect(200)).body,
+      ).data;
+      expect(proposals.length).toBeGreaterThan(0);
+      for (const [index, proposal] of proposals.entries()) {
+        await agent
+          .post(`${branchPath}/fact-proposals/${proposal.id}/decision`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", csrfToken)
+          .send(
+            index === 0
+              ? {
+                  action: "modify_confirm",
+                  reason: "为五类对象矩阵保存不同事实",
+                  modified: { object: modifiedObject, risk: "low" },
+                }
+              : { action: "confirm", reason: "正文事实已确认" },
+          )
+          .expect((response) => {
+            factProposalResponseSchema.parse(response.body);
+          });
+      }
+      const approved = chapterWorkspaceResponseSchema.parse(
+        (await agent.get(`${branchPath}/chapters/${chapterId}`).expect(200)).body,
+      ).data;
+      return canonCommitResponseSchema.parse(
+        (
+          await agent
+            .post(`${branchPath}/chapters/${chapterId}/canon/commit`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", csrfToken)
+            .set("Idempotency-Key", crypto.randomUUID())
+            .send({ chapterVersionId: approved.currentVersionId })
+            .expect(200)
+        ).body,
+      ).data;
+    }
+
+    async function createMatrixEntity(
+      agent: SuperAgentTest,
+      csrfToken: string,
+      branchPath: string,
+      name: string,
+      summary: string,
+    ) {
+      return settingEntityResponseSchema.parse(
+        (
+          await agent
+            .post(`${branchPath}/entities`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", csrfToken)
+            .send({
+              type: "item",
+              name,
+              aliases: [],
+              summary,
+              description: "五类对象矩阵设定。",
+              tags: [],
+              data: {
+                category: "信物",
+                grade: "凡品",
+                effect: "记录持有者已经作出的真实选择。",
+                cost: "",
+                ownership: "沈砚",
+                limits: "",
+              },
+            })
+            .expect(201)
+        ).body,
+      ).data;
+    }
+
+    async function createMatrixOutline(
+      agent: SuperAgentTest,
+      csrfToken: string,
+      branchPath: string,
+      title: string,
+      summary: string,
+    ) {
+      const created = outlineNodeMutationResponseSchema.parse(
+        (
+          await agent
+            .post(`${branchPath}/outline/nodes`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", csrfToken)
+            .send({ level: "book", parentId: null, title, summary: "旧大纲" })
+            .expect(201)
+        ).body,
+      ).data;
+      return outlineNodeMutationResponseSchema.parse(
+        (
+          await agent
+            .patch(`${branchPath}/outline/nodes/${created.node.id}`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", csrfToken)
+            .send({ version: created.node.version, summary })
+            .expect(200)
+        ).body,
+      ).data;
+    }
+
+    async function createMatrixLedger(
+      agent: SuperAgentTest,
+      csrfToken: string,
+      branchPath: string,
+      title: string,
+      summary: string,
+    ) {
+      return storyLedgerMutationResponseSchema.parse(
+        (
+          await agent
+            .post(`${branchPath}/ledger/entries`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", csrfToken)
+            .set("Idempotency-Key", crypto.randomUUID())
+            .send({
+              kind: "foreshadow",
+              title,
+              summary,
+              responsibleRole: "author",
+              status: "planned",
+              targetWindow: { fromChapter: 2, toChapter: 5 },
+              importance: "must",
+              readerPromise: "伏笔会在第一卷回收。",
+            })
+            .expect(201)
+        ).body,
+      ).data;
+    }
+
+    async function ensureModelConfig(agent: SuperAgentTest, csrfToken: string) {
+      await agent
+        .post("/api/v1/model-configs")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", csrfToken)
+        .send({
+          provider: "deepseek",
+          label: "DeepSeek 矩阵测试",
+          baseUrl: "https://api.deepseek.com",
+          model: "deepseek-chat",
+          apiKey: "sk-fake-m3-263",
+          purposes: ["writing"],
+          isDefault: true,
+        })
+        .expect(200);
+    }
+
+    async function readWorkerPayload(jobId: string) {
+      const result = await databasePool.query<{
+        user_id: string;
+        work_id: string;
+        branch_id: string;
+        chapter_id: string;
+        model_config_id: string;
+        idempotency_key: string;
+        budget: Record<string, unknown>;
+        checkpoint: Record<string, unknown>;
+      }>(
+        `SELECT user_id, work_id, branch_id, chapter_id, model_config_id,
+                idempotency_key, budget, checkpoint
+         FROM jobs WHERE id = $1`,
+        [jobId],
+      );
+      const row = result.rows[0];
+      if (!row) {
+        throw new Error("Generation job was not persisted");
+      }
+      return generateChapterJobSchema.parse({
+        jobId,
+        jobType: "generate_chapter",
+        workId: row.work_id,
+        branchId: row.branch_id,
+        chapterId: row.chapter_id,
+        actorId: row.user_id,
+        modelConfigId: row.model_config_id,
+        idempotencyKey: row.idempotency_key,
+        budget: row.budget,
+        checkpoint: row.checkpoint,
+      });
+    }
   });
 
   it("rebuilds and searches the Chinese branch index", async () => {

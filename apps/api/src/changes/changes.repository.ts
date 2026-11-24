@@ -46,6 +46,10 @@ import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
 type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
 type ChangeRecord = typeof changeRequests.$inferSelect;
 type MergeItemRecord = typeof mergeItems.$inferSelect;
+interface MergeCandidate {
+  node: typeof versionNodes.$inferSelect;
+  payload: Record<string, unknown>;
+}
 
 class MergeApplyAbort extends Error {
   constructor(readonly result: "version_conflict") {
@@ -604,11 +608,13 @@ export class ChangesRepository implements OnModuleDestroy {
           if (!current) {
             return "target_not_found";
           }
+          const restorePayload =
+            Object.keys(item.targetPayload).length > 0 ? item.targetPayload : itemNode.payload;
           restoreTargets.push({
             targetType,
             targetId: itemNode.objectId,
             expectedVersion: current.version,
-            payload: extractObjectPayload(itemNode.payload),
+            payload: extractObjectPayload(restorePayload),
           });
         }
         const versionNodeId = uuidv7();
@@ -845,18 +851,20 @@ export class ChangesRepository implements OnModuleDestroy {
         .orderBy(desc(versionNodes.createdAt));
       const targetCurrent = nodesAlongHead(allNodes, context.branch.headNodeId);
       const sourceCurrent = nodesAlongHead(allNodes, source.branch.headNodeId);
-      const targetByKey = new Map<string, (typeof allNodes)[number]>();
-      const sourceByKey = new Map<string, (typeof allNodes)[number]>();
+      const targetByKey = new Map<string, MergeCandidate>();
+      const sourceByKey = new Map<string, MergeCandidate>();
       for (const node of sourceCurrent) {
-        const key = mergeObjectKey(node.objectType, node.objectId, node.payload);
+        const payload = await loadMergePayload(transaction, userId, workId, node);
+        const key = mergeObjectKey(node.objectType, node.objectId, payload);
         if (!sourceByKey.has(key)) {
-          sourceByKey.set(key, node);
+          sourceByKey.set(key, { node, payload });
         }
       }
       for (const node of targetCurrent) {
-        const key = mergeObjectKey(node.objectType, node.objectId, node.payload);
+        const payload = await loadMergePayload(transaction, userId, workId, node);
+        const key = mergeObjectKey(node.objectType, node.objectId, payload);
         if (!targetByKey.has(key)) {
-          targetByKey.set(key, node);
+          targetByKey.set(key, { node, payload });
         }
       }
       await transaction
@@ -880,16 +888,19 @@ export class ChangesRepository implements OnModuleDestroy {
         if (!representative) {
           continue;
         }
-        const changeKind = mergeChangeKind(sourceNode, targetNode);
+        const changeKind = mergeChangeKind(sourceNode?.payload, targetNode?.payload);
         const conflict =
           Boolean(targetNode) && (changeKind === "changed" || changeKind === "removed");
         const risk =
           conflict || changeKind === "removed"
             ? "high"
-            : representative.nodeType === "canon_commit"
+            : representative.node.nodeType === "canon_commit"
               ? "medium"
               : "low";
-        const objectType = mergeObjectType(representative.objectType, representative.nodeType);
+        const objectType = mergeObjectType(
+          representative.node.objectType,
+          representative.node.nodeType,
+        );
         if (!objectType) {
           continue;
         }
@@ -902,10 +913,10 @@ export class ChangesRepository implements OnModuleDestroy {
             sourceBranchId,
             targetBranchId,
             userId,
-            sourceNodeId: sourceNode?.id ?? null,
-            targetNodeId: targetNode?.id ?? null,
+            sourceNodeId: sourceNode?.node.id ?? null,
+            targetNodeId: targetNode?.node.id ?? null,
             objectType,
-            objectId: representative.objectId,
+            objectId: representative.node.objectId,
             objectKey,
             sourcePayload: sourceNode?.payload ?? {},
             targetPayload: targetNode?.payload ?? {},
@@ -927,8 +938,8 @@ export class ChangesRepository implements OnModuleDestroy {
               mergeItems.objectKey,
             ],
             set: {
-              sourceNodeId: sourceNode?.id ?? null,
-              targetNodeId: targetNode?.id ?? null,
+              sourceNodeId: sourceNode?.node.id ?? null,
+              targetNodeId: targetNode?.node.id ?? null,
               sourcePayload: sourceNode?.payload ?? {},
               targetPayload: targetNode?.payload ?? {},
               diff: objectDiff(targetNode?.payload ?? {}, sourceNode?.payload ?? {}),
@@ -1437,8 +1448,33 @@ function toMergeItem(record: MergeItemRecord): MergeItem {
 }
 
 function mergeObjectType(objectType: string, nodeType: string): MergeItem["objectType"] | null {
-  if (["chapter", "entity", "fact", "outline", "ledger"].includes(objectType)) {
-    return objectType as MergeItem["objectType"];
+  if (nodeType === "canon_commit") {
+    return "fact";
+  }
+  if (objectType === "chapter" || objectType === "chapter_brief") {
+    return "chapter";
+  }
+  if (objectType === "entity" || objectType === "setting") {
+    return "entity";
+  }
+  if (objectType === "fact") {
+    return "fact";
+  }
+  if (
+    objectType === "outline" ||
+    objectType === "outline_node" ||
+    objectType === "volume_contract" ||
+    objectType === "scene_card"
+  ) {
+    return "outline";
+  }
+  if (
+    objectType === "ledger" ||
+    objectType === "foreshadow" ||
+    objectType === "plot_thread" ||
+    objectType === "character_arc"
+  ) {
+    return "ledger";
   }
   switch (nodeType) {
     case "chapter_version":
@@ -1454,6 +1490,151 @@ function mergeObjectType(objectType: string, nodeType: string): MergeItem["objec
     default:
       return null;
   }
+}
+
+async function loadMergePayload(
+  transaction: DatabaseTransaction,
+  userId: string,
+  workId: string,
+  node: typeof versionNodes.$inferSelect,
+): Promise<Record<string, unknown>> {
+  if (node.nodeType === "canon_commit") {
+    const [chapter] = await transaction
+      .select({ number: chapters.number, title: chapters.title })
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.id, node.objectId),
+          eq(chapters.userId, userId),
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, node.branchId),
+        ),
+      )
+      .limit(1);
+    return chapter
+      ? {
+          ...node.payload,
+          objectKey: `fact:chapter:${chapter.number}`,
+          chapterNumber: chapter.number,
+          chapterTitle: chapter.title,
+        }
+      : node.payload;
+  }
+
+  if (node.objectType === "chapter" || node.objectType === "chapter_brief") {
+    const [chapter] = await transaction
+      .select()
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.id, node.objectId),
+          eq(chapters.userId, userId),
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, node.branchId),
+        ),
+      )
+      .limit(1);
+    if (!chapter) {
+      return node.payload;
+    }
+    const payload: Record<string, unknown> = {
+      ...node.payload,
+      objectKey: `chapter:number:${chapter.number}`,
+      title: chapter.title,
+      status: chapter.status,
+      brief: chapter.brief,
+      version: chapter.version,
+    };
+    if (node.nodeType === "chapter_version") {
+      const [version] = await transaction
+        .select({ content: chapterVersions.content })
+        .from(chapterVersions)
+        .where(
+          and(
+            eq(chapterVersions.versionNodeId, node.id),
+            eq(chapterVersions.userId, userId),
+            eq(chapterVersions.workId, workId),
+            eq(chapterVersions.branchId, node.branchId),
+          ),
+        )
+        .limit(1);
+      if (version) {
+        payload.content = version.content;
+      }
+    }
+    return payload;
+  }
+
+  if (node.objectType === "outline_node") {
+    const [outline] = await transaction
+      .select()
+      .from(outlineNodes)
+      .where(
+        and(
+          eq(outlineNodes.id, node.objectId),
+          eq(outlineNodes.userId, userId),
+          eq(outlineNodes.workId, workId),
+          eq(outlineNodes.branchId, node.branchId),
+        ),
+      )
+      .limit(1);
+    return outline
+      ? {
+          ...node.payload,
+          objectKey: mergeObjectKey("outline", outline.id, { title: outline.title }),
+          title: outline.title,
+          summary: outline.summary,
+          status: outline.status,
+          tension: outline.tension,
+          version: outline.version,
+        }
+      : node.payload;
+  }
+
+  if (node.objectType === "entity" || node.objectType === "setting") {
+    const name = typeof node.payload.name === "string" ? node.payload.name.trim() : "";
+    return name
+      ? {
+          ...node.payload,
+          objectKey: `entity:name:${name}`,
+        }
+      : node.payload;
+  }
+
+  if (
+    node.objectType === "ledger" ||
+    node.objectType === "foreshadow" ||
+    node.objectType === "plot_thread" ||
+    node.objectType === "character_arc"
+  ) {
+    const [ledger] = await transaction
+      .select()
+      .from(foreshadows)
+      .where(
+        and(
+          eq(foreshadows.id, node.objectId),
+          eq(foreshadows.userId, userId),
+          eq(foreshadows.workId, workId),
+          eq(foreshadows.branchId, node.branchId),
+          sql`${foreshadows.deletedAt} is null`,
+        ),
+      )
+      .limit(1);
+    return ledger
+      ? {
+          ...node.payload,
+          objectKey: mergeObjectKey("ledger", ledger.id, { title: ledger.title }),
+          title: ledger.title,
+          summary: ledger.summary,
+          status: ledger.status,
+          importance: ledger.importance,
+          readerPromise: ledger.readerPromise,
+          version: ledger.version,
+        }
+      : node.payload;
+  }
+
+  return node.payload;
 }
 
 function mergeObjectKey(
@@ -1494,8 +1675,8 @@ function nodesAlongHead(
 }
 
 function mergeChangeKind(
-  source: typeof versionNodes.$inferSelect | undefined,
-  target: typeof versionNodes.$inferSelect | undefined,
+  source: Record<string, unknown> | undefined,
+  target: Record<string, unknown> | undefined,
 ): MergeItem["changeKind"] {
   if (!source) {
     return "removed";
@@ -1503,9 +1684,7 @@ function mergeChangeKind(
   if (!target) {
     return "added";
   }
-  return JSON.stringify(source.payload) === JSON.stringify(target.payload)
-    ? "unchanged"
-    : "changed";
+  return JSON.stringify(source) === JSON.stringify(target) ? "unchanged" : "changed";
 }
 
 interface TargetVersion {
