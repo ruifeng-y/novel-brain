@@ -89,6 +89,11 @@ Local verification:
 
 ## 5. Boundary
 
+This ticket does not claim that every V1 capability is already `verified` or
+authorized-deferred. EVAL-002, EVAL-003, EVAL-004 and CONT-001 remain explicit,
+bounded release blockers owned by #239–#241; they are not TBD or silent
+deferrals, and #104 remains open until those release gates close.
+
 This report does not record or substitute for:
 
 - human blind-review scores (#239);
