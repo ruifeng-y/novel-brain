@@ -669,7 +669,6 @@ async function findCommit(
         eq(canonCommits.workId, workId),
         eq(canonCommits.branchId, branchId),
         eq(canonCommits.chapterId, chapterId),
-        eq(canonCommits.chapterVersionId, chapterVersionId),
         sql`${canonCommits.idempotencyKey} not like 'merge:%'`,
         sql`${canonCommits.idempotencyKey} not like 'merge-rollback:%'`,
       ),
