@@ -3,8 +3,8 @@
 > Issue: #236
 > Audited: 2026-11-24
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
-> Verification: [Production CI #45286994401](https://github.com/ruifeng-y/novel-brain/actions/runs/45286994401) on code head `d03b3ce`
-> Result: 99 / 107 non-UI V1 capabilities verified; 8 retained as implemented with bounded gaps.
+> Verification: [Production CI #45332565381](https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381) on code head `491d059`
+> Result: 103 / 107 non-UI V1 capabilities verified; 4 retained as implemented with bounded gaps.
 
 ## 1. Audit Rule
 
@@ -27,18 +27,14 @@ The release gate now validates:
 
 | Status | Count |
 | --- | ---: |
-| Verified | 99 |
-| Blocked by a bounded gap | 8 |
+| Verified | 103 |
+| Blocked by a bounded gap | 4 |
 | Missing audit record | 0 |
 
-The ten blocked capabilities are:
+The four blocked capabilities are:
 
 | Capability | Gap | Follow-up |
 | --- | --- | --- |
-| CHANGE-004 | Branch creation from an arbitrary historical node is not proven. | #263 |
-| CHANGE-005 | The five-object comparison matrix is not proven. | #263 |
-| CHANGE-006 | Per-object accept/reject/apply across all five object types is not proven. | #263 |
-| CHANGE-007 | High-risk confirmation rejection paths are not proven. | #263 |
 | EVAL-002 | The release-level inter-rater variance threshold is not approved. | #240 |
 | EVAL-003 | The protected real DeepSeek smoke has not run for the release candidate. | #241 |
 | EVAL-004 | Canary/rollback tests pass, but release use still requires real-provider and approved quality evidence. | #241 |
@@ -74,9 +70,9 @@ Expected release result after this audit:
 
 ```text
 V1 RELEASE BLOCKED
-- capability-verification:17
-  CHANGE-004..CHANGE-007, UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
+- capability-verification:13
+  UI-001..UI-009, EVAL-002..EVAL-004, CONT-001
 ```
 
-The remaining non-UI blockers are tracked by #239, #240, #241 and #263. UI capability
+The remaining non-UI blockers are tracked by #239, #240 and #241. UI capability
 closure remains #238; final release evidence and CI remain #242.

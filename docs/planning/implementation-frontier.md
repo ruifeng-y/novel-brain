@@ -22,12 +22,12 @@
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
 - #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207. `legal` and `export-publish` have formal Linux Golden evidence, but current release status is matrix-owned: only `legal` is `parity-verified`, and #104 removed the earlier `help` verification because no real route-level error-boundary evidence exists.
 - Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142, #138, #139 and #140 are closed; #98–#103 package parents are closed with child evidence; #137/#102 are explicitly deferred from V1 and the V1 capacity claim is excluded.
-- #104 is in implementation through #236 and its child tickets: all 17 non-static production pages are currently `parity-verified`. The page-level per-action API/persistence audit is complete. PR #265 upgrades IO-001 to `verified`; #262 upgrades WORK-002 and IO-003 to `verified` with Production CI evidence. #236 now records 99 of 107 non-UI V1 capabilities as `verified`. CHANGE-004, CHANGE-005, CHANGE-006, CHANGE-007, EVAL-002, EVAL-003, EVAL-004 and CONT-001 remain open with bounded follow-ups.
+- #104 is in implementation through #236 and its child tickets: all 17 non-static production pages are currently `parity-verified`. The page-level per-action API/persistence audit is complete. PR #265 upgrades IO-001 to `verified`; #262 upgrades WORK-002 and IO-003 to `verified`; #267 upgrades CHANGE-004 through CHANGE-007 to `verified` with Production CI evidence. #236 now records 103 of 107 non-UI V1 capabilities as `verified`. EVAL-002, EVAL-003, EVAL-004 and CONT-001 remain open with bounded follow-ups.
 - PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.
 
 ## 2. Immediate frontier
 
-1. Finish #104 release closeout through #238 and the final CI/release decision. The 17-page per-action API/persistence audit and the #236 non-UI capability evidence audit are complete; #263 covers the remaining implementation/evidence gaps found by #236.
+1. Finish #104 release closeout through #238 and the final CI/release decision. The 17-page per-action API/persistence audit and the #236 non-UI capability evidence audit are complete; #263 has closed the branch object-matrix and high-risk gate evidence gap.
 2. Do not treat automated quality gates as release approval: real blind-human evidence and the approved inter-rater variance threshold remain outstanding.
 3. Run the manual `provider-smoke` workflow with the protected environment secret and attach redacted evidence before claiming real-provider validation.
 4. #137/#102 remain deferred outside V1; resuming the 10M capacity claim requires a new explicit decision and a fresh benchmark.
