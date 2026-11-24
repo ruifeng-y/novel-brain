@@ -773,8 +773,9 @@ describe("M2 change, branch, search and chunked import integration", () => {
       id: string;
       parent_node_id: string | null;
       node_type: string;
+      payload: Record<string, unknown>;
     }>(
-      `SELECT id, parent_node_id, node_type
+      `SELECT id, parent_node_id, node_type, payload
        FROM version_nodes
        WHERE work_id = $1 AND branch_id = $2
        ORDER BY created_at DESC LIMIT 2`,
@@ -785,6 +786,9 @@ describe("M2 change, branch, search and chunked import integration", () => {
     expect(factCanonNode).toMatchObject({
       node_type: "canon_commit",
       parent_node_id: mainBeforeApply.headNodeId,
+      payload: {
+        sourceChapterNumber: 1,
+      },
     });
     expect(factMergeNode).toMatchObject({
       id: factMergeApplied.versionNodeId,

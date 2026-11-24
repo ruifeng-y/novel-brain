@@ -897,10 +897,11 @@ export class ChangesRepository implements OnModuleDestroy {
         const changeKind = mergeChangeKind(sourceNode?.payload, targetNode?.payload);
         const conflict =
           Boolean(targetNode) && (changeKind === "changed" || changeKind === "removed");
+        const sourceRisk = representative.payload.risk;
         const risk =
-          conflict || changeKind === "removed"
+          conflict || changeKind === "removed" || sourceRisk === "high"
             ? "high"
-            : representative.node.nodeType === "canon_commit"
+            : sourceRisk === "medium" || representative.node.nodeType === "canon_commit"
               ? "medium"
               : "low";
         const objectType = mergeObjectType(
@@ -1643,6 +1644,8 @@ async function applyFactMergeItems(
         sourceNodeId: plan.item.sourceNodeId,
         sourceCommitId: plan.sourceCommitId,
         mergeItemId: plan.item.id,
+        sourceChapterNumber: plan.chapter.number,
+        sourceChapterTitle: plan.chapter.title,
         decisions: [decisionSnapshot],
         summary,
         cherryPick: true,
@@ -1853,7 +1856,6 @@ async function loadMergeCandidates(
         eq(facts.userId, userId),
         eq(facts.workId, workId),
         eq(facts.branchId, node.branchId),
-        eq(facts.status, "active"),
       ),
     )
     .orderBy(facts.createdAt);
@@ -1862,9 +1864,14 @@ async function loadMergeCandidates(
         .select()
         .from(factProposals)
         .where(
-          inArray(
-            factProposals.id,
-            committedFacts.map((fact) => fact.factProposalId),
+          and(
+            inArray(
+              factProposals.id,
+              committedFacts.map((fact) => fact.factProposalId),
+            ),
+            eq(factProposals.userId, userId),
+            eq(factProposals.workId, workId),
+            eq(factProposals.branchId, node.branchId),
           ),
         )
     : [];

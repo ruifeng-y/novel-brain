@@ -643,6 +643,7 @@ async function findCommit(
         eq(canonCommits.chapterId, chapterId),
       ),
     )
+    .orderBy(desc(canonCommits.createdAt), desc(canonCommits.id))
     .limit(1);
   return commit;
 }
