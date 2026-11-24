@@ -45,6 +45,7 @@ import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
+import { projectSubmittedFactsToPov } from "../canon/canon.repository";
 
 type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
 type ChangeRecord = typeof changeRequests.$inferSelect;
@@ -2044,26 +2045,42 @@ async function applyFactMergeItems(
       .where(eq(facts.id, plan.targetFact.id));
     await transaction.insert(factProposals).values(clonedProposals);
     await transaction.insert(factDecisions).values(clonedDecisions);
-    await transaction.insert(facts).values(
-      plan.sourceFacts.map((fact, index) => ({
-        id: uuidv7(),
-        workId,
-        branchId: targetBranchId,
-        userId,
-        chapterId: plan.chapter.id,
-        factProposalId: clonedProposals[index]!.id,
-        decisionId: clonedDecisions[index]!.id,
-        sourceVersionId: plan.chapter.currentVersionId!,
-        canonCommitId: commitId,
-        subject: fact.subject,
-        predicate: fact.predicate,
-        object: fact.object,
-        risk: fact.risk,
-        required: fact.required,
-        status: "active",
-        validFromChapter: plan.chapter.number,
-        createdAt: now,
-      })),
+    const [insertedFact] = await transaction
+      .insert(facts)
+      .values(
+        plan.sourceFacts.map((fact, index) => ({
+          id: uuidv7(),
+          workId,
+          branchId: targetBranchId,
+          userId,
+          chapterId: plan.chapter.id,
+          factProposalId: clonedProposals[index]!.id,
+          decisionId: clonedDecisions[index]!.id,
+          sourceVersionId: plan.chapter.currentVersionId!,
+          canonCommitId: commitId,
+          subject: fact.subject,
+          predicate: fact.predicate,
+          object: fact.object,
+          risk: fact.risk,
+          required: fact.required,
+          status: "active",
+          validFromChapter: plan.chapter.number,
+          createdAt: now,
+        })),
+      )
+      .returning();
+    if (!insertedFact) {
+      throw new Error("Failed to persist merged fact");
+    }
+    await projectSubmittedFactsToPov(
+      transaction,
+      userId,
+      workId,
+      targetBranchId,
+      plan.chapter,
+      versionNodeId,
+      [insertedFact],
+      now,
     );
     nextParentNodeId = versionNodeId;
   }
@@ -2321,10 +2338,11 @@ async function loadMergePayload(
 
   if (node.objectType === "entity" || node.objectType === "setting") {
     const name = typeof node.payload.name === "string" ? node.payload.name.trim() : "";
+    const type = typeof node.payload.type === "string" ? node.payload.type.trim() : "";
     return name
       ? {
           ...node.payload,
-          objectKey: `entity:name:${name}`,
+          objectKey: `entity:${type || "unknown"}:name:${name}`,
         }
       : node.payload;
   }

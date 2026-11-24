@@ -610,7 +610,7 @@ describe("M2 change, branch, search and chunked import integration", () => {
     ).data;
     const expectedKeys = {
       chapter: "chapter:number:1",
-      entity: `entity:name:${entityName}`,
+      entity: `entity:item:name:${entityName}`,
       ledger: `ledger:name:${ledgerTitle}`,
       outline: `outline:name:${outlineTitle}`,
     } as const;
@@ -821,6 +821,24 @@ describe("M2 change, branch, search and chunked import integration", () => {
     expect(mergedFact.rows[0]).toMatchObject({
       canon_commit_id: factCommit.rows[0]?.id,
       status: "active",
+    });
+    const povProjection = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM character_knowledge_states
+       WHERE work_id = $1 AND branch_id = $2 AND version_node_id = $3`,
+      [work.id, work.mainBranch.id, factCanonNode?.id],
+    );
+    expect(Number(povProjection.rows[0]?.count ?? 0)).toBeGreaterThan(0);
+    const canonReplay = await owner
+      .post(`${mainPath}/chapters/${mainChapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "m3-263-canon-replay")
+      .send({ chapterVersionId: mainCommit.chapterVersionId })
+      .expect(409);
+    expect(canonReplay.body.error).toMatchObject({
+      code: "CANON_IDEMPOTENCY_CONFLICT",
+      details: { commitId: mainCommit.id },
     });
     const supersededFact = await databasePool.query<{ count: string }>(
       `SELECT count(*)::text AS count
