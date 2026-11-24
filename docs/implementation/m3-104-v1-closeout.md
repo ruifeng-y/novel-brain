@@ -30,7 +30,7 @@
 - UI-001..UI-009 与总 traceability 已由 #238 完成，17 页与 UI capability 不再是发布阻塞项；
 - 真实 human blind review 记录；
 - 已批准的 inter-rater variance threshold；
-- `provider-smoke` environment 的手动真实 Provider smoke 结果；
+- `provider-smoke` environment 保护规则、secret 与成功的真实 Provider smoke 结果；最近一次手动运行因环境保护与 Key 缺失未发起网络调用；
 - 最终 #104 Production CI 的绿色运行链接。
 
 在补齐以上发布级证据之前，`#104` 保持 `OPEN`，不得宣称 V1 发布完成。

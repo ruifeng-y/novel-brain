@@ -471,7 +471,7 @@
       "status": "implemented",
       "evidence": ["provider-smoke-workflow"],
       "gap": {
-        "reason": "真实 provider smoke workflow 已实现，但受保护环境下的正式 run 和绑定提交的证据尚未执行。",
+        "reason": "真实 provider smoke workflow 已实现；最近一次批准提交上的 provider-smoke environment run 因缺少环境保护规则和 DEEPSEEK_API_KEY 在联网前失败，尚无真实 Provider 调用证据。",
         "issue": "#241"
       }
     },

@@ -1,6 +1,6 @@
 # Implementation frontier v2
 
-> Updated: 2026-11-24.
+> Updated: 2026-11-25.
 > Repository baseline: `main@6bc4fa2`, after PR #267 completed the #263 branch comparison evidence.
 
 ## 1. Current truth
@@ -29,7 +29,7 @@
 
 1. Finish #104 release closeout through #239–#242 and the final release decision. UI capability/traceability closeout is complete in #238; human blind review, the variance threshold, real-provider smoke and final Production CI remain outstanding.
 2. Do not treat automated quality gates as release approval: real blind-human evidence and the approved inter-rater variance threshold remain outstanding.
-3. Run the manual `provider-smoke` workflow with the protected environment secret and attach redacted evidence before claiming real-provider validation.
+3. Configure protection rules and `DEEPSEEK_API_KEY` in the `provider-smoke` environment, then rerun the manual workflow. The 2026-11-25 attempt at `20ecf9bd` had `protection_rules: []` and failed before network access with `DEEPSEEK_API_KEY_MISSING`; #241 remains open.
 4. #137/#102 remain deferred outside V1; resuming the 10M capacity claim requires a new explicit decision and a fresh benchmark.
 
 ## 3. First executable frontier (historical)

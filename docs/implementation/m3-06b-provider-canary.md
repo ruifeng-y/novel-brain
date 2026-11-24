@@ -2,7 +2,7 @@
 
 > Issue: #140
 > Capabilities: EVAL-003, EVAL-004
-> Status: implementation complete; release use requires the `provider-smoke` environment secret and real approved evaluation evidence.
+> Status: implementation complete; release use remains blocked because the `provider-smoke` environment has no protection rules or secret, and the latest approved-candidate run therefore made no real Provider call.
 
 ## 决策
 
@@ -22,6 +22,13 @@
 - 已返回 usage 的非 `stop` 响应会记录实际 token 成本，并标记为不可重试，避免重复计费后把成本写成零。
 - Evidence 不包含 API key、prompt 正文或生成正文，只记录正文 hash 与长度。
 - `provider-smoke.yml` 仅支持 `workflow_dispatch`，使用 `provider-smoke` environment secret；普通 PR 和 push CI 不包含真实 provider 依赖。
+
+## 当前 Gate 证据
+
+- 2026-11-25：在提交 `20ecf9bdc2874b8267c51395a26286ee03e7af8d` 上手动运行 [Provider Smoke 45469254950](https://github.com/ruifeng-y/novel-brain/actions/runs/45469254950)。
+- 配置：DeepSeek 官方 HTTPS API、`deepseek-chat`、`m1-writing-prompts-v1`、最大预算 `0.01 CNY`。
+- 结果：`failure` / `skipped` / `DEEPSEEK_API_KEY_MISSING`，`networkCalls: 0`。`provider-smoke` environment 存在，但 `protection_rules` 为空且未列出 `DEEPSEEK_API_KEY`。
+- 脱敏记录：`docs/implementation/evidence/m3-07e-01-provider-smoke-2026-11-25.json`。该结果不构成真实 Provider、canary 或模型质量成功证据；#241 保持 `OPEN`。
 
 ## Canary 与回滚
 
@@ -60,5 +67,5 @@
 
 ## 发布边界
 
-- 本分支没有使用真实 API key 发起网络调用；真实 smoke 必须在 GitHub `provider-smoke` environment 中手动触发。
+- 最新手动尝试因 `provider-smoke` environment 缺少保护规则和 `DEEPSEEK_API_KEY` 而没有发起网络调用；真实 smoke 必须在补齐两者后重新手动触发。
 - #137 的 10M 容量证据和 #104 的 V1 UI 全量签收仍独立。
