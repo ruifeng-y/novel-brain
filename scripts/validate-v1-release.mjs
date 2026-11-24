@@ -2,7 +2,11 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 
 import { runCli } from "./cli-entry.mjs";
-import { validateNonUiCapabilityEvidence } from "./v1-capability-evidence.mjs";
+import {
+  CURRENT_HEAD_CI_WORKFLOWS,
+  validateNonUiCapabilityEvidence,
+  validateUiCapabilityEvidence,
+} from "./v1-capability-evidence.mjs";
 import {
   GOLDEN_VIEWPORTS,
   PRODUCTION_PAGE_IDS,
@@ -334,6 +338,18 @@ function validateActionEvidence(
   if (actionContract?.schemaVersion !== 1) {
     blockers.push("action-contract:schema-invalid");
   }
+  const capabilityAudit = actionEvidence?.capabilityAudit;
+  if (
+    !capabilityAudit ||
+    capabilityAudit.issue !== "#238" ||
+    capabilityAudit.status !== "verified" ||
+    !capabilityAudit.verifiedAt?.trim() ||
+    normalizeRepositoryPath(capabilityAudit.path) !==
+      "docs/implementation/m3-238-ui-capability-evidence.json" ||
+    !evidenceExists(normalizeRepositoryPath(capabilityAudit.path))
+  ) {
+    blockers.push("action-evidence:capability-audit-missing");
+  }
   const records = actionEvidence?.pages;
   const contractPages = actionContract?.pages;
   const staticPages = new Set(STATIC_PRODUCTION_PAGE_IDS);
@@ -409,6 +425,7 @@ export function evaluateV1Release({
   evidence,
   traceability,
   capabilityEvidence = { schemaVersion: 1, evidence: {}, capabilities: {} },
+  uiCapabilityEvidence = { schemaVersion: 1, evidence: {}, capabilities: {} },
   uiMatrix,
   deferrals,
   deviationApprovals,
@@ -417,6 +434,7 @@ export function evaluateV1Release({
   evidenceExists = () => false,
   githubRunIsSuccessful = () => false,
   auditCiRunIsValid = () => false,
+  currentHeadCiIsSuccessful = () => false,
   gapIssueIsValid = () => false,
   fileContains = () => false,
   goldenIsValid = () => false,
@@ -438,6 +456,15 @@ export function evaluateV1Release({
       githubRunIsSuccessful,
       auditCiRunIsValid,
       gapIssueIsValid,
+    }),
+    ...validateUiCapabilityEvidence(traceability, uiCapabilityEvidence, {
+      evidenceExists,
+      githubRunIsSuccessful,
+      auditCiRunIsValid,
+      gapIssueIsValid,
+      fileContains,
+      expectedCommit,
+      currentHeadCiIsSuccessful,
     }),
     ...validateUiMatrix(uiMatrix, { goldenIsValid }),
     ...validateDeviationApprovals(uiMatrix, deviationApprovals, {
@@ -550,6 +577,39 @@ function isAuditCiRun(reference, expectedHeadSha) {
   }
 }
 
+export function hasRequiredCurrentHeadCiEvidence(
+  runs,
+  expectedHeadSha,
+  workflows = CURRENT_HEAD_CI_WORKFLOWS,
+) {
+  if (!expectedHeadSha || !Array.isArray(runs)) return false;
+  const successfulPullRequestRuns = new Set(
+    runs
+      .filter(
+        (run) =>
+          run?.headSha === expectedHeadSha &&
+          run?.event === "pull_request" &&
+          run?.status === "completed" &&
+          run?.conclusion === "success",
+      )
+      .map((run) => run.path),
+  );
+  return workflows.every((workflow) => successfulPullRequestRuns.has(workflow));
+}
+
+function isCurrentHeadCiSuccessful(workflows, expectedHeadSha) {
+  if (!expectedHeadSha) return false;
+  try {
+    const runs = queryGithubApi(
+      `repos/${EXPECTED_GITHUB_REPOSITORY}/actions/runs?head_sha=${expectedHeadSha}&per_page=100`,
+      "{workflow_runs: [.workflow_runs[] | {status: .status, conclusion: .conclusion, headSha: .head_sha, path: .path, event: .event}]}",
+    );
+    return hasRequiredCurrentHeadCiEvidence(runs.workflow_runs, expectedHeadSha, workflows);
+  } catch {
+    return false;
+  }
+}
+
 function queryGithubApi(path, jq) {
   const output = execFileSync("gh", ["api", path, "--jq", jq], {
     encoding: "utf8",
@@ -569,6 +629,9 @@ function main() {
     capabilityEvidence: JSON.parse(
       readFileSync("docs/implementation/m3-236-non-ui-capability-evidence.json", "utf8"),
     ),
+    uiCapabilityEvidence: JSON.parse(
+      readFileSync("docs/implementation/m3-238-ui-capability-evidence.json", "utf8"),
+    ),
     uiMatrix: readFileSync("docs/ui/v1-ui-parity-matrix.md", "utf8"),
     deferrals: JSON.parse(readFileSync("docs/planning/v1-deferrals.json", "utf8")),
     deviationApprovals: JSON.parse(readFileSync("docs/ui/v1-ui-deviations.json", "utf8")),
@@ -577,6 +640,7 @@ function main() {
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
     auditCiRunIsValid: isAuditCiRun,
+    currentHeadCiIsSuccessful: isCurrentHeadCiSuccessful,
     gapIssueIsValid: isOpenReadyGithubIssue,
     fileContains,
     goldenIsValid,

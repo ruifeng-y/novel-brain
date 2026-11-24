@@ -1,6 +1,6 @@
 # V1 UI Parity Matrix
 
-> Status: V1 release closeout ledger, updated 2026-11-18.
+> Status: V1 release closeout ledger, updated 2026-11-24.
 > Authority: docs/ui/prototype-contract.md and docs/ui/v1-prototype-signoff.md.
 > The signed-off prototype baseline comprises **18 prototype pages**: 17 production page contracts + one prototype-only state gallery. The nine M0 production pages have committed golden screenshots and author sign-off. The eight M1 acceptance pages have current formal Golden, required-state and leakage-scan evidence from #172, #174, #176 and #177.
 
@@ -112,6 +112,8 @@ In the columns below, the prototype screenshot path and production test/golden p
 > 2026-11-21：#234 完成 entity-detail 的 7 个必需动作证据，覆盖人物编辑、关系、带章节有效期的角色认知、正文/章纲/POV/伏笔/故事圣经/事实反向引用、提案、锁定和版本历史。来源引用接口使用游标分页并由页面动作触发；角色认知写入支持幂等重放；原始状态键不再进入作者界面。现有四档 Golden 在该文本修正下仍满足正式比较容差，无需更新。最终正常 PR Production CI [44892673559](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673559)、Prototype Parity [44892673586](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673586) 与 Deployment Smoke [44892673403](https://github.com/ruifeng-y/novel-brain/actions/runs/44892673403) 通过，页面提升为 `parity-verified`。
 >
 > 2026-11-21：#235 完成 account-settings 的 13 个必需动作证据，覆盖模型配置创建/测试/编辑/删除、资料、笔名、单设备/全部设备退出、账号导出、注销与恢复。模型配置、资料、笔名、会话、导出凭证、删除状态和恢复后账号状态均通过真实 API GET 回读；第二设备由真实登录 API 创建，导出包在存在 dummy Key 的账号上验证秘密字段排除；笔名创建支持幂等重放及软删除后重放。现有四档 Golden 无需更新。最终正常 PR Production CI [44899778462](https://github.com/ruifeng-y/novel-brain/actions/runs/44899778462) 与 Deployment Smoke [44899778435](https://github.com/ruifeng-y/novel-brain/actions/runs/44899778435) 通过，页面提升为 `parity-verified`。
+>
+> 2026-11-24：#238 完成 UI-001..UI-009 与总 traceability 收口。17 个生产页均有 `parity-verified` 行、四档 production Golden 和 owner Playwright spec；15 个非静态页面的 action contract/evidence 均无 pending。机器账本为 `docs/implementation/m3-238-ui-capability-evidence.json`，release gate 会查询当前 HEAD 的完整成功 Production CI，最终运行和 head 记录在 PR 证据中。该记录不替代 #104 的人工质量、真实 Provider smoke 和最终发布 CI 决定。
 >
 > 2026-11-18：#142 完成 `work-settings` 的作品设置、复制、归档恢复、回收站、封面上传与定时清理；作者确认四档生产布局。390px actual 来自 [Production CI #44124021122](https://github.com/ruifeng-y/novel-brain/actions/runs/44124021122)，其余 `work-settings` Linux/Chromium Golden 由 [Production CI #44138638764](https://github.com/ruifeng-y/novel-brain/actions/runs/44138638764) 的受控 `update_golden` 运行生成。当前 release status 以页面表为准；逐动作证据和最终正常 PR CI 通过前保持 `production-built`。
 >

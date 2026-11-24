@@ -20,9 +20,18 @@ export const EXECUTABLE_EVIDENCE_KINDS = new Set(
 );
 const CAPABILITY_STATUSES = new Set(["verified", "implemented"]);
 const GAP_ISSUE = /^#\d+$/u;
+export const CURRENT_HEAD_CI_WORKFLOWS = [
+  ".github/workflows/ci.yml",
+  ".github/workflows/deployment-smoke.yml",
+  ".github/workflows/readiness-validation.yml",
+];
 
 function isNonUiV1Capability(row) {
   return row.scope === "V1" && !row.id.startsWith("UI-");
+}
+
+function isUiV1Capability(row) {
+  return row.scope === "V1" && row.id.startsWith("UI-");
 }
 
 function validateEvidenceReferences(
@@ -32,10 +41,11 @@ function validateEvidenceReferences(
   { evidenceExists, githubRunIsSuccessful },
   blockers,
 ) {
+  const executablePaths = [];
   const references = Array.isArray(record.evidence) ? record.evidence : [];
   if (references.length === 0) {
     blockers.push(`capability-audit:evidence-empty:${id}`);
-    return;
+    return executablePaths;
   }
   let executable = false;
   for (const key of references) {
@@ -63,6 +73,7 @@ function validateEvidenceReferences(
       blockers.push(`capability-audit:evidence-missing:${id}:${key}`);
       continue;
     }
+    if (descriptor.executable) executablePaths.push(path);
     if (!descriptor.pathPattern.test(path)) {
       blockers.push(`capability-audit:evidence-kind-path-mismatch:${id}:${key}`);
     }
@@ -70,6 +81,7 @@ function validateEvidenceReferences(
   if (!executable) {
     blockers.push(`capability-audit:non-executable:${id}`);
   }
+  return executablePaths;
 }
 
 function validateVerification(verification, auditCiRunIsValid, blockers) {
@@ -92,14 +104,48 @@ function validateVerification(verification, auditCiRunIsValid, blockers) {
   }
 }
 
-export function validateNonUiCapabilityEvidence(
+function validateCurrentHeadVerification(
+  verification,
+  { expectedCommit, currentHeadCiIsSuccessful },
+  blockers,
+) {
+  if (!verification || typeof verification !== "object" || Array.isArray(verification)) {
+    blockers.push("capability-audit:verification-missing");
+    return;
+  }
+  if (
+    verification.kind !== "github-actions-current-head" ||
+    verification.status !== "required" ||
+    !Array.isArray(verification.workflows) ||
+    verification.workflows.length !== CURRENT_HEAD_CI_WORKFLOWS.length ||
+    !CURRENT_HEAD_CI_WORKFLOWS.every((workflow) => verification.workflows.includes(workflow)) ||
+    !/^[0-9a-f]{40}$/u.test(expectedCommit ?? "")
+  ) {
+    blockers.push("capability-audit:verification-invalid");
+  }
+  if (!expectedCommit) {
+    blockers.push("capability-audit:verification-head-missing");
+    return;
+  }
+  if (!currentHeadCiIsSuccessful(verification.workflows, expectedCommit)) {
+    blockers.push("capability-audit:verification-evidence-missing");
+  }
+}
+
+function validateCapabilityEvidence(
   traceability,
   audit,
+  isExpectedCapability,
   {
     evidenceExists = () => false,
     githubRunIsSuccessful = () => false,
     auditCiRunIsValid = () => false,
     gapIssueIsValid = () => false,
+    fileContains = () => false,
+    requireTestMarkers = false,
+    verificationMode = "recorded",
+    expectedCommit,
+    currentHeadCiIsSuccessful = () => false,
   } = {},
 ) {
   const blockers = [];
@@ -107,7 +153,7 @@ export function validateNonUiCapabilityEvidence(
     blockers.push("capability-audit:schema-invalid");
   }
 
-  const traceRows = parseTraceabilityRows(traceability).filter(isNonUiV1Capability);
+  const traceRows = parseTraceabilityRows(traceability).filter(isExpectedCapability);
   const expectedIds = new Set(traceRows.map((row) => row.id));
   const capabilities = audit?.capabilities;
   const evidence = audit?.evidence;
@@ -118,7 +164,15 @@ export function validateNonUiCapabilityEvidence(
     blockers.push("capability-audit:evidence-missing");
   }
   if (Object.values(capabilities).some((record) => record?.status === "verified")) {
-    validateVerification(audit.verification, auditCiRunIsValid, blockers);
+    if (verificationMode === "current-head") {
+      validateCurrentHeadVerification(
+        audit.verification,
+        { expectedCommit, currentHeadCiIsSuccessful },
+        blockers,
+      );
+    } else {
+      validateVerification(audit.verification, auditCiRunIsValid, blockers);
+    }
   }
 
   for (const id of Object.keys(capabilities)) {
@@ -142,7 +196,7 @@ export function validateNonUiCapabilityEvidence(
       blockers.push(`capability-audit:trace-mismatch:${row.id}`);
     }
 
-    validateEvidenceReferences(
+    const executablePaths = validateEvidenceReferences(
       row.id,
       record,
       evidence,
@@ -151,6 +205,19 @@ export function validateNonUiCapabilityEvidence(
     );
 
     if (record.status === "verified") {
+      if (requireTestMarkers) {
+        const tests = Array.isArray(record.tests)
+          ? record.tests.filter((test) => typeof test === "string" && test.trim())
+          : [];
+        if (tests.length === 0) {
+          blockers.push(`capability-audit:test-marker-missing:${row.id}`);
+        }
+        for (const test of tests) {
+          if (!executablePaths.some((path) => fileContains(path, test))) {
+            blockers.push(`capability-audit:test-missing:${row.id}:${test}`);
+          }
+        }
+      }
       continue;
     }
 
@@ -166,4 +233,16 @@ export function validateNonUiCapabilityEvidence(
   }
 
   return blockers;
+}
+
+export function validateNonUiCapabilityEvidence(traceability, audit, options = {}) {
+  return validateCapabilityEvidence(traceability, audit, isNonUiV1Capability, options);
+}
+
+export function validateUiCapabilityEvidence(traceability, audit, options = {}) {
+  return validateCapabilityEvidence(traceability, audit, isUiV1Capability, {
+    ...options,
+    requireTestMarkers: true,
+    verificationMode: "current-head",
+  });
 }

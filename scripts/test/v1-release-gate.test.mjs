@@ -54,6 +54,12 @@ const actionPages = PRODUCTION_PAGE_IDS.filter(
 
 const passingActionEvidence = () => ({
   schemaVersion: 1,
+  capabilityAudit: {
+    issue: "#238",
+    path: "docs/implementation/m3-238-ui-capability-evidence.json",
+    status: "verified",
+    verifiedAt: "2026-11-24",
+  },
   pages: Object.fromEntries(
     actionPages.map((page) => [
       page,
@@ -100,10 +106,37 @@ const passingDeferrals = () => ({
   ],
 });
 
+const passingUiCapabilityEvidence = () => ({
+  schemaVersion: 1,
+  verification: {
+    kind: "github-actions-current-head",
+    status: "required",
+    workflows: [
+      ".github/workflows/ci.yml",
+      ".github/workflows/deployment-smoke.yml",
+      ".github/workflows/readiness-validation.yml",
+    ],
+  },
+  evidence: {
+    auth: {
+      kind: "e2e",
+      path: "apps/web/e2e/parity/auth.spec.ts",
+    },
+  },
+  capabilities: {
+    "UI-001": {
+      status: "verified",
+      evidence: ["auth"],
+      tests: ["primary UI capability test"],
+    },
+  },
+});
+
 const evaluate = (overrides = {}) =>
   evaluateV1Release({
     evidence: passingEvidence(),
     traceability: verifiedTraceability,
+    uiCapabilityEvidence: passingUiCapabilityEvidence(),
     uiMatrix,
     deferrals: passingDeferrals(),
     actionContract: passingActionContract(),
@@ -111,9 +144,11 @@ const evaluate = (overrides = {}) =>
     deviationApprovals: passingDeviationApprovals(),
     evidenceExists: () => true,
     githubRunIsSuccessful: () => true,
+    auditCiRunIsValid: () => true,
+    currentHeadCiIsSuccessful: () => true,
     fileContains: () => true,
     goldenIsValid: () => true,
-    expectedCommit: "abc123",
+    expectedCommit: "a".repeat(40),
     ...overrides,
   });
 
@@ -368,6 +403,18 @@ describe("V1 release gate", () => {
     expect(result.blockers).toContain("capability-audit:missing:IO-001");
   });
 
+  it("propagates UI capability audit blockers through the release gate", () => {
+    const result = evaluate({
+      uiCapabilityEvidence: {
+        schemaVersion: 1,
+        evidence: {},
+        capabilities: {},
+      },
+    });
+
+    expect(result.blockers).toContain("capability-audit:missing:UI-001");
+  });
+
   it("requires action evidence to cover the declared required action IDs", () => {
     const actionContract = passingActionContract();
     actionContract.pages.auth.push("secondary");
@@ -382,6 +429,24 @@ describe("V1 release gate", () => {
     const result = evaluate({ actionEvidence });
 
     expect(result.blockers).toContain("action-evidence:incomplete:auth");
+  });
+
+  it("binds action evidence to the UI capability audit", () => {
+    const actionEvidence = passingActionEvidence();
+    delete actionEvidence.capabilityAudit;
+
+    const result = evaluate({ actionEvidence });
+
+    expect(result.blockers).toContain("action-evidence:capability-audit-missing");
+  });
+
+  it("rejects a UI capability audit path that drifts from #238", () => {
+    const actionEvidence = passingActionEvidence();
+    actionEvidence.capabilityAudit.path = "docs/implementation/other-audit.json";
+
+    const result = evaluate({ actionEvidence });
+
+    expect(result.blockers).toContain("action-evidence:capability-audit-missing");
   });
 
   it("validates four real Golden images for every release-approved page", () => {
