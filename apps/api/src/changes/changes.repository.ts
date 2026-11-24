@@ -1709,6 +1709,7 @@ async function applyFactMergeItems(
   const plans: Array<{
     item: MergeItemRecord;
     chapter: typeof chapters.$inferSelect;
+    targetFact: typeof facts.$inferSelect;
     sourceFacts: Array<typeof facts.$inferSelect>;
     proposals: Array<typeof factProposals.$inferSelect>;
     decisions: Array<typeof factDecisions.$inferSelect>;
@@ -1782,6 +1783,62 @@ async function applyFactMergeItems(
     if ((pendingRequiredFacts?.count ?? 0) > 0) {
       return "canon_gate_required";
     }
+    const [targetCommit] = await transaction
+      .select()
+      .from(canonCommits)
+      .where(
+        and(
+          eq(canonCommits.versionNodeId, targetNode.id),
+          eq(canonCommits.userId, userId),
+          eq(canonCommits.workId, workId),
+          eq(canonCommits.branchId, targetBranchId),
+        ),
+      )
+      .limit(1);
+    if (!targetCommit) {
+      return "target_not_found";
+    }
+    const targetFacts = await transaction
+      .select()
+      .from(facts)
+      .where(
+        and(
+          eq(facts.canonCommitId, targetCommit.id),
+          eq(facts.userId, userId),
+          eq(facts.workId, workId),
+          eq(facts.branchId, targetBranchId),
+          eq(facts.subject, stringValue(item.targetPayload, "subject", "")),
+          eq(facts.predicate, stringValue(item.targetPayload, "predicate", "")),
+        ),
+      );
+    const targetProposals = targetFacts.length
+      ? await transaction
+          .select()
+          .from(factProposals)
+          .where(
+            and(
+              inArray(
+                factProposals.id,
+                targetFacts.map((fact) => fact.factProposalId),
+              ),
+              eq(factProposals.userId, userId),
+              eq(factProposals.workId, workId),
+              eq(factProposals.branchId, targetBranchId),
+            ),
+          )
+      : [];
+    const targetProposalById = new Map(
+      targetProposals.map((proposal) => [proposal.id, proposal] as const),
+    );
+    const targetFact = targetFacts.find(
+      (fact) =>
+        fact.object === stringValue(item.targetPayload, "object", "") &&
+        targetProposalById.get(fact.factProposalId)?.sourceSentence ===
+          stringValue(item.targetPayload, "sourceSentence", ""),
+    );
+    if (!targetFact) {
+      return "target_not_found";
+    }
     const sourceFacts = await transaction
       .select()
       .from(facts)
@@ -1852,6 +1909,7 @@ async function applyFactMergeItems(
     plans.push({
       item,
       chapter,
+      targetFact,
       sourceFacts: [sourceFact],
       proposals: [proposal],
       decisions: [decision],
@@ -1983,17 +2041,7 @@ async function applyFactMergeItems(
     await transaction
       .update(facts)
       .set({ status: "superseded" })
-      .where(
-        and(
-          eq(facts.userId, userId),
-          eq(facts.workId, workId),
-          eq(facts.branchId, targetBranchId),
-          eq(facts.chapterId, plan.chapter.id),
-          eq(facts.subject, sourceFact.subject),
-          eq(facts.predicate, sourceFact.predicate),
-          eq(facts.status, "active"),
-        ),
-      );
+      .where(eq(facts.id, plan.targetFact.id));
     await transaction.insert(factProposals).values(clonedProposals);
     await transaction.insert(factDecisions).values(clonedDecisions);
     await transaction.insert(facts).values(
@@ -2171,6 +2219,7 @@ async function loadMergeCandidates(
       ),
     )
     .orderBy(facts.createdAt);
+  committedFacts.sort((left, right) => left.factProposalId.localeCompare(right.factProposalId));
   const proposals = committedFacts.length
     ? await transaction
         .select()

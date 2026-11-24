@@ -829,6 +829,13 @@ describe("M2 change, branch, search and chunked import integration", () => {
       [work.id, work.mainBranch.id, mainFactObject],
     );
     expect(supersededFact.rows[0]?.count).toBe("1");
+    const untouchedFact = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM facts
+       WHERE work_id = $1 AND branch_id = $2 AND object = $3 AND status = 'active'`,
+      [work.id, work.mainBranch.id, mainCommit.facts[1]?.object],
+    );
+    expect(untouchedFact.rows[0]?.count).toBe("1");
 
     const factMergeBeforeRollback = await databasePool.query<{
       id: string;
