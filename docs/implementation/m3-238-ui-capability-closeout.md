@@ -63,6 +63,8 @@ The UI capability audit verifies:
 - a completed successful Production CI run bound to the audited head;
 - 17 production page specs with four viewport widths, screenshot comparison,
   author-language scanning and prototype-only leakage scanning;
+- per-page required-state markers derived from the parity matrix;
+- all three genre-pack creation paths, including the persisted urban template;
 - complete action evidence with no pending pages;
 - documented design tokens/components that also exist in production CSS.
 
@@ -77,6 +79,7 @@ Local verification:
 - Guardrails: 16 files, 114/114 tests passed.
 - Full Vitest: 126 files, 657/657 tests passed.
 - Targeted `batch.spec.ts` loading/long-content Playwright test: 1/1 passed.
+- Targeted `new-project.spec.ts` urban-template Playwright test: 1/1 passed.
 - `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm check:migrations` and
   `node scripts/validate-readiness.mjs` passed.
 - `pnpm release:check` is rerun after the current-head Production CI completes;

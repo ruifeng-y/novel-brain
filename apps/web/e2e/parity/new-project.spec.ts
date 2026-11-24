@@ -175,6 +175,25 @@ test("creates a history template work with military pack hints", async ({ page, 
   await expect(page.getByText("架空历史模板 · 架空古代", { exact: true })).toBeVisible();
 });
 
+test("creates an urban template work and persists its genre pack", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  await page.getByRole("button", { name: "题材模板", exact: true }).click();
+  await page.getByLabel("书名").fill("霓虹旧案");
+  await page.getByLabel("题材模板").selectOption("urban");
+  await expect(
+    page.locator(".creation-preview").getByText("都市模板", { exact: false }),
+  ).toBeVisible();
+  const createResponse = waitForApiResponse(page, "POST", "/api/v1/works");
+  await page.getByRole("button", { name: "创建作品并进入总览" }).click();
+  const createdWork = workResponseSchema.parse(await (await createResponse).json()).data;
+
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  await expect(page.getByRole("heading", { name: "霓虹旧案" })).toBeVisible();
+  const persistedWork = await getPersistedWork(page, createdWork.id);
+  expect(persistedWork.genre).toBe("urban");
+  expect(persistedWork.templatePack?.key).toBe("urban");
+});
+
 test("shows loading, disabled, error and long-content states", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const longTitle = "一部标题很长很长但仍然需要在创建预览里完整换行且不能撑破页面的仙侠作品";

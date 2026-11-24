@@ -20,7 +20,7 @@ export const EXECUTABLE_EVIDENCE_KINDS = new Set(
 );
 const CAPABILITY_STATUSES = new Set(["verified", "implemented"]);
 const GAP_ISSUE = /^#\d+$/u;
-const CURRENT_HEAD_CI_WORKFLOWS = [
+export const CURRENT_HEAD_CI_WORKFLOWS = [
   ".github/workflows/ci.yml",
   ".github/workflows/deployment-smoke.yml",
   ".github/workflows/readiness-validation.yml",

@@ -2,7 +2,7 @@
 
 > Issue: #104
 > Capabilities: UI-001, UI-002, UI-003, UI-004, UI-005, UI-006, UI-007, UI-008, UI-009
-> Status: integration implementation in progress; release sign-off is blocked by remaining UI, capability, action-persistence, human-quality, provider-smoke and final-CI evidence.
+> Status: integration implementation complete; V1 release sign-off remains blocked by human quality, real Provider smoke, final CI and the four bounded non-UI capability gaps.
 
 ## 实现结果
 

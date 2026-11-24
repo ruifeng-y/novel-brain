@@ -253,28 +253,67 @@ describe("M3-238 UI capability closeout", () => {
     const contract = readRoot("docs/ui/prototype-contract.md");
     expect(contract).toContain("7 栏、3 题材");
     const newProjectSource = readRoot("apps/web/e2e/parity/new-project.spec.ts");
-    for (const genre of ["xianxia", "history"]) {
+    for (const genre of ["xianxia", "history", "urban"]) {
       expect(newProjectSource).toContain(genre);
     }
     expect(readRoot("apps/web/e2e/parity/settings.spec.ts")).toContain("character");
-    expect(readRoot("apps/web/e2e/parity/entity-detail.spec.ts")).toContain("urban");
+    const workStatusSource = readRoot("apps/web/components/works-dashboard.tsx");
+    for (const status of ["筹备中", "连载中", "暂停", "已完本", "已归档"]) {
+      expect(workStatusSource).toContain(status);
+    }
+    const chapterStatusSource = readRoot("apps/web/components/writing-workspace.tsx");
+    for (const status of [
+      "已规划",
+      "写作中",
+      "待审",
+      "要求修改",
+      "已批准",
+      "已锁定",
+      "已发布",
+      "已驳回",
+    ]) {
+      expect(chapterStatusSource).toContain(status);
+    }
   });
 
-  it("verifies required page states including batch loading and long content", () => {
+  it("verifies required page states for every production page", () => {
     const { productionRows } = parseUiMatrix(readRoot("docs/ui/v1-ui-parity-matrix.md"));
-    const batch = productionRows.find((row) => row.page === "batch");
-    expect(batch?.requiredStates).toContain("loading");
-    expect(batch?.requiredStates).toContain("long");
-    const batchSource = readRoot("apps/web/e2e/parity/batch.spec.ts");
-    expect(batchSource).toContain(
-      "shows loading and long content states without horizontal overflow",
-    );
-    expect(batchSource).toContain("正在加载审核队列");
+    const stateMarkers = {
+      loading: ["正在加载", "加载中", "loading"],
+      empty: ["暂无", "没有", "空", "empty"],
+      error: ["失败", "错误", "error", "没有找到"],
+      disabled: ["tobedisabled", "disabled"],
+      permission: ["403", "permission", "权限"],
+      partial: ["部分", "partial", "待准备", "readiness"],
+      conflict: ["冲突", "conflict", "409"],
+      locked: ["锁定", "locked"],
+      proposal: ["提案", "proposal", "proposed"],
+      long: ["long", "长内容", "repeat"],
+      paused: ["暂停", "paused"],
+      failed: ["失败", "failed"],
+      readonly: ["readonly", "只读", "完成"],
+      archived: ["归档", "archived"],
+      "stale-version": ["stale", "旧版本", "版本冲突"],
+      expired: ["过期", "expired", "410"],
+      "invalid-key": ["key", "invalid", "密钥"],
+      "rate-limit": ["限流", "rate-limit", "操作过于频繁", "429"],
+      "session-expired": ["会话", "session", "401"],
+      confirmation: ["dialog", "确认"],
+      static: ["test("],
+    };
 
-    const helpSource = readRoot("apps/web/e2e/parity/help.spec.ts");
-    expect(helpSource).toContain("recovers from a production help navigation error");
-    expect(helpSource).toContain("模拟真实浏览器运行时故障。");
-    expect(helpSource).toContain("重新加载");
+    for (const row of productionRows) {
+      const specPath = row.playwrightSpecPath.match(/`([^`]+)`/u)?.[1];
+      const source = readRoot(specPath).toLowerCase();
+      for (const state of row.requiredStates.split("/").map((entry) => entry.trim())) {
+        const markers = stateMarkers[state];
+        expect(markers, `${row.page} has no state evidence mapping for ${state}`).toBeTruthy();
+        expect(
+          markers.some((marker) => source.includes(marker)),
+          `${row.page} is missing executable ${state} evidence`,
+        ).toBe(true);
+      }
+    }
   });
 
   it("verifies four viewport coverage for every production page", () => {

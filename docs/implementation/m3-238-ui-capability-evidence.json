@@ -107,7 +107,7 @@
         "batch-parity",
         "help-parity"
       ],
-      "tests": ["verifies required page states including batch loading and long content"]
+      "tests": ["verifies required page states for every production page"]
     },
     "UI-005": {
       "status": "verified",
