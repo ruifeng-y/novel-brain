@@ -267,6 +267,10 @@
     "continuity-evaluator": {
       "kind": "unit",
       "path": "packages/continuity-benchmark/test/evaluator.test.ts"
+    },
+    "human-blind-review": {
+      "kind": "manual_signoff",
+      "path": "docs/quality/evidence/m3-239/validation.json"
     }
   },
   "capabilities": {
@@ -489,10 +493,10 @@
     },
     "CONT-001": {
       "status": "implemented",
-      "evidence": ["continuity-evaluator"],
+      "evidence": ["continuity-evaluator", "human-blind-review"],
       "gap": {
-        "reason": "确定性与最大规模 fixture/evaluator 已通过，但真实人工盲评证据和已批准阈值仍缺失。",
-        "issue": "#239"
+        "reason": "人工原始评分已记录，但 24 个样本文本暴露缺陷元信息且仍待裁决；hook/prose 为 1.882353，低于 4/5，需要质量补救。",
+        "issue": "#273"
       }
     }
   }

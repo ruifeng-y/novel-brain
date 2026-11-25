@@ -1,7 +1,7 @@
 # V1 固定质量基准 Registry 与回归门禁
 
 > Owner: M3 #103 / #139
-> Status: implementation baseline; release claims require real human evidence and approved variance threshold.
+> Status: #239 raw-score capture is `complete-with-warnings`; clean blind review, quality claims and threshold approval remain blocked by oracle content, pending adjudication, the observed hook/prose score and the unapproved variance threshold.
 
 ## Dataset
 
@@ -52,4 +52,14 @@ The rubric intentionally contains `reviewPolicy: null`; an inter-rater variance 
 
 ## Release boundary
 
-File-backed registry and CLI evidence prove benchmark implementation and gate mechanics. They do not prove that actual human blind review occurred. Real review records and the approved inter-rater variance threshold remain mandatory before a V1 release claim.
+File-backed registry and CLI evidence prove benchmark implementation and gate mechanics. Issue #239 records two signed reviewer attestations, 816 raw `human_blind` scores, the evaluator gate hash and the actual reviewer-packet file/canonical hashes under `docs/quality/evidence/m3-239/` as `complete-with-warnings`.
+
+The recorded result does not pass the V1 quality gate:
+
+- `outline_adherence = 1.000000`, meeting the `>= 0.9` threshold.
+- `hook_prose_score = 1.882353`, below the `>= 4` threshold.
+- The observed max inter-rater variance is `0`, but no threshold is approved. #240 must make that separate decision.
+- Both reviewers flagged the same 24 long-horizon cases for adjudication because the frozen text contains defect metadata rather than narrative prose. The raw-score evidence is complete, but clean blind review and adjudication are not.
+- The packet schema excludes oracle fields, but the same 24 sample texts expose continuity-conflict metadata. A future clean blind review must remove that leakage or record an explicit product-owner resolution.
+
+The V1 quality claim remains blocked until oracle content and adjudication are resolved, the quality failure is addressed and the inter-rater variance threshold is approved. This review does not change the frozen rubric.

@@ -49,9 +49,10 @@ commit `6bc4fa2a83172ae3ece9d75065462d973397333f`.
 - The release gate now reports UI capability and parity evidence as passing.
 - V1 traceability records 113 of 116 V1 capabilities as `verified`; EVAL-002,
   EVAL-004 and CONT-001 retain bounded evidence gaps.
-- The remaining release blockers are human blind review, the approved
-  inter-rater variance threshold, smoke model alias alignment (#271) and the
-  final #104 Production CI. #238 does not close #104.
+- The remaining release blockers are pending human adjudication/oracle content,
+  the failed human prose-quality threshold, the approved inter-rater variance
+  threshold, smoke model alias alignment (#271), quality remediation (#273) and the final #104 Production
+  CI. #238 does not close #104.
 
 ## 4. Verification
 
@@ -86,18 +87,19 @@ Local verification:
   `node scripts/validate-readiness.mjs` passed.
 - `pnpm release:check` is rerun after the current-head Production CI completes;
   it must remove UI capability blockers and leave only blocked release status,
-  final Production CI, human blind review and the three bounded non-UI
-  capability gaps.
+  final Production CI, the recorded quality failure and the three bounded
+  non-UI capability gaps.
 
 ## 5. Boundary
 
 This ticket does not claim that every V1 capability is already `verified` or
-  authorized-deferred. EVAL-002, EVAL-004 and CONT-001 remain explicit,
-  bounded release blockers owned by #239, #240 and #271; they are not TBD or silent
-deferrals, and #104 remains open until those release gates close.
+authorized-deferred. EVAL-002, EVAL-004 and CONT-001 remain explicit, bounded
+release blockers. #239 records the human review, #240 owns the variance decision,
+#271 owns the smoke model alias gap, and #104 remains open until those release
+gates close.
 
 This report does not record or substitute for:
 
-- human blind-review scores (#239);
+- the recorded human blind-review scores in `docs/quality/evidence/m3-239/` (#239);
 - the approved inter-rater variance threshold (#240);
 - the final V1 release decision and final Production CI (#242/#104).

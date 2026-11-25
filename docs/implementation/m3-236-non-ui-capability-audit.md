@@ -37,7 +37,7 @@ The three blocked capabilities are:
 | --- | --- | --- |
 | EVAL-002 | The release-level inter-rater variance threshold is not approved. | #240 |
 | EVAL-004 | Smoke response model `deepseek-flash` does not match the canary policy request model `deepseek-chat`. | #271 |
-| CONT-001 | Deterministic continuity evaluation passes, but real human blind review is absent. | #239 |
+| CONT-001 | Deterministic continuity evaluation passes and #239 records human raw scores, but 24 sample texts expose defect metadata and await adjudication; `hook_prose_score = 1.882353 < 4` and the variance threshold remains unapproved. | #273 |
 
 `PERF-001`, `AGENT-007` and `QUALITY-009` remain authorized post-V1 deferrals and are not
 part of this audit.
@@ -53,7 +53,8 @@ part of this audit.
 - Security, backup and operations: tenant RLS inventory, redaction, backup drill and
   deployment/observability guardrails.
 - Quality and continuity: frozen benchmark registries, deterministic evaluators and
-  release-gate rejection tests.
+  release-gate rejection tests, plus the signed human review in
+  `docs/quality/evidence/m3-239/`.
 
 The exact path for every capability and evidence item is in the machine-readable ledger.
 
@@ -80,5 +81,6 @@ V1 RELEASE BLOCKED
 The final audit blocker is expected until the current PR has an exact-head
 Production CI run; #242 records the final release CI.
 
-The remaining non-UI blockers are tracked by #239, #240 and #271. UI capability
+The remaining non-UI blockers are tracked by #240, #271 and #273 plus the failed quality claim
+under #104. UI capability
 closure was completed by #238; final release evidence and CI remain #242.
