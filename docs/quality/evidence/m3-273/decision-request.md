@@ -285,4 +285,3 @@ Issue: #273
 > 左臂骨折尚未痊愈，沈砚却以双手结出完整剑印。
 
 待负责人填写：`decision`、`rationale`、`impact`、`adjudicatorId`、`attestationId`、`decidedAt`。
-

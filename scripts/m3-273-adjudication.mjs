@@ -20,6 +20,11 @@ const SAMPLE_DECISIONS = new Set([
   "preserve_source_with_product_owner_approval",
 ]);
 const HOOK_PROSE_DECISIONS = new Set(["remediate_and_rerun", "approve_waiver"]);
+const OLD_SCORE_IMPACTS = new Set([
+  "invalidated_for_clean_review",
+  "retained_as_warning_only",
+  "approved_preserve",
+]);
 const ORACLE_MARKERS = [
   {
     code: "explicit-confirmed-fact-conflict",
@@ -54,14 +59,22 @@ export function scanOracleContent(text) {
   };
 }
 
+export function sampleExposesOracleContent(sample) {
+  return (
+    scanOracleContent(sample.text).contaminated ||
+    sample.requiredBeats.some((beat) => scanOracleContent(beat).contaminated)
+  );
+}
+
 export function sanitizeBlindReviewText(text) {
   return text.replace(EXPLICIT_CONFIRMED_FACT_CONFLICT, "").trimEnd();
 }
 
 export async function buildM3_273Artifacts({ root, adjudicationOverride }) {
   const source = readSource(root);
+  verifySourceIntegrity({ root, source });
   const contaminatedSampleIds = source.packet.samples
-    .filter((sample) => scanOracleContent(sample.text).contaminated)
+    .filter(sampleExposesOracleContent)
     .map((sample) => sample.blindSampleId)
     .sort(compareStrings);
   const declaredContaminatedSampleIds = [
@@ -83,10 +96,15 @@ export async function buildM3_273Artifacts({ root, adjudicationOverride }) {
     if (!datasetSampleId) {
       throw new Error(`M3_273_KEY_MAPPING_MISSING:${sample.blindSampleId}`);
     }
-    const scan = scanOracleContent(sample.text);
-    if (!scan.contaminated) {
+    if (!sampleExposesOracleContent(sample)) {
       return structuredClone(sample);
     }
+    const markers = [
+      ...new Set([
+        ...scanOracleContent(sample.text).markers,
+        ...sample.requiredBeats.flatMap((beat) => scanOracleContent(beat).markers),
+      ]),
+    ];
     const text = sanitizeBlindReviewText(sample.text);
     const requiredBeats = sample.requiredBeats.map((beat) => sanitizeBlindReviewText(beat));
     const remaining = scanOracleContent(`${text}\n${requiredBeats.join("\n")}`);
@@ -99,7 +117,7 @@ export async function buildM3_273Artifacts({ root, adjudicationOverride }) {
       blindSampleId: sample.blindSampleId,
       datasetSampleId,
       transform: "strip-explicit-oracle-annotation-v1",
-      sourceMarkers: scan.markers,
+      sourceMarkers: markers,
       originalTextSha256: sha256Text(sample.text),
       cleanedTextSha256: sha256Text(text),
       allSamplesRetained: true,
@@ -211,8 +229,21 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
     compareStrings,
   );
   const expectedIdSet = new Set(expectedIds);
+  const expectedEntries = new Map(
+    artifacts.adjudicationTemplate.adjudications.map((entry) => [entry.blindSampleId, entry]),
+  );
   const blockers = [];
   const entries = Array.isArray(adjudication?.adjudications) ? adjudication.adjudications : [];
+  const hasHumanInput =
+    entries.some(
+      (entry) =>
+        hasText(entry?.decision) ||
+        hasText(entry?.rationale) ||
+        hasText(entry?.adjudicatorId) ||
+        isIsoTimestamp(entry?.decidedAt),
+    ) ||
+    hasText(adjudication?.packetDecision?.decision) ||
+    hasText(adjudication?.hookProseDisposition?.decision);
   if (adjudication?.schemaVersion !== 1) {
     blockers.push("adjudication-schema-invalid");
   }
@@ -224,6 +255,9 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
   }
   if (adjudication?.proposalPacketSha256 !== artifacts.proposalPacket.proposalSha256) {
     blockers.push("adjudication-proposal-mismatch");
+  }
+  if (adjudication?.status !== "complete" && hasHumanInput) {
+    blockers.push("adjudication-status-pending");
   }
 
   const duplicateIds = entries
@@ -241,6 +275,7 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
 
   let nonHumanCount = 0;
   let incompleteCount = 0;
+  let evidenceDriftCount = 0;
   const completedIds = [];
   for (const entry of entries) {
     if (
@@ -248,6 +283,16 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
       !hasText(entry?.decision) ||
       !SAMPLE_DECISIONS.has(entry.decision)
     ) {
+      continue;
+    }
+    const expectedEntry = expectedEntries.get(entry.blindSampleId);
+    if (
+      !expectedEntry ||
+      entry.datasetSampleId !== expectedEntry.datasetSampleId ||
+      entry.originalTextSha256 !== expectedEntry.originalTextSha256 ||
+      entry.proposedTextSha256 !== expectedEntry.proposedTextSha256
+    ) {
+      evidenceDriftCount += 1;
       continue;
     }
     if (entry.adjudicatorKind !== "human") {
@@ -272,6 +317,9 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
   if (incompleteCount > 0) {
     blockers.push(`adjudication-incomplete:${incompleteCount}`);
   }
+  if (evidenceDriftCount > 0) {
+    blockers.push(`adjudication-sample-evidence-drift:${evidenceDriftCount}`);
+  }
   const completedSet = new Set(completedIds);
   const unresolvedSampleIds = expectedIds.filter((sampleId) => !completedSet.has(sampleId));
   if (unresolvedSampleIds.length > 0) {
@@ -279,11 +327,38 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
   }
 
   const packetDecision = adjudication?.packetDecision;
-  const packetDecisionComplete = isCompleteOwnerDecision(packetDecision, PACKET_DECISIONS);
+  const oldScoresImpactValid = OLD_SCORE_IMPACTS.has(packetDecision?.oldScoresImpact);
+  let packetDecisionComplete =
+    isCompleteOwnerDecision(packetDecision, PACKET_DECISIONS) && oldScoresImpactValid;
   if (!hasText(packetDecision?.decision)) {
     blockers.push(`oracle-content-disposition-pending:${expectedIds.length}`);
   } else if (!packetDecisionComplete) {
     blockers.push("oracle-content-disposition-incomplete");
+  }
+  if (hasText(packetDecision?.decision)) {
+    if (!hasText(packetDecision.oldScoresImpact)) {
+      blockers.push("packet-decision-old-score-impact-missing");
+    } else if (!oldScoresImpactValid) {
+      blockers.push("packet-decision-old-score-impact-invalid");
+    }
+  }
+  if (packetDecisionComplete) {
+    const sampleDecisions = new Set(
+      entries
+        .filter((entry) => completedIds.includes(entry.blindSampleId))
+        .map((entry) => entry.decision),
+    );
+    const mismatch =
+      (packetDecision.decision === "refreeze_clean_packet" &&
+        [...sampleDecisions].some((decision) => decision !== "accept_clean_proposal")) ||
+      (packetDecision.decision === "replace_affected_samples" &&
+        !sampleDecisions.has("replace_sample")) ||
+      (packetDecision.decision === "preserve_with_product_owner_approval" &&
+        !sampleDecisions.has("preserve_source_with_product_owner_approval"));
+    if (mismatch) {
+      blockers.push("packet-decision-sample-disposition-mismatch");
+      packetDecisionComplete = false;
+    }
   }
 
   const hookDecision = adjudication?.hookProseDisposition;
@@ -308,18 +383,18 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
   }
 
   const humanAdjudicationCompleted =
-    unresolvedSampleIds.length === 0 && nonHumanCount === 0 && incompleteCount === 0;
+    adjudication?.status === "complete" &&
+    unresolvedSampleIds.length === 0 &&
+    nonHumanCount === 0 &&
+    incompleteCount === 0 &&
+    evidenceDriftCount === 0;
   const qualityBlockers = [...new Set(blockers)].sort(compareStrings);
   const status = {
     schemaVersion: 1,
     issue: ISSUE,
     reviewId: REVIEW_ID,
     generatedAt: PROPOSED_AT,
-    technicalStatus: qualityBlockers.some((blocker) =>
-      /(?:schema-invalid|mismatch|duplicate|unknown|non-human|incomplete)$/u.test(blocker),
-    )
-      ? "blocked"
-      : "passed",
+    technicalStatus: qualityBlockers.every(isPendingQualityBlocker) ? "passed" : "blocked",
     humanAdjudicationCompleted,
     completedAdjudicationCount: completedIds.length,
     pendingAdjudicationCount: unresolvedSampleIds.length,
@@ -335,6 +410,7 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
         }
       : null,
     hookProseDispositionComplete,
+    packetDispositionComplete: packetDecisionComplete,
     qualityGate: {
       status: qualityBlockers.length === 0 ? "pass" : "blocked",
       blockers: qualityBlockers,
@@ -343,8 +419,9 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
       {
         id: "interRaterVarianceThreshold",
         owner: "#240",
-        status: "pending",
+        status: "outside-this-issue",
         mayBeApprovedByThisIssue: false,
+        releaseGateRequiresIndependentApproval: true,
       },
     ],
   };
@@ -371,6 +448,25 @@ function readSource(root) {
     dataset: readJson(path.join(root, "docs/quality/quality-benchmark-v1.dataset.json")),
     rubric: readJson(path.join(root, "docs/quality/quality-benchmark-v1.rubric.json")),
   };
+}
+
+function verifySourceIntegrity({ root, source }) {
+  const packetPath = path.join(root, "docs/quality/evidence/m3-239/packet.json");
+  const keyPath = path.join(root, "docs/quality/evidence/m3-239/key.json");
+  const datasetPath = path.join(root, "docs/quality/quality-benchmark-v1.dataset.json");
+  const rubricPath = path.join(root, "docs/quality/quality-benchmark-v1.rubric.json");
+  if (
+    sha256File(packetPath) !== source.validation.reviewerPacketFileSha256 ||
+    sha256File(packetPath) !== source.validation.sourcePacket.sha256 ||
+    sha256File(keyPath) !== source.validation.sourceKey.sha256 ||
+    sha256File(datasetPath) !== source.validation.sourceDataset.sha256 ||
+    sha256File(rubricPath) !== source.validation.sourceRubric.sha256 ||
+    sha256Json(source.packet.samples) !== source.validation.reviewerPacketCanonicalSha256 ||
+    source.packet.source.datasetSha256 !== source.dataset.manifest.datasetSha256 ||
+    source.packet.source.rubricSha256 !== source.rubric.sha256
+  ) {
+    throw new Error("M3_273_SOURCE_DIGEST_MISMATCH");
+  }
 }
 
 function createAdjudicationTemplate(input) {
@@ -448,7 +544,8 @@ function buildDecisionRequest(input) {
       "",
     ];
   });
-  return `# M3-273 人类裁决请求
+  return (
+    `# M3-273 人类裁决请求
 
 > Owner-only decision package. Do not send this request or the oracle cleanup evidence to blind reviewers.
 
@@ -472,8 +569,9 @@ Issue: #273
 
 ## 24 个样本
 
-${rows.join("\n")}
-`;
+${rows.join("\n").trimEnd()}
+`.trimEnd() + "\n"
+  );
 }
 
 function serializeArtifacts(artifacts) {
@@ -495,8 +593,8 @@ function isCompleteOwnerDecision(value, allowedDecisions) {
     value.adjudicatorKind === "human" &&
     hasText(value.attestationId) &&
     hasText(value.rationale) &&
-    isIsoTimestamp(value.decidedAt) &&
-    (value.decision !== "preserve_with_product_owner_approval" || hasText(value.oldScoresImpact)),
+    hasText(value.oldScoresImpact) &&
+    isIsoTimestamp(value.decidedAt),
   );
 }
 
@@ -518,6 +616,10 @@ function readJson(filePath) {
 
 function sha256Text(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function sha256File(filePath) {
+  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
 }
 
 function sha256Json(value) {
@@ -546,6 +648,15 @@ function hasText(value) {
 
 function isIsoTimestamp(value) {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+function isPendingQualityBlocker(blocker) {
+  return (
+    /^adjudication-pending:\d+$/u.test(blocker) ||
+    /^oracle-content-disposition-pending:\d+$/u.test(blocker) ||
+    blocker === "hook-prose-disposition-pending" ||
+    blocker === "hook-prose-remeasurement-pending"
+  );
 }
 
 function sameStrings(left, right) {

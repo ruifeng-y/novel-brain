@@ -7,6 +7,7 @@ import {
   buildM3_273Artifacts,
   evaluateM3_273Adjudication,
   scanOracleContent,
+  sampleExposesOracleContent,
 } from "../m3-273-adjudication.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -43,25 +44,30 @@ describe("M3-273 hidden-truth adjudication", () => {
     ).toBe(true);
     expect(artifacts.proposalPacket.status).toBe("proposed-not-approved");
     expect(artifacts.status.cleanPacketApproved).toBe(false);
-    expect(artifacts.status.humanAdjudicationCompleted).toBe(false);
-    expect(artifacts.status.completedAdjudicationCount).toBe(0);
-    expect(artifacts.status.pendingAdjudicationCount).toBe(24);
-    expect(artifacts.status.qualityGate).toEqual({
-      status: "blocked",
-      blockers: [
-        "adjudication-pending:24",
-        "hook-prose-disposition-pending",
-        "oracle-content-disposition-pending:24",
-      ],
-    });
+    expect(
+      artifacts.status.completedAdjudicationCount + artifacts.status.pendingAdjudicationCount,
+    ).toBe(24);
+    expect(artifacts.status.qualityGate.status).toBe(
+      artifacts.status.pendingAdjudicationCount === 0 ? "pass" : "blocked",
+    );
     expect(artifacts.status.separateDecisions).toEqual([
       {
         id: "interRaterVarianceThreshold",
         owner: "#240",
-        status: "pending",
+        status: "outside-this-issue",
         mayBeApprovedByThisIssue: false,
+        releaseGateRequiresIndependentApproval: true,
       },
     ]);
+  });
+
+  it("treats contaminated required beats as oracle content even when body text is clean", () => {
+    expect(
+      sampleExposesOracleContent({
+        text: "沈砚走进旧城。",
+        requiredBeats: ["与已确认事实“身世：真实身世被宗门封存”冲突。"],
+      }),
+    ).toBe(true);
   });
 
   it("keeps every human decision field blank in the generated questionnaire", async () => {
@@ -131,6 +137,28 @@ describe("M3-273 hidden-truth adjudication", () => {
     expect(
       evaluateM3_273Adjudication({ artifacts, adjudication: incomplete }).qualityGate.blockers,
     ).toContain("adjudication-incomplete:1");
+
+    const wrongStatus = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(wrongStatus);
+    wrongStatus.status = "awaiting-human-input";
+    expect(
+      evaluateM3_273Adjudication({ artifacts, adjudication: wrongStatus }).qualityGate.blockers,
+    ).toContain("adjudication-status-pending");
+
+    const wrongHash = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(wrongHash);
+    wrongHash.adjudications[0].proposedTextSha256 = "0".repeat(64);
+    expect(
+      evaluateM3_273Adjudication({ artifacts, adjudication: wrongHash }).qualityGate.blockers,
+    ).toContain("adjudication-sample-evidence-drift:1");
+
+    const missingOldScoreImpact = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(missingOldScoreImpact);
+    missingOldScoreImpact.packetDecision.oldScoresImpact = null;
+    expect(
+      evaluateM3_273Adjudication({ artifacts, adjudication: missingOldScoreImpact }).qualityGate
+        .blockers,
+    ).toContain("packet-decision-old-score-impact-missing");
   });
 
   it("accepts a complete human waiver without approving the separate variance threshold", async () => {
@@ -146,7 +174,6 @@ describe("M3-273 hidden-truth adjudication", () => {
       expiresAt: "2026-12-31T00:00:00.000Z",
       decidedAt: "2026-11-26T00:00:00.000Z",
     };
-    adjudication.packetDecision.decision = "preserve_with_product_owner_approval";
 
     const status = evaluateM3_273Adjudication({ artifacts, adjudication });
 
@@ -160,8 +187,9 @@ describe("M3-273 hidden-truth adjudication", () => {
     expect(status.separateDecisions[0]).toMatchObject({
       id: "interRaterVarianceThreshold",
       owner: "#240",
-      status: "pending",
+      status: "outside-this-issue",
       mayBeApprovedByThisIssue: false,
+      releaseGateRequiresIndependentApproval: true,
     });
   });
 

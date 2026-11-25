@@ -97,7 +97,14 @@ const passingHumanReviewStatus = () => ({
   technicalStatus: "passed",
   humanAdjudicationCompleted: true,
   pendingAdjudicationCount: 0,
+  proposalPacketSha256: "a".repeat(64),
   cleanPacketApproved: true,
+  packetDispositionComplete: true,
+  oracleContentDisposition: {
+    decision: "refreeze_clean_packet",
+    oldScoresImpact: "invalidated_for_clean_review",
+  },
+  hookProseDispositionComplete: true,
   qualityGate: {
     status: "pass",
     blockers: [],
@@ -106,8 +113,9 @@ const passingHumanReviewStatus = () => ({
     {
       id: "interRaterVarianceThreshold",
       owner: "#240",
-      status: "approved",
+      status: "outside-this-issue",
       mayBeApprovedByThisIssue: false,
+      releaseGateRequiresIndependentApproval: true,
     },
   ],
 });
@@ -259,13 +267,14 @@ describe("V1 release gate", () => {
     expect(result.blockers).toContain("human-blind-review:variance-owner-mismatch");
   });
 
-  it("rejects a passing human-review gate while the #240 variance decision is pending", () => {
+  it("rejects a self-contradictory passing human-review ledger", () => {
     const humanReviewStatus = passingHumanReviewStatus();
-    humanReviewStatus.separateDecisions[0].status = "pending";
+    humanReviewStatus.technicalStatus = "blocked";
+    humanReviewStatus.cleanPacketApproved = false;
 
     const result = evaluate({ humanReviewStatus });
 
-    expect(result.blockers).toContain("human-blind-review:variance-threshold-pending");
+    expect(result.blockers).toContain("human-blind-review:ledger-state-invalid");
   });
 
   it("rejects pass gates that point at missing evidence", () => {

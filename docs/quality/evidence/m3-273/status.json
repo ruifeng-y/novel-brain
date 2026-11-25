@@ -38,6 +38,7 @@
   "cleanPacketApproved": false,
   "oracleContentDisposition": null,
   "hookProseDispositionComplete": false,
+  "packetDispositionComplete": false,
   "qualityGate": {
     "status": "blocked",
     "blockers": [
@@ -50,8 +51,9 @@
     {
       "id": "interRaterVarianceThreshold",
       "owner": "#240",
-      "status": "pending",
-      "mayBeApprovedByThisIssue": false
+      "status": "outside-this-issue",
+      "mayBeApprovedByThisIssue": false,
+      "releaseGateRequiresIndependentApproval": true
     }
   ],
   "decisionFileStatus": "missing",

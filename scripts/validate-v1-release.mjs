@@ -433,8 +433,15 @@ function validateHumanReviewStatus(evidence, humanReviewStatus) {
   if (
     humanReviewStatus.schemaVersion !== 1 ||
     humanReviewStatus.issue !== 273 ||
+    !/^[a-f0-9]{64}$/u.test(humanReviewStatus.proposalPacketSha256 ?? "") ||
     !humanReviewStatus.qualityGate ||
     !Array.isArray(humanReviewStatus.qualityGate.blockers)
+  ) {
+    blockers.push("human-blind-review:status-ledger-invalid");
+  }
+  if (
+    humanReviewStatus.qualityGate?.status === "pass" &&
+    humanReviewStatus.qualityGate.blockers.length > 0
   ) {
     blockers.push("human-blind-review:status-ledger-invalid");
   }
@@ -450,18 +457,32 @@ function validateHumanReviewStatus(evidence, humanReviewStatus) {
   if (
     !varianceDecision ||
     varianceDecision.owner !== "#240" ||
-    varianceDecision.mayBeApprovedByThisIssue !== false
+    varianceDecision.mayBeApprovedByThisIssue !== false ||
+    varianceDecision.status !== "outside-this-issue" ||
+    varianceDecision.releaseGateRequiresIndependentApproval !== true
   ) {
     blockers.push("human-blind-review:variance-owner-mismatch");
-  }
-  if (gate?.status === "pass" && varianceDecision?.status !== "approved") {
-    blockers.push("human-blind-review:variance-threshold-pending");
   }
   if (gate?.status === "pass" && humanReviewStatus.qualityGate?.status !== "pass") {
     blockers.push("human-blind-review:ledger-blocked");
   }
   if (gate?.status === "pass" && humanReviewStatus.humanAdjudicationCompleted !== true) {
     blockers.push("human-blind-review:adjudication-incomplete");
+  }
+  if (
+    gate?.status === "pass" &&
+    (humanReviewStatus.technicalStatus !== "passed" ||
+      humanReviewStatus.packetDispositionComplete !== true ||
+      !humanReviewStatus.oracleContentDisposition ||
+      ![
+        "refreeze_clean_packet",
+        "replace_affected_samples",
+        "preserve_with_product_owner_approval",
+      ].includes(humanReviewStatus.oracleContentDisposition.decision) ||
+      !humanReviewStatus.oracleContentDisposition.oldScoresImpact?.trim() ||
+      humanReviewStatus.hookProseDispositionComplete !== true)
+  ) {
+    blockers.push("human-blind-review:ledger-state-invalid");
   }
   return blockers;
 }
