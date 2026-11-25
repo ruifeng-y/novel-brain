@@ -31,7 +31,7 @@
 
 - Non-UI capability 审计已完成：107 项中 104 项 `verified`，EVAL-002、EVAL-004、CONT-001 仍有有界缺口；CONT-001 的 24 个样本裁决仍待完成，`hook_prose_score` 低于门槛，且阈值仍待 #240；CHANGE-004 至 CHANGE-007 已由 #263 补齐证据并绑定 Production CI；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
 - UI-001..UI-009 与总 traceability 已由 #238 完成，17 页与 UI capability 不再是发布阻塞项；
-- 24 个 oracle-content/adjudication 结果与 `hook_prose_score = 1.882353 < 4` 的人工质量失败；
+- #273 的 oracle-content/adjudication 处置与 `hook_prose_score = 1.882353 < 4` 的人工质量失败；
 - 已批准的 inter-rater variance threshold；
 - 最终 #104 Production CI 的绿色运行链接。
 

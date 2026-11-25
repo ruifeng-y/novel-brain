@@ -51,7 +51,7 @@ commit `6bc4fa2a83172ae3ece9d75065462d973397333f`.
   EVAL-004 and CONT-001 retain bounded evidence gaps.
 - The remaining release blockers are pending human adjudication/oracle content,
   the failed human prose-quality threshold, the approved inter-rater variance
-  threshold, smoke model alias alignment (#271) and the final #104 Production
+  threshold, smoke model alias alignment (#271), quality remediation (#273) and the final #104 Production
   CI. #238 does not close #104.
 
 ## 4. Verification

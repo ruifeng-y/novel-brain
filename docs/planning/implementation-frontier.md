@@ -28,7 +28,7 @@
 
 ## 2. Immediate frontier
 
-1. Finish #104 release closeout through #240, #242 and #271 plus the recorded quality failure. UI capability/traceability closeout is complete in #238; #239 records human raw scores with warnings, while adjudication, variance approval, smoke model alias alignment and final Production CI remain outstanding.
+1. Finish #104 release closeout through #240, #242, #271 and #273. UI capability/traceability closeout is complete in #238; #239 records human raw scores with warnings, while adjudication/oracle remediation, variance approval, smoke model alias alignment and final Production CI remain outstanding.
 2. Do not treat automated quality gates as release approval: 24 adjudications remain pending, `hook_prose_score = 1.882353` fails the `4/5` threshold and the inter-rater variance threshold remains unapproved.
 3. The protected `provider-smoke` run at `11735fa` succeeded after PR #270 fixed Node 24 pinned lookup handling; EVAL-003 is verified. EVAL-004 remains blocked because the response alias `deepseek-flash` needs an approved canary identity rule in #271.
 4. #137/#102 remain deferred outside V1; resuming the 10M capacity claim requires a new explicit decision and a fresh benchmark.

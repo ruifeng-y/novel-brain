@@ -58,7 +58,7 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 ## 4. Remaining blockers
 
 1. Complete the remaining non-UI capability gaps: approved variance threshold (#240), smoke model alias alignment (#271) and the failed human prose-quality gate.
-2. Remove or explicitly resolve the 24 long-horizon text samples that expose defect metadata, then record real adjudication results as a #104 release blocker.
+2. Remove or explicitly resolve the 24 long-horizon text samples that expose defect metadata, then record real adjudication results under #273.
 3. Approve and record the inter-rater variance threshold with an owner and rationale.
 4. Resolve the recorded quality failure: `hook_prose_score = 1.882353` is below the `4/5` release threshold.
 5. Run the final #104 Production CI and update the `final-production-ci` evidence gate with the green run URL.

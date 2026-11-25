@@ -476,7 +476,7 @@
       "evidence": ["quality-regression", "quality-eval-http"],
       "gap": {
         "reason": "rubric 与回归门禁已实现，但正式 inter-rater variance threshold 尚未批准。",
-        "issue": "#240"
+        "issue": "#273"
       }
     },
     "EVAL-003": {
