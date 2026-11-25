@@ -3,6 +3,8 @@ import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { computeReviewStatus } from "./review-status.mjs";
+
 const evidenceDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(evidenceDir, "../../../..");
 const checkFilesOnly = process.argv.includes("--check-files");
@@ -335,20 +337,23 @@ const structuralBlockers = [...new Set(blockers)].sort();
 const technicalBlockers = structuralBlockers.filter(
   (blocker) => !blocker.startsWith("adjudication-pending:"),
 );
-const technicalStatus = technicalBlockers.length === 0 ? "passed" : "blocked";
-const humanReviewCompleted =
-  technicalStatus === "passed" && unresolvedAdjudicationIds.length === 0;
-const structuralStatus = humanReviewCompleted ? "passed" : "blocked";
-const releaseBlockers = [
+const recordStructureStatus = technicalBlockers.length === 0 ? "passed" : "blocked";
+const qualityBlockers = [
   ...thresholdResults.filter((result) => !result.passed).map((result) => `threshold-failed:${result.id}`),
   "decision-required:interRaterVarianceThreshold",
 ].sort();
+const { technicalStatus, humanReviewCompleted, qualityGate } = computeReviewStatus({
+  structuralBlockers,
+  qualityBlockers,
+});
+const structuralStatus = humanReviewCompleted ? "passed" : "blocked";
 const validation = {
   schemaVersion: 1,
   issue: 239,
   reviewId,
   status: structuralStatus,
   technicalStatus,
+  recordStructureStatus,
   humanReviewRecorded: humanScores.length === packets.samples.length * dimensions.length * reviewerIds.length,
   humanReviewCompleted,
   reviewerIdentityEvidence: "self_attested_pseudonymous",
@@ -368,10 +373,7 @@ const validation = {
   observedMaxVariance,
   interRaterVarianceThreshold: null,
   varianceThresholdDecisionIssue: "#240",
-  qualityGate: {
-    status: releaseBlockers.length === 0 ? "pass" : "blocked",
-    blockers: releaseBlockers,
-  },
+  qualityGate,
   structuralBlockers,
   adjudicationSampleIds,
   unresolvedAdjudicationIds,

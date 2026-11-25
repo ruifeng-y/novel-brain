@@ -1,12 +1,15 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const evidenceDir = path.join(root, "docs/quality/evidence/m3-239");
+const { computeReviewStatus } = await import(
+  pathToFileURL(path.join(evidenceDir, "review-status.mjs")).href
+);
 
 const readText = (fileName) => readFileSync(path.join(evidenceDir, fileName), "utf8");
 const readJson = (fileName) => JSON.parse(readText(fileName));
@@ -114,7 +117,9 @@ describe("M3-239 human blind-review evidence", () => {
     expect(validation.qualityGate).toEqual({
       status: "blocked",
       blockers: [
+        "adjudication-pending:24",
         "decision-required:interRaterVarianceThreshold",
+        "oracle-content-present:24",
         "threshold-failed:hook_prose_score",
       ],
     });
@@ -169,5 +174,19 @@ describe("M3-239 human blind-review evidence", () => {
           entry.decidedAt === null,
       ),
     ).toBe(true);
+  });
+
+  it("keeps the quality gate blocked when adjudication is the only blocker", () => {
+    const result = computeReviewStatus({
+      structuralBlockers: ["adjudication-pending:1"],
+      qualityBlockers: [],
+    });
+
+    expect(result.technicalStatus).toBe("blocked");
+    expect(result.humanReviewCompleted).toBe(false);
+    expect(result.qualityGate).toEqual({
+      status: "blocked",
+      blockers: ["adjudication-pending:1"],
+    });
   });
 });

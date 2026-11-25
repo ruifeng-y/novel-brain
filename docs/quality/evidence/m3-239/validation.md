@@ -38,7 +38,7 @@
 - Observed max inter-rater variance: 0
 - Approved inter-rater variance threshold: not recorded
 - Threshold decision owner: #240
-- Quality release gate blockers: `decision-required:interRaterVarianceThreshold`, `threshold-failed:hook_prose_score`
+- Quality release gate blockers: `adjudication-pending:24`, `decision-required:interRaterVarianceThreshold`, `oracle-content-present:24`, `threshold-failed:hook_prose_score`
 - Structural blockers: `adjudication-pending:24`, `oracle-content-present:24`
 
 ## Warnings

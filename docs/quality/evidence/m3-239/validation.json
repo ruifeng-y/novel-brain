@@ -4,6 +4,7 @@
   "reviewId": "m3-239-2026-11-25",
   "status": "blocked",
   "technicalStatus": "blocked",
+  "recordStructureStatus": "blocked",
   "humanReviewRecorded": true,
   "humanReviewCompleted": false,
   "reviewerIdentityEvidence": "self_attested_pseudonymous",
@@ -155,7 +156,9 @@
   "qualityGate": {
     "status": "blocked",
     "blockers": [
+      "adjudication-pending:24",
       "decision-required:interRaterVarianceThreshold",
+      "oracle-content-present:24",
       "threshold-failed:hook_prose_score"
     ]
   },
