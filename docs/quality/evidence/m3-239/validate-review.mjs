@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const evidenceDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(evidenceDir, "../../../..");
-const checkOnly = process.argv.includes("--check");
+const checkFilesOnly = process.argv.includes("--check-files");
+const checkOnly = checkFilesOnly || process.argv.includes("--check");
 const reviewerIds = ["reviewer-01", "reviewer-02"];
 const dimensions = ["outline_adherence", "hook_prose_score"];
 const allowedPacketSampleFields = ["blindSampleId", "genre", "requiredBeats", "text"];
@@ -307,7 +308,7 @@ const technicalBlockers = structuralBlockers.filter(
 );
 const technicalStatus = technicalBlockers.length === 0 ? "passed" : "blocked";
 const humanReviewCompleted =
-  technicalStatus === "passed" && adjudicationSampleIds.length === 0;
+  technicalStatus === "passed" && unresolvedAdjudicationIds.length === 0;
 const structuralStatus = humanReviewCompleted ? "passed" : "blocked";
 const releaseBlockers = [
   ...thresholdResults.filter((result) => !result.passed).map((result) => `threshold-failed:${result.id}`),
@@ -428,7 +429,7 @@ if (checkOnly) {
 process.stdout.write(
   `${JSON.stringify(
     {
-      mode: checkOnly ? "check" : "write",
+      mode: checkFilesOnly ? "check-files" : checkOnly ? "check" : "write",
       status: validation.status,
       technicalStatus: validation.technicalStatus,
       humanReviewCompleted: validation.humanReviewCompleted,
@@ -443,7 +444,7 @@ process.stdout.write(
   )}\n`,
 );
 process.exitCode =
-  staleFiles.length > 0 || (!checkOnly && technicalStatus !== "passed") ? 1 : 0;
+  staleFiles.length > 0 || (!checkFilesOnly && technicalStatus !== "passed") ? 1 : 0;
 
 function signedQuestionnaire(markdown) {
   const signature = markdown.match(/^- 评审人签名\/可审计化名:[ \t]*(.*?)\r?$/mu)?.[1]?.trim();

@@ -121,13 +121,13 @@ describe("M3-239 human blind-review evidence", () => {
   it("reproduces generated evidence from the raw packet and reviewer files", () => {
     const output = execFileSync(
       process.execPath,
-      [path.join(evidenceDir, "validate-review.mjs"), "--check"],
+      [path.join(evidenceDir, "validate-review.mjs"), "--check-files"],
       { cwd: root, encoding: "utf8" },
     );
     const result = JSON.parse(output);
 
     expect(result).toMatchObject({
-      mode: "check",
+      mode: "check-files",
       status: "blocked",
       technicalStatus: "blocked",
       humanReviewCompleted: false,
