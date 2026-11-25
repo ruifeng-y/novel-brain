@@ -216,6 +216,9 @@
     "Q196"
   ],
   "completedAdjudicationCount": 0,
+  "adjudicationFileStatus": "missing",
+  "duplicateAdjudicationIds": [],
+  "unknownAdjudicationIds": [],
   "expectedAdjudicationFile": "docs/quality/evidence/m3-239/adjudication.json",
   "warnings": [
     "reviewer-completion-times-identical"

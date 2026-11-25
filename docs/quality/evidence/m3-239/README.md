@@ -19,7 +19,13 @@ Run verification from the repository root:
 
 ```powershell
 node .\docs\quality\evidence\m3-239\validate-review.mjs
+node .\docs\quality\evidence\m3-239\validate-review.mjs --check-files
+node .\docs\quality\evidence\m3-239\validate-review.mjs --check
 ```
+
+`--check-files` verifies that generated files still match the raw inputs. `--check` also
+enforces the technical gate and therefore exits non-zero while oracle content or
+adjudication remains unresolved.
 
 The frozen packet contains synthetic benchmark samples only. It does not contain private
 manuscript, prompts or context packs. The review records do not approve an inter-rater

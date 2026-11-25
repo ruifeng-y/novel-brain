@@ -7,6 +7,7 @@ const evidenceDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(evidenceDir, "../../../..");
 const checkFilesOnly = process.argv.includes("--check-files");
 const checkOnly = checkFilesOnly || process.argv.includes("--check");
+const reviewId = "m3-239-2026-11-25";
 const reviewerIds = ["reviewer-01", "reviewer-02"];
 const dimensions = ["outline_adherence", "hook_prose_score"];
 const allowedPacketSampleFields = ["blindSampleId", "genre", "requiredBeats", "text"];
@@ -286,16 +287,44 @@ const adjudicationSampleIds = [
 const adjudicationById = new Map(
   (adjudication?.adjudications ?? []).map((entry) => [entry.blindSampleId, entry]),
 );
-const completedAdjudicationIds = adjudicationSampleIds.filter((blindSampleId) => {
-  const entry = adjudicationById.get(blindSampleId);
-  return Boolean(
-    hasText(entry?.decision) &&
-    hasText(entry?.rationale) &&
-    hasText(entry?.adjudicatorId) &&
-    hasText(entry?.reviewerAttestationId) &&
-    isIsoTimestamp(entry?.decidedAt),
-  );
-});
+const adjudicationEntries = Array.isArray(adjudication?.adjudications)
+  ? adjudication.adjudications
+  : [];
+const duplicateAdjudicationIds = adjudicationEntries
+  .map((entry) => entry?.blindSampleId)
+  .filter((blindSampleId, index, values) => values.indexOf(blindSampleId) !== index);
+const unknownAdjudicationIds = adjudicationEntries
+  .map((entry) => entry?.blindSampleId)
+  .filter((blindSampleId) => !adjudicationSampleIds.includes(blindSampleId));
+if (adjudication) {
+  if (
+    adjudication.schemaVersion !== 1 ||
+    adjudication.reviewId !== reviewId ||
+    adjudication.status !== "complete"
+  ) {
+    blockers.push("adjudication-file-invalid");
+  }
+  if (duplicateAdjudicationIds.length > 0) {
+    blockers.push(`adjudication-duplicate:${duplicateAdjudicationIds.length}`);
+  }
+  if (unknownAdjudicationIds.length > 0) {
+    blockers.push(`adjudication-unknown-sample:${unknownAdjudicationIds.length}`);
+  }
+}
+const completedAdjudicationIds =
+  adjudication?.status === "complete"
+    ? adjudicationSampleIds.filter((blindSampleId) => {
+        const entry = adjudicationById.get(blindSampleId);
+        return Boolean(
+          entry?.datasetSampleId === datasetSampleIds.get(blindSampleId) &&
+          hasText(entry?.decision) &&
+          hasText(entry?.rationale) &&
+          hasText(entry?.adjudicatorId) &&
+          hasText(entry?.reviewerAttestationId) &&
+          isIsoTimestamp(entry?.decidedAt),
+        );
+      })
+    : [];
 const unresolvedAdjudicationIds = adjudicationSampleIds.filter(
   (blindSampleId) => !completedAdjudicationIds.includes(blindSampleId),
 );
@@ -317,7 +346,7 @@ const releaseBlockers = [
 const validation = {
   schemaVersion: 1,
   issue: 239,
-  reviewId: "m3-239-2026-11-25",
+  reviewId,
   status: structuralStatus,
   technicalStatus,
   humanReviewRecorded: humanScores.length === packets.samples.length * dimensions.length * reviewerIds.length,
@@ -347,6 +376,9 @@ const validation = {
   adjudicationSampleIds,
   unresolvedAdjudicationIds,
   completedAdjudicationCount: completedAdjudicationIds.length,
+  adjudicationFileStatus: adjudication ? "present" : "missing",
+  duplicateAdjudicationIds,
+  unknownAdjudicationIds,
   expectedAdjudicationFile: "docs/quality/evidence/m3-239/adjudication.json",
   warnings: [...new Set(warnings)].sort(),
   sourcePacket: fileEvidence(path.join(evidenceDir, "packet.json")),

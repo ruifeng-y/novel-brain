@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +39,9 @@ describe("M3-239 human blind-review evidence", () => {
     expect(validation.adjudicationSampleIds).toHaveLength(24);
     expect(validation.unresolvedAdjudicationIds).toHaveLength(24);
     expect(validation.completedAdjudicationCount).toBe(0);
+    expect(validation.adjudicationFileStatus).toBe("missing");
+    expect(validation.duplicateAdjudicationIds).toEqual([]);
+    expect(validation.unknownAdjudicationIds).toEqual([]);
     expect(validation.structuralBlockers).toContain("adjudication-pending:24");
     expect(validation.structuralBlockers).toContain("oracle-content-present:24");
     expect(humanScores.humanScores).toHaveLength(816);
@@ -131,6 +134,22 @@ describe("M3-239 human blind-review evidence", () => {
       status: "blocked",
       technicalStatus: "blocked",
       humanReviewCompleted: false,
+      staleFiles: [],
+    });
+  });
+
+  it("returns failure from --check while the technical gate is blocked", () => {
+    const result = spawnSync(
+      process.execPath,
+      [path.join(evidenceDir, "validate-review.mjs"), "--check"],
+      { cwd: root, encoding: "utf8" },
+    );
+    const output = JSON.parse(result.stdout);
+
+    expect(result.status).toBe(1);
+    expect(output).toMatchObject({
+      mode: "check",
+      technicalStatus: "blocked",
       staleFiles: [],
     });
   });
