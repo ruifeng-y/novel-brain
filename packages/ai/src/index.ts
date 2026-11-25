@@ -1,5 +1,12 @@
 import { createHash } from "node:crypto";
 
+import {
+  aiFailureClassSchema,
+  deepSeekSmokeEvidenceSchema,
+  type AiFailureClass as AiFailureClassContract,
+  type DeepSeekSmokeEvidence as DeepSeekSmokeEvidenceContract,
+} from "@novel-brain/contracts";
+
 import { requestPinnedHttps, validateProviderEndpoint } from "./provider-endpoint";
 
 export { decryptApiKey, encryptApiKey, maskApiKey } from "./model-config-crypto";
@@ -66,17 +73,8 @@ export interface AiGateway {
   streamText(input: GenerationRequest): AsyncIterable<GenerationChunk>;
 }
 
-export const AI_FAILURE_CLASSES = [
-  "provider",
-  "timeout",
-  "rate_limit",
-  "schema",
-  "policy",
-  "budget",
-  "cancelled",
-  "unknown",
-] as const;
-export type AiFailureClass = (typeof AI_FAILURE_CLASSES)[number];
+export const AI_FAILURE_CLASSES = aiFailureClassSchema.options;
+export type AiFailureClass = AiFailureClassContract;
 
 export class AiProviderError extends Error {
   readonly code = "MODEL_PROVIDER_ERROR";
@@ -84,6 +82,7 @@ export class AiProviderError extends Error {
   readonly retryable: boolean;
   readonly usage: GenerationUsage | undefined;
   readonly providerRequestId: string | undefined;
+  readonly responseModel: string | undefined;
 
   constructor(
     message = "AI provider failed",
@@ -92,6 +91,7 @@ export class AiProviderError extends Error {
       retryable?: boolean;
       usage?: GenerationUsage;
       providerRequestId?: string;
+      responseModel?: string;
     } = {},
   ) {
     super(message);
@@ -100,6 +100,7 @@ export class AiProviderError extends Error {
     this.retryable = options.retryable ?? true;
     this.usage = options.usage;
     this.providerRequestId = options.providerRequestId;
+    this.responseModel = options.responseModel;
   }
 }
 
@@ -125,6 +126,7 @@ interface DeepSeekProviderOptions {
   openAiAllowlist?: readonly string[];
   endpointValidator?: typeof validateProviderEndpoint;
   pinnedRequest?: typeof requestPinnedEndpoint;
+  requireResponseModel?: boolean;
 }
 
 interface DeepSeekResponse {
@@ -151,6 +153,7 @@ export class DeepSeekProvider implements AiGateway {
   private readonly openAiAllowlist: readonly string[];
   private readonly endpointValidator: typeof validateProviderEndpoint;
   private readonly pinnedRequest: typeof requestPinnedEndpoint;
+  private readonly requireResponseModel: boolean;
   private lastResponseId: string | undefined;
 
   constructor(options: DeepSeekProviderOptions) {
@@ -163,6 +166,7 @@ export class DeepSeekProvider implements AiGateway {
     this.openAiAllowlist = options.openAiAllowlist ?? [];
     this.endpointValidator = options.endpointValidator ?? validateProviderEndpoint;
     this.pinnedRequest = options.pinnedRequest ?? requestPinnedEndpoint;
+    this.requireResponseModel = options.requireResponseModel ?? false;
   }
 
   async generateText(input: GenerationRequest): Promise<GenerationResult> {
@@ -201,9 +205,11 @@ export class DeepSeekProvider implements AiGateway {
           timeoutMs: this.timeoutMs,
         });
     const payload = (await response.json().catch(() => ({}))) as DeepSeekResponse;
+    const responseModel = payload.model?.trim() || undefined;
     if (!response.ok) {
       throw new AiProviderError(`DeepSeek request failed with status ${response.status}`, {
         failureClass: providerFailureClass(response.status),
+        ...(responseModel ? { responseModel } : {}),
       });
     }
     const text = payload.choices?.[0]?.message?.content;
@@ -217,12 +223,21 @@ export class DeepSeekProvider implements AiGateway {
     if (payload.id) {
       this.lastResponseId = payload.id;
     }
+    if (this.requireResponseModel && !responseModel) {
+      throw new AiProviderError("DeepSeek response did not identify the served model", {
+        failureClass: "schema",
+        retryable: false,
+        ...(usage ? { usage } : {}),
+        ...(payload.id ? { providerRequestId: payload.id } : {}),
+      });
+    }
     if (typeof text !== "string" || text.trim().length === 0 || usage === undefined) {
       throw new AiProviderError("DeepSeek returned an incomplete generation response", {
         failureClass: "schema",
         retryable: false,
         ...(usage ? { usage } : {}),
         ...(payload.id ? { providerRequestId: payload.id } : {}),
+        ...(responseModel ? { responseModel } : {}),
       });
     }
     if (finishReason !== "stop") {
@@ -231,11 +246,12 @@ export class DeepSeekProvider implements AiGateway {
         retryable: false,
         usage,
         ...(payload.id ? { providerRequestId: payload.id } : {}),
+        ...(responseModel ? { responseModel } : {}),
       });
     }
     return {
       text,
-      model: payload.model ?? model,
+      model: responseModel ?? model,
       finishReason: "stop",
       usage,
       ...(payload.id ? { providerRequestId: payload.id } : {}),
@@ -278,85 +294,50 @@ interface DeepSeekSmokeOptions {
   sleep?: (milliseconds: number) => Promise<void>;
 }
 
-export type DeepSeekSmokeEvidence =
-  | {
-      schemaVersion: 1;
-      status: "skipped";
-      reason: "DEEPSEEK_SMOKE_DISABLED" | "DEEPSEEK_API_KEY_MISSING";
-      provider: "deepseek";
-      checkedAt: string;
-      networkCalls: 0;
-    }
-  | {
-      schemaVersion: 1;
-      runId: string;
-      status: "succeeded";
-      provider: "deepseek";
-      baseUrl: string;
-      model: string;
-      promptVersion: string;
-      contextCompilerVersion: string;
-      agentContractVersion: string;
-      configVersion: string;
-      configHash: string;
-      promptHash: string;
-      startedAt: string;
-      finishedAt: string;
-      latencyMs: number;
-      timeoutMs: number;
-      maxBudgetCny: number;
-      maxAttempts: number;
-      attempts: number;
-      generation: {
-        textHash: string;
-        textLength: number;
-        finishReason: "stop";
-      };
-      usage: {
-        inputTokens: number;
-        outputTokens: number;
-        totalTokens: number;
-      };
-      cost: {
-        estimatedCny: number;
-        pricingBasis: "m0-usage-baseline";
-      };
-      costCny: number;
-      providerRequestId?: string;
-      providerResponseId?: string;
-      networkCalls: number;
-    }
-  | {
-      schemaVersion: 1;
-      runId: string;
-      status: "failed";
-      provider: "deepseek";
-      baseUrl: string;
-      model: string;
-      promptVersion: string;
-      contextCompilerVersion: string;
-      agentContractVersion: string;
-      configVersion: string;
-      configHash: string;
-      promptHash: string;
-      startedAt: string;
-      finishedAt: string;
-      latencyMs: number;
-      timeoutMs: number;
-      maxBudgetCny: number;
-      maxAttempts: number;
-      attempts: number;
-      costCny: number;
-      failureClass: AiFailureClass;
-      reason: string;
-      networkCalls: number;
-    };
+interface DeepSeekSmokeEvidenceBaseInput {
+  runId: string;
+  baseUrl: string;
+  requestedModel: string;
+  responseModel?: string;
+  promptVersion: string;
+  contextCompilerVersion: string;
+  agentContractVersion: string;
+  configVersion: string;
+  configHash: string;
+  promptHash: string;
+  startedAt: string;
+  finishedAt: string;
+  latencyMs: number;
+  timeoutMs: number;
+  maxBudgetCny: number;
+  maxAttempts: number;
+  attempts: number;
+  costCny: number;
+  networkCalls: number;
+  providerRequestId?: string;
+}
+
+function deepSeekSmokeEvidenceBase(input: DeepSeekSmokeEvidenceBaseInput) {
+  return {
+    schemaVersion: 1 as const,
+    provider: "deepseek" as const,
+    ...input,
+  };
+}
+
+export type DeepSeekSmokeEvidence = DeepSeekSmokeEvidenceContract;
 
 const DEEPSEEK_SMOKE_SYSTEM = "你是 NovelBrain M3 发布验收助手。只输出一句不超过三十字的仙侠正文。";
 const DEEPSEEK_SMOKE_PROMPT = "写一句包含山门、雨和一个人物的测试正文。";
 const DEEPSEEK_SMOKE_MAX_OUTPUT_TOKENS = 64;
 
 export async function runDeepSeekSmoke(
+  options: DeepSeekSmokeOptions,
+): Promise<DeepSeekSmokeEvidence> {
+  return deepSeekSmokeEvidenceSchema.parse(await runDeepSeekSmokeUnchecked(options));
+}
+
+async function runDeepSeekSmokeUnchecked(
   options: DeepSeekSmokeOptions,
 ): Promise<DeepSeekSmokeEvidence> {
   const now = options.now ?? (() => new Date());
@@ -422,57 +403,57 @@ export async function runDeepSeekSmoke(
   } catch {
     const finishedAt = now();
     return {
-      schemaVersion: 1,
-      runId,
+      ...deepSeekSmokeEvidenceBase({
+        runId,
+        baseUrl,
+        requestedModel: model,
+        promptVersion,
+        contextCompilerVersion,
+        agentContractVersion,
+        configVersion,
+        configHash,
+        promptHash,
+        startedAt: startedAt.toISOString(),
+        finishedAt: finishedAt.toISOString(),
+        latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+        timeoutMs,
+        maxBudgetCny,
+        maxAttempts,
+        attempts: 0,
+        costCny: 0,
+        networkCalls: 0,
+      }),
       status: "failed",
-      provider: "deepseek",
-      baseUrl,
-      model,
-      promptVersion,
-      contextCompilerVersion,
-      agentContractVersion,
-      configVersion,
-      configHash,
-      promptHash,
-      startedAt: startedAt.toISOString(),
-      finishedAt: finishedAt.toISOString(),
-      latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
-      timeoutMs,
-      maxBudgetCny,
-      maxAttempts,
-      attempts: 0,
-      costCny: 0,
       failureClass: "policy",
       reason: "DEEPSEEK_BASE_URL_INVALID",
-      networkCalls: 0,
     };
   }
   if (maxBudgetCny <= 0 || estimatedMaxCostCny * maxAttempts > maxBudgetCny) {
     const finishedAt = now();
     return {
-      schemaVersion: 1,
-      runId,
+      ...deepSeekSmokeEvidenceBase({
+        runId,
+        baseUrl,
+        requestedModel: model,
+        promptVersion,
+        contextCompilerVersion,
+        agentContractVersion,
+        configVersion,
+        configHash,
+        promptHash,
+        startedAt: startedAt.toISOString(),
+        finishedAt: finishedAt.toISOString(),
+        latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+        timeoutMs,
+        maxBudgetCny,
+        maxAttempts,
+        attempts: 0,
+        costCny: 0,
+        networkCalls: 0,
+      }),
       status: "failed",
-      provider: "deepseek",
-      baseUrl,
-      model,
-      promptVersion,
-      contextCompilerVersion,
-      agentContractVersion,
-      configVersion,
-      configHash,
-      promptHash,
-      startedAt: startedAt.toISOString(),
-      finishedAt: finishedAt.toISOString(),
-      latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
-      timeoutMs,
-      maxBudgetCny,
-      maxAttempts,
-      attempts: 0,
-      costCny: 0,
       failureClass: "budget",
       reason: "DEEPSEEK_SMOKE_BUDGET_EXCEEDED",
-      networkCalls: 0,
     };
   }
 
@@ -487,6 +468,7 @@ export async function runDeepSeekSmoke(
   let lastReason = "DEEPSEEK_PROVIDER_ERROR";
   let totalCostCny = 0;
   let lastProviderRequestId: string | undefined;
+  let lastResponseModel: string | undefined;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     attempts = attempt;
     const provider = new DeepSeekProvider({
@@ -495,6 +477,7 @@ export async function runDeepSeekSmoke(
       model,
       timeoutMs,
       endpointValidator,
+      requireResponseModel: true,
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     });
     try {
@@ -512,12 +495,38 @@ export async function runDeepSeekSmoke(
       const providerResponseId = result.providerRequestId ?? provider.getLastResponseId();
       if (totalCostCny > maxBudgetCny) {
         return {
-          schemaVersion: 1,
-          runId,
+          ...deepSeekSmokeEvidenceBase({
+            runId,
+            baseUrl,
+            requestedModel: model,
+            promptVersion,
+            contextCompilerVersion,
+            agentContractVersion,
+            configVersion,
+            configHash,
+            promptHash,
+            startedAt: startedAt.toISOString(),
+            finishedAt: finishedAt.toISOString(),
+            latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+            timeoutMs,
+            maxBudgetCny,
+            maxAttempts,
+            attempts,
+            costCny: totalCostCny,
+            networkCalls: attempts,
+            ...(providerResponseId ? { providerRequestId: providerResponseId } : {}),
+          }),
+          responseModel: result.model,
           status: "failed",
-          provider: "deepseek",
+          failureClass: "budget",
+          reason: "DEEPSEEK_SMOKE_BUDGET_EXCEEDED",
+        };
+      }
+      return {
+        ...deepSeekSmokeEvidenceBase({
+          runId,
           baseUrl,
-          model: result.model,
+          requestedModel: model,
           promptVersion,
           contextCompilerVersion,
           agentContractVersion,
@@ -532,31 +541,11 @@ export async function runDeepSeekSmoke(
           maxAttempts,
           attempts,
           costCny: totalCostCny,
-          failureClass: "budget",
-          reason: "DEEPSEEK_SMOKE_BUDGET_EXCEEDED",
           networkCalls: attempts,
-        };
-      }
-      return {
-        schemaVersion: 1,
-        runId,
+          ...(providerResponseId ? { providerRequestId: providerResponseId } : {}),
+        }),
+        responseModel: result.model,
         status: "succeeded",
-        provider: "deepseek",
-        baseUrl,
-        model: result.model,
-        promptVersion,
-        contextCompilerVersion,
-        agentContractVersion,
-        configVersion,
-        configHash,
-        promptHash,
-        startedAt: startedAt.toISOString(),
-        finishedAt: finishedAt.toISOString(),
-        latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
-        timeoutMs,
-        maxBudgetCny,
-        maxAttempts,
-        attempts,
         generation: {
           textHash: createHash("sha256").update(result.text).digest("hex"),
           textLength: Array.from(result.text).length,
@@ -571,16 +560,14 @@ export async function runDeepSeekSmoke(
           estimatedCny: totalCostCny,
           pricingBasis: "m0-usage-baseline",
         },
-        costCny: totalCostCny,
-        ...(providerResponseId ? { providerRequestId: providerResponseId } : {}),
         ...(providerResponseId ? { providerResponseId } : {}),
-        networkCalls: attempts,
       };
     } catch (error) {
       lastFailureClass = classifyAiFailure(error);
       lastReason = smokeFailureReason(lastFailureClass);
       if (error instanceof AiProviderError) {
         lastProviderRequestId = error.providerRequestId ?? lastProviderRequestId;
+        lastResponseModel = error.responseModel ?? lastResponseModel;
         if (error.usage) {
           const attemptCostCny = Number(
             ((error.usage.inputTokens + error.usage.outputTokens) * M0_COST_PER_TOKEN_CNY).toFixed(
@@ -601,30 +588,31 @@ export async function runDeepSeekSmoke(
   }
   const finishedAt = now();
   return {
-    schemaVersion: 1,
-    runId,
+    ...deepSeekSmokeEvidenceBase({
+      runId,
+      baseUrl,
+      requestedModel: model,
+      ...(lastResponseModel ? { responseModel: lastResponseModel } : {}),
+      promptVersion,
+      contextCompilerVersion,
+      agentContractVersion,
+      configVersion,
+      configHash,
+      promptHash,
+      startedAt: startedAt.toISOString(),
+      finishedAt: finishedAt.toISOString(),
+      latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+      timeoutMs,
+      maxBudgetCny,
+      maxAttempts,
+      attempts,
+      costCny: totalCostCny,
+      networkCalls: attempts,
+      ...(lastProviderRequestId ? { providerRequestId: lastProviderRequestId } : {}),
+    }),
     status: "failed",
-    provider: "deepseek",
-    baseUrl,
-    model,
-    promptVersion,
-    contextCompilerVersion,
-    agentContractVersion,
-    configVersion,
-    configHash,
-    promptHash,
-    startedAt: startedAt.toISOString(),
-    finishedAt: finishedAt.toISOString(),
-    latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
-    timeoutMs,
-    maxBudgetCny,
-    maxAttempts,
-    attempts,
-    costCny: totalCostCny,
     failureClass: lastFailureClass,
     reason: lastReason,
-    networkCalls: attempts,
-    ...(lastProviderRequestId ? { providerRequestId: lastProviderRequestId } : {}),
   };
 }
 

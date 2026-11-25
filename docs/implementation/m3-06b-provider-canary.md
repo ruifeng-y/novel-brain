@@ -2,7 +2,7 @@
 
 > Issue: #140
 > Capabilities: EVAL-003, EVAL-004
-> Status: protected real-provider smoke passed; canary release use remains blocked by model alias alignment, quality approval and final V1 gates.
+> Status: protected real-provider smoke passed; approved model response aliases are auditable; EVAL-004 is verified by Production CI, while V1 release remains blocked by quality and final release gates.
 
 ## 决策
 
@@ -17,7 +17,7 @@
 - 每次真实 Provider 调用都会再次执行共享 endpoint 校验，并把请求固定到已验证的公开 IP；TLS SNI/Host 仍使用原始域名，持久化 release evidence 不能绕过 HTTPS、DeepSeek 官方 endpoint、DNS rebinding、私网或 redirect 限制。
 - 预算上限由 `DEEPSEEK_SMOKE_MAX_BUDGET_CNY` 控制，并在网络调用前按最大输出 token 估算成本。
 - `DEEPSEEK_SMOKE_TIMEOUT_MS` 限制单次调用，`DEEPSEEK_SMOKE_MAX_ATTEMPTS` 上限为 3；仅 `rate_limit` 和 `provider` 失败可重试。
-- Evidence 记录 schema、run、provider、model、prompt/context/agent/config 版本、配置与 prompt hash、请求 ID、token、成本、延迟、尝试次数和结果。
+- Evidence 同时记录 `requestedModel` 与 Provider 实际返回的 `responseModel`，以及 schema、run、provider、prompt/context/agent/config 版本、配置与 prompt hash、请求 ID、token、成本、延迟、尝试次数和结果。
 - Provider `finish_reason` 不是 `stop` 或正文为空时按失败记录，不能进入 canary。
 - 已返回 usage 的非 `stop` 响应会记录实际 token 成本，并标记为不可重试，避免重复计费后把成本写成零。
 - Evidence 不包含 API key、prompt 正文或生成正文，只记录正文 hash 与长度。
@@ -29,7 +29,7 @@
 - 配置：DeepSeek 官方 HTTPS API、请求模型 `deepseek-chat`、响应模型 `deepseek-flash`、`m1-writing-prompts-v1`、最大预算 `0.01 CNY`。
 - 结果：`succeeded`，`finishReason: stop`，`attempts: 1`，`networkCalls: 1`，46 tokens，约 `0.000092 CNY`，延迟 1000ms。
 - 脱敏记录：`docs/implementation/evidence/m3-07e-01-provider-smoke-success-2026-11-25.json`。该证据不包含 Key、prompt 正文或生成正文。
-- Provider 响应模型为 `deepseek-flash`，而 canary policy 的 pin 使用请求模型 `deepseek-chat`。当前比较器会产生 `smoke-model-mismatch`，因此 EVAL-004 保持 `implemented`，由 #271 完成模型身份映射或拒绝规则。
+- Provider 响应模型为 `deepseek-flash`，而 canary policy 的 pin 使用请求模型 `deepseek-chat`。`deepseek-chat -> deepseek-flash` 已登记为批准的 Provider response alias；请求模型仍必须匹配 pin，决策会持久化 `modelIdentity` 审计字段。
 - 2026-11-25：在提交 `20ecf9bdc2874b8267c51395a26286ee03e7af8d` 上手动运行 [Provider Smoke 45469254950](https://github.com/ruifeng-y/novel-brain/actions/runs/45469254950)。
 - 配置：DeepSeek 官方 HTTPS API、`deepseek-chat`、`m1-writing-prompts-v1`、最大预算 `0.01 CNY`。
 - 结果：`failure` / `skipped` / `DEEPSEEK_API_KEY_MISSING`，`networkCalls: 0`。`provider-smoke` environment 存在，但 `protection_rules` 为空且未列出 `DEEPSEEK_API_KEY`。
@@ -43,6 +43,8 @@
 - `m1-context-v0` 保留 legacy 的非 P0 候选分支来源兼容行为；`m1-context-v1` 要求所有非 P0 候选显式绑定当前 `branchId`，来源缺失时记录 `stale_branch` 淘汰。`P0` 硬约束不走该淘汰路径。
 - 生产章节和写作动作使用同一 active release pin 选择 context version；`m1-context-v1` 还会在存在 fresh chapter summary 覆盖旧章节时淘汰重复的全文版本并记录 `summary_superseded`，`v0` 保持两种来源并存。
 - Canary 决策强制读取同一租户的已持久化 quality gate，不接受调用方自报 regression；候选 provenance 必须匹配 policy pin。
+- Canary 的模型身份规则为 fail closed：`requestedModel` 必须匹配 policy pin；`responseModel` 必须命中共享的 approved identity registry。`deepseek-chat -> deepseek-chat` 为 canonical identity，`deepseek-chat -> deepseek-flash` 为批准 alias；未知或缺失响应身份产生 `smoke-response-model-unapproved` 并阻断。
+- Decision 的 `modelIdentity` 固定记录 policy model、request、response、`canonical`/`alias`/`unapproved` 解析结果、批准 rule ID 和 `approved` 布尔值；该字段参与 decision hash，并随 append-only evidence 保存。
 - Decision evidence 持久化完整 policy 与 `limits`；quality provenance 必须包含并匹配 policy `configHash`，因此阈值和 quality run 所测配置都可从 append-only 记录重建。
 - Active、rollback target 和 Worker pin 查询统一按 `createdAt + uuidv7 id` 倒序；同毫秒决策仍保持确定性，rollback 拒绝早于当前 decision 的时间。
 - Cohort 按 subject ID 排序去重；重复 subject 会阻断。决策记录 `policySha256`、`cohortSha256`、smoke hash 和 quality regression hash。
@@ -55,7 +57,7 @@
 
 ## 代码与数据
 
-- `packages/quality-benchmark/src/canary.ts`
+- `packages/quality-benchmark/src/canary.ts`：decision comparator 与 approved Provider model identity policy registry
 - `packages/ai/src/index.ts` 的真实 smoke seam
 - `.github/workflows/provider-smoke.yml`
 - `packages/db/migrations/0074_talented_thanos.sql`、`0075_true_dorian_gray.sql`、`0076_wise_juggernaut.sql`
@@ -65,8 +67,8 @@
 
 ## 验证
 
-- DeepSeek smoke：显式开关、无网络 skip、预算前置阻断、rate-limit 有界重试、失败脱敏、版本与证据字段。
-- Canary：确定性 cohort、版本 mismatch、预算/延迟/attempt 越界、质量 gate 阻断和前一 approved pin 回滚。
+- DeepSeek smoke：显式开关、无网络 skip、预算前置阻断、rate-limit 有界重试、失败脱敏，以及 `requestedModel`/`responseModel` 双字段证据。
+- Canary：已批准 canonical/alias identity、未知 alias fail closed、确定性 cohort、版本 mismatch、预算/延迟/attempt 越界、质量 gate 阻断和前一 approved pin 回滚。
 - PostgreSQL integration：canary approved/blocked、rollback、RLS 跨租户不可见、复合外键拒绝跨租户引用。
 - Workflow guardrail：manual-only、environment secret、no implicit CI provider call。
 
