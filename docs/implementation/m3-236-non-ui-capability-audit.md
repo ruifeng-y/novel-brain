@@ -1,10 +1,10 @@
 # M3-07c-01 Non-UI V1 Capability Evidence Audit
 
 > Issue: #236
-> Audited: 2026-11-24
+> Audited: 2026-11-24; updated 2026-11-25 after #241
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
 > Verification: [Production CI #45332565381](https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381) on code head `491d059`
-> Result: 103 / 107 non-UI V1 capabilities verified; 4 retained as implemented with bounded gaps.
+> Result: 104 / 107 non-UI V1 capabilities verified; 3 retained as implemented with bounded gaps.
 
 ## 1. Audit Rule
 
@@ -27,17 +27,16 @@ The release gate now validates:
 
 | Status | Count |
 | --- | ---: |
-| Verified | 103 |
-| Blocked by a bounded gap | 4 |
+| Verified | 104 |
+| Blocked by a bounded gap | 3 |
 | Missing audit record | 0 |
 
-The four blocked capabilities are:
+The three blocked capabilities are:
 
 | Capability | Gap | Follow-up |
 | --- | --- | --- |
 | EVAL-002 | The release-level inter-rater variance threshold is not approved. | #240 |
-| EVAL-003 | The provider-smoke environment real DeepSeek smoke has not produced network-call evidence; the latest run had no protection rules and failed with `DEEPSEEK_API_KEY_MISSING`. | #241 |
-| EVAL-004 | Canary/rollback tests pass, but release use still requires real-provider and approved quality evidence. | #241 |
+| EVAL-004 | Smoke response model `deepseek-flash` does not match the canary policy request model `deepseek-chat`. | #271 |
 | CONT-001 | Deterministic continuity evaluation passes, but real human blind review is absent. | #239 |
 
 `PERF-001`, `AGENT-007` and `QUALITY-009` remain authorized post-V1 deferrals and are not
@@ -72,11 +71,14 @@ Expected release result after the #238 UI closeout:
 V1 RELEASE BLOCKED
 - release-evidence:status-blocked
 - final-production-ci:blocked
-- real-provider-smoke:blocked
 - human-blind-review:blocked
-- capability-verification:4
-  EVAL-002, EVAL-003, EVAL-004, CONT-001
+- capability-verification:3
+  EVAL-002, EVAL-004, CONT-001
+- capability-audit:verification-evidence-missing
 ```
 
-The remaining non-UI blockers are tracked by #239, #240 and #241. UI capability
+The final audit blocker is expected until the current PR has an exact-head
+Production CI run; #242 records the final release CI.
+
+The remaining non-UI blockers are tracked by #239, #240 and #271. UI capability
 closure was completed by #238; final release evidence and CI remain #242.

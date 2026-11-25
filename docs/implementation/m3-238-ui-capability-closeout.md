@@ -10,7 +10,7 @@
 This ticket closes the UI-001..UI-009 evidence ledger and reconciles it with the
 17-page parity matrix, per-action API/persistence evidence, release checklist and
 implementation frontier. It does not close #104, provide human quality review,
-run real-provider smoke, certify 10M capacity or make a V1 release decision.
+  certify 10M capacity or make a V1 release decision.
 
 ## 2. Blocker Verification
 
@@ -47,11 +47,11 @@ commit `6bc4fa2a83172ae3ece9d75065462d973397333f`.
 - All 15 non-static production pages have complete, verified action evidence.
 - UI-001..UI-009 are `verified` in the traceability ledger.
 - The release gate now reports UI capability and parity evidence as passing.
-- V1 traceability records 112 of 116 V1 capabilities as `verified`; only
-  EVAL-002, EVAL-003, EVAL-004 and CONT-001 retain bounded evidence gaps.
+- V1 traceability records 113 of 116 V1 capabilities as `verified`; EVAL-002,
+  EVAL-004 and CONT-001 retain bounded evidence gaps.
 - The remaining release blockers are human blind review, the approved
-  inter-rater variance threshold, real-provider smoke and the final #104
-  Production CI. #238 does not close #104.
+  inter-rater variance threshold, smoke model alias alignment (#271) and the
+  final #104 Production CI. #238 does not close #104.
 
 ## 4. Verification
 
@@ -86,19 +86,18 @@ Local verification:
   `node scripts/validate-readiness.mjs` passed.
 - `pnpm release:check` is rerun after the current-head Production CI completes;
   it must remove UI capability blockers and leave only blocked release status,
-  final Production CI, real-provider smoke, human blind review and the four
-  bounded non-UI capability gaps.
+  final Production CI, human blind review and the three bounded non-UI
+  capability gaps.
 
 ## 5. Boundary
 
 This ticket does not claim that every V1 capability is already `verified` or
-authorized-deferred. EVAL-002, EVAL-003, EVAL-004 and CONT-001 remain explicit,
-bounded release blockers owned by #239–#241; they are not TBD or silent
+  authorized-deferred. EVAL-002, EVAL-004 and CONT-001 remain explicit,
+  bounded release blockers owned by #239, #240 and #271; they are not TBD or silent
 deferrals, and #104 remains open until those release gates close.
 
 This report does not record or substitute for:
 
 - human blind-review scores (#239);
 - the approved inter-rater variance threshold (#240);
-- real-provider smoke evidence (#241);
 - the final V1 release decision and final Production CI (#242/#104).
