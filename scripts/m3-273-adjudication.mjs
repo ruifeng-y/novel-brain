@@ -70,7 +70,7 @@ export function sanitizeBlindReviewText(text) {
   return text.replace(EXPLICIT_CONFIRMED_FACT_CONFLICT, "").trimEnd();
 }
 
-export async function buildM3_273Artifacts({ root, adjudicationOverride }) {
+export function buildM3_273Artifacts({ root, adjudicationOverride }) {
   const source = readSource(root);
   verifySourceIntegrity({ root, source });
   const contaminatedSampleIds = source.packet.samples
@@ -290,7 +290,8 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
       !expectedEntry ||
       entry.datasetSampleId !== expectedEntry.datasetSampleId ||
       entry.originalTextSha256 !== expectedEntry.originalTextSha256 ||
-      entry.proposedTextSha256 !== expectedEntry.proposedTextSha256
+      entry.proposedTextSha256 !== expectedEntry.proposedTextSha256 ||
+      entry.requiredBeatsSha256 !== expectedEntry.requiredBeatsSha256
     ) {
       evidenceDriftCount += 1;
       continue;
@@ -359,6 +360,12 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
       blockers.push("packet-decision-sample-disposition-mismatch");
       packetDecisionComplete = false;
     }
+    if (
+      packetDecision.decision === "refreeze_clean_packet" ||
+      packetDecision.decision === "replace_affected_samples"
+    ) {
+      blockers.push("clean-blind-review-required");
+    }
   }
 
   const hookDecision = adjudication?.hookProseDisposition;
@@ -375,7 +382,11 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
       blockers.push("hook-prose-remeasurement-pending");
     }
   } else {
-    if (!hasText(hookDecision.followUpIssue) || !isIsoTimestamp(hookDecision.expiresAt)) {
+    if (
+      !hasText(hookDecision.followUpIssue) ||
+      !isIsoTimestamp(hookDecision.expiresAt) ||
+      Date.parse(hookDecision.expiresAt) <= Date.parse(hookDecision.decidedAt)
+    ) {
       blockers.push("hook-prose-waiver-incomplete");
     } else {
       hookProseDispositionComplete = true;
@@ -410,6 +421,14 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
         }
       : null,
     hookProseDispositionComplete,
+    hookProseDisposition:
+      hookDecisionComplete && hookDecision.decision === "approve_waiver"
+        ? {
+            decision: hookDecision.decision,
+            owner: hookDecision.owner,
+            expiresAt: hookDecision.expiresAt,
+          }
+        : null,
     packetDispositionComplete: packetDecisionComplete,
     qualityGate: {
       status: qualityBlockers.length === 0 ? "pass" : "blocked",
@@ -501,6 +520,10 @@ function createAdjudicationTemplate(input) {
       proposedTextSha256: sha256Text(
         input.proposalPacket.samples.find((sample) => sample.blindSampleId === blindSampleId).text,
       ),
+      requiredBeatsSha256: sha256Json(
+        input.proposalPacket.samples.find((sample) => sample.blindSampleId === blindSampleId)
+          .requiredBeats,
+      ),
       decision: null,
       rationale: null,
       impact: null,
@@ -535,12 +558,15 @@ function buildDecisionRequest(input) {
       "",
       `- Dataset sample: \`${input.keyByBlindSampleId.get(blindSampleId)}\``,
       `- Proposed cleanup hash: \`${sha256Text(proposed.text)}\``,
+      `- Required beats hash: \`${sha256Json(proposed.requiredBeats)}\``,
       "",
       "候选无 oracle 注入文本：",
       "",
       `> ${proposed.text}`,
       "",
-      "待负责人填写：`decision`、`rationale`、`impact`、`adjudicatorId`、`attestationId`、`decidedAt`。",
+      `- Required beats: ${proposed.requiredBeats.map((beat) => `\`${beat}\``).join("、")}`,
+      "",
+      "待负责人填写：`decision`、`rationale`、`impact`、`adjudicatorId`、`adjudicatorKind`、`attestationId`、`decidedAt`。",
       "",
     ];
   });
@@ -655,7 +681,8 @@ function isPendingQualityBlocker(blocker) {
     /^adjudication-pending:\d+$/u.test(blocker) ||
     /^oracle-content-disposition-pending:\d+$/u.test(blocker) ||
     blocker === "hook-prose-disposition-pending" ||
-    blocker === "hook-prose-remeasurement-pending"
+    blocker === "hook-prose-remeasurement-pending" ||
+    blocker === "clean-blind-review-required"
   );
 }
 

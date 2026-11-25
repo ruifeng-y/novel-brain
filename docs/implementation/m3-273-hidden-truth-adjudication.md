@@ -32,8 +32,12 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
   - inter-rater variance threshold 仍独立归属 #240。
 - `buildContinuityBlindReviewPacket` 现在会移除显式事实对照注释，并在报告中拒绝仍含
   oracle 注释的 re-hashed packet：`blind-review-oracle-content-leak`。
-- V1 release gate 读取 #273 机器账本；若账本仍 blocked 但 `human-blind-review` gate
-  声称 pass，或 #240 threshold 仍 pending，发布检查会失败。
+- V1 release gate 读取并重算 #273 机器账本；若账本仍 blocked 但
+  `human-blind-review` gate 声称 pass，或 #240 的独立批准尚未登记，发布检查会失败。
+- `pnpm release:check` 会从 proposal、cleanup audit、空白模板或真人 `adjudication.json`
+  重新计算状态，并拒绝与 `status.json` 不一致的手改账本。
+- 选择 `refreeze_clean_packet` 或 `replace_affected_samples` 后仍需新的 clean human
+  blind review；本票不会用算法删除注释代替重新盲评。
 
 ## 证据
 

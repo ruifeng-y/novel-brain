@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 
 import { runCli } from "./cli-entry.mjs";
+import { buildM3_273Artifacts } from "./m3-273-adjudication.mjs";
 import {
   CURRENT_HEAD_CI_WORKFLOWS,
   validateNonUiCapabilityEvidence,
@@ -421,7 +422,7 @@ function validateActionEvidence(
   return blockers;
 }
 
-function validateHumanReviewStatus(evidence, humanReviewStatus) {
+function validateHumanReviewStatus(evidence, humanReviewStatus, recordedHumanReviewStatus) {
   const blockers = [];
   const gate = (Array.isArray(evidence?.gates) ? evidence.gates : []).find(
     (candidate) => candidate?.id === "human-blind-review",
@@ -429,6 +430,12 @@ function validateHumanReviewStatus(evidence, humanReviewStatus) {
   if (!humanReviewStatus || typeof humanReviewStatus !== "object") {
     blockers.push("human-blind-review:status-ledger-missing");
     return blockers;
+  }
+  if (
+    !recordedHumanReviewStatus ||
+    JSON.stringify(recordedHumanReviewStatus) !== JSON.stringify(humanReviewStatus)
+  ) {
+    blockers.push("human-blind-review:status-ledger-mismatch");
   }
   if (
     humanReviewStatus.schemaVersion !== 1 ||
@@ -484,6 +491,14 @@ function validateHumanReviewStatus(evidence, humanReviewStatus) {
   ) {
     blockers.push("human-blind-review:ledger-state-invalid");
   }
+  if (
+    gate?.status === "pass" &&
+    humanReviewStatus.hookProseDisposition?.decision === "approve_waiver" &&
+    (!Number.isFinite(Date.parse(humanReviewStatus.hookProseDisposition.expiresAt)) ||
+      Date.parse(humanReviewStatus.hookProseDisposition.expiresAt) <= Date.now())
+  ) {
+    blockers.push("human-blind-review:hook-prose-waiver-expired");
+  }
   return blockers;
 }
 
@@ -498,6 +513,7 @@ export function evaluateV1Release({
   actionContract,
   actionEvidence,
   humanReviewStatus,
+  recordedHumanReviewStatus = humanReviewStatus,
   evidenceExists = () => false,
   githubRunIsSuccessful = () => false,
   auditCiRunIsValid = () => false,
@@ -540,7 +556,7 @@ export function evaluateV1Release({
       fileContains,
     }),
     ...validateActionEvidence(actionEvidence, actionContract, { evidenceExists, fileContains }),
-    ...validateHumanReviewStatus(evidence, humanReviewStatus),
+    ...validateHumanReviewStatus(evidence, humanReviewStatus, recordedHumanReviewStatus),
   ];
   return { ready: blockers.length === 0, blockers };
 }
@@ -691,6 +707,12 @@ function main() {
   const expectedCommit = execFileSync("git", ["rev-parse", "HEAD"], {
     encoding: "utf8",
   }).trim();
+  const recordedHumanReviewStatus = JSON.parse(
+    readFileSync("docs/quality/evidence/m3-273/status.json", "utf8"),
+  );
+  const humanReviewStatus = buildM3_273Artifacts({
+    root: process.cwd(),
+  }).status;
   const result = evaluateV1Release({
     evidence: JSON.parse(readFileSync("docs/implementation/v1-release-evidence.json", "utf8")),
     traceability: readFileSync("docs/planning/v1-capability-traceability.md", "utf8"),
@@ -705,7 +727,8 @@ function main() {
     deviationApprovals: JSON.parse(readFileSync("docs/ui/v1-ui-deviations.json", "utf8")),
     actionContract: JSON.parse(readFileSync("docs/ui/v1-action-contract.json", "utf8")),
     actionEvidence: JSON.parse(readFileSync("docs/implementation/v1-action-evidence.json", "utf8")),
-    humanReviewStatus: JSON.parse(readFileSync("docs/quality/evidence/m3-273/status.json", "utf8")),
+    humanReviewStatus,
+    recordedHumanReviewStatus,
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
     auditCiRunIsValid: isAuditCiRun,

@@ -38,6 +38,7 @@
   "cleanPacketApproved": false,
   "oracleContentDisposition": null,
   "hookProseDispositionComplete": false,
+  "hookProseDisposition": null,
   "packetDispositionComplete": false,
   "qualityGate": {
     "status": "blocked",

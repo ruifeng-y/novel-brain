@@ -35,6 +35,11 @@ The original packet, questionnaires and raw scores remain in
    fully owned, dated waiver with impact and follow-up.
 5. Keep the inter-rater variance threshold under #240. This evidence cannot approve it.
 
+`refreeze_clean_packet` and `replace_affected_samples` do not become release-ready in this
+issue: a new clean human blind review is still required. Only an explicit product-owner
+preservation decision can retain the contaminated source without that rerun, and the hook/prose
+failure still needs remediation or a complete unexpired waiver.
+
 Every decision requires a human adjudicator identity, attestation ID, rationale, impact and
 timestamp. Model-written or inferred decisions are invalid.
 
@@ -52,6 +57,8 @@ pnpm release:check
 
 `scripts/m3-273-adjudication.mjs` regenerates `status.json` from the human decision file and
 never creates or edits `adjudication.json`. `--check` fails on stale generated evidence.
+`pnpm release:check` recomputes the ledger from the proposal, cleanup audit, template and human
+decision file; it rejects a hand-edited `status.json` that differs from recomputed evidence.
 
 The proposed packet remains non-reviewable until the responsible human records the packet
 decision. A text-pattern-clean result is not by itself a semantic quality approval.

@@ -105,6 +105,11 @@ const passingHumanReviewStatus = () => ({
     oldScoresImpact: "invalidated_for_clean_review",
   },
   hookProseDispositionComplete: true,
+  hookProseDisposition: {
+    decision: "approve_waiver",
+    owner: "product-owner",
+    expiresAt: "2099-12-31T00:00:00.000Z",
+  },
   qualityGate: {
     status: "pass",
     blockers: [],
@@ -275,6 +280,18 @@ describe("V1 release gate", () => {
     const result = evaluate({ humanReviewStatus });
 
     expect(result.blockers).toContain("human-blind-review:ledger-state-invalid");
+  });
+
+  it("rejects a recorded human-review status that differs from recomputed evidence", () => {
+    const humanReviewStatus = passingHumanReviewStatus();
+    const recordedHumanReviewStatus = {
+      ...structuredClone(humanReviewStatus),
+      proposalPacketSha256: "b".repeat(64),
+    };
+
+    const result = evaluate({ humanReviewStatus, recordedHumanReviewStatus });
+
+    expect(result.blockers).toContain("human-blind-review:status-ledger-mismatch");
   });
 
   it("rejects pass gates that point at missing evidence", () => {
