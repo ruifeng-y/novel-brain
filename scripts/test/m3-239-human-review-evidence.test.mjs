@@ -249,6 +249,12 @@ describe("M3-239 human blind-review evidence", () => {
     );
 
     expect(capabilityEvidence.capabilities["EVAL-002"].gap.issue).toBe("#240");
+    expect(capabilityEvidence.capabilities["EVAL-002"].gap.reason).toContain(
+      "inter-rater variance threshold",
+    );
     expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#273");
+    expect(capabilityEvidence.capabilities["CONT-001"].gap.reason).not.toContain(
+      "inter-rater variance threshold",
+    );
   });
 });
