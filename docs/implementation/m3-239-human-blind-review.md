@@ -68,9 +68,10 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 以下项目继续阻断 V1 quality claim：
 
 - `hook_prose_score = 1.882353 < 4`。
-- `interRaterVarianceThreshold` 仍为 `null`，必须由 #240 单独决定。
 - 24 个 long-horizon case 的真实 adjudication 仍为 `0/24`。
 - 24 个 long-horizon 样本文本仍暴露缺陷元信息，`cleanBlindReview` 为 `false`。
 - reviewer identity 目前是自述化名，外部实名核验未提供。
 
-#239 关闭不改变 #104 的 blocked 状态，也不授权任何质量、阈值或容量声明。
+#239 生成快照中的 `interRaterVarianceThreshold` 仍为 `null`，这是历史事实；下游 #240
+已在独立 trusted review-policy artifact 中批准 `0.1`，因此阈值不再阻断发布。该批准不改变
+#104 的 blocked 状态，也不授权任何质量或容量声明。
