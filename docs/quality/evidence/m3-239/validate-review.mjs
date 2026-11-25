@@ -264,9 +264,9 @@ if (new Set(reviewers.map((reviewer) => reviewer.reviewedAt)).size !== reviewerI
 
 humanScores.sort(
   (left, right) =>
-    left.sampleId.localeCompare(right.sampleId) ||
-    left.scorerId.localeCompare(right.scorerId) ||
-    left.dimension.localeCompare(right.dimension),
+    compareStrings(left.sampleId, right.sampleId) ||
+    compareStrings(left.scorerId, right.scorerId) ||
+    compareStrings(left.dimension, right.dimension),
 );
 
 const thresholdResults = dimensions.map((dimension) => {
@@ -710,4 +710,8 @@ function writeText(filePath, value) {
 
 function round(value) {
   return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function compareStrings(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
 }

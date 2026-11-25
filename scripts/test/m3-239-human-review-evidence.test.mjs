@@ -95,6 +95,8 @@ describe("M3-239 human blind-review evidence", () => {
           score.confidence <= 1,
       ),
     ).toBe(true);
+    const sampleIds = scores.map((score) => score.sampleId);
+    expect(sampleIds).toEqual([...sampleIds].sort());
     expect(validation.privacyScan.totalFindingCount).toBe(0);
     expect(validation.privacyScan.privateManuscriptFieldsIncluded).toBe(false);
     expect(validation.privacyScan.oracleFieldsIncluded).toBe(false);
