@@ -249,12 +249,15 @@ describe("M3-239 human blind-review evidence", () => {
     );
 
     expect(capabilityEvidence.capabilities["EVAL-002"].gap.issue).toBe("#240");
-    expect(capabilityEvidence.capabilities["EVAL-002"].gap.reason).toContain(
-      "inter-rater variance threshold",
-    );
+    const thresholdReason = capabilityEvidence.capabilities["EVAL-002"].gap.reason;
+    expect(thresholdReason).toContain("inter-rater variance threshold");
+    expect(thresholdReason).not.toContain("oracle");
+    expect(thresholdReason).not.toContain("hook/prose");
     expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#273");
-    expect(capabilityEvidence.capabilities["CONT-001"].gap.reason).not.toContain(
-      "inter-rater variance threshold",
-    );
+    const remediationReason = capabilityEvidence.capabilities["CONT-001"].gap.reason;
+    expect(remediationReason).not.toContain("inter-rater variance threshold");
+    expect(remediationReason).toContain("缺陷元信息");
+    expect(remediationReason).toContain("待裁决");
+    expect(remediationReason).toContain("hook/prose");
   });
 });
