@@ -39,15 +39,15 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
 - `pnpm release:check` 会从 proposal、cleanup audit、空白模板或真人 `adjudication.json`
   重新计算状态，并拒绝与 `status.json` 不一致的手改账本。
 - 真人证据必须绑定 #273 上由 owner/member/collaborator 发布的 GitHub comment；发布检查会
-  通过 API 核对评论作者关联、时间、正文 marker 和 proposal hash，不信任本地自报的
-  `adjudicatorKind`。
+  通过 API 核对评论作者关联、时间、正文 marker、proposal hash 和最终 decision payload
+  hash，不信任本地自报的 `adjudicatorKind`；裁决内容变化会使旧 comment 失效。
 - 选择 `refreeze_clean_packet` 或 `replace_affected_samples` 后仍需新的 clean human
   blind review；本票不会用算法删除注释代替重新盲评。
 
 ## 证据
 
 - 候选包 SHA-256：
-  `385876e432fe4056c460708b6ddcb814db9625a4255f7643fbf1ad2f1320c02d`
+  `602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3`
 - 污染样本身份：
   `docs/quality/evidence/m3-273/oracle-cleanup-evidence.json`
 - 真人待填模板：

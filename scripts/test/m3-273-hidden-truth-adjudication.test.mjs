@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildM3_273Artifacts,
+  computeM3_273DecisionPayloadSha256,
   evaluateM3_273Adjudication,
   scanOracleContent,
   sampleExposesOracleContent,
@@ -202,16 +203,8 @@ describe("M3-273 hidden-truth adjudication", () => {
     const adjudication = structuredClone(artifacts.adjudicationTemplate);
     completeHumanDecisions(adjudication, {
       packetDecision: "preserve_with_product_owner_approval",
+      hookDecision: "approve_waiver",
     });
-    adjudication.hookProseDisposition = {
-      decision: "approve_waiver",
-      owner: "product-owner",
-      rationale: "记录真实人工质量结论并承担发布风险。",
-      impact: "仅用于当前冻结质量包，新样本仍按 rubric 复查。",
-      followUpIssue: "#242",
-      expiresAt: "2026-12-31T00:00:00.000Z",
-      decidedAt: "2026-11-26T00:00:00.000Z",
-    };
 
     const status = evaluateM3_273Adjudication({ artifacts, adjudication });
 
@@ -251,10 +244,9 @@ describe("M3-273 hidden-truth adjudication", () => {
     const adjudication = structuredClone(artifacts.adjudicationTemplate);
     completeHumanDecisions(adjudication, {
       packetDecision: "preserve_with_product_owner_approval",
+      hookDecision: "approve_waiver",
+      expiresAt: "2000-01-01T00:00:00.000Z",
     });
-    adjudication.hookProseDisposition.decision = "approve_waiver";
-    adjudication.hookProseDisposition.followUpIssue = "#242";
-    adjudication.hookProseDisposition.expiresAt = "2000-01-01T00:00:00.000Z";
 
     expect(evaluateM3_273Adjudication({ artifacts, adjudication }).qualityGate.blockers).toContain(
       "hook-prose-waiver-expired",
@@ -266,10 +258,8 @@ describe("M3-273 hidden-truth adjudication", () => {
     const adjudication = structuredClone(artifacts.adjudicationTemplate);
     completeHumanDecisions(adjudication, {
       packetDecision: "preserve_with_product_owner_approval",
+      hookDecision: "approve_waiver",
     });
-    adjudication.hookProseDisposition.decision = "approve_waiver";
-    adjudication.hookProseDisposition.followUpIssue = "#242";
-    adjudication.hookProseDisposition.expiresAt = "2099-12-31T00:00:00.000Z";
     adjudication.humanAttestation.commentUrl = null;
     adjudication.humanAttestation.commentId = null;
     adjudication.humanAttestation.author = null;
@@ -280,6 +270,15 @@ describe("M3-273 hidden-truth adjudication", () => {
 
     expect(status.humanAdjudicationCompleted).toBe(false);
     expect(status.qualityGate.blockers).toContain("human-attestation-pending");
+
+    const replay = structuredClone(adjudication);
+    completeHumanDecisions(replay, {
+      packetDecision: "preserve_with_product_owner_approval",
+    });
+    replay.adjudications[0].rationale += " 篡改后的新理由。";
+    expect(
+      evaluateM3_273Adjudication({ artifacts, adjudication: replay }).qualityGate.blockers,
+    ).toContain("human-attestation-incomplete");
   });
 
   it("rebuilds status from an explicitly supplied human decision file", async () => {
@@ -287,16 +286,8 @@ describe("M3-273 hidden-truth adjudication", () => {
     const adjudication = structuredClone(templateArtifacts.adjudicationTemplate);
     completeHumanDecisions(adjudication, {
       packetDecision: "preserve_with_product_owner_approval",
+      hookDecision: "approve_waiver",
     });
-    adjudication.hookProseDisposition = {
-      decision: "approve_waiver",
-      owner: "product-owner",
-      rationale: "记录真实人工质量结论并承担发布风险。",
-      impact: "仅用于当前冻结质量包，新样本仍按 rubric 复查。",
-      followUpIssue: "#242",
-      expiresAt: "2026-12-31T00:00:00.000Z",
-      decidedAt: "2026-11-26T00:00:00.000Z",
-    };
 
     const artifacts = await buildM3_273Artifacts({
       root,
@@ -318,7 +309,14 @@ describe("M3-273 hidden-truth adjudication", () => {
   });
 });
 
-function completeHumanDecisions(adjudication, { packetDecision = "refreeze_clean_packet" } = {}) {
+function completeHumanDecisions(
+  adjudication,
+  {
+    packetDecision = "refreeze_clean_packet",
+    hookDecision = "remediate_and_rerun",
+    expiresAt = "2099-12-31T00:00:00.000Z",
+  } = {},
+) {
   const sampleDecision =
     packetDecision === "preserve_with_product_owner_approval"
       ? "preserve_source_with_product_owner_approval"
@@ -326,17 +324,6 @@ function completeHumanDecisions(adjudication, { packetDecision = "refreeze_clean
         ? "replace_sample"
         : "accept_clean_proposal";
   adjudication.status = "complete";
-  adjudication.humanAttestation = {
-    provider: "github_issue_comment",
-    issue: 273,
-    requiredMarker: "M3-273-HUMAN-ATTESTATION",
-    proposalSha256: adjudication.proposalPacketSha256,
-    commentUrl: "https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-999999",
-    commentId: "999999",
-    author: "ruifeng-y",
-    attestedAt: "2026-11-26T00:00:00.000Z",
-    statement: `M3-273-HUMAN-ATTESTATION ${adjudication.proposalPacketSha256}`,
-  };
   adjudication.packetDecision = {
     decision: packetDecision,
     oldScoresImpact: "invalidated_for_clean_review",
@@ -357,12 +344,31 @@ function completeHumanDecisions(adjudication, { packetDecision = "refreeze_clean
     decidedAt: "2026-11-26T00:00:00.000Z",
   }));
   adjudication.hookProseDisposition = {
-    decision: "remediate_and_rerun",
+    decision: hookDecision,
     owner: "quality-owner",
-    rationale: "低于冻结门槛，先修复再重新盲评。",
-    impact: "候选包不得在重新评分前用于发布声明。",
-    followUpIssue: "#273",
-    expiresAt: null,
+    rationale:
+      hookDecision === "approve_waiver"
+        ? "记录真实人工质量结论并承担发布风险。"
+        : "低于冻结门槛，先修复再重新盲评。",
+    impact:
+      hookDecision === "approve_waiver"
+        ? "仅用于当前冻结质量包，新样本仍按 rubric 复查。"
+        : "候选包不得在重新评分前用于发布声明。",
+    followUpIssue: hookDecision === "approve_waiver" ? "#242" : "#273",
+    expiresAt: hookDecision === "approve_waiver" ? expiresAt : null,
     decidedAt: "2026-11-26T00:00:00.000Z",
+  };
+  const decisionPayloadSha256 = computeM3_273DecisionPayloadSha256(adjudication);
+  adjudication.humanAttestation = {
+    provider: "github_issue_comment",
+    issue: 273,
+    requiredMarker: "M3-273-HUMAN-ATTESTATION",
+    proposalSha256: adjudication.proposalPacketSha256,
+    decisionPayloadSha256,
+    commentUrl: "https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-999999",
+    commentId: "999999",
+    author: "ruifeng-y",
+    attestedAt: "2026-11-26T00:00:00.000Z",
+    statement: `M3-273-HUMAN-ATTESTATION ${adjudication.proposalPacketSha256} ${decisionPayloadSha256}`,
   };
 }

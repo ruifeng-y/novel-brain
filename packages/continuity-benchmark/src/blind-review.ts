@@ -223,6 +223,10 @@ export function buildContinuityBlindReviewPacket(input: {
           isKnowledgeStateDisclosable(fixture, state, inputItem.chapterNumber),
       )
       .map(toReviewKnowledgeState);
+    const candidateText = sanitizeBlindReviewText(inputItem.candidateText);
+    if (blindReviewOracleContentMarkers(candidateText).length > 0) {
+      throw new Error(`BLIND_REVIEW_ORACLE_CONTENT:${inputItem.reviewId}`);
+    }
     packetItems.push({
       reviewId: inputItem.reviewId,
       stratum: inputItem.stratum,
@@ -230,7 +234,7 @@ export function buildContinuityBlindReviewPacket(input: {
       chapterNumber: inputItem.chapterNumber,
       branchId: inputItem.branchId,
       povCharacterId: inputItem.povCharacterId,
-      candidateText: sanitizeBlindReviewText(inputItem.candidateText),
+      candidateText,
       rubricVersion: fixture.plan.rubricVersion,
       reviewPrompt:
         "只依据给出的已确认设定与 POV 信息，判断候选片段是否出现连续性或知识边界问题；信息不足时必须选择升级复核。",

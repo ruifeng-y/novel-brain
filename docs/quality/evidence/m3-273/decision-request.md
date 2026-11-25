@@ -16,8 +16,10 @@ Issue: #273
 ## 外部真人声明
 
 负责人必须先在本仓库 Issue #273 发布分别签名的 GitHub comment，正文包含
-`M3-273-HUMAN-ATTESTATION` 和候选包哈希 `602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3`，
-再把评论 URL、评论编号、评论作者、评论时间和原声明填入 `humanAttestation`。
+`M3-273-HUMAN-ATTESTATION`、候选包哈希 `602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3`
+和最终裁决载荷哈希。先完成全部裁决字段，再运行
+`node scripts/m3-273-adjudication.mjs --payload-hash` 获取载荷哈希并写入评论及
+`humanAttestation.decisionPayloadSha256`，最后填写评论 URL、编号、作者、时间和原声明。
 发布门禁会通过 GitHub API 核对 Issue 编号、评论作者关联、评论时间和正文标记；只填写
 `adjudicatorKind: "human"` 不能满足真人证据要求。
 

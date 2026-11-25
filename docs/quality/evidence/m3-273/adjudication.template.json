@@ -15,6 +15,7 @@
     "issue": 273,
     "requiredMarker": "M3-273-HUMAN-ATTESTATION",
     "proposalSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3",
+    "decisionPayloadSha256": null,
     "commentUrl": null,
     "commentId": null,
     "author": null,

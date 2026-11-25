@@ -115,11 +115,12 @@ const passingHumanReviewStatus = () => ({
     issue: 273,
     requiredMarker: "M3-273-HUMAN-ATTESTATION",
     proposalSha256: "a".repeat(64),
+    decisionPayloadSha256: "c".repeat(64),
     commentUrl: "https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-999999",
     commentId: "999999",
     author: "ruifeng-y",
     attestedAt: "2026-11-26T00:00:00.000Z",
-    statement: `M3-273-HUMAN-ATTESTATION ${"a".repeat(64)}`,
+    statement: `M3-273-HUMAN-ATTESTATION ${"a".repeat(64)} ${"c".repeat(64)}`,
   },
   qualityGate: {
     status: "pass",

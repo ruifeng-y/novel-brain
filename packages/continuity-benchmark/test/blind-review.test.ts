@@ -48,6 +48,23 @@ describe("continuity blind review packet", () => {
     );
   });
 
+  it("fails closed when another oracle marker survives packet construction", () => {
+    const tampered = structuredClone(fixture);
+    for (const chapter of tampered.chapters) {
+      chapter.content += "\n【连续性证据】";
+    }
+    for (const chapter of tampered.branchChapters) {
+      chapter.content += "\n【连续性证据】";
+    }
+
+    expect(() =>
+      buildContinuityBlindReviewPacket({
+        fixture: tampered,
+        samplesPerStratum: 2,
+      }),
+    ).toThrow("BLIND_REVIEW_ORACLE_CONTENT");
+  });
+
   it("withholds hidden author truth and provider identity from reviewers", () => {
     const { packet, oracle } = buildContinuityBlindReviewPacket({
       fixture,

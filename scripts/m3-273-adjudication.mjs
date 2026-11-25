@@ -67,6 +67,12 @@ export function sampleExposesOracleContent(sample) {
   );
 }
 
+export function computeM3_273DecisionPayloadSha256(adjudication) {
+  const payload = structuredClone(adjudication);
+  delete payload.humanAttestation;
+  return sha256Json(payload);
+}
+
 export function sanitizeBlindReviewText(text) {
   return text.replace(EXPLICIT_CONFIRMED_FACT_CONFLICT, "").trimEnd();
 }
@@ -402,9 +408,11 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
     }
   }
 
+  const decisionPayloadSha256 = computeM3_273DecisionPayloadSha256(adjudication);
   const humanAttestationComplete = isCompleteHumanAttestation(
     adjudication?.humanAttestation,
     artifacts.proposalPacket.proposalSha256,
+    decisionPayloadSha256,
   );
   if (!humanAttestationComplete) {
     blockers.push(
@@ -431,7 +439,7 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
     completedAdjudicationCount: completedIds.length,
     pendingAdjudicationCount: unresolvedSampleIds.length,
     pendingSampleIds: unresolvedSampleIds,
-    decisionPayloadSha256: sha256Json(adjudication),
+    decisionPayloadSha256,
     proposalPacketSha256: artifacts.proposalPacket.proposalSha256,
     cleanPacketProposed: true,
     reviewerReady: false,
@@ -459,6 +467,7 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
           issue: adjudication.humanAttestation.issue,
           requiredMarker: adjudication.humanAttestation.requiredMarker,
           proposalSha256: adjudication.humanAttestation.proposalSha256,
+          decisionPayloadSha256: adjudication.humanAttestation.decisionPayloadSha256,
           commentUrl: adjudication.humanAttestation.commentUrl,
           commentId: adjudication.humanAttestation.commentId,
           author: adjudication.humanAttestation.author,
@@ -545,6 +554,7 @@ function createAdjudicationTemplate(input) {
       issue: ISSUE,
       requiredMarker: HUMAN_ATTESTATION_MARKER,
       proposalSha256: input.proposalPacket.proposalSha256,
+      decisionPayloadSha256: null,
       commentUrl: null,
       commentId: null,
       author: null,
@@ -636,8 +646,10 @@ Issue: #273
 ## 外部真人声明
 
 负责人必须先在本仓库 Issue #273 发布分别签名的 GitHub comment，正文包含
-\`${HUMAN_ATTESTATION_MARKER}\` 和候选包哈希 \`${input.proposalPacket.proposalSha256}\`，
-再把评论 URL、评论编号、评论作者、评论时间和原声明填入 \`humanAttestation\`。
+\`${HUMAN_ATTESTATION_MARKER}\`、候选包哈希 \`${input.proposalPacket.proposalSha256}\`
+和最终裁决载荷哈希。先完成全部裁决字段，再运行
+\`node scripts/m3-273-adjudication.mjs --payload-hash\` 获取载荷哈希并写入评论及
+\`humanAttestation.decisionPayloadSha256\`，最后填写评论 URL、编号、作者、时间和原声明。
 发布门禁会通过 GitHub API 核对 Issue 编号、评论作者关联、评论时间和正文标记；只填写
 \`adjudicatorKind: "human"\` 不能满足真人证据要求。
 
@@ -691,12 +703,13 @@ function isCompleteHookDecision(value) {
   );
 }
 
-function isCompleteHumanAttestation(value, proposalSha256) {
+function isCompleteHumanAttestation(value, proposalSha256, decisionPayloadSha256) {
   return Boolean(
     value?.provider === "github_issue_comment" &&
     value.issue === ISSUE &&
     value.requiredMarker === HUMAN_ATTESTATION_MARKER &&
     value.proposalSha256 === proposalSha256 &&
+    value.decisionPayloadSha256 === decisionPayloadSha256 &&
     /^https:\/\/github\.com\/ruifeng-y\/novel-brain\/issues\/273#issuecomment-\d+$/u.test(
       value.commentUrl ?? "",
     ) &&
@@ -706,7 +719,8 @@ function isCompleteHumanAttestation(value, proposalSha256) {
     isIsoTimestamp(value.attestedAt) &&
     hasText(value.statement) &&
     value.statement.includes(HUMAN_ATTESTATION_MARKER) &&
-    value.statement.includes(proposalSha256),
+    value.statement.includes(proposalSha256) &&
+    value.statement.includes(decisionPayloadSha256),
   );
 }
 
@@ -780,6 +794,26 @@ function compareStrings(left, right) {
 
 async function main() {
   const root = path.resolve(import.meta.dirname, "..");
+  if (process.argv.includes("--payload-hash")) {
+    const adjudicationPath = path.join(root, EVIDENCE_DIR, "adjudication.json");
+    if (!existsSync(adjudicationPath)) {
+      process.stderr.write("M3_273_ADJUDICATION_FILE_MISSING\n");
+      process.exitCode = 1;
+      return;
+    }
+    const adjudication = readJson(adjudicationPath);
+    process.stdout.write(
+      `${JSON.stringify(
+        {
+          proposalPacketSha256: adjudication.proposalPacketSha256,
+          decisionPayloadSha256: computeM3_273DecisionPayloadSha256(adjudication),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    return;
+  }
   const checkOnly = process.argv.includes("--check");
   const artifacts = await buildM3_273Artifacts({ root });
   if (!checkOnly) {

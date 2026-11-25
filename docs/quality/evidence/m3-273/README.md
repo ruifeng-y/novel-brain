@@ -45,11 +45,13 @@ explicit fact-conflict suffix does not prove that the remaining adversarial even
 semantically blind. Do not send the proposal to reviewers until a human packet decision and the
 required new clean review are recorded.
 
-Before the local adjudication file can count as human evidence, an owner/member/collaborator
-must post a GitHub comment on #273 containing `M3-273-HUMAN-ATTESTATION` and the proposal
-SHA-256. The comment URL, ID, author, timestamp and statement must be recorded in
-`humanAttestation`. Release verification queries GitHub and rejects self-declared
-`adjudicatorKind: "human"` without that external comment.
+Before the local adjudication file can count as human evidence, complete all decision fields,
+run `node scripts/m3-273-adjudication.mjs --payload-hash`, then have an
+owner/member/collaborator post a GitHub comment on #273 containing
+`M3-273-HUMAN-ATTESTATION`, the proposal SHA-256 and the decision payload SHA-256. Record the
+comment URL, ID, author, timestamp and statement in `humanAttestation`. Release verification
+queries GitHub and rejects self-declared `adjudicatorKind: "human"` without that external
+comment or after any decision payload changes.
 
 Every decision requires a human adjudicator identity, attestation ID, rationale, impact and
 timestamp. Model-written or inferred decisions are invalid.

@@ -644,6 +644,7 @@ function isGithubHumanAttestationValid(attestation) {
     attestation.issue !== 273 ||
     attestation.requiredMarker !== "M3-273-HUMAN-ATTESTATION" ||
     !/^[a-f0-9]{64}$/u.test(attestation.proposalSha256 ?? "") ||
+    !/^[a-f0-9]{64}$/u.test(attestation.decisionPayloadSha256 ?? "") ||
     !/^\d+$/u.test(attestation.commentId ?? "") ||
     attestation.commentUrl !==
       `https://github.com/${EXPECTED_GITHUB_REPOSITORY}/issues/273#issuecomment-${attestation.commentId}`
@@ -665,7 +666,8 @@ function isGithubHumanAttestationValid(attestation) {
       Number.isFinite(createdAt) &&
       Math.abs(attestedAt - createdAt) <= 60_000 &&
       comment.body?.includes("M3-273-HUMAN-ATTESTATION") &&
-      comment.body?.includes(attestation.proposalSha256)
+      comment.body?.includes(attestation.proposalSha256) &&
+      comment.body?.includes(attestation.decisionPayloadSha256)
     );
   } catch {
     return false;
