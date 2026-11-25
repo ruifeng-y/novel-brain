@@ -1,0 +1,303 @@
+{
+  "schemaVersion": 1,
+  "issue": 273,
+  "reviewId": "m3-239-2026-11-25",
+  "proposalPacketSha256": "385876e432fe4056c460708b6ddcb814db9625a4255f7643fbf1ad2f1320c02d",
+  "sourcePacketFileSha256": "769abdfdb7f8486712d8fcd5b3784c14ffee5476572eb51e9839f4d1c19d432e",
+  "sourcePacketCanonicalSha256": "3fdae556029834bfcb97c321c3486c1fe3d57df9d6630cc99484a0ea56ce847c",
+  "sourceContaminatedSampleIds": [
+    "Q005",
+    "Q026",
+    "Q034",
+    "Q055",
+    "Q056",
+    "Q067",
+    "Q075",
+    "Q081",
+    "Q083",
+    "Q084",
+    "Q088",
+    "Q093",
+    "Q096",
+    "Q123",
+    "Q130",
+    "Q149",
+    "Q158",
+    "Q160",
+    "Q162",
+    "Q168",
+    "Q182",
+    "Q186",
+    "Q189",
+    "Q196"
+  ],
+  "sampleCountBefore": 204,
+  "sampleCountAfter": 204,
+  "samplesDeleted": 0,
+  "transforms": [
+    {
+      "blindSampleId": "Q005",
+      "datasetSampleId": "long-horizon:34c6a1a1-1813-7d64-81c3-f6601d00bf3a",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "8a811fd357f3f5e6a81ad71cc8af68f71e80b72cbf6cbd70e20282f4940e7ec3",
+      "cleanedTextSha256": "6562e63fc26beac9c5a5a9b40fa318fa6076ff31138dbd40e9141e50ab7de56d",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q026",
+      "datasetSampleId": "long-horizon:8e6c52dc-e798-7219-8e33-5a49ce4034f8",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "a1dbdfd3b2bdc2588822e588087c18c88a9e567f28c73190ed81e8f7dd42ad59",
+      "cleanedTextSha256": "5adb96c8cc5de08aef8527ecd6251fca64b52529925488eb6e20df1f620d937d",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q034",
+      "datasetSampleId": "long-horizon:63cac527-f915-7115-898a-1ceba6387075",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "8e3500d12c393a2172286f51714278bf1b827d1e4a9e6bbc94d0098b725db846",
+      "cleanedTextSha256": "54d9ab057c054c6b0b6a10c445d75e18683afb1fcc57262d80636c02a877d652",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q055",
+      "datasetSampleId": "long-horizon:aa978572-2345-7347-86d4-115ffe7402c4",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "4ece76852af9c8df35e046bf5c2a0540ed2a5641627f2b89d690ad40661aea35",
+      "cleanedTextSha256": "e262270551e5d6f87f82964e34a4e9aa54ab9922f44068cdef373d3c82bced65",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q056",
+      "datasetSampleId": "long-horizon:9e48e7d7-a00c-7238-85f4-ab03bce90dd5",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "a090c5ea4496420e64d42b69b1bad9f2f80987fba083d5fc7b842ec517fc7575",
+      "cleanedTextSha256": "e1e64f73cdf6d26529761ec9517c9ed68c8ef63ef7857abfff65c68e925ae993",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q067",
+      "datasetSampleId": "long-horizon:a00db5ab-9d1c-78e6-951c-5bba5e108254",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "dc468b3f1d9dd9adb29394a410d47e3826d5378f9bdd208d4704a771d7dba7ed",
+      "cleanedTextSha256": "8f171095dc2d0f5dab5d990fb217bd73485be9833e6e3e482080dbcde7be2c2d",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q075",
+      "datasetSampleId": "long-horizon:8e7bd8d2-4a4d-75c8-b958-79dfb460ea37",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "6c4bb79c2c63bf4c0437ea7c617fe04430780b343f39f8b7ca1ef1821831f856",
+      "cleanedTextSha256": "f79a4872ef05293afc8eadde5efa592dd6653ef327b993b93037aface00196be",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q081",
+      "datasetSampleId": "long-horizon:baf9375a-66d8-7645-9fd5-566e7aee765a",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "5ea096483a641a032f77220cb5590156315d6695ff661b81b07dbaf69b5d2407",
+      "cleanedTextSha256": "947f2fa000e3e9a2ed71dc99c4c93d85c0da3550a96dc2db35ac3bd464a7db5d",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q083",
+      "datasetSampleId": "long-horizon:8a5af746-0f64-7482-b101-833244833444",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "19716fb0d10f83a64a6a938eebc6cefab3e38ec5e7e6a56d00192504d6405d61",
+      "cleanedTextSha256": "3fae713d4b47eecd08f2ac16e9c294f77d64b4c7052cf52a0314be13107887ff",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q084",
+      "datasetSampleId": "long-horizon:b167737e-b483-752c-bcef-0a892a8e5ed8",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "b22485dab27effb044f2fec98439cddfd3c14f416eee93da42cb01e4dd5ac7d9",
+      "cleanedTextSha256": "c84726af3fe579c93489e7c8913d9502539aae824c9cb505ae67461ea72dde80",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q088",
+      "datasetSampleId": "long-horizon:c127c949-e5d0-7feb-aa67-ebdaefc60e18",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "9a30a394e81788d4c841d84052c169cc99984ea62013d5319cd0ef6d8a7a18e9",
+      "cleanedTextSha256": "8bd5a38582def01a8db083ca20675effabb2af8c4d0bcc6874bf9565686ee53c",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q093",
+      "datasetSampleId": "long-horizon:192f700e-1069-7e2e-a9d7-20c47706eaf5",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "710bda795cb1b43080ab8cdcd297039d3a20f929f7420e3c0a2ce547fa14026e",
+      "cleanedTextSha256": "060adc48a097d5c47210fb7a0aee93acd33029c4cf2d7971abd84f24935ec7a6",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q096",
+      "datasetSampleId": "long-horizon:390a62d1-0700-7228-b314-98922fa1f519",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "32b3fb373c8d8c2492445f56ef9d8a902fabc3ba0edf992a0771b8ba1e3fbacc",
+      "cleanedTextSha256": "0ecb0bc7d784729bf2b7c440b2493f018b91e1df034cb6a50d912b60b302ecea",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q123",
+      "datasetSampleId": "long-horizon:0d24c9fd-681f-70f5-b9c2-bbb3587a0a0b",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "f0bcddb4b3be2401007d7c95e0e4500b26d7ebdc178e927148919a8b681a1f63",
+      "cleanedTextSha256": "f6e6460bd796ce9107b4b683c1a6a86e0fdc4b40b619019483abcd7fd85a32f6",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q130",
+      "datasetSampleId": "long-horizon:a1818166-ed50-75dd-adf9-b60792d3c06a",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "ba98dee6b315c1384f4246f50cbe97c1647acd79a9b96d492744b10f56c14cdb",
+      "cleanedTextSha256": "eb43832dd6b808b7daedc7e1aef470527e92e16c1a0ca2c624189481ebe2eb1a",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q149",
+      "datasetSampleId": "long-horizon:3b758333-3e08-7896-9f8d-ae2ff25e4f79",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "6bd2b363a708cea656a83213e39dde8066b04d303d7499f8a9e119e2855de53f",
+      "cleanedTextSha256": "955fcc2a92533fd11f851a1bfca3a54b58c6f7af660bf19bc74b772898ce16ed",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q158",
+      "datasetSampleId": "long-horizon:3cc35faf-667e-79d9-ba72-10a67e763de4",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "63528c2affe7a8338f7cd436f20831d66f64448d629d486f1c99a7730115a90d",
+      "cleanedTextSha256": "c17c83ae5e0540043af28ca594994e6e49eba038f29d1b0e567779c08fd58796",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q160",
+      "datasetSampleId": "long-horizon:4893ac54-7adb-79cc-96a9-713d8969c502",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "47715ad4f2afd5e754fb6f22731ccde415d1b53769ba9b993b8fc82a698977ea",
+      "cleanedTextSha256": "9dd798664f2dc4a27eadd2ed41805b7638629dc86f524cde987f6fcab77af39b",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q162",
+      "datasetSampleId": "long-horizon:23fbd96e-de64-71bb-816c-f0c9d6a32fd1",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "fff7ceab9e86948f858cf60349344945f02f7d6c1ac9300f52108c2a48e10116",
+      "cleanedTextSha256": "a8b7f64c97d0ddf4fbdc89234316583b6d2784ff6ce39378176d30e3b4e9979d",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q168",
+      "datasetSampleId": "long-horizon:0188cf39-464e-72c1-ab5b-0518f0341535",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "d5949002fb3c8b71c0a2e982cbc257fd27f4ae1b0aa4f03854839eb58a13fd09",
+      "cleanedTextSha256": "8fdb0854279f89579a3aacf2fc115c4391b8ee21d9a96e795415acbc4b42bda3",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q182",
+      "datasetSampleId": "long-horizon:32477622-f702-74fa-afdc-6d598a83ff47",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "b8801abacb4dbb44891347b223104b93e929b12acb0dd136432e7cdbe215514b",
+      "cleanedTextSha256": "17581f3bb62c8bee2838829a6011fdc50d44ca26c0ce3af9652b763fa39716c1",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q186",
+      "datasetSampleId": "long-horizon:58705aef-3273-70b0-9f5b-e50f18d6c623",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "606a1bd9e55e5cc90fccfee27d30c0043ea39502cae41c0dfc3846b8225b24f8",
+      "cleanedTextSha256": "a0c1b897f6f954222ce4d6ba1921f0e1fa2e4e8d5beb2b78f21623b250d3f9ea",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q189",
+      "datasetSampleId": "long-horizon:5f8bf2cc-7b2d-7806-be53-571921247644",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "af5969dce82d98801be6981f6980e05001dc4e250b8f0ea9383184c1d7031709",
+      "cleanedTextSha256": "711e2fcaf9ff6bca9cca7573e27570091d3fa7911f689c5da106a655e867d726",
+      "allSamplesRetained": true
+    },
+    {
+      "blindSampleId": "Q196",
+      "datasetSampleId": "long-horizon:4f8808b7-2ab9-752c-9261-37dc21d1eca9",
+      "transform": "strip-explicit-oracle-annotation-v1",
+      "sourceMarkers": [
+        "explicit-confirmed-fact-conflict"
+      ],
+      "originalTextSha256": "8f2a7bb7b699091dba5131758b1e736d4872af96a68fc049d34a3d3ddedc7976",
+      "cleanedTextSha256": "c44a620a3d86002502b87b245d1b94a696822e9359968a63d4c9ac41575b4d30",
+      "allSamplesRetained": true
+    }
+  ]
+}

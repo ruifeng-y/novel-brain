@@ -91,6 +91,27 @@ const passingDeviationApprovals = () => ({
   deviations: [],
 });
 
+const passingHumanReviewStatus = () => ({
+  schemaVersion: 1,
+  issue: 273,
+  technicalStatus: "passed",
+  humanAdjudicationCompleted: true,
+  pendingAdjudicationCount: 0,
+  cleanPacketApproved: true,
+  qualityGate: {
+    status: "pass",
+    blockers: [],
+  },
+  separateDecisions: [
+    {
+      id: "interRaterVarianceThreshold",
+      owner: "#240",
+      status: "approved",
+      mayBeApprovedByThisIssue: false,
+    },
+  ],
+});
+
 const passingDeferrals = () => ({
   schemaVersion: 1,
   deferrals: [
@@ -142,6 +163,7 @@ const evaluate = (overrides = {}) =>
     actionContract: passingActionContract(),
     actionEvidence: passingActionEvidence(),
     deviationApprovals: passingDeviationApprovals(),
+    humanReviewStatus: passingHumanReviewStatus(),
     evidenceExists: () => true,
     githubRunIsSuccessful: () => true,
     auditCiRunIsValid: () => true,
@@ -199,6 +221,51 @@ describe("V1 release gate", () => {
         "auth:production-built",
       ]),
     );
+  });
+
+  it("rejects a passing human-review gate when the M3-273 ledger remains blocked", () => {
+    const humanReviewStatus = passingHumanReviewStatus();
+    humanReviewStatus.technicalStatus = "passed";
+    humanReviewStatus.humanAdjudicationCompleted = false;
+    humanReviewStatus.pendingAdjudicationCount = 24;
+    humanReviewStatus.cleanPacketApproved = false;
+    humanReviewStatus.qualityGate = {
+      status: "blocked",
+      blockers: [
+        "adjudication-pending:24",
+        "hook-prose-disposition-pending",
+        "oracle-content-disposition-pending:24",
+      ],
+    };
+
+    const result = evaluate({ humanReviewStatus });
+
+    expect(result.blockers).toEqual(
+      expect.arrayContaining([
+        "human-blind-review:ledger-blocked",
+        "human-blind-review:pending-adjudications",
+      ]),
+    );
+  });
+
+  it("requires the M3-273 human-review ledger and keeps variance approval on #240", () => {
+    const missing = evaluate({ humanReviewStatus: undefined });
+    expect(missing.blockers).toContain("human-blind-review:status-ledger-missing");
+
+    const wrongOwner = passingHumanReviewStatus();
+    wrongOwner.separateDecisions[0].owner = "#273";
+    const result = evaluate({ humanReviewStatus: wrongOwner });
+
+    expect(result.blockers).toContain("human-blind-review:variance-owner-mismatch");
+  });
+
+  it("rejects a passing human-review gate while the #240 variance decision is pending", () => {
+    const humanReviewStatus = passingHumanReviewStatus();
+    humanReviewStatus.separateDecisions[0].status = "pending";
+
+    const result = evaluate({ humanReviewStatus });
+
+    expect(result.blockers).toContain("human-blind-review:variance-threshold-pending");
   });
 
   it("rejects pass gates that point at missing evidence", () => {

@@ -2,7 +2,7 @@
 
 > Issue: #139
 > Capabilities: QUALITY-006, EVAL-001, EVAL-002
-> Status: implementation complete; automated registry/execution/regression evidence recorded; #239 archives human raw scores as complete-with-warnings, while pending adjudication, the failed hook/prose threshold and unapproved variance threshold keep release use blocked.
+> Status: implementation complete; automated registry/execution/regression evidence recorded; #239 archives human raw scores as complete-with-warnings, while the #273 human adjudication, failed hook/prose threshold and unapproved variance threshold keep release use blocked.
 
 ## 实现范围
 
@@ -66,7 +66,7 @@ pnpm quality regress --baseline baseline-report.json --candidate artifacts/quali
 
 - Automated tests intentionally use clearly labeled synthetic reviewer records to verify the gate implementation; they are not release blind-review evidence.
 - Human review has supplied two reviewers per sample, required outline-beat evidence, consistent reviewer attestations and both the evaluator gate hash and actual packet hash; see `docs/implementation/m3-239-human-blind-review.md`.
-- Both reviewers flagged the same 24 long-horizon cases for adjudication; no adjudication result is recorded. #239 closes as complete-with-warnings, while quality release remains blocked.
+- Both reviewers flagged the same 24 long-horizon cases for adjudication; #273 now provides a non-approved clean-packet proposal and blank human decision request, but no adjudication result is recorded. #239 closes as complete-with-warnings, while quality release remains blocked.
 - The recorded `hook_prose_score` is `1.882353`, below the required `4/5`; `interRaterVarianceThreshold` still requires the separate #240 decision.
 - The current gate blocks model-only judgement and any non-approved dataset/rubric artifact.
 - Real DeepSeek provider smoke, canary and rollback remain #140.

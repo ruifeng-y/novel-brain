@@ -1,6 +1,6 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-26。共 **119 个唯一能力 ID**；116 个 V1 能力中 113 个已有可执行证据并标为 `verified`，3 个保留有界缺口。107 个非 UI V1 能力中 104 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 已按产品决定延期，CONT-001 的人工原始评分已由 #239 记录为 `complete-with-warnings`，但 24 个样本文本暴露缺陷元信息并待裁决、`hook_prose_score` 门禁失败且 variance threshold 仍待 #240。
+> 状态：V1 delivery ledger，2026-11-26。共 **119 个唯一能力 ID**；116 个 V1 能力中 113 个已有可执行证据并标为 `verified`，3 个保留有界缺口。107 个非 UI V1 能力中 104 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 已按产品决定延期。CONT-001 的人工原始评分已由 #239 记录为 `complete-with-warnings`；#273 已生成保留 204 个样本身份的非批准清洗提案和 24 项真人裁决请求，但真实裁决仍为 0/24，`hook_prose_score` 处置未完成且 variance threshold 仍待 #240。
 > `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
 
 ## 状态定义
@@ -137,7 +137,7 @@
 | EVAL-003 | 真实 DeepSeek smoke | V1 | verified | #140 | #79, #241 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-003`; [protected run 45557765302](https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302) | M3 |
 | EVAL-004 | Prompt/模型灰度与回滚 | V1 | implemented | #140 | #241 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-004`; model alias gap #271 | M3 |
 | PERF-001 | 1000 万字容量/性能/恢复基准 | 后续 | deferred | — | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 产品决定 V1 不声明 10M 容量；未来重启需重新认证 | Post-V1 |
-| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | implemented | #138 | #106–#119/#86/#90/#115/#239 | ADR 0017/0019/0022; #138 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CONT-001`; `docs/quality/evidence/m3-239/validation.json`; 24 oracle-content/adjudication cases; hook/prose 1.882353 < 4; gap #273/#240 | M3 |
+| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | implemented | #138 | #106–#119/#86/#90/#115/#239/#273 | ADR 0017/0019/0022; #138 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CONT-001`; `docs/quality/evidence/m3-239/validation.json`; `docs/quality/evidence/m3-273/status.json`; proposed 204-sample cleanup, 0/24 real adjudications; hook/prose 1.882353 < 4; gap #273/#240 | M3 |
 
 ## 强制规则
 
@@ -148,4 +148,4 @@
 5. `mapped` 不等于 `ready`。依赖全部满足后才允许 /implement；不得仅凭 issue 存在或标签开始。
 6. `implemented` 不等于 `verified`；发布前必须提供机器测试结果、人工签收或基准报告。
 7. AGENT-007（向量检索增强）与 QUALITY-009（真实读者反馈）保持 post-V1/deferred，不得用假接口计入 V1；授权记录见 `docs/planning/v1-deferrals.json` 与 ADR 0028。
-8. PERF-001 已明确延期，不属于 V1 发布承诺；CONT-001 的评分证据已由 #239 收口，但 24 个裁决、质量门槛失败 (#273) 和阈值决策 (#240)，以及 EVAL-004 模型身份证据 (#271) 仍是 #104 发布阻塞项。任何未登记解除 V1 归属的能力都会使 release gate 失败。
+8. PERF-001 已明确延期，不属于 V1 发布承诺；CONT-001 的评分证据已由 #239 收口，但 #273 的 24 个真实裁决、清洗包/旧评分影响和 hook/prose 处置，以及 #240 阈值决策和 #271 模型身份证据仍是 #104 发布阻塞项。任何未登记解除 V1 归属的能力都会使 release gate 失败。

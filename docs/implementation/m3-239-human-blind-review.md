@@ -73,4 +73,11 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 - 24 个 long-horizon 样本文本仍暴露缺陷元信息，`cleanBlindReview` 为 `false`。
 - reviewer identity 目前是自述化名，外部实名核验未提供。
 
+## #273 后续准备
+
+#273 已在 `docs/quality/evidence/m3-273/` 生成保留 204 个样本身份的非批准清洗包提案、
+24 项空白真实裁决模板和机器状态账本。该提案不是新冻结 packet，旧评分也未失效或改写；
+状态仍为 0/24 裁决、hook/prose 处置 pending，且 inter-rater variance threshold 继续归
+#240。必须由真实产品/质量负责人填写 `adjudication.json` 后才能重新生成并验证状态。
+
 #239 关闭不改变 #104 的 blocked 状态，也不授权任何质量、阈值或容量声明。

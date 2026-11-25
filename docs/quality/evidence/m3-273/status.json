@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "issue": 273,
+  "reviewId": "m3-239-2026-11-25",
+  "generatedAt": "2026-11-26",
+  "technicalStatus": "passed",
+  "humanAdjudicationCompleted": false,
+  "completedAdjudicationCount": 0,
+  "pendingAdjudicationCount": 24,
+  "pendingSampleIds": [
+    "Q005",
+    "Q026",
+    "Q034",
+    "Q055",
+    "Q056",
+    "Q067",
+    "Q075",
+    "Q081",
+    "Q083",
+    "Q084",
+    "Q088",
+    "Q093",
+    "Q096",
+    "Q123",
+    "Q130",
+    "Q149",
+    "Q158",
+    "Q160",
+    "Q162",
+    "Q168",
+    "Q182",
+    "Q186",
+    "Q189",
+    "Q196"
+  ],
+  "proposalPacketSha256": "385876e432fe4056c460708b6ddcb814db9625a4255f7643fbf1ad2f1320c02d",
+  "cleanPacketProposed": true,
+  "cleanPacketApproved": false,
+  "oracleContentDisposition": null,
+  "hookProseDispositionComplete": false,
+  "qualityGate": {
+    "status": "blocked",
+    "blockers": [
+      "adjudication-pending:24",
+      "hook-prose-disposition-pending",
+      "oracle-content-disposition-pending:24"
+    ]
+  },
+  "separateDecisions": [
+    {
+      "id": "interRaterVarianceThreshold",
+      "owner": "#240",
+      "status": "pending",
+      "mayBeApprovedByThisIssue": false
+    }
+  ],
+  "decisionFileStatus": "missing",
+  "decisionFilePath": "docs/quality/evidence/m3-273/adjudication.json"
+}

@@ -1,0 +1,230 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
+
+import {
+  buildM3_273Artifacts,
+  evaluateM3_273Adjudication,
+  scanOracleContent,
+} from "../m3-273-adjudication.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+describe("M3-273 hidden-truth adjudication", () => {
+  it("proposes a clean packet without deleting or silently approving the 24 contaminated samples", async () => {
+    const artifacts = await buildM3_273Artifacts({ root });
+
+    expect(artifacts.proposalPacket.samples).toHaveLength(204);
+    expect(artifacts.cleanupEvidence.transforms).toHaveLength(24);
+    expect(artifacts.cleanupEvidence.sourceContaminatedSampleIds).toEqual(
+      artifacts.status.pendingSampleIds,
+    );
+    expect(artifacts.artifactFreshness).toEqual({
+      status: "passed",
+      stalePaths: [],
+    });
+    expect(
+      artifacts.proposalPacket.samples.every(
+        (sample) => !scanOracleContent(sample.text).contaminated,
+      ),
+    ).toBe(true);
+    expect(
+      artifacts.proposalPacket.samples.every(
+        (sample) => !scanOracleContent(sample.requiredBeats.join(" ")).contaminated,
+      ),
+    ).toBe(true);
+    expect(
+      artifacts.proposalPacket.samples.every(
+        (sample) =>
+          Object.keys(sample).sort().join(",") ===
+          ["blindSampleId", "genre", "requiredBeats", "text"].join(","),
+      ),
+    ).toBe(true);
+    expect(artifacts.proposalPacket.status).toBe("proposed-not-approved");
+    expect(artifacts.status.cleanPacketApproved).toBe(false);
+    expect(artifacts.status.humanAdjudicationCompleted).toBe(false);
+    expect(artifacts.status.completedAdjudicationCount).toBe(0);
+    expect(artifacts.status.pendingAdjudicationCount).toBe(24);
+    expect(artifacts.status.qualityGate).toEqual({
+      status: "blocked",
+      blockers: [
+        "adjudication-pending:24",
+        "hook-prose-disposition-pending",
+        "oracle-content-disposition-pending:24",
+      ],
+    });
+    expect(artifacts.status.separateDecisions).toEqual([
+      {
+        id: "interRaterVarianceThreshold",
+        owner: "#240",
+        status: "pending",
+        mayBeApprovedByThisIssue: false,
+      },
+    ]);
+  });
+
+  it("keeps every human decision field blank in the generated questionnaire", async () => {
+    const artifacts = await buildM3_273Artifacts({ root });
+    const template = artifacts.adjudicationTemplate;
+
+    expect(template.status).toBe("awaiting-human-input");
+    expect(template.packetDecision).toMatchObject({
+      decision: null,
+      oldScoresImpact: null,
+      adjudicatorId: null,
+      adjudicatorKind: null,
+      attestationId: null,
+      rationale: null,
+      decidedAt: null,
+    });
+    expect(template.adjudications).toHaveLength(24);
+    expect(
+      template.adjudications.every(
+        (entry) =>
+          entry.decision === null &&
+          entry.rationale === null &&
+          entry.impact === null &&
+          entry.adjudicatorId === null &&
+          entry.adjudicatorKind === null &&
+          entry.attestationId === null &&
+          entry.decidedAt === null,
+      ),
+    ).toBe(true);
+    expect(template.hookProseDisposition).toMatchObject({
+      decision: null,
+      owner: null,
+      rationale: null,
+      impact: null,
+      followUpIssue: null,
+      expiresAt: null,
+      decidedAt: null,
+    });
+  });
+
+  it("rejects pending, duplicated, non-human or incomplete adjudications", async () => {
+    const artifacts = await buildM3_273Artifacts({ root });
+    const pending = evaluateM3_273Adjudication({
+      artifacts,
+      adjudication: artifacts.adjudicationTemplate,
+    });
+    expect(pending.qualityGate.status).toBe("blocked");
+    expect(pending.qualityGate.blockers).toContain("adjudication-pending:24");
+
+    const duplicated = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(duplicated);
+    duplicated.adjudications[1].blindSampleId = duplicated.adjudications[0].blindSampleId;
+    expect(
+      evaluateM3_273Adjudication({ artifacts, adjudication: duplicated }).qualityGate.blockers,
+    ).toContain("adjudication-duplicate:1");
+
+    const nonHuman = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(nonHuman);
+    nonHuman.adjudications[0].adjudicatorKind = "model";
+    expect(
+      evaluateM3_273Adjudication({ artifacts, adjudication: nonHuman }).qualityGate.blockers,
+    ).toContain("adjudication-non-human:1");
+
+    const incomplete = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(incomplete);
+    incomplete.adjudications[0].rationale = " ";
+    expect(
+      evaluateM3_273Adjudication({ artifacts, adjudication: incomplete }).qualityGate.blockers,
+    ).toContain("adjudication-incomplete:1");
+  });
+
+  it("accepts a complete human waiver without approving the separate variance threshold", async () => {
+    const artifacts = await buildM3_273Artifacts({ root });
+    const adjudication = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(adjudication);
+    adjudication.hookProseDisposition = {
+      decision: "approve_waiver",
+      owner: "product-owner",
+      rationale: "记录真实人工质量结论并承担发布风险。",
+      impact: "仅用于当前冻结质量包，新样本仍按 rubric 复查。",
+      followUpIssue: "#242",
+      expiresAt: "2026-12-31T00:00:00.000Z",
+      decidedAt: "2026-11-26T00:00:00.000Z",
+    };
+    adjudication.packetDecision.decision = "preserve_with_product_owner_approval";
+
+    const status = evaluateM3_273Adjudication({ artifacts, adjudication });
+
+    expect(status.humanAdjudicationCompleted).toBe(true);
+    expect(status.completedAdjudicationCount).toBe(24);
+    expect(status.pendingAdjudicationCount).toBe(0);
+    expect(status.qualityGate).toEqual({
+      status: "pass",
+      blockers: [],
+    });
+    expect(status.separateDecisions[0]).toMatchObject({
+      id: "interRaterVarianceThreshold",
+      owner: "#240",
+      status: "pending",
+      mayBeApprovedByThisIssue: false,
+    });
+  });
+
+  it("rebuilds status from an explicitly supplied human decision file", async () => {
+    const templateArtifacts = await buildM3_273Artifacts({ root });
+    const adjudication = structuredClone(templateArtifacts.adjudicationTemplate);
+    completeHumanDecisions(adjudication);
+    adjudication.hookProseDisposition = {
+      decision: "approve_waiver",
+      owner: "product-owner",
+      rationale: "记录真实人工质量结论并承担发布风险。",
+      impact: "仅用于当前冻结质量包，新样本仍按 rubric 复查。",
+      followUpIssue: "#242",
+      expiresAt: "2026-12-31T00:00:00.000Z",
+      decidedAt: "2026-11-26T00:00:00.000Z",
+    };
+
+    const artifacts = await buildM3_273Artifacts({
+      root,
+      adjudicationOverride: adjudication,
+    });
+
+    expect(artifacts.status).toMatchObject({
+      decisionFileStatus: "provided",
+      humanAdjudicationCompleted: true,
+      completedAdjudicationCount: 24,
+      pendingAdjudicationCount: 0,
+      qualityGate: {
+        status: "pass",
+        blockers: [],
+      },
+    });
+  });
+});
+
+function completeHumanDecisions(adjudication) {
+  adjudication.status = "complete";
+  adjudication.packetDecision = {
+    decision: "refreeze_clean_packet",
+    oldScoresImpact: "invalidated_for_clean_review",
+    adjudicatorId: "quality-owner",
+    adjudicatorKind: "human",
+    attestationId: "att-quality-owner-20261126",
+    rationale: "冻结旧评分为警告证据，后续盲评使用未暴露 oracle 的候选包。",
+    decidedAt: "2026-11-26T00:00:00.000Z",
+  };
+  adjudication.adjudications = adjudication.adjudications.map((entry) => ({
+    ...entry,
+    decision: "accept_clean_proposal",
+    rationale: "保留样本身份并移除显式 oracle 注释。",
+    impact: "旧文本只作为历史证据，候选包需重新人工盲评。",
+    adjudicatorId: "quality-owner",
+    adjudicatorKind: "human",
+    attestationId: "att-quality-owner-20261126",
+    decidedAt: "2026-11-26T00:00:00.000Z",
+  }));
+  adjudication.hookProseDisposition = {
+    decision: "remediate_and_rerun",
+    owner: "quality-owner",
+    rationale: "低于冻结门槛，先修复再重新盲评。",
+    impact: "候选包不得在重新评分前用于发布声明。",
+    followUpIssue: "#273",
+    expiresAt: null,
+    decidedAt: "2026-11-26T00:00:00.000Z",
+  };
+}

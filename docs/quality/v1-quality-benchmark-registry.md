@@ -1,7 +1,7 @@
 # V1 固定质量基准 Registry 与回归门禁
 
 > Owner: M3 #103 / #139
-> Status: #239 raw-score capture is `complete-with-warnings`; clean blind review, quality claims and threshold approval remain blocked by oracle content, pending adjudication, the observed hook/prose score and the unapproved variance threshold.
+> Status: #239 raw-score capture is `complete-with-warnings`; #273 has prepared a non-approved clean-packet proposal and a 24-sample human decision request. Clean blind review, quality claims and threshold approval remain blocked by pending human adjudication, the observed hook/prose score and the unapproved variance threshold.
 
 ## Dataset
 
@@ -61,5 +61,7 @@ The recorded result does not pass the V1 quality gate:
 - The observed max inter-rater variance is `0`, but no threshold is approved. #240 must make that separate decision.
 - Both reviewers flagged the same 24 long-horizon cases for adjudication because the frozen text contains defect metadata rather than narrative prose. The raw-score evidence is complete, but clean blind review and adjudication are not.
 - The packet schema excludes oracle fields, but the same 24 sample texts expose continuity-conflict metadata. A future clean blind review must remove that leakage or record an explicit product-owner resolution.
+- #273 removes the explicit oracle annotation in a proposed 204-sample packet without deleting any sample. The proposal is not frozen and cannot be sent to reviewers until a real product/quality owner records the packet disposition, old-score impact and 24 sample adjudications.
+- The #273 status ledger remains blocked with 0/24 adjudications. `hook_prose_score` has no approved remediation or waiver yet, and the inter-rater variance threshold remains exclusively under #240.
 
-The V1 quality claim remains blocked until oracle content and adjudication are resolved, the quality failure is addressed and the inter-rater variance threshold is approved. This review does not change the frozen rubric.
+The V1 quality claim remains blocked until the human adjudication and packet disposition are recorded, the quality failure is addressed and the inter-rater variance threshold is approved. This review does not change the frozen rubric.

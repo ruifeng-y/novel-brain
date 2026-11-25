@@ -421,6 +421,51 @@ function validateActionEvidence(
   return blockers;
 }
 
+function validateHumanReviewStatus(evidence, humanReviewStatus) {
+  const blockers = [];
+  const gate = (Array.isArray(evidence?.gates) ? evidence.gates : []).find(
+    (candidate) => candidate?.id === "human-blind-review",
+  );
+  if (!humanReviewStatus || typeof humanReviewStatus !== "object") {
+    blockers.push("human-blind-review:status-ledger-missing");
+    return blockers;
+  }
+  if (
+    humanReviewStatus.schemaVersion !== 1 ||
+    humanReviewStatus.issue !== 273 ||
+    !humanReviewStatus.qualityGate ||
+    !Array.isArray(humanReviewStatus.qualityGate.blockers)
+  ) {
+    blockers.push("human-blind-review:status-ledger-invalid");
+  }
+  const pendingCount = humanReviewStatus.pendingAdjudicationCount;
+  if (!Number.isInteger(pendingCount) || pendingCount < 0) {
+    blockers.push("human-blind-review:pending-count-invalid");
+  } else if (pendingCount > 0) {
+    blockers.push("human-blind-review:pending-adjudications");
+  }
+  const varianceDecision = (
+    Array.isArray(humanReviewStatus.separateDecisions) ? humanReviewStatus.separateDecisions : []
+  ).find((decision) => decision?.id === "interRaterVarianceThreshold");
+  if (
+    !varianceDecision ||
+    varianceDecision.owner !== "#240" ||
+    varianceDecision.mayBeApprovedByThisIssue !== false
+  ) {
+    blockers.push("human-blind-review:variance-owner-mismatch");
+  }
+  if (gate?.status === "pass" && varianceDecision?.status !== "approved") {
+    blockers.push("human-blind-review:variance-threshold-pending");
+  }
+  if (gate?.status === "pass" && humanReviewStatus.qualityGate?.status !== "pass") {
+    blockers.push("human-blind-review:ledger-blocked");
+  }
+  if (gate?.status === "pass" && humanReviewStatus.humanAdjudicationCompleted !== true) {
+    blockers.push("human-blind-review:adjudication-incomplete");
+  }
+  return blockers;
+}
+
 export function evaluateV1Release({
   evidence,
   traceability,
@@ -431,6 +476,7 @@ export function evaluateV1Release({
   deviationApprovals,
   actionContract,
   actionEvidence,
+  humanReviewStatus,
   evidenceExists = () => false,
   githubRunIsSuccessful = () => false,
   auditCiRunIsValid = () => false,
@@ -473,6 +519,7 @@ export function evaluateV1Release({
       fileContains,
     }),
     ...validateActionEvidence(actionEvidence, actionContract, { evidenceExists, fileContains }),
+    ...validateHumanReviewStatus(evidence, humanReviewStatus),
   ];
   return { ready: blockers.length === 0, blockers };
 }
@@ -637,6 +684,7 @@ function main() {
     deviationApprovals: JSON.parse(readFileSync("docs/ui/v1-ui-deviations.json", "utf8")),
     actionContract: JSON.parse(readFileSync("docs/ui/v1-action-contract.json", "utf8")),
     actionEvidence: JSON.parse(readFileSync("docs/implementation/v1-action-evidence.json", "utf8")),
+    humanReviewStatus: JSON.parse(readFileSync("docs/quality/evidence/m3-273/status.json", "utf8")),
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
     auditCiRunIsValid: isAuditCiRun,
