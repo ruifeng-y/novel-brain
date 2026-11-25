@@ -2,7 +2,7 @@
 
 > Issue: #140
 > Capabilities: EVAL-003, EVAL-004
-> Status: implementation complete; release use remains blocked because the `provider-smoke` environment has no protection rules or secret, and the latest approved-candidate run therefore made no real Provider call.
+> Status: protected real-provider smoke passed; canary release use remains blocked by model alias alignment, quality approval and final V1 gates.
 
 ## 决策
 
@@ -25,10 +25,15 @@
 
 ## 当前 Gate 证据
 
+- 2026-11-25：在提交 `11735fa1400963456fcbe8c95bd654468631d342` 上手动运行 [Provider Smoke 45557765302](https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302)。
+- 配置：DeepSeek 官方 HTTPS API、请求模型 `deepseek-chat`、响应模型 `deepseek-flash`、`m1-writing-prompts-v1`、最大预算 `0.01 CNY`。
+- 结果：`succeeded`，`finishReason: stop`，`attempts: 1`，`networkCalls: 1`，46 tokens，约 `0.000092 CNY`，延迟 1000ms。
+- 脱敏记录：`docs/implementation/evidence/m3-07e-01-provider-smoke-success-2026-11-25.json`。该证据不包含 Key、prompt 正文或生成正文。
+- Provider 响应模型为 `deepseek-flash`，而 canary policy 的 pin 使用请求模型 `deepseek-chat`。当前比较器会产生 `smoke-model-mismatch`，因此 EVAL-004 保持 `implemented`，由 #271 完成模型身份映射或拒绝规则。
 - 2026-11-25：在提交 `20ecf9bdc2874b8267c51395a26286ee03e7af8d` 上手动运行 [Provider Smoke 45469254950](https://github.com/ruifeng-y/novel-brain/actions/runs/45469254950)。
 - 配置：DeepSeek 官方 HTTPS API、`deepseek-chat`、`m1-writing-prompts-v1`、最大预算 `0.01 CNY`。
 - 结果：`failure` / `skipped` / `DEEPSEEK_API_KEY_MISSING`，`networkCalls: 0`。`provider-smoke` environment 存在，但 `protection_rules` 为空且未列出 `DEEPSEEK_API_KEY`。
-- 脱敏记录：`docs/implementation/evidence/m3-07e-01-provider-smoke-2026-11-25.json`。该结果不构成真实 Provider、canary 或模型质量成功证据；#241 保持 `OPEN`。
+- 随后在提交 `aad8e9da5e316ff901dc262fb431227e06302a9f` 上运行 [Provider Smoke 45552558049](https://github.com/ruifeng-y/novel-brain/actions/runs/45552558049)。审批后发起 1 次调用，但 Node 24 pinned lookup 的批量地址回调缺陷触发 `DEEPSEEK_PROVIDER_ERROR`；PR #270 修复后由最终成功 run 验证。
 
 ## Canary 与回滚
 
@@ -67,5 +72,5 @@
 
 ## 发布边界
 
-- 最新手动尝试因 `provider-smoke` environment 缺少保护规则和 `DEEPSEEK_API_KEY` 而没有发起网络调用；真实 smoke 必须在补齐两者后重新手动触发。
+- 受保护的真实 DeepSeek smoke 已成功；该结果不替代人工盲评、variance threshold 或最终 #104 Production CI。
 - #137 的 10M 容量证据和 #104 的 V1 UI 全量签收仍独立。

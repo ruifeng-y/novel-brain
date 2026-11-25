@@ -80,13 +80,12 @@
     },
     {
       "id": "real-provider-smoke",
-      "status": "blocked",
+      "status": "pass",
       "owner": "release-owner",
-      "rationale": "The provider-smoke environment has no protection_rules and the approved-candidate run failed before network access because DEEPSEEK_API_KEY is missing.",
       "evidence": [
         ".github/workflows/provider-smoke.yml",
-        "docs/implementation/evidence/m3-07e-01-provider-smoke-2026-11-25.json",
-        "https://github.com/ruifeng-y/novel-brain/actions/runs/45469254950"
+        "docs/implementation/evidence/m3-07e-01-provider-smoke-success-2026-11-25.json",
+        "https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302"
       ]
     },
     {

@@ -2,7 +2,7 @@
 
 > Issue: #104
 > Capabilities: UI-001, UI-002, UI-003, UI-004, UI-005, UI-006, UI-007, UI-008, UI-009
-> Status: integration implementation complete; V1 release sign-off remains blocked by human quality, real Provider smoke, final CI and the four bounded non-UI capability gaps.
+> Status: integration implementation complete; V1 release sign-off remains blocked by human quality, final CI and three bounded non-UI capability gaps.
 
 ## 实现结果
 
@@ -26,11 +26,10 @@
 
 自动化完成不等于 V1 release approved。以下证据仍缺失：
 
-- Non-UI capability 审计已完成：107 项中 103 项 `verified`，EVAL-002、EVAL-003、EVAL-004、CONT-001 仍有有界缺口；CHANGE-004 至 CHANGE-007 已由 #263 补齐证据并绑定 Production CI；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
+- Non-UI capability 审计已完成：107 项中 104 项 `verified`，EVAL-002、EVAL-004、CONT-001 仍有有界缺口；CHANGE-004 至 CHANGE-007 已由 #263 补齐证据并绑定 Production CI；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
 - UI-001..UI-009 与总 traceability 已由 #238 完成，17 页与 UI capability 不再是发布阻塞项；
 - 真实 human blind review 记录；
 - 已批准的 inter-rater variance threshold；
-- `provider-smoke` environment 保护规则、secret 与成功的真实 Provider smoke 结果；最近一次手动运行因环境保护与 Key 缺失未发起网络调用；
 - 最终 #104 Production CI 的绿色运行链接。
 
 在补齐以上发布级证据之前，`#104` 保持 `OPEN`，不得宣称 V1 发布完成。

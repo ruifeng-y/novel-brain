@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "issue": "#241",
+  "capturedAt": "2026-11-25T06:11:23.759Z",
+  "workflow": "Provider Smoke",
+  "runUrl": "https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302",
+  "artifactUrl": "https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302/artifacts/14996567655",
+  "headSha": "11735fa1400963456fcbe8c95bd654468631d342",
+  "headBranch": "main",
+  "event": "workflow_dispatch",
+  "environment": "provider-smoke",
+  "environmentAccess": {
+    "requiredReviewer": "ruifeng-y",
+    "customBranchPolicy": "main",
+    "canAdminsBypass": false
+  },
+  "provider": "deepseek",
+  "interface": "DeepSeek official HTTPS API",
+  "baseUrl": "https://api.deepseek.com",
+  "requestedModel": "deepseek-chat",
+  "responseModel": "deepseek-flash",
+  "promptVersion": "m1-writing-prompts-v1",
+  "contextCompilerVersion": "m1-context-v1",
+  "agentContractVersion": "agent-m3-06b-v1",
+  "configVersion": "deepseek-default-v1",
+  "configHash": "ca825c790d1a4b90a14fd4b29564a3ca5cc0c3289125b8f7843b5946dd1a751d",
+  "promptHash": "8ca2b08dc08fc4898e87ffe0335ba597e48a5c11085fb25dda6944d6e021c369",
+  "status": "succeeded",
+  "finishReason": "stop",
+  "latencyMs": 1000,
+  "timeoutMs": 15000,
+  "maxBudgetCny": 0.01,
+  "maxAttempts": 2,
+  "attempts": 1,
+  "networkCalls": 1,
+  "usage": {
+    "inputTokens": 38,
+    "outputTokens": 8,
+    "totalTokens": 46
+  },
+  "costCny": 0.000092,
+  "generation": {
+    "textHash": "1d23e06ae338641ae70f4b56fb323faab3a48c9e032e0fdaaeaff8a754205551",
+    "textLength": 9
+  },
+  "providerRequestId": "60bcc82d-3700-411a-8235-8e42e49fa7d0",
+  "redaction": {
+    "containsApiKey": false,
+    "containsPrompt": false,
+    "containsManuscript": false,
+    "containsPrivateContext": false
+  }
+}
