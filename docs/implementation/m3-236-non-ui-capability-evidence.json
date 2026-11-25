@@ -496,7 +496,7 @@
       "evidence": ["continuity-evaluator", "human-blind-review"],
       "gap": {
         "reason": "人工原始评分已记录，但 24 个样本文本暴露缺陷元信息且仍待裁决；hook/prose 为 1.882353，低于 4/5，inter-rater variance threshold 也仍待批准。",
-        "issue": "#104"
+        "issue": "#240"
       }
     }
   }

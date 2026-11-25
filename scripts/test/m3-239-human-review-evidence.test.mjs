@@ -22,7 +22,8 @@ describe("M3-239 human blind-review evidence", () => {
     expect(validation.status).toBe("complete-with-warnings");
     expect(validation.technicalStatus).toBe("passed");
     expect(validation.humanReviewRecorded).toBe(true);
-    expect(validation.humanReviewCompleted).toBe(true);
+    expect(validation.scoreCaptureCompleted).toBe(true);
+    expect(validation.blindReviewProtocolCompleted).toBe(false);
     expect(validation.cleanBlindReview).toBe(false);
     expect(validation.reviewerIdentityEvidence).toBe("self_attested_pseudonymous");
     expect(validation.datasetSha256).toBe(
@@ -146,7 +147,8 @@ describe("M3-239 human blind-review evidence", () => {
       mode: "check-files",
       status: "complete-with-warnings",
       technicalStatus: "passed",
-      humanReviewCompleted: true,
+      scoreCaptureCompleted: true,
+      blindReviewProtocolCompleted: false,
       staleFiles: [],
     });
   });
@@ -164,7 +166,8 @@ describe("M3-239 human blind-review evidence", () => {
       mode: "check",
       status: "complete-with-warnings",
       technicalStatus: "passed",
-      humanReviewCompleted: true,
+      scoreCaptureCompleted: true,
+      blindReviewProtocolCompleted: false,
       staleFiles: [],
     });
   });
@@ -194,7 +197,7 @@ describe("M3-239 human blind-review evidence", () => {
 
     expect(result.status).toBe("complete-with-warnings");
     expect(result.technicalStatus).toBe("passed");
-    expect(result.humanReviewCompleted).toBe(true);
+    expect(result.scoreCaptureCompleted).toBe(true);
     expect(result.qualityGate).toEqual({
       status: "blocked",
       blockers: ["adjudication-pending:1"],
@@ -208,7 +211,7 @@ describe("M3-239 human blind-review evidence", () => {
     });
 
     expect(result.technicalStatus).toBe("passed");
-    expect(result.humanReviewCompleted).toBe(true);
+    expect(result.scoreCaptureCompleted).toBe(true);
     expect(result.qualityGate).toEqual({
       status: "blocked",
       blockers: ["decision-required:interRaterVarianceThreshold"],

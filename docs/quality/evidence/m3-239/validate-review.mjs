@@ -352,7 +352,7 @@ const qualityBlockers = [
   ...thresholdResults.filter((result) => !result.passed).map((result) => `threshold-failed:${result.id}`),
   "decision-required:interRaterVarianceThreshold",
 ].sort();
-const { status, technicalStatus, humanReviewCompleted, qualityGate } = computeReviewStatus({
+const { status, technicalStatus, scoreCaptureCompleted, qualityGate } = computeReviewStatus({
   structuralBlockers,
   qualityBlockers,
 });
@@ -364,7 +364,9 @@ const validation = {
   technicalStatus,
   recordStructureStatus,
   humanReviewRecorded: humanScores.length === packets.samples.length * dimensions.length * reviewerIds.length,
-  humanReviewCompleted,
+  scoreCaptureCompleted,
+  blindReviewProtocolCompleted:
+    scoreCaptureCompleted && !privacyScan.oracleContentIncluded && unresolvedAdjudicationIds.length === 0,
   cleanBlindReview: !privacyScan.oracleContentIncluded,
   reviewerIdentityEvidence: "self_attested_pseudonymous",
   datasetSha256: packets.source.datasetSha256,
@@ -411,7 +413,7 @@ const validation = {
 const humanScoresEvidence = {
   schemaVersion: 1,
   reviewId: validation.reviewId,
-  humanReviewCompleted: validation.humanReviewCompleted,
+  scoreCaptureCompleted: validation.scoreCaptureCompleted,
   datasetSha256: validation.datasetSha256,
   rubricSha256: validation.rubricSha256,
   gateBlindPacketSha256: validation.gateBlindPacketSha256,
@@ -484,7 +486,8 @@ process.stdout.write(
       mode: checkFilesOnly ? "check-files" : checkOnly ? "check" : "write",
       status: validation.status,
       technicalStatus: validation.technicalStatus,
-      humanReviewCompleted: validation.humanReviewCompleted,
+      scoreCaptureCompleted: validation.scoreCaptureCompleted,
+      blindReviewProtocolCompleted: validation.blindReviewProtocolCompleted,
       thresholdResults: validation.thresholdResults,
       qualityGate: validation.qualityGate,
       warnings: validation.warnings,
@@ -612,13 +615,15 @@ function canonicalizeJson(value) {
 function renderValidation(report) {
   return `# M3-239 人工盲评证据校验
 
-> Structural status: **${report.status.toUpperCase()}**
+> Review record status: **${report.status.toUpperCase()}**
 >
 > Technical validation: **${report.technicalStatus.toUpperCase()}**
 >
 > Adjudication status: **${report.unresolvedAdjudicationIds.length === 0 ? "COMPLETE" : "PENDING"}**
 >
 > Quality gate: **${report.qualityGate.status.toUpperCase()}**
+
+- Record integrity: ${report.recordStructureStatus}
 
 ## Frozen evidence
 
@@ -633,8 +638,9 @@ function renderValidation(report) {
 
 ## Adjudication
 
-- Human review recorded: ${report.humanReviewRecorded ? "yes" : "no"}
-- Human review completed: ${report.humanReviewCompleted ? "yes" : "no"}
+- Human score capture recorded: ${report.humanReviewRecorded ? "yes" : "no"}
+- Human score capture complete: ${report.scoreCaptureCompleted ? "yes" : "no"}
+- Blind-review protocol complete: ${report.blindReviewProtocolCompleted ? "yes" : "no"}
 - Completed adjudications: ${report.completedAdjudicationCount}/${report.adjudicationSampleIds.length}
 - Pending samples: ${report.unresolvedAdjudicationIds.length === 0 ? "none" : report.unresolvedAdjudicationIds.join(", ")}
 

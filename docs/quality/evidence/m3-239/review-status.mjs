@@ -13,7 +13,7 @@ export function computeReviewStatus({ structuralBlockers, qualityBlockers }) {
           ? "complete-with-warnings"
           : "complete",
     technicalStatus: normalizedStructuralBlockers.length === 0 ? "passed" : "blocked",
-    humanReviewCompleted: normalizedStructuralBlockers.length === 0,
+    scoreCaptureCompleted: normalizedStructuralBlockers.length === 0,
     qualityGate: {
       status: gateBlockers.length === 0 ? "pass" : "blocked",
       blockers: gateBlockers,

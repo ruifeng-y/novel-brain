@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "reviewId": "m3-239-2026-11-25",
-  "humanReviewCompleted": true,
+  "scoreCaptureCompleted": true,
   "datasetSha256": "90c8c8c44540ae99246e243ac16c1158d7cee3485ac4b5c1a901b3b7164e753b",
   "rubricSha256": "247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b",
   "gateBlindPacketSha256": "91b3c844070a69a4eea51d6583d816d5d732d9ccad95f972a2d6a77b0287c2fb",

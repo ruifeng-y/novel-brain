@@ -46,8 +46,8 @@ node .\docs\quality\evidence\m3-239\validate-review.mjs --check
 | `hook_prose_score` | 1.882353 | >= 4 | fail |
 
 - 覆盖：2/2 reviewers、204/204 samples、816/816 human score rows。
-- `technicalStatus: passed`；原始 CSV、notes 和 packet 可由 `--check-files` / `--check`
-  重建且无 stale file。
+- `technicalStatus: passed`；派生证据可由原始问卷、CSV、notes 和 packet 确定性重算，
+  `--check-files` / `--check` 均无 stale file。原始输入本身不由脚本重建。
 - 观察到的 max inter-rater variance：`0`。
 - Reviewed samples requiring follow-up adjudication: 24 long-horizon cases; reviewers
   recorded that these samples contain defect metadata rather than narrative prose.

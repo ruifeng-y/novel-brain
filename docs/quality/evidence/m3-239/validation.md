@@ -1,12 +1,14 @@
 # M3-239 人工盲评证据校验
 
-> Structural status: **COMPLETE-WITH-WARNINGS**
+> Review record status: **COMPLETE-WITH-WARNINGS**
 >
 > Technical validation: **PASSED**
 >
 > Adjudication status: **PENDING**
 >
 > Quality gate: **BLOCKED**
+
+- Record integrity: passed
 
 ## Frozen evidence
 
@@ -21,8 +23,9 @@
 
 ## Adjudication
 
-- Human review recorded: yes
-- Human review completed: yes
+- Human score capture recorded: yes
+- Human score capture complete: yes
+- Blind-review protocol complete: no
 - Completed adjudications: 0/24
 - Pending samples: Q005, Q026, Q034, Q055, Q056, Q067, Q075, Q081, Q083, Q084, Q088, Q093, Q096, Q123, Q130, Q149, Q158, Q160, Q162, Q168, Q182, Q186, Q189, Q196
 
