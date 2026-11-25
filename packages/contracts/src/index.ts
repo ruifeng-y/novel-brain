@@ -524,6 +524,153 @@ export const providerReleaseVersionPinSchema = z.object({
 });
 export type ProviderReleaseVersionPin = z.infer<typeof providerReleaseVersionPinSchema>;
 
+export const aiFailureClassSchema = z.enum([
+  "provider",
+  "timeout",
+  "rate_limit",
+  "schema",
+  "policy",
+  "budget",
+  "cancelled",
+  "unknown",
+]);
+export type AiFailureClass = z.infer<typeof aiFailureClassSchema>;
+
+export const providerSmokeModelIdentitySchema = z.object({
+  requestedModel: z.string().trim().min(1).max(200),
+  responseModel: z.string().trim().min(1).max(200).optional(),
+});
+export type ProviderSmokeModelIdentity = z.infer<typeof providerSmokeModelIdentitySchema>;
+
+export const providerSmokeSuccessModelIdentitySchema = providerSmokeModelIdentitySchema.extend({
+  responseModel: z.string().trim().min(1).max(200),
+});
+export type ProviderSmokeSuccessModelIdentity = z.infer<
+  typeof providerSmokeSuccessModelIdentitySchema
+>;
+
+export const providerSmokeEvidenceBaseSchema = z.object({
+  schemaVersion: z.literal(1),
+  runId: z.string().trim().min(1),
+  provider: z.literal("deepseek"),
+  baseUrl: z.url().max(500),
+  promptVersion: z.string().trim().min(1).max(100),
+  contextCompilerVersion: z.string().trim().min(1).max(100),
+  agentContractVersion: z.string().trim().min(1).max(100),
+  configHash: z.string().regex(/^[a-f0-9]{64}$/u),
+  promptHash: z.string().regex(/^[a-f0-9]{64}$/u),
+  startedAt: z.string().datetime(),
+  finishedAt: z.string().datetime(),
+  latencyMs: z.number().finite().nonnegative(),
+  timeoutMs: z.number().finite().positive(),
+  costCny: z.number().finite().nonnegative(),
+  attempts: z.number().int().nonnegative(),
+  networkCalls: z.number().int().nonnegative(),
+  providerRequestId: z.string().trim().min(1).optional(),
+});
+export type ProviderSmokeEvidenceBase = z.infer<typeof providerSmokeEvidenceBaseSchema>;
+
+export const providerCanarySmokeEvidenceSchema = providerSmokeEvidenceBaseSchema.extend({
+  ...providerSmokeModelIdentitySchema.shape,
+  status: z.enum(["succeeded", "failed"]),
+  failureClass: aiFailureClassSchema.optional(),
+  reason: z.string().trim().min(1).optional(),
+});
+export type ProviderCanarySmokeEvidence = z.infer<typeof providerCanarySmokeEvidenceSchema>;
+
+export const invalidProviderSmokeEvidenceSchema = z.object({
+  schemaVersion: z.literal(1),
+  status: z.literal("invalid"),
+  failureReason: z.literal("PROVIDER_SMOKE_EVIDENCE_INVALID"),
+  validationIssues: z.array(
+    z.object({
+      path: z.string(),
+      code: z.string().trim().min(1),
+      message: z.string().trim().min(1),
+    }),
+  ),
+});
+export type InvalidProviderSmokeEvidence = z.infer<typeof invalidProviderSmokeEvidenceSchema>;
+
+export const deepSeekSmokeSuccessEvidenceSchema = providerSmokeEvidenceBaseSchema.extend({
+  ...providerSmokeSuccessModelIdentitySchema.shape,
+  status: z.literal("succeeded"),
+  configVersion: z.string().trim().min(1).max(100),
+  maxBudgetCny: z.number().finite().nonnegative(),
+  maxAttempts: z.number().int().min(1).max(3),
+  generation: z.object({
+    textHash: z.string().regex(/^[a-f0-9]{64}$/u),
+    textLength: z.number().int().nonnegative(),
+    finishReason: z.literal("stop"),
+  }),
+  usage: z.object({
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    totalTokens: z.number().int().nonnegative(),
+  }),
+  cost: z.object({
+    estimatedCny: z.number().finite().nonnegative(),
+    pricingBasis: z.literal("m0-usage-baseline"),
+  }),
+  providerResponseId: z.string().trim().min(1).optional(),
+});
+
+export const deepSeekSmokeFailedEvidenceSchema = providerSmokeEvidenceBaseSchema.extend({
+  ...providerSmokeModelIdentitySchema.shape,
+  status: z.literal("failed"),
+  configVersion: z.string().trim().min(1).max(100),
+  maxBudgetCny: z.number().finite().nonnegative(),
+  maxAttempts: z.number().int().min(1).max(3),
+  failureClass: aiFailureClassSchema,
+  reason: z.string().trim().min(1),
+});
+
+export const deepSeekSmokeSkippedEvidenceSchema = z.object({
+  schemaVersion: z.literal(1),
+  status: z.literal("skipped"),
+  reason: z.enum(["DEEPSEEK_SMOKE_DISABLED", "DEEPSEEK_API_KEY_MISSING"]),
+  provider: z.literal("deepseek"),
+  checkedAt: z.string().datetime(),
+  networkCalls: z.literal(0),
+});
+
+export const deepSeekSmokeEvidenceSchema = z.discriminatedUnion("status", [
+  deepSeekSmokeSkippedEvidenceSchema,
+  deepSeekSmokeSuccessEvidenceSchema,
+  deepSeekSmokeFailedEvidenceSchema,
+]);
+export type DeepSeekSmokeEvidence = z.infer<typeof deepSeekSmokeEvidenceSchema>;
+
+export const approvedProviderModelIdentitySchema = z.object({
+  provider: z.literal("deepseek"),
+  requestedModel: z.string().trim().min(1).max(200),
+  responseModel: z.string().trim().min(1).max(200),
+  resolution: z.enum(["canonical", "alias"]),
+  ruleId: z.string().trim().min(1).max(200),
+});
+export type ApprovedProviderModelIdentity = z.infer<typeof approvedProviderModelIdentitySchema>;
+
+const providerModelIdentityEvidenceBaseSchema = z.object({
+  policyModel: z.string().trim().min(1).max(200),
+  requestedModel: z.string().trim().min(1).max(200),
+});
+
+export const providerModelIdentityEvidenceSchema = z.discriminatedUnion("resolution", [
+  providerModelIdentityEvidenceBaseSchema.extend({
+    resolution: z.enum(["canonical", "alias"]),
+    responseModel: z.string().trim().min(1).max(200),
+    ruleId: z.string().trim().min(1).max(200),
+    approved: z.literal(true),
+  }),
+  providerModelIdentityEvidenceBaseSchema.extend({
+    resolution: z.literal("unapproved"),
+    responseModel: z.string().trim().min(1).max(200).nullable(),
+    ruleId: z.null(),
+    approved: z.literal(false),
+  }),
+]);
+export type ProviderModelIdentityEvidence = z.infer<typeof providerModelIdentityEvidenceSchema>;
+
 export const providerCanaryPolicySchema = z.object({
   schemaVersion: z.literal(1),
   policyVersion: z.literal("provider-canary-v1"),

@@ -5,6 +5,7 @@ import { sha256CanonicalJson } from "@novel-brain/continuity-benchmark";
 import {
   createCanaryDecision,
   createRollbackDecision,
+  type ProviderCanaryPolicy,
   type ReleaseVersionPin,
 } from "../src/canary";
 
@@ -44,7 +45,8 @@ const SMOKE = {
   status: "succeeded" as const,
   provider: "deepseek",
   baseUrl: "https://api.deepseek.com",
-  model: "deepseek-chat",
+  requestedModel: "deepseek-chat",
+  responseModel: "deepseek-flash",
   promptVersion: "m1-writing-prompts-v1",
   contextCompilerVersion: "m1-context-v1",
   agentContractVersion: "agent-m3-06b-v1",
@@ -60,22 +62,125 @@ const SMOKE = {
   providerRequestId: "provider-request-1",
 };
 
+function canaryPolicy(
+  releaseVersion: string,
+  overrides: Partial<ProviderCanaryPolicy> = {},
+): ProviderCanaryPolicy {
+  const policy = {
+    schemaVersion: 1,
+    policyVersion: "provider-canary-v1",
+    channelKey: "internal-release",
+    releaseVersion,
+    cohortId: "internal-reviewers",
+    subjectIds: ["subject-a"],
+    maxCostCny: 0.01,
+    maxLatencyMs: 10_000,
+    maxAttempts: 2,
+    timeoutMs: 15_000,
+    pin: PIN,
+  } satisfies ProviderCanaryPolicy;
+  return { ...policy, ...overrides };
+}
+
 describe("provider canary release decision", () => {
+  it("approves an allowed DeepSeek response alias with model identity audit evidence", () => {
+    const decision = createCanaryDecision({
+      policy: canaryPolicy("2026-11-25.1"),
+      smoke: {
+        ...SMOKE,
+        requestedModel: "deepseek-chat",
+        responseModel: "deepseek-flash",
+      },
+      regression: REGRESSION,
+      createdAt: "2026-11-25T00:01:00.000Z",
+    });
+
+    expect(decision.status).toBe("approved");
+    expect(decision.blockers).toEqual([]);
+    expect(decision.modelIdentity).toEqual({
+      policyModel: "deepseek-chat",
+      requestedModel: "deepseek-chat",
+      responseModel: "deepseek-flash",
+      resolution: "alias",
+      ruleId: "deepseek-chat-flash-alias",
+      approved: true,
+    });
+  });
+
+  it("blocks an unapproved DeepSeek response model without silently accepting it", () => {
+    const decision = createCanaryDecision({
+      policy: canaryPolicy("2026-11-25.2"),
+      smoke: {
+        ...SMOKE,
+        requestedModel: "deepseek-chat",
+        responseModel: "deepseek-unapproved",
+      },
+      regression: REGRESSION,
+      createdAt: "2026-11-25T00:02:00.000Z",
+    });
+
+    expect(decision.status).toBe("blocked");
+    expect(decision.blockers).toContain("smoke-response-model-unapproved");
+    expect(decision.modelIdentity).toEqual({
+      policyModel: "deepseek-chat",
+      requestedModel: "deepseek-chat",
+      responseModel: "deepseek-unapproved",
+      resolution: "unapproved",
+      ruleId: null,
+      approved: false,
+    });
+  });
+
+  it("strips fields outside the sanitized smoke evidence contract", () => {
+    const decision = createCanaryDecision({
+      policy: canaryPolicy("2026-11-25.3"),
+      smoke: {
+        ...SMOKE,
+        apiKey: "sk-must-not-persist",
+        prompt: "private prompt",
+        manuscript: "private manuscript",
+      },
+      regression: REGRESSION,
+      createdAt: "2026-11-25T00:03:00.000Z",
+    });
+
+    expect(decision.status).toBe("approved");
+    expect(decision.evidence.smoke).toEqual(SMOKE);
+    expect(decision.smokeSha256).toBe(sha256CanonicalJson(SMOKE));
+    expect(JSON.stringify(decision)).not.toContain("sk-must-not-persist");
+    expect(JSON.stringify(decision)).not.toContain("private prompt");
+    expect(JSON.stringify(decision)).not.toContain("private manuscript");
+  });
+
+  it("records invalid smoke evidence explicitly without retaining untrusted fields", () => {
+    const decision = createCanaryDecision({
+      policy: canaryPolicy("2026-11-25.4"),
+      smoke: {
+        ...SMOKE,
+        latencyMs: -1,
+        apiKey: "sk-invalid-must-not-persist",
+        prompt: "invalid private prompt",
+      },
+      regression: REGRESSION,
+      createdAt: "2026-11-25T00:04:00.000Z",
+    });
+
+    expect(decision.status).toBe("blocked");
+    expect(decision.blockers).toContain("smoke-evidence-invalid");
+    expect(decision.evidence.smoke).toMatchObject({
+      schemaVersion: 1,
+      status: "invalid",
+      failureReason: "PROVIDER_SMOKE_EVIDENCE_INVALID",
+    });
+    expect(JSON.stringify(decision)).not.toContain("sk-invalid-must-not-persist");
+    expect(JSON.stringify(decision)).not.toContain("invalid private prompt");
+  });
+
   it("approves a deterministic internal cohort with passing smoke and quality evidence", () => {
     const input = {
-      policy: {
-        schemaVersion: 1 as const,
-        policyVersion: "provider-canary-v1" as const,
-        channelKey: "internal-release",
-        releaseVersion: "2026-11-18.1",
-        cohortId: "internal-reviewers",
+      policy: canaryPolicy("2026-11-18.1", {
         subjectIds: ["subject-b", "subject-a"],
-        maxCostCny: 0.01,
-        maxLatencyMs: 10_000,
-        maxAttempts: 2,
-        timeoutMs: 15_000,
-        pin: PIN,
-      },
+      }),
       smoke: SMOKE,
       regression: REGRESSION,
       createdAt: "2026-11-18T00:01:00.000Z",
@@ -97,6 +202,14 @@ describe("provider canary release decision", () => {
     expect(decision.smokeSha256).toBe(sha256CanonicalJson(SMOKE));
     expect(decision.regressionSha256).toBe(sha256CanonicalJson(REGRESSION));
     expect(decision.evidence.policy).toEqual(input.policy);
+    expect(decision.modelIdentity).toEqual({
+      policyModel: "deepseek-chat",
+      requestedModel: "deepseek-chat",
+      responseModel: "deepseek-flash",
+      resolution: "alias",
+      ruleId: "deepseek-chat-flash-alias",
+      approved: true,
+    });
     expect(decision.limits).toEqual({
       maxCostCny: 0.01,
       maxLatencyMs: 10_000,
@@ -107,19 +220,13 @@ describe("provider canary release decision", () => {
 
   it("blocks mismatched versions and bounded execution violations", () => {
     const decision = createCanaryDecision({
-      policy: {
-        schemaVersion: 1,
-        policyVersion: "provider-canary-v1",
-        channelKey: "internal-release",
-        releaseVersion: "2026-11-18.2",
-        cohortId: "internal-reviewers",
-        subjectIds: ["subject-a"],
+      policy: canaryPolicy("2026-11-18.2", {
         maxCostCny: 0.0001,
         maxLatencyMs: 500,
         maxAttempts: 1,
         timeoutMs: 1_000,
         pin: { ...PIN, model: "deepseek-reasoner" },
-      },
+      }),
       smoke: {
         ...SMOKE,
         attempts: 2,
@@ -148,6 +255,14 @@ describe("provider canary release decision", () => {
         "quality-regression-blocked",
       ]),
     );
+    expect(decision.modelIdentity).toEqual({
+      policyModel: "deepseek-reasoner",
+      requestedModel: "deepseek-chat",
+      responseModel: "deepseek-flash",
+      resolution: "unapproved",
+      ruleId: null,
+      approved: false,
+    });
   });
 
   it("rolls back by creating a new decision with the previous approved pin", () => {
@@ -208,19 +323,9 @@ describe("provider canary release decision", () => {
 
   it("rejects prompt bundle hashes that are not registered", () => {
     const decision = createCanaryDecision({
-      policy: {
-        schemaVersion: 1,
-        policyVersion: "provider-canary-v1",
-        channelKey: "internal-release",
-        releaseVersion: "2026-11-18.3",
-        cohortId: "internal-reviewers",
-        subjectIds: ["subject-a"],
-        maxCostCny: 0.01,
-        maxLatencyMs: 10_000,
-        maxAttempts: 2,
-        timeoutMs: 15_000,
+      policy: canaryPolicy("2026-11-18.3", {
         pin: { ...PIN, promptHash: "0".repeat(64) },
-      },
+      }),
       smoke: SMOKE,
       regression: REGRESSION,
       createdAt: "2026-11-18T00:04:00.000Z",
@@ -232,19 +337,7 @@ describe("provider canary release decision", () => {
 
   it("blocks quality evidence produced under a different release config", () => {
     const decision = createCanaryDecision({
-      policy: {
-        schemaVersion: 1,
-        policyVersion: "provider-canary-v1",
-        channelKey: "internal-release",
-        releaseVersion: "2026-11-18.4",
-        cohortId: "internal-reviewers",
-        subjectIds: ["subject-a"],
-        maxCostCny: 0.01,
-        maxLatencyMs: 10_000,
-        maxAttempts: 2,
-        timeoutMs: 15_000,
-        pin: PIN,
-      },
+      policy: canaryPolicy("2026-11-18.4"),
       smoke: SMOKE,
       regression: {
         ...REGRESSION,

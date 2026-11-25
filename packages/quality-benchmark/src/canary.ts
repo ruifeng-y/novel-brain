@@ -2,9 +2,15 @@ import { sha256CanonicalJson } from "@novel-brain/continuity-benchmark";
 import { resolveWritingRelease } from "@novel-brain/ai";
 import {
   PROVIDER_CANARY_CHANNEL,
+  approvedProviderModelIdentitySchema,
   providerCanaryPolicySchema,
+  providerCanarySmokeEvidenceSchema,
   providerReleaseLimitsSchema,
+  type ApprovedProviderModelIdentity,
+  type InvalidProviderSmokeEvidence,
   type ProviderCanaryPolicy as ProviderCanaryPolicyContract,
+  type ProviderCanarySmokeEvidence,
+  type ProviderModelIdentityEvidence,
   type ProviderReleaseLimits,
   type ProviderReleaseVersionPin,
 } from "@novel-brain/contracts";
@@ -15,29 +21,24 @@ export type ReleaseVersionPin = ProviderReleaseVersionPin;
 export type ProviderCanaryPolicy = ProviderCanaryPolicyContract;
 export type { ProviderReleaseLimits };
 
-export interface ProviderSmokeEvidence {
-  schemaVersion: 1;
-  runId: string;
-  status: "succeeded" | "failed" | "skipped";
-  provider: string;
-  baseUrl: string;
-  model: string;
-  promptVersion: string;
-  contextCompilerVersion: string;
-  agentContractVersion: string;
-  configHash: string;
-  promptHash: string;
-  startedAt: string;
-  finishedAt: string;
-  latencyMs: number;
-  timeoutMs: number;
-  costCny: number;
-  attempts: number;
-  networkCalls: number;
-  providerRequestId?: string;
-  failureClass?: string;
-  reason?: string;
-}
+export type ProviderSmokeEvidence = ProviderCanarySmokeEvidence;
+
+const APPROVED_PROVIDER_MODEL_IDENTITIES = approvedProviderModelIdentitySchema.array().parse([
+  {
+    provider: "deepseek",
+    requestedModel: "deepseek-chat",
+    responseModel: "deepseek-chat",
+    resolution: "canonical",
+    ruleId: "deepseek-chat-canonical",
+  },
+  {
+    provider: "deepseek",
+    requestedModel: "deepseek-chat",
+    responseModel: "deepseek-flash",
+    resolution: "alias",
+    ruleId: "deepseek-chat-flash-alias",
+  },
+]) satisfies ApprovedProviderModelIdentity[];
 
 export interface ProviderCanaryDecision {
   schemaVersion: 1;
@@ -55,9 +56,10 @@ export interface ProviderCanaryDecision {
   regressionSha256: string;
   pin: ReleaseVersionPin;
   limits: ProviderReleaseLimits;
+  modelIdentity: ProviderModelIdentityEvidence | null;
   evidence: {
     policy: ProviderCanaryPolicy;
-    smoke: ProviderSmokeEvidence;
+    smoke: ProviderSmokeEvidence | InvalidProviderSmokeEvidence;
     quality: QualityRegressionReport;
   };
   blockers: readonly string[];
@@ -99,8 +101,27 @@ export function createCanaryDecision(input: {
   regression: QualityRegressionReport;
   createdAt: string;
 }): ProviderCanaryDecision {
-  const { policy, smoke, regression, createdAt } = input;
+  const { policy, smoke: rawSmoke, regression, createdAt } = input;
   const blockers = new Set<string>();
+  const smokeValidation = providerCanarySmokeEvidenceSchema.safeParse(rawSmoke);
+  let smoke: ProviderSmokeEvidence | undefined;
+  let smokeEvidence: ProviderSmokeEvidence | InvalidProviderSmokeEvidence;
+  if (smokeValidation.success) {
+    smoke = smokeValidation.data;
+    smokeEvidence = smokeValidation.data;
+  } else {
+    blockers.add("smoke-evidence-invalid");
+    smokeEvidence = {
+      schemaVersion: 1,
+      status: "invalid",
+      failureReason: "PROVIDER_SMOKE_EVIDENCE_INVALID",
+      validationIssues: smokeValidation.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        code: issue.code,
+        message: issue.message,
+      })),
+    };
+  }
   const normalizedSubjectIds = [...policy.subjectIds].map((id) => id.trim()).sort();
   if (
     !providerCanaryPolicySchema.safeParse(policy).success ||
@@ -116,53 +137,57 @@ export function createCanaryDecision(input: {
   if (uniqueSubjectIds.length !== normalizedSubjectIds.length) {
     blockers.add("cohort-subject-duplicate");
   }
-  if (smoke.status !== "succeeded") {
-    blockers.add("smoke-not-succeeded");
-  }
-  if (smoke.networkCalls < 1) {
-    blockers.add("smoke-network-call-missing");
-  }
-  for (const key of [
-    "provider",
-    "baseUrl",
-    "model",
-    "promptVersion",
-    "contextCompilerVersion",
-    "agentContractVersion",
-    "configHash",
-  ] as const) {
-    if (smoke[key] !== policy.pin[key]) {
-      blockers.add(`smoke-${kebabCase(key)}-mismatch`);
+  if (smoke) {
+    if (smoke.status !== "succeeded") {
+      blockers.add("smoke-not-succeeded");
+    }
+    if (smoke.networkCalls < 1) {
+      blockers.add("smoke-network-call-missing");
+    }
+    for (const key of [
+      "provider",
+      "baseUrl",
+      "promptVersion",
+      "contextCompilerVersion",
+      "agentContractVersion",
+      "configHash",
+    ] as const) {
+      if (smoke[key] !== policy.pin[key]) {
+        blockers.add(`smoke-${kebabCase(key)}-mismatch`);
+      }
+    }
+    if (smoke.requestedModel !== policy.pin.model) {
+      blockers.add("smoke-model-mismatch");
+    }
+    if (smoke.promptHash !== policy.pin.smokePromptHash) {
+      blockers.add("smoke-prompt-hash-mismatch");
+    }
+    if (smoke.costCny > policy.maxCostCny) {
+      blockers.add("smoke-cost-limit-exceeded");
+    }
+    if (smoke.latencyMs > policy.maxLatencyMs) {
+      blockers.add("smoke-latency-limit-exceeded");
+    }
+    if (smoke.attempts > policy.maxAttempts) {
+      blockers.add("smoke-attempt-limit-exceeded");
+    }
+    if (smoke.timeoutMs > policy.timeoutMs) {
+      blockers.add("smoke-timeout-limit-exceeded");
+    }
+    if (
+      !Number.isInteger(smoke.attempts) ||
+      smoke.attempts < 1 ||
+      !Number.isInteger(smoke.networkCalls) ||
+      smoke.networkCalls < 0
+    ) {
+      blockers.add("smoke-evidence-invalid");
     }
   }
-  if (smoke.promptHash !== policy.pin.smokePromptHash) {
-    blockers.add("smoke-prompt-hash-mismatch");
-  }
-  if (smoke.costCny > policy.maxCostCny) {
-    blockers.add("smoke-cost-limit-exceeded");
-  }
-  if (smoke.latencyMs > policy.maxLatencyMs) {
-    blockers.add("smoke-latency-limit-exceeded");
-  }
-  if (smoke.attempts > policy.maxAttempts) {
-    blockers.add("smoke-attempt-limit-exceeded");
-  }
-  if (smoke.timeoutMs > policy.timeoutMs) {
-    blockers.add("smoke-timeout-limit-exceeded");
-  }
-  if (
-    !Number.isFinite(smoke.latencyMs) ||
-    smoke.latencyMs < 0 ||
-    !Number.isFinite(smoke.costCny) ||
-    smoke.costCny < 0 ||
-    !Number.isInteger(smoke.attempts) ||
-    smoke.attempts < 1 ||
-    !Number.isInteger(smoke.networkCalls) ||
-    smoke.networkCalls < 0 ||
-    !Number.isFinite(smoke.timeoutMs) ||
-    smoke.timeoutMs <= 0
-  ) {
-    blockers.add("smoke-evidence-invalid");
+  const approvedModelIdentity = smoke
+    ? resolveApprovedModelIdentity(policy.pin.model, smoke)
+    : undefined;
+  if (smoke && !approvedModelIdentity) {
+    blockers.add("smoke-response-model-unapproved");
   }
   if (!regression.rolloutAllowed || regression.blockers.length > 0) {
     blockers.add("quality-regression-blocked");
@@ -182,6 +207,9 @@ export function createCanaryDecision(input: {
     maxAttempts: policy.maxAttempts,
     timeoutMs: policy.timeoutMs,
   };
+  const modelIdentity = smoke
+    ? createModelIdentityEvidence(policy.pin.model, smoke, approvedModelIdentity)
+    : null;
 
   const decisionWithoutHash = {
     schemaVersion: 1 as const,
@@ -198,13 +226,14 @@ export function createCanaryDecision(input: {
         subjectIds: uniqueSubjectIds,
       }),
     },
-    smokeSha256: sha256CanonicalJson(smoke),
+    smokeSha256: sha256CanonicalJson(smokeEvidence),
     regressionSha256: sha256CanonicalJson(regression),
     pin: { ...policy.pin },
     limits,
+    modelIdentity,
     evidence: {
       policy,
-      smoke,
+      smoke: smokeEvidence,
       quality: regression,
     },
     blockers: [...blockers].sort(),
@@ -259,6 +288,44 @@ export function createRollbackDecision(input: {
 
 function kebabCase(value: string): string {
   return value.replace(/[A-Z]/gu, (character) => `-${character.toLowerCase()}`);
+}
+
+function resolveApprovedModelIdentity(
+  policyModel: string,
+  smoke: ProviderSmokeEvidence,
+): ApprovedProviderModelIdentity | undefined {
+  return APPROVED_PROVIDER_MODEL_IDENTITIES.find(
+    (identity) =>
+      identity.provider === smoke.provider &&
+      identity.requestedModel === policyModel &&
+      identity.requestedModel === smoke.requestedModel &&
+      identity.responseModel === smoke.responseModel,
+  );
+}
+
+function createModelIdentityEvidence(
+  policyModel: string,
+  smoke: ProviderSmokeEvidence,
+  approvedIdentity: ApprovedProviderModelIdentity | undefined,
+): ProviderModelIdentityEvidence {
+  if (approvedIdentity) {
+    return {
+      policyModel,
+      requestedModel: smoke.requestedModel,
+      responseModel: approvedIdentity.responseModel,
+      resolution: approvedIdentity.resolution,
+      ruleId: approvedIdentity.ruleId,
+      approved: true,
+    };
+  }
+  return {
+    policyModel,
+    requestedModel: smoke.requestedModel,
+    responseModel: smoke.responseModel ?? null,
+    resolution: "unapproved",
+    ruleId: null,
+    approved: false,
+  };
 }
 
 function isValidPinBaseUrl(pin: ReleaseVersionPin): boolean {

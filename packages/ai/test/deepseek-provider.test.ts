@@ -56,6 +56,28 @@ describe("DeepSeek provider", () => {
     });
   });
 
+  it("preserves the requested-model fallback for ordinary provider calls", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "sk-test-secret",
+      model: "deepseek-chat",
+      fetchImpl: vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              choices: [{ message: { content: "普通生成成功。" }, finish_reason: "stop" }],
+              usage: { prompt_tokens: 5, completion_tokens: 3 },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      ),
+      endpointValidator,
+    });
+
+    await expect(provider.generateText({ prompt: "普通生成" })).resolves.toMatchObject({
+      model: "deepseek-chat",
+    });
+  });
+
   it("uses the validated public address for the production request", async () => {
     const pinnedRequest = vi.fn(
       async () =>
@@ -127,7 +149,7 @@ describe("DeepSeek provider", () => {
         new Response(
           JSON.stringify({
             id: "deepseek-smoke-response",
-            model: "deepseek-chat",
+            model: "deepseek-flash",
             choices: [{ message: { content: "第一章测试通过。" }, finish_reason: "stop" }],
             usage: { prompt_tokens: 30, completion_tokens: 10, total_tokens: 40 },
           }),
@@ -149,7 +171,8 @@ describe("DeepSeek provider", () => {
     expect(evidence).toMatchObject({
       status: "succeeded",
       provider: "deepseek",
-      model: "deepseek-chat",
+      requestedModel: "deepseek-chat",
+      responseModel: "deepseek-flash",
       usage: { inputTokens: 30, outputTokens: 10, totalTokens: 40 },
       cost: {
         estimatedCny: Number((40 * M0_COST_PER_TOKEN_CNY).toFixed(8)),
@@ -335,7 +358,7 @@ describe("DeepSeek provider", () => {
           new Response(
             JSON.stringify({
               id: "deepseek-truncated",
-              model: "deepseek-chat",
+              model: "deepseek-flash",
               choices: [{ message: { content: "未完成" }, finish_reason: "length" }],
               usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
             }),
@@ -348,10 +371,43 @@ describe("DeepSeek provider", () => {
     expect(evidence).toMatchObject({
       status: "failed",
       failureClass: "provider",
+      requestedModel: "deepseek-chat",
+      responseModel: "deepseek-flash",
       attempts: 1,
       costCny: Number((14 * M0_COST_PER_TOKEN_CNY).toFixed(8)),
       networkCalls: 1,
     });
+  });
+
+  it("does not treat a missing provider response model as the requested identity", async () => {
+    const evidence = await runDeepSeekSmoke({
+      env: {
+        DEEPSEEK_SMOKE_ENABLED: "1",
+        DEEPSEEK_API_KEY: "sk-live-secret",
+        DEEPSEEK_SMOKE_MAX_BUDGET_CNY: "0.01",
+      },
+      fetchImpl: vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              id: "deepseek-model-missing",
+              choices: [{ message: { content: "模型身份缺失。" }, finish_reason: "stop" }],
+              usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      ),
+      endpointValidator,
+    });
+
+    expect(evidence).toMatchObject({
+      status: "failed",
+      failureClass: "schema",
+      requestedModel: "deepseek-chat",
+      attempts: 1,
+      networkCalls: 1,
+    });
+    expect(evidence).not.toHaveProperty("responseModel");
   });
 
   it("rejects a private endpoint before a provider request can carry the credential", async () => {

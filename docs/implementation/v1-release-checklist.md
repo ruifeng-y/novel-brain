@@ -16,7 +16,7 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 
 | Gate | Evidence | Status |
 | --- | --- | --- |
-| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/m3-236-non-ui-capability-evidence.json`, `docs/implementation/m3-238-ui-capability-evidence.json`, `docs/quality/evidence/m3-240/review-policy.json`; `node scripts/validate-readiness.mjs` | structure pass; 113/116 V1 capabilities and 104/107 non-UI capabilities verified; EVAL-002 awaits final release-head CI through #242; EVAL-004 and CONT-001 retain bounded gaps |
+| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/m3-236-non-ui-capability-evidence.json`, `docs/implementation/m3-238-ui-capability-evidence.json`, `docs/quality/evidence/m3-240/review-policy.json`; `node scripts/validate-readiness.mjs` | structure pass; 114/116 V1 capabilities and 105/107 non-UI capabilities verified; EVAL-002 awaits final release-head CI through #242; CONT-001 retains a bounded gap |
 | UI parity | `docs/ui/v1-ui-parity-matrix.md`, `docs/implementation/m3-238-ui-capability-evidence.json`; 17 production page specs; 68 required production Golden files at 390/900/1180/1440 | all 17 production pages are `parity-verified`; UI-001..UI-009 are verified; release-level evidence remains blocked |
 | Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | release gate requires current-HEAD normal PR Production CI, Deployment Smoke and Readiness; final #104 normal PR CI pending |
 | Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | current UI capability evidence pass; final #104 normal PR CI pending |
@@ -57,7 +57,7 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 
 ## 4. Remaining blockers
 
-1. Complete the remaining non-UI capability gaps: final release-head verification (#242), smoke model alias alignment (#271) and continuity adjudication/remediation (#273), including the failed human prose-quality gate.
+1. Complete the remaining non-UI capability gaps: final release-head verification (#242) and continuity adjudication/remediation (#273), including the failed human prose-quality gate.
 2. Obtain the product/quality owner decision on the #273 204-sample cleanup proposal, record the old-score impact and complete real adjudications for all 24 samples.
 3. Resolve the recorded quality failure: `hook_prose_score = 1.882353` is below the `4/5` release threshold through remediation/rerun or a complete owner waiver.
 4. Run the final #104 Production CI and update the `final-production-ci` evidence gate with the green run URL.

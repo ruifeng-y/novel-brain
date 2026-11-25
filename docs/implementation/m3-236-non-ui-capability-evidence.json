@@ -268,6 +268,14 @@
       "kind": "manual_signoff",
       "path": "docs/implementation/evidence/m3-07e-01-provider-smoke-success-2026-11-25.json"
     },
+    "provider-smoke-model-identity": {
+      "kind": "unit",
+      "path": "packages/ai/test/deepseek-provider.test.ts"
+    },
+    "provider-model-alias-ci": {
+      "kind": "ci",
+      "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45686912713"
+    },
     "continuity-evaluator": {
       "kind": "unit",
       "path": "packages/continuity-benchmark/test/evaluator.test.ts"
@@ -496,12 +504,15 @@
       "evidence": ["provider-smoke-workflow", "provider-smoke-ci", "provider-smoke-success"]
     },
     "EVAL-004": {
-      "status": "implemented",
-      "evidence": ["provider-canary", "quality-regression", "quality-eval-http"],
-      "gap": {
-        "reason": "真实 smoke 响应模型为 deepseek-flash，而 canary policy 的 pin 使用 deepseek-chat；模型身份映射或拒绝规则尚未批准。",
-        "issue": "#271"
-      }
+      "status": "verified",
+      "evidence": [
+        "provider-canary",
+        "provider-smoke-model-identity",
+        "provider-smoke-success",
+        "provider-model-alias-ci",
+        "quality-regression",
+        "quality-eval-http"
+      ]
     },
     "CONT-001": {
       "status": "implemented",

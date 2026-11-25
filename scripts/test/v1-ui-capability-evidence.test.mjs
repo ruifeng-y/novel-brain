@@ -213,7 +213,7 @@ describe("M3-238 UI capability closeout", () => {
     expect(result.blockers.filter((blocker) => /UI-\d{3}|ui-parity/u.test(blocker))).toEqual([]);
     expect(result.blockers).toEqual(
       expect.arrayContaining([
-        "capability-verification:3:EVAL-002:implemented,EVAL-004:implemented,CONT-001:implemented",
+        "capability-verification:2:EVAL-002:implemented,CONT-001:implemented",
         "release-evidence:status-blocked",
       ]),
     );
