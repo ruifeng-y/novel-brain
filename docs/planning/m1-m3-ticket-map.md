@@ -73,7 +73,7 @@ M2 guardrail: #110 owns Agent orchestration state/Workflow Envelope, #115 owns c
 - **PERF-001 / #137 (deferred):** A future capacity claim would require the integrated system to store, retrieve, edit, index, import/export and recover a 10,000,000-character work on the pinned 8 vCPU / 16 GB RAM / 100 GB SSD baseline.
 - **CONT-001 / #138:** Can the system preserve canon, per-character knowledge, state transitions, time, plotlines and foreshadowing across 3,000–4,000 chapters / 30–40 volumes, while keeping Agent autonomy within its grant?
 
-PERF-001 is not part of the V1 release claim. CONT-001 now has human raw-score evidence from #239 as complete-with-warnings. #273 adds a proposed 204-sample cleanup packet and a 24-sample human decision request, but real adjudications remain 0/24; the observed hook/prose score fails the release threshold and the variance threshold remains decision-required. See docs/performance/v1-10m-capacity-benchmark.md, docs/quality/v1-long-horizon-continuity-benchmark.md, docs/quality/evidence/m3-239/ and docs/quality/evidence/m3-273/.
+PERF-001 is not part of the V1 release claim. CONT-001 now has human raw-score evidence from #239 as complete-with-warnings. #273 adds a proposed 204-sample cleanup packet and a 24-sample human decision request, but real adjudications remain 0/24 and the observed hook/prose score fails the release threshold. EVAL-002's variance threshold is approved as `0.1` under #240. See docs/performance/v1-10m-capacity-benchmark.md, docs/quality/v1-long-horizon-continuity-benchmark.md, docs/quality/evidence/m3-239/, docs/quality/evidence/m3-240/ and docs/quality/evidence/m3-273/.
 
 ## 7. Dependency graph and readiness
 

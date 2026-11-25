@@ -11,7 +11,7 @@ Issue: #273
 - Packet decision: `refreeze_clean_packet`、`replace_affected_samples` 或 `preserve_with_product_owner_approval`。
 - Old-score impact: 明确旧 816 条评分是失效、只保留为警告证据，还是经批准保留。
 - Oracle cleanup: 必须保留全部 204 个样本身份；当前提案只移除 24 条文本末尾的显式事实对照注释。
-- Threshold boundary: 不得在本文件中批准 inter-rater variance threshold；#240 保持独立。
+- Threshold boundary: inter-rater variance threshold 已由 #240 批准为 `0.1`；本文件只能消费，不能修改。
 
 ## 外部真人声明
 

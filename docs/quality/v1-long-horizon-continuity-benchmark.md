@@ -1,7 +1,7 @@
 # V1 3000–4000 章跨卷叙事连续性基准
 
 > Owner: M3 #103 (quality/release package) / #138 (implementation)
-> Status: implementation complete with deterministic full/maximum fixture evidence; #239 records human raw scores as complete-with-warnings. #273 prepares a clean-packet proposal and 24-sample human decision request, but no adjudication is recorded, the observed prose score fails the quality gate and the variance threshold remains unapproved.
+> Status: implementation complete with deterministic full/maximum fixture evidence; #239 records human raw scores as complete-with-warnings and #240 approves threshold `0.1`. #273 prepares a non-approved cleanup proposal and 24-sample human decision request, but no adjudication is recorded and the observed prose score fails the quality gate.
 > This benchmark verifies long-horizon story correctness. It does not certify storage capacity or infrastructure performance.
 
 ## 1. Objective and claim boundary
@@ -150,11 +150,11 @@ Any threshold change requires an explicit decision/ADR and a versioned benchmark
 - Provide reviewers with the approved relevant canon/POV packet, not the full hidden author truth where the POV character should not know it.
 - Record rubric version, reviewer ID, confidence, disagreement and adjudication.
 - LLM self-scoring can triage and explain candidate defects, but can never be sole release evidence.
-- The required number of blind samples and inter-rater agreement threshold are decision-required until signed off; do not invent a pass threshold.
+- The blind-sample count is frozen in #239, and #240 approves the inter-rater variance threshold `0.1`; downstream reviews must use the trusted review-policy artifact rather than inventing another threshold.
 
 Recorded evidence: `docs/quality/evidence/m3-239/` contains two signed reviewer records, 816 raw scores and deterministic validation. The reviewers flagged all 24 defect-metadata cases for follow-up adjudication because the frozen samples contain continuity labels rather than narrative prose. Those adjudications are not yet recorded, so #239 is complete-with-warnings rather than a clean release-quality review.
 
-`docs/quality/evidence/m3-273/` now contains a proposed 204-sample packet that preserves every sample identity while stripping the detected explicit fact-conflict annotation, an audit of all 24 transforms, and a blank human decision request. The proposal is `proposed-not-approved`; `status.json` remains blocked at 0/24 adjudications. The observed `hook_prose_score` is `1.882353`, below the `4/5` gate; that result is a release blocker, not a threshold decision.
+`docs/quality/evidence/m3-273/` now contains a proposed 204-sample packet that preserves every sample identity while stripping the detected explicit fact-conflict annotation, an audit of all 24 transforms, and a blank human decision request. The proposal is `proposed-not-approved` and `reviewerReadiness.status = not-ready`; `status.json` remains blocked at 0/24 adjudications. The observed `hook_prose_score` is `1.882353`, below the `4/5` gate; that result remains a release blocker. #240 separately approves the inter-rater variance threshold `0.1`; the observed `maxVariance = 0` passes it.
 
 ## 8. Regression protocol and release gate
 

@@ -483,7 +483,9 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
       {
         id: "interRaterVarianceThreshold",
         owner: "#240",
-        status: "outside-this-issue",
+        status: "approved-elsewhere",
+        approvedValue: 0.1,
+        evidencePath: "docs/quality/evidence/m3-240/review-policy.json",
         mayBeApprovedByThisIssue: false,
         releaseGateRequiresIndependentApproval: true,
       },
@@ -511,6 +513,7 @@ function readSource(root) {
     validation: readJson(path.join(root, "docs/quality/evidence/m3-239/validation.json")),
     dataset: readJson(path.join(root, "docs/quality/quality-benchmark-v1.dataset.json")),
     rubric: readJson(path.join(root, "docs/quality/quality-benchmark-v1.rubric.json")),
+    variancePolicy: readJson(path.join(root, "docs/quality/evidence/m3-240/review-policy.json")),
   };
 }
 
@@ -527,7 +530,11 @@ function verifySourceIntegrity({ root, source }) {
     sha256File(rubricPath) !== source.validation.sourceRubric.sha256 ||
     sha256Json(source.packet.samples) !== source.validation.reviewerPacketCanonicalSha256 ||
     source.packet.source.datasetSha256 !== source.dataset.manifest.datasetSha256 ||
-    source.packet.source.rubricSha256 !== source.rubric.sha256
+    source.packet.source.rubricSha256 !== source.rubric.sha256 ||
+    source.variancePolicy.issue !== 240 ||
+    source.variancePolicy.decisionId !== "interRaterVarianceThreshold" ||
+    source.variancePolicy.interRaterVarianceThreshold !== 0.1 ||
+    source.variancePolicy.owner !== "product-owner"
   ) {
     throw new Error("M3_273_SOURCE_DIGEST_MISMATCH");
   }
@@ -547,7 +554,7 @@ function createAdjudicationTemplate(input) {
       "只能由真实产品/质量负责人在完成审查后填写。",
       "不得由模型补写、推断或伪造裁决、时间、身份和影响。",
       "不得通过修改冻结 rubric、原始评分或删除失败样本来解除门禁。",
-      "本文件不批准 inter-rater variance threshold；该决定仍归 #240。",
+      "本文件不改写 #240 已批准的 inter-rater variance threshold 0.1。",
     ],
     humanAttestation: {
       provider: "github_issue_comment",
@@ -641,7 +648,7 @@ Issue: #273
 - Packet decision: \`refreeze_clean_packet\`、\`replace_affected_samples\` 或 \`preserve_with_product_owner_approval\`。
 - Old-score impact: 明确旧 816 条评分是失效、只保留为警告证据，还是经批准保留。
 - Oracle cleanup: 必须保留全部 204 个样本身份；当前提案只移除 24 条文本末尾的显式事实对照注释。
-- Threshold boundary: 不得在本文件中批准 inter-rater variance threshold；#240 保持独立。
+- Threshold boundary: inter-rater variance threshold 已由 #240 批准为 \`0.1\`；本文件只能消费，不能修改。
 
 ## 外部真人声明
 

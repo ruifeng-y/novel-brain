@@ -8,7 +8,7 @@
     "只能由真实产品/质量负责人在完成审查后填写。",
     "不得由模型补写、推断或伪造裁决、时间、身份和影响。",
     "不得通过修改冻结 rubric、原始评分或删除失败样本来解除门禁。",
-    "本文件不批准 inter-rater variance threshold；该决定仍归 #240。"
+    "本文件不改写 #240 已批准的 inter-rater variance threshold 0.1。"
   ],
   "humanAttestation": {
     "provider": "github_issue_comment",

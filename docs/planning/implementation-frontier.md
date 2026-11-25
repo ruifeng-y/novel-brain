@@ -22,14 +22,14 @@
 - #130 publish checks, catalog metadata and reader preview is closed through PR #203.
 - #131 help/legal content, AI disclosure and moderation appeal is closed through PR #207. `help`, `legal` and `export-publish` have formal Linux Golden evidence; #220 added the real `/help` route error-boundary and retry-recovery proof. Current release status is matrix-owned: all 17 production pages are `parity-verified`.
 - Readiness was recomputed against the dependency graph and GitHub issue states on 2026-11-18. #142, #138, #139 and #140 are closed; #98–#103 package parents are closed with child evidence; #137/#102 are explicitly deferred from V1 and the V1 capacity claim is excluded.
-- #104 is in final release closeout: all 17 production pages are `parity-verified`, the page-level action audit is complete, and #238 records UI-001..UI-009 as `verified`. The total ledger records 113 of 116 V1 capabilities as `verified`. EVAL-002, EVAL-004 and CONT-001 remain open with bounded follow-ups.
-- #239 records two signed human reviewer records and 816 raw scores for the frozen quality packet as `complete-with-warnings`. #273 now produces a non-approved 204-sample cleanup proposal, a 24-sample human decision request and a machine status ledger; real adjudications remain 0/24. `outline_adherence = 1.000000` passes, while `hook_prose_score = 1.882353` fails the `>= 4` gate; the variance threshold remains a #240 decision.
+- #104 is in final release closeout: all 17 production pages are `parity-verified`, the page-level action audit is complete, and #238 records UI-001..UI-009 as `verified`. The total ledger records 113 of 116 V1 capabilities as `verified`; EVAL-002, EVAL-004 and CONT-001 remain open with bounded follow-ups.
+- #239 records two signed human reviewer records and 816 raw scores for the frozen quality packet as `complete-with-warnings`. #273 now produces a non-approved 204-sample cleanup proposal, a 24-sample human decision request and a machine status ledger; real adjudications remain 0/24. `outline_adherence = 1.000000` passes, while `hook_prose_score = 1.882353` fails the `>= 4` gate. #240 approves `interRaterVarianceThreshold = 0.1`; the observed `maxVariance = 0` passes.
 - PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.
 
 ## 2. Immediate frontier
 
-1. Finish #104 release closeout through #240, #242, #271 and #273. UI capability/traceability closeout is complete in #238; #239 records human raw scores with warnings, while #273's real adjudication/packet-hook disposition, variance approval, smoke model alias alignment and final Production CI remain outstanding.
-2. Do not treat automated quality gates as release approval: 24 adjudications remain pending, `hook_prose_score = 1.882353` fails the `4/5` threshold and the inter-rater variance threshold remains unapproved.
+1. Finish #104 release closeout through #242, #271 and #273. UI capability/traceability closeout is complete in #238; #239 records human raw scores with warnings and #240 records the approved variance threshold, while adjudication/oracle remediation, smoke model alias alignment and final Production CI remain outstanding.
+2. Do not treat automated quality gates as release approval: 24 adjudications remain pending, `hook_prose_score = 1.882353` fails the `4/5` threshold, and EVAL-004 still requires the model alias decision in #271. The variance threshold `0.1` is approved and no longer blocks release.
 3. The protected `provider-smoke` run at `11735fa` succeeded after PR #270 fixed Node 24 pinned lookup handling; EVAL-003 is verified. EVAL-004 remains blocked because the response alias `deepseek-flash` needs an approved canary identity rule in #271.
 4. #137/#102 remain deferred outside V1; resuming the 10M capacity claim requires a new explicit decision and a fresh benchmark.
 
@@ -80,7 +80,7 @@ M1 foundations:
 - #135 deployment, health, metrics and cost alerting is complete. Backup expiry and restore evidence remain with #136.
 - #134 and #136 are closed. PR #200 carries the backup/restore and retention evidence.
 - #129 follows #136; #130 follows #129; #131 follows #130. #137 follows #134 and #136; #142 is closed through PR #211.
-- #138 has deterministic 3,500-chapter full and 4,000-chapter maximum evidence. #239 records the human review with warnings, but pending adjudication, oracle content, the observed prose score and the variance threshold keep the release-quality claim blocked.
+- #138 has deterministic 3,500-chapter full and 4,000-chapter maximum evidence. #239 records the human review with warnings, and pending adjudication, oracle content and the observed prose score keep the release-quality claim blocked. #240 records the approved variance threshold.
 - #138 is closed through PR #216.
 - #139 consumes the pinned long-horizon fixture into a frozen three-genre dataset, release rubric and cross-run P0 regression gate. It does not replace real human review.
 - #140 gates real-provider canary/rollback after #139.

@@ -474,7 +474,9 @@ function validateHumanReviewStatus(
     !varianceDecision ||
     varianceDecision.owner !== "#240" ||
     varianceDecision.mayBeApprovedByThisIssue !== false ||
-    varianceDecision.status !== "outside-this-issue" ||
+    varianceDecision.status !== "approved-elsewhere" ||
+    varianceDecision.approvedValue !== 0.1 ||
+    varianceDecision.evidencePath !== "docs/quality/evidence/m3-240/review-policy.json" ||
     varianceDecision.releaseGateRequiresIndependentApproval !== true
   ) {
     blockers.push("human-blind-review:variance-owner-mismatch");

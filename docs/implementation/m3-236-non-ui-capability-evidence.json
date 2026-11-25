@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "auditedAt": "2026-11-24",
+  "auditedAt": "2026-11-26",
   "issue": "#236",
   "verification": {
     "kind": "ci",
@@ -248,6 +248,10 @@
       "kind": "integration",
       "path": "apps/api/test/eval.integration.test.ts"
     },
+    "variance-threshold-policy": {
+      "kind": "guardrail",
+      "path": "scripts/test/m3-240-variance-threshold.test.mjs"
+    },
     "provider-canary": {
       "kind": "unit",
       "path": "packages/quality-benchmark/test/canary.test.ts"
@@ -481,10 +485,10 @@
     "EVAL-001": { "status": "verified", "evidence": ["quality-registry"] },
     "EVAL-002": {
       "status": "implemented",
-      "evidence": ["quality-regression", "quality-eval-http"],
+      "evidence": ["quality-regression", "quality-eval-http", "variance-threshold-policy"],
       "gap": {
-        "reason": "rubric 与回归门禁已实现，但正式 inter-rater variance threshold 尚未批准。",
-        "issue": "#240"
+        "reason": "inter-rater variance threshold 已批准并登记，但仍需 #242 的最终 Production CI 将证据绑定到发布 head。",
+        "issue": "#242"
       }
     },
     "EVAL-003": {

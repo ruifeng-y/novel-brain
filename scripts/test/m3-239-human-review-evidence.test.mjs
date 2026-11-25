@@ -245,16 +245,11 @@ describe("M3-239 human blind-review evidence", () => {
     ).toBe(1);
   });
 
-  it("keeps threshold and quality-remediation follow-ups on the correct issues", () => {
+  it("keeps continuity quality remediation on #273", () => {
     const capabilityEvidence = readRootJson(
       "docs/implementation/m3-236-non-ui-capability-evidence.json",
     );
 
-    expect(capabilityEvidence.capabilities["EVAL-002"].gap.issue).toBe("#240");
-    const thresholdReason = capabilityEvidence.capabilities["EVAL-002"].gap.reason;
-    expect(thresholdReason).toContain("inter-rater variance threshold");
-    expect(thresholdReason).not.toContain("oracle");
-    expect(thresholdReason).not.toContain("hook/prose");
     expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#273");
     const remediationReason = capabilityEvidence.capabilities["CONT-001"].gap.reason;
     expect(remediationReason).not.toContain("inter-rater variance threshold");

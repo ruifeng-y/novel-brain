@@ -24,6 +24,10 @@ record a fabricated adjudication.
 The original packet, questionnaires and raw scores remain in
 `docs/quality/evidence/m3-239/` as immutable historical evidence.
 
+The variance threshold is not part of this ledger's approval. #240 already approved `0.1`
+through `docs/quality/evidence/m3-240/review-policy.json`; this issue only detects drift from
+that independent decision.
+
 ## Required Human Decisions
 
 1. Record one real adjudication for every entry in `adjudication.template.json`.
@@ -33,7 +37,8 @@ The original packet, questionnaires and raw scores remain in
    warning evidence.
 4. Record whether `hook_prose_score = 1.882353 < 4` requires remediation and rerun, or a
    fully owned, dated waiver with impact and follow-up.
-5. Keep the inter-rater variance threshold under #240. This evidence cannot approve it.
+5. Consume the approved inter-rater variance threshold from #240 (`0.1`). This evidence cannot
+   approve or change it.
 
 `refreeze_clean_packet` and `replace_affected_samples` do not become release-ready in this
 issue: a new clean human blind review is still required. Only an explicit product-owner

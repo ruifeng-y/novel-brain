@@ -65,7 +65,9 @@ describe("M3-273 hidden-truth adjudication", () => {
       {
         id: "interRaterVarianceThreshold",
         owner: "#240",
-        status: "outside-this-issue",
+        status: "approved-elsewhere",
+        approvedValue: 0.1,
+        evidencePath: "docs/quality/evidence/m3-240/review-policy.json",
         mayBeApprovedByThisIssue: false,
         releaseGateRequiresIndependentApproval: true,
       },
@@ -218,7 +220,9 @@ describe("M3-273 hidden-truth adjudication", () => {
     expect(status.separateDecisions[0]).toMatchObject({
       id: "interRaterVarianceThreshold",
       owner: "#240",
-      status: "outside-this-issue",
+      status: "approved-elsewhere",
+      approvedValue: 0.1,
+      evidencePath: "docs/quality/evidence/m3-240/review-policy.json",
       mayBeApprovedByThisIssue: false,
       releaseGateRequiresIndependentApproval: true,
     });

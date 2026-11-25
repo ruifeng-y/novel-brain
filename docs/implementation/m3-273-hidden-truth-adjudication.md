@@ -31,11 +31,12 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
   - no approved clean packet
   - `hook-prose-disposition-pending`
   - `human-attestation-pending`
-  - inter-rater variance threshold 仍独立归属 #240。
+  - inter-rater variance threshold 已由 #240 独立批准为 `0.1`。
 - `buildContinuityBlindReviewPacket` 现在会移除显式事实对照注释，并在报告中拒绝仍含
   oracle 注释的 re-hashed packet：`blind-review-oracle-content-leak`。
 - V1 release gate 读取并重算 #273 机器账本；若账本仍 blocked 但
-  `human-blind-review` gate 声称 pass，或 #240 的独立批准尚未登记，发布检查会失败。
+  `human-blind-review` gate 声称 pass，或机器状态未绑定 #240 的正式 `0.1` review policy，
+  发布检查会失败。
 - `pnpm release:check` 会从 proposal、cleanup audit、空白模板或真人 `adjudication.json`
   重新计算状态，并拒绝与 `status.json` 不一致的手改账本。
 - 真人证据必须绑定 #273 上由 owner/member/collaborator 发布的 GitHub comment；发布检查会
@@ -65,7 +66,7 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
 - #273 的外部 GitHub 真人声明 comment URL、ID、作者和原声明。
 - 明确候选包重冻、样本替换或经产品负责人批准保留，以及旧评分是否失效。
 - `hook_prose_score = 1.882353 < 4` 的修复重跑或完整 waiver。
-- #240 单独审批 inter-rater variance threshold；#273 无权代批。
+- #240 已单独批准 inter-rater variance threshold `0.1`；#273 无权修改或替代该决定。
 
 ## 验证
 
@@ -76,5 +77,5 @@ pnpm test:guardrails
 pnpm release:check
 ```
 
-`pnpm release:check` 仍应失败。当前预期真缺口包括 #273、#240、#271 和最终 #242
+`pnpm release:check` 仍应失败。当前预期真缺口包括 #273、#271 和最终 #242
 Production CI，不得把机器准备的候选包解释为质量通过。

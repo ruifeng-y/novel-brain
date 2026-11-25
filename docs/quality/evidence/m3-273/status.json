@@ -33,7 +33,7 @@
     "Q189",
     "Q196"
   ],
-  "decisionPayloadSha256": "00e9b648fc6f0c2eb6343bcbe309c81071e170efc7ef2df147983c5ad37af4fc",
+  "decisionPayloadSha256": "f5f514e1675c6ccc8f3597b9901e62b4fed16fe02e1be8f2afdacbd709e03e6a",
   "proposalPacketSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3",
   "cleanPacketProposed": true,
   "reviewerReady": false,
@@ -56,7 +56,9 @@
     {
       "id": "interRaterVarianceThreshold",
       "owner": "#240",
-      "status": "outside-this-issue",
+      "status": "approved-elsewhere",
+      "approvedValue": 0.1,
+      "evidencePath": "docs/quality/evidence/m3-240/review-policy.json",
       "mayBeApprovedByThisIssue": false,
       "releaseGateRequiresIndependentApproval": true
     }
