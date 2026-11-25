@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 1,
+  "issue": 239,
+  "reviewId": "m3-239-2026-11-25",
+  "status": "passed",
+  "humanReviewCompleted": true,
+  "datasetSha256": "90c8c8c44540ae99246e243ac16c1158d7cee3485ac4b5c1a901b3b7164e753b",
+  "rubricSha256": "247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b",
+  "gateBlindPacketSha256": "91b3c844070a69a4eea51d6583d816d5d732d9ccad95f972a2d6a77b0287c2fb",
+  "expectedReviewers": 2,
+  "observedReviewers": 2,
+  "expectedSamples": 204,
+  "observedSamples": 204,
+  "expectedHumanScores": 816,
+  "observedHumanScores": 816,
+  "reviewers": [
+    {
+      "reviewerId": "reviewer-01",
+      "reviewerDisplayName": "reviewer-01",
+      "reviewerExpertise": "个人评审",
+      "reviewerAttestationId": "att-reviewer-01-20261125",
+      "reviewedAt": "2026-11-25T15:51:16+08:00",
+      "retainedConcerns": [
+        "缺陷标注类样本（正文为单行元信息而非叙事）共 24 个（Q005、Q026、Q034、Q055、Q056、Q067、Q075、Q081、Q083、Q084、Q088、Q093、Q096、Q123、Q130、Q149、Q158、Q160、Q162、Q168、Q182、Q186、Q189、Q196）：outline 按字面匹配给 1.00 但 confidence 降至 0.40，hook 给最低分 1；全部列入待裁决。",
+        "叙事类样本正文普遍由少数句子重复拼接，钩子有悬念但文笔重复明显，hook_prose_score 统一保守给 2（confidence 0.70）；outline 因必需节拍均逐字出现给 1.00（confidence 0.85）。",
+        "评审过程中未查看 blind-review-key.json、reviewer-02 材料或任何模型身份/生成状态/oracle 信息。"
+      ],
+      "samplesRequiringAdjudication": [
+        "Q005",
+        "Q026",
+        "Q034",
+        "Q055",
+        "Q056",
+        "Q067",
+        "Q075",
+        "Q081",
+        "Q083",
+        "Q084",
+        "Q088",
+        "Q093",
+        "Q096",
+        "Q123",
+        "Q130",
+        "Q149",
+        "Q158",
+        "Q160",
+        "Q162",
+        "Q168",
+        "Q182",
+        "Q186",
+        "Q189",
+        "Q196"
+      ],
+      "sourceFiles": {
+        "questionnaire": {
+          "path": "docs/quality/evidence/m3-239/reviewer-01-questionnaire.md",
+          "bytes": 309308,
+          "sha256": "15456c642637d8495bc45e63c9470e38d09cce4051d6585a1ba7c4487586bb82"
+        },
+        "scores": {
+          "path": "docs/quality/evidence/m3-239/reviewer-01-scores.csv",
+          "bytes": 117013,
+          "sha256": "d3ecc64a3f0bcf079fa407d5203f46903dee2a45af993d9563081c41330ea10d"
+        },
+        "notes": {
+          "path": "docs/quality/evidence/m3-239/reviewer-01-notes.json",
+          "bytes": 1604,
+          "sha256": "d10159bd31c49e8e71452f6c55a18a2e318753e2072cd9768349753830945c0d"
+        }
+      }
+    },
+    {
+      "reviewerId": "reviewer-02",
+      "reviewerDisplayName": "reviewer-02",
+      "reviewerExpertise": "个人评审",
+      "reviewerAttestationId": "att-reviewer-02-20261125",
+      "reviewedAt": "2026-11-25T15:51:16+08:00",
+      "retainedConcerns": [
+        "缺陷标注类样本（正文为单行元信息而非叙事）共 24 个：outline 按字面匹配给 1.00 但 confidence 降至 0.40，hook 给最低分 1；全部列入待裁决。",
+        "叙事类样本正文均由 2–3 个句子重复拼接：outline 必需节拍均逐字出现给 1.00（confidence 0.85）；hook_prose_score 统一保守给 2（2 不同句 confidence 0.65，3 不同句 confidence 0.70）。"
+      ],
+      "samplesRequiringAdjudication": [
+        "Q005",
+        "Q026",
+        "Q034",
+        "Q055",
+        "Q056",
+        "Q067",
+        "Q075",
+        "Q081",
+        "Q083",
+        "Q084",
+        "Q088",
+        "Q093",
+        "Q096",
+        "Q123",
+        "Q130",
+        "Q149",
+        "Q158",
+        "Q160",
+        "Q162",
+        "Q168",
+        "Q182",
+        "Q186",
+        "Q189",
+        "Q196"
+      ],
+      "sourceFiles": {
+        "questionnaire": {
+          "path": "docs/quality/evidence/m3-239/reviewer-02-questionnaire.md",
+          "bytes": 311684,
+          "sha256": "2774553c12dbd59cd3a56aa8363098eeee0180a0b0979725af3edb64b717938d"
+        },
+        "scores": {
+          "path": "docs/quality/evidence/m3-239/reviewer-02-scores.csv",
+          "bytes": 120049,
+          "sha256": "926d83e6d22f49f7622d7af1ad39a08ca0f29a2e32660780b6854049e92c5cab"
+        },
+        "notes": {
+          "path": "docs/quality/evidence/m3-239/reviewer-02-notes.json",
+          "bytes": 1308,
+          "sha256": "39b60cbe05e1ac8634eaa479f15961b1a15a0a5629e8c70f26e75129572c8f3d"
+        }
+      }
+    }
+  ],
+  "thresholdResults": [
+    {
+      "id": "outline_adherence",
+      "value": 1,
+      "threshold": {
+        "operator": "min",
+        "value": 0.9
+      },
+      "passed": true
+    },
+    {
+      "id": "hook_prose_score",
+      "value": 1.882353,
+      "threshold": {
+        "operator": "min",
+        "value": 4
+      },
+      "passed": false
+    }
+  ],
+  "observedMaxVariance": 0,
+  "interRaterVarianceThreshold": null,
+  "varianceThresholdDecisionIssue": "#240",
+  "qualityGate": {
+    "status": "blocked",
+    "blockers": [
+      "decision-required:interRaterVarianceThreshold",
+      "threshold-failed:hook_prose_score"
+    ]
+  },
+  "structuralBlockers": [],
+  "warnings": [
+    "reviewer-completion-times-identical"
+  ],
+  "sourcePacket": {
+    "path": "docs/quality/evidence/m3-239/packet.json",
+    "bytes": 165814,
+    "sha256": "769abdfdb7f8486712d8fcd5b3784c14ffee5476572eb51e9839f4d1c19d432e"
+  },
+  "sourceKey": {
+    "path": "docs/quality/evidence/m3-239/key.json",
+    "bytes": 19447,
+    "sha256": "93ae0b632df27fc66ee4fc5d89d5cbfd2d28ad557299b1c93df1e9bbc0ba0c98"
+  },
+  "sourceDataset": {
+    "path": "docs/quality/quality-benchmark-v1.dataset.json",
+    "bytes": 382938,
+    "sha256": "0d3f204c75fab5a52ef1940cb69a584516ae20c3b9b85cd2bfd3c1490a7f8ea6"
+  },
+  "sourceRubric": {
+    "path": "docs/quality/quality-benchmark-v1.rubric.json",
+    "bytes": 3435,
+    "sha256": "5cbec16e8b2967cbe54c9a2606ea82fa8b22c53b833bf07a71037d09991bd1a4"
+  },
+  "privacyScan": {
+    "reviewerPacketOnlyUsesFrozenSyntheticSamples": true,
+    "privateManuscriptFieldsIncluded": false,
+    "oracleFieldsIncluded": false,
+    "patterns": [
+      {
+        "name": "email",
+        "count": 0,
+        "matches": []
+      },
+      {
+        "name": "url",
+        "count": 0,
+        "matches": []
+      },
+      {
+        "name": "mainLandMobile",
+        "count": 0,
+        "matches": []
+      },
+      {
+        "name": "privateKeyMarker",
+        "count": 0,
+        "matches": []
+      },
+      {
+        "name": "apiKeyAssignment",
+        "count": 0,
+        "matches": []
+      }
+    ],
+    "totalFindingCount": 0
+  }
+}

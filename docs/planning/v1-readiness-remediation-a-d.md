@@ -129,8 +129,8 @@ The following are intentionally not marked complete:
 1. Product/operations decisions still needed for numeric p99 thresholds, concurrent API users, acceptable saturation/error rate, disk headroom, backup storage envelope and required human-review sample/agreement thresholds.
 2. Production Web/API/Worker code has not started. M0 implementation still begins at #67.
 3. Production Playwright specs and golden screenshots must be created by the owning page tasks and signed off against a running application.
-4. The long-horizon and three-genre quality fixtures are generated and automatically evaluated. #139 provides a frozen dataset/rubric and P0 regression gate; actual human blind review and approved variance thresholds remain pending. The 10M capacity dataset has not been generated or executed against a production schema.
-5. No load test, restore drill, cross-volume model run or blind human review is claimed as passed.
+4. The long-horizon and three-genre quality fixtures are generated and automatically evaluated. #139 provides a frozen dataset/rubric and P0 regression gate; #239 records actual human blind review, which fails the hook/prose threshold, and approved variance thresholds remain pending. The 10M capacity dataset has not been generated or executed against a production schema.
+5. No load test, restore drill or cross-volume model run is claimed as passed; the #239 review is recorded but does not pass the quality gate.
 6. The pull request is not merged; review and approval are required before these changes become the main-branch baseline.
 
 ## Acceptance of this remediation

@@ -92,10 +92,13 @@
       "id": "human-blind-review",
       "status": "blocked",
       "owner": "product-owner",
-      "rationale": "Actual human blind-review scores and the approved inter-rater variance threshold are not recorded.",
+      "rationale": "Human blind review is recorded, but hook/prose scores average 1.882353 below the required 4/5 and the inter-rater variance threshold remains unapproved.",
       "evidence": [
         "docs/quality/v1-quality-benchmark-registry.md",
-        "docs/quality/v1-long-horizon-continuity-benchmark.md"
+        "docs/quality/v1-long-horizon-continuity-benchmark.md",
+        "docs/implementation/m3-239-human-blind-review.md",
+        "docs/quality/evidence/m3-239/validation.json",
+        "docs/quality/evidence/m3-239/human-scores.json"
       ]
     }
   ]

@@ -2,7 +2,7 @@
 
 > Issue: #138
 > Capability: CONT-001
-> Status: implementation complete; automated full and maximum fixture evidence recorded; release use remains blocked until approved human-review thresholds and actual human evidence exist.
+> Status: implementation complete; automated full and maximum fixture evidence recorded; real human blind review is recorded in #239, while quality-threshold and variance decisions remain blocked.
 
 ## 实现范围
 
@@ -60,7 +60,7 @@ pnpm continuity report --fixture artifacts/quality/continuity/full/fixture.json 
 ## 验证边界
 
 - Human blind-review sample count 与 inter-rater agreement threshold 仍是 decision-required；实现不自行发明通过阈值。
-- `blind-review-packet.json` 只是评审材料，不是人工评审已完成；当前 report 保持 blocked。
+- 真实人工评审记录已由 #239 归档在 `docs/quality/evidence/m3-239/`；两名评审人的 `hook_prose_score` 均显著低于 4/5，因此 narrative-quality claim 仍为 blocked。
 - Narrative outline adherence、hook/prose score 和 continuity-conflict rate 必须由有来源的证据提交，不能用生成包自证。
-- 真实人工盲评、approved decisions 和 #139 固定质量 registry 消费不在本票伪造完成。
+- 真实人工盲评已由 #239 归档；approved decisions 和 #139 固定质量 registry 消费仍保持独立，不在本票伪造完成。
 - 容量与恢复由 #137 独立负责；通过本 benchmark 不代表容量达标。
