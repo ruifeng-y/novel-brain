@@ -73,8 +73,13 @@ export async function requestPinnedHttps(input: {
   if (!isPublicProviderAddress(input.address)) {
     throw new ProviderEndpointValidationError("PRIVATE_NETWORK");
   }
-  const lookupPinnedAddress = ((_hostname, _options, callback) => {
-    callback(null, input.address, isIP(input.address) === 6 ? 6 : 4);
+  const lookupPinnedAddress = ((_hostname, options, callback) => {
+    const family = isIP(input.address) === 6 ? 6 : 4;
+    if (options.all) {
+      callback(null, [{ address: input.address, family }]);
+      return;
+    }
+    callback(null, input.address, family);
   }) as LookupFunction;
   const body = input.body ?? "";
   const headers = {
