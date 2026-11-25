@@ -1,4 +1,5 @@
 import {
+  blindReviewOracleContentMarkers,
   verifyBlindReviewOracle,
   verifyBlindReviewPacket,
   type BlindReviewOracle,
@@ -133,6 +134,13 @@ export function buildContinuityBenchmarkReport(input: {
   }
   if (!verifyBlindReviewPacket(input.blindReviewPacket)) {
     blockers.add("blind-review-packet-digest-mismatch");
+  }
+  if (
+    input.blindReviewPacket.items.some(
+      (item) => blindReviewOracleContentMarkers(item.candidateText).length > 0,
+    )
+  ) {
+    blockers.add("blind-review-oracle-content-leak");
   }
   if (input.blindReviewOracle.fixtureSha256 !== input.fixture.digest.sha256) {
     blockers.add("blind-review-oracle-fixture-mismatch");

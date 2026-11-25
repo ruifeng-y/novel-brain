@@ -24,6 +24,7 @@
     "capacity:workload": "pnpm build:packages && node packages/capacity-benchmark/dist/cli.js workload",
     "continuity": "pnpm build:packages && node packages/continuity-benchmark/dist/cli.js",
     "quality": "pnpm build:packages && node packages/quality-benchmark/dist/cli.js",
+    "quality:adjudication": "node scripts/m3-273-adjudication.mjs",
     "build": "pnpm build:packages && pnpm --filter @novel-brain/api build && pnpm --filter @novel-brain/worker build && pnpm --filter @novel-brain/web build",
     "build:packages": "pnpm --filter \"./packages/*\" -r build && pnpm --filter @novel-brain/golden-three build",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm check:pr && pnpm check:migrations && pnpm test",

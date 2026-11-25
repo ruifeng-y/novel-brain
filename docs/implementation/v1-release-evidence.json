@@ -92,8 +92,9 @@
       "id": "human-blind-review",
       "status": "blocked",
       "owner": "product-owner",
-      "rationale": "Human raw scores are recorded in #239 with the accepted reviewer-completion-times-identical warning. The approved threshold 0.1 passes observed maxVariance 0, but 24 samples expose defect metadata and await adjudication, and hook/prose scores average 1.882353 below the required 4/5.",
+      "rationale": "Human raw scores are recorded in #239 with the accepted reviewer-completion-times-identical warning. The approved threshold 0.1 passes observed maxVariance 0. #273 generates a non-approved 204-sample cleanup proposal and a blank 24-sample decision request, but 0/24 real adjudications are recorded; hook/prose averages 1.882353 below the required 4/5.",
       "evidence": [
+        "docs/implementation/m3-273-hidden-truth-adjudication.md",
         "docs/quality/v1-quality-benchmark-registry.md",
         "docs/quality/v1-long-horizon-continuity-benchmark.md",
         "docs/implementation/m3-239-human-blind-review.md",
@@ -101,7 +102,10 @@
         "docs/quality/evidence/m3-240/review-policy.json",
         "scripts/test/m3-240-variance-threshold.test.mjs",
         "docs/quality/evidence/m3-239/validation.json",
-        "docs/quality/evidence/m3-239/human-scores.json"
+        "docs/quality/evidence/m3-239/human-scores.json",
+        "docs/quality/evidence/m3-273/status.json",
+        "docs/quality/evidence/m3-273/decision-request.md",
+        "docs/quality/evidence/m3-273/reviewer-packet-v2.proposal.json"
       ]
     }
   ]

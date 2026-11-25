@@ -72,6 +72,14 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 - 24 个 long-horizon 样本文本仍暴露缺陷元信息，`cleanBlindReview` 为 `false`。
 - reviewer identity 目前是自述化名，外部实名核验未提供。
 
-#239 生成快照中的 `interRaterVarianceThreshold` 仍为 `null`，这是历史事实；下游 #240
-已在独立 trusted review-policy artifact 中批准 `0.1`，因此阈值不再阻断发布。该批准不改变
-#104 的 blocked 状态，也不授权任何质量或容量声明。
+## #273 后续准备
+
+#273 已在 `docs/quality/evidence/m3-273/` 生成保留 204 个样本身份的非批准清洗包提案、
+24 项空白真实裁决模板和机器状态账本。该提案不是新冻结 packet，旧评分也未失效或改写；
+状态仍为 0/24 裁决、hook/prose 处置 pending。必须由真实产品/质量负责人填写
+`adjudication.json` 后才能重新生成并验证状态。
+
+#240 已独立批准 `interRaterVarianceThreshold = 0.1`；该历史快照中的 `null` 不改变，
+下游必须消费 `docs/quality/evidence/m3-240/review-policy.json`。
+
+#239 关闭不改变 #104 的 blocked 状态，也不授权任何质量、阈值或容量声明。

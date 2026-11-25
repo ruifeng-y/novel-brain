@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildContinuityBlindReviewPacket } from "../src/blind-review";
+import { sha256Json } from "../src/digest";
 import { evaluateContinuityFindings } from "../src/evaluator";
 import { generateContinuityFixture } from "../src/fixture";
 import { createContinuityPlan } from "../src/plan";
@@ -321,6 +322,29 @@ describe("continuity benchmark report", () => {
         "blind-review-oracle-digest-mismatch",
       ]),
     );
+  });
+
+  it("blocks a re-hashed packet that still exposes explicit oracle annotations", () => {
+    const contaminatedPacket = structuredClone(packet);
+    contaminatedPacket.items[0]!.candidateText += " 与已确认事实“身世：真实身世被宗门封存”冲突。";
+    const withoutHash = structuredClone(contaminatedPacket);
+    delete withoutHash.packetSha256;
+    contaminatedPacket.packetSha256 = sha256Json(withoutHash);
+    const report = buildContinuityBenchmarkReport({
+      fixture,
+      evaluation,
+      blindReviewPacket: contaminatedPacket,
+      blindReviewOracle: oracle,
+      reviewEvidence: completeReviewEvidence(contaminatedPacket),
+      decisions: approvedDecisions(),
+      narrativeEvidence: {
+        outlineAdherence: 0.9,
+        hookProseScore: 4,
+        continuityConflictsPer50k: 1,
+      },
+    });
+
+    expect(report.blockers).toContain("blind-review-oracle-content-leak");
   });
 
   it("keeps P0 misses and low reviewer agreement blocking", () => {

@@ -76,6 +76,23 @@ interface ReviewKnowledgeState {
   validFromChapter: number;
 }
 
+const ORACLE_CONTENT_MARKERS = [
+  /与已确认事实“[^”]+”冲突。/u,
+  /【连续性证据】/u,
+  /\bseeded defect\b/iu,
+] as const;
+const EXPLICIT_CONFIRMED_FACT_CONFLICT = /\s*与已确认事实“[^”]+”冲突。\s*$/u;
+
+export function sanitizeBlindReviewText(text: string): string {
+  return text.replace(EXPLICIT_CONFIRMED_FACT_CONFLICT, "").trimEnd();
+}
+
+export function blindReviewOracleContentMarkers(text: string): readonly string[] {
+  return ORACLE_CONTENT_MARKERS.filter((pattern) => pattern.test(text)).map(
+    (pattern) => pattern.source,
+  );
+}
+
 export function buildContinuityBlindReviewPacket(input: {
   fixture: ContinuityFixture;
   samplesPerStratum: number;
@@ -206,6 +223,10 @@ export function buildContinuityBlindReviewPacket(input: {
           isKnowledgeStateDisclosable(fixture, state, inputItem.chapterNumber),
       )
       .map(toReviewKnowledgeState);
+    const candidateText = sanitizeBlindReviewText(inputItem.candidateText);
+    if (blindReviewOracleContentMarkers(candidateText).length > 0) {
+      throw new Error(`BLIND_REVIEW_ORACLE_CONTENT:${inputItem.reviewId}`);
+    }
     packetItems.push({
       reviewId: inputItem.reviewId,
       stratum: inputItem.stratum,
@@ -213,7 +234,7 @@ export function buildContinuityBlindReviewPacket(input: {
       chapterNumber: inputItem.chapterNumber,
       branchId: inputItem.branchId,
       povCharacterId: inputItem.povCharacterId,
-      candidateText: inputItem.candidateText,
+      candidateText,
       rubricVersion: fixture.plan.rubricVersion,
       reviewPrompt:
         "只依据给出的已确认设定与 POV 信息，判断候选片段是否出现连续性或知识边界问题；信息不足时必须选择升级复核。",

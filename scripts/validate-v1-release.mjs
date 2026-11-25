@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, statSync } from "node:fs";
 
 import { runCli } from "./cli-entry.mjs";
+import { buildM3_273Artifacts } from "./m3-273-adjudication.mjs";
 import {
   CURRENT_HEAD_CI_WORKFLOWS,
   validateNonUiCapabilityEvidence,
@@ -421,6 +422,101 @@ function validateActionEvidence(
   return blockers;
 }
 
+function validateHumanReviewStatus(
+  evidence,
+  humanReviewStatus,
+  recordedHumanReviewStatus,
+  humanReviewArtifactsFresh,
+  humanAttestationIsValid,
+) {
+  const blockers = [];
+  const gate = (Array.isArray(evidence?.gates) ? evidence.gates : []).find(
+    (candidate) => candidate?.id === "human-blind-review",
+  );
+  if (!humanReviewStatus || typeof humanReviewStatus !== "object") {
+    blockers.push("human-blind-review:status-ledger-missing");
+    return blockers;
+  }
+  if (
+    !recordedHumanReviewStatus ||
+    JSON.stringify(recordedHumanReviewStatus) !== JSON.stringify(humanReviewStatus)
+  ) {
+    blockers.push("human-blind-review:status-ledger-mismatch");
+  }
+  if (!humanReviewArtifactsFresh) {
+    blockers.push("human-blind-review:artifact-stale");
+  }
+  if (
+    humanReviewStatus.schemaVersion !== 1 ||
+    humanReviewStatus.issue !== 273 ||
+    !/^[a-f0-9]{64}$/u.test(humanReviewStatus.proposalPacketSha256 ?? "") ||
+    !humanReviewStatus.qualityGate ||
+    !Array.isArray(humanReviewStatus.qualityGate.blockers)
+  ) {
+    blockers.push("human-blind-review:status-ledger-invalid");
+  }
+  if (
+    humanReviewStatus.qualityGate?.status === "pass" &&
+    humanReviewStatus.qualityGate.blockers.length > 0
+  ) {
+    blockers.push("human-blind-review:status-ledger-invalid");
+  }
+  const pendingCount = humanReviewStatus.pendingAdjudicationCount;
+  if (!Number.isInteger(pendingCount) || pendingCount < 0) {
+    blockers.push("human-blind-review:pending-count-invalid");
+  } else if (pendingCount > 0) {
+    blockers.push("human-blind-review:pending-adjudications");
+  }
+  const varianceDecision = (
+    Array.isArray(humanReviewStatus.separateDecisions) ? humanReviewStatus.separateDecisions : []
+  ).find((decision) => decision?.id === "interRaterVarianceThreshold");
+  if (
+    !varianceDecision ||
+    varianceDecision.owner !== "#240" ||
+    varianceDecision.mayBeApprovedByThisIssue !== false ||
+    varianceDecision.status !== "approved-elsewhere" ||
+    varianceDecision.approvedValue !== 0.1 ||
+    varianceDecision.evidencePath !== "docs/quality/evidence/m3-240/review-policy.json" ||
+    varianceDecision.releaseGateRequiresIndependentApproval !== true
+  ) {
+    blockers.push("human-blind-review:variance-owner-mismatch");
+  }
+  if (gate?.status === "pass" && humanReviewStatus.qualityGate?.status !== "pass") {
+    blockers.push("human-blind-review:ledger-blocked");
+  }
+  if (gate?.status === "pass" && humanReviewStatus.humanAdjudicationCompleted !== true) {
+    blockers.push("human-blind-review:adjudication-incomplete");
+  }
+  if (
+    gate?.status === "pass" &&
+    (humanReviewStatus.technicalStatus !== "passed" ||
+      humanReviewStatus.packetDispositionComplete !== true ||
+      !humanReviewStatus.oracleContentDisposition ||
+      ![
+        "refreeze_clean_packet",
+        "replace_affected_samples",
+        "preserve_with_product_owner_approval",
+      ].includes(humanReviewStatus.oracleContentDisposition.decision) ||
+      !humanReviewStatus.oracleContentDisposition.oldScoresImpact?.trim() ||
+      humanReviewStatus.hookProseDispositionComplete !== true ||
+      !humanReviewStatus.humanAttestation)
+  ) {
+    blockers.push("human-blind-review:ledger-state-invalid");
+  }
+  if (
+    gate?.status === "pass" &&
+    humanReviewStatus.hookProseDisposition?.decision === "approve_waiver" &&
+    (!Number.isFinite(Date.parse(humanReviewStatus.hookProseDisposition.expiresAt)) ||
+      Date.parse(humanReviewStatus.hookProseDisposition.expiresAt) <= Date.now())
+  ) {
+    blockers.push("human-blind-review:hook-prose-waiver-expired");
+  }
+  if (gate?.status === "pass" && !humanAttestationIsValid(humanReviewStatus.humanAttestation)) {
+    blockers.push("human-blind-review:human-attestation-invalid");
+  }
+  return blockers;
+}
+
 export function evaluateV1Release({
   evidence,
   traceability,
@@ -431,6 +527,10 @@ export function evaluateV1Release({
   deviationApprovals,
   actionContract,
   actionEvidence,
+  humanReviewStatus,
+  recordedHumanReviewStatus = humanReviewStatus,
+  humanReviewArtifactsFresh = true,
+  humanAttestationIsValid = () => false,
   evidenceExists = () => false,
   githubRunIsSuccessful = () => false,
   auditCiRunIsValid = () => false,
@@ -473,6 +573,13 @@ export function evaluateV1Release({
       fileContains,
     }),
     ...validateActionEvidence(actionEvidence, actionContract, { evidenceExists, fileContains }),
+    ...validateHumanReviewStatus(
+      evidence,
+      humanReviewStatus,
+      recordedHumanReviewStatus,
+      humanReviewArtifactsFresh,
+      humanAttestationIsValid,
+    ),
   ];
   return { ready: blockers.length === 0, blockers };
 }
@@ -528,6 +635,42 @@ export function isSuccessfulGithubActionsRun(reference, context = {}) {
       "{status: .status, conclusion: .conclusion, url: .html_url, headSha: .head_sha, path: .path, event: .event}",
     );
     return isValidGithubActionsRunData(reference, run, context);
+  } catch {
+    return false;
+  }
+}
+
+function isGithubHumanAttestationValid(attestation) {
+  if (
+    attestation?.provider !== "github_issue_comment" ||
+    attestation.issue !== 273 ||
+    attestation.requiredMarker !== "M3-273-HUMAN-ATTESTATION" ||
+    !/^[a-f0-9]{64}$/u.test(attestation.proposalSha256 ?? "") ||
+    !/^[a-f0-9]{64}$/u.test(attestation.decisionPayloadSha256 ?? "") ||
+    !/^\d+$/u.test(attestation.commentId ?? "") ||
+    attestation.commentUrl !==
+      `https://github.com/${EXPECTED_GITHUB_REPOSITORY}/issues/273#issuecomment-${attestation.commentId}`
+  ) {
+    return false;
+  }
+  try {
+    const comment = queryGithubApi(
+      `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/comments/${attestation.commentId}`,
+      "{body: .body, issueUrl: .issue_url, author: .user.login, authorAssociation: .author_association, createdAt: .created_at}",
+    );
+    const attestedAt = Date.parse(attestation.attestedAt);
+    const createdAt = Date.parse(comment.createdAt);
+    return (
+      comment.author === attestation.author &&
+      ["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.authorAssociation) &&
+      comment.issueUrl?.endsWith(`/repos/${EXPECTED_GITHUB_REPOSITORY}/issues/273`) &&
+      Number.isFinite(attestedAt) &&
+      Number.isFinite(createdAt) &&
+      Math.abs(attestedAt - createdAt) <= 60_000 &&
+      comment.body?.includes("M3-273-HUMAN-ATTESTATION") &&
+      comment.body?.includes(attestation.proposalSha256) &&
+      comment.body?.includes(attestation.decisionPayloadSha256)
+    );
   } catch {
     return false;
   }
@@ -623,6 +766,12 @@ function main() {
   const expectedCommit = execFileSync("git", ["rev-parse", "HEAD"], {
     encoding: "utf8",
   }).trim();
+  const recordedHumanReviewStatus = JSON.parse(
+    readFileSync("docs/quality/evidence/m3-273/status.json", "utf8"),
+  );
+  const humanReviewArtifacts = buildM3_273Artifacts({
+    root: process.cwd(),
+  });
   const result = evaluateV1Release({
     evidence: JSON.parse(readFileSync("docs/implementation/v1-release-evidence.json", "utf8")),
     traceability: readFileSync("docs/planning/v1-capability-traceability.md", "utf8"),
@@ -637,6 +786,10 @@ function main() {
     deviationApprovals: JSON.parse(readFileSync("docs/ui/v1-ui-deviations.json", "utf8")),
     actionContract: JSON.parse(readFileSync("docs/ui/v1-action-contract.json", "utf8")),
     actionEvidence: JSON.parse(readFileSync("docs/implementation/v1-action-evidence.json", "utf8")),
+    humanReviewStatus: humanReviewArtifacts.status,
+    recordedHumanReviewStatus,
+    humanReviewArtifactsFresh: humanReviewArtifacts.artifactFreshness.stalePaths.length === 0,
+    humanAttestationIsValid: isGithubHumanAttestationValid,
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
     auditCiRunIsValid: isAuditCiRun,

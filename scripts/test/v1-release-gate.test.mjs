@@ -91,6 +91,54 @@ const passingDeviationApprovals = () => ({
   deviations: [],
 });
 
+const passingHumanReviewStatus = () => ({
+  schemaVersion: 1,
+  issue: 273,
+  technicalStatus: "passed",
+  humanAdjudicationCompleted: true,
+  pendingAdjudicationCount: 0,
+  proposalPacketSha256: "a".repeat(64),
+  cleanPacketApproved: true,
+  packetDispositionComplete: true,
+  oracleContentDisposition: {
+    decision: "refreeze_clean_packet",
+    oldScoresImpact: "invalidated_for_clean_review",
+  },
+  hookProseDispositionComplete: true,
+  hookProseDisposition: {
+    decision: "approve_waiver",
+    owner: "product-owner",
+    expiresAt: "2099-12-31T00:00:00.000Z",
+  },
+  humanAttestation: {
+    provider: "github_issue_comment",
+    issue: 273,
+    requiredMarker: "M3-273-HUMAN-ATTESTATION",
+    proposalSha256: "a".repeat(64),
+    decisionPayloadSha256: "c".repeat(64),
+    commentUrl: "https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-999999",
+    commentId: "999999",
+    author: "ruifeng-y",
+    attestedAt: "2026-11-26T00:00:00.000Z",
+    statement: `M3-273-HUMAN-ATTESTATION ${"a".repeat(64)} ${"c".repeat(64)}`,
+  },
+  qualityGate: {
+    status: "pass",
+    blockers: [],
+  },
+  separateDecisions: [
+    {
+      id: "interRaterVarianceThreshold",
+      owner: "#240",
+      status: "approved-elsewhere",
+      approvedValue: 0.1,
+      evidencePath: "docs/quality/evidence/m3-240/review-policy.json",
+      mayBeApprovedByThisIssue: false,
+      releaseGateRequiresIndependentApproval: true,
+    },
+  ],
+});
+
 const passingDeferrals = () => ({
   schemaVersion: 1,
   deferrals: [
@@ -142,6 +190,9 @@ const evaluate = (overrides = {}) =>
     actionContract: passingActionContract(),
     actionEvidence: passingActionEvidence(),
     deviationApprovals: passingDeviationApprovals(),
+    humanReviewStatus: passingHumanReviewStatus(),
+    humanReviewArtifactsFresh: true,
+    humanAttestationIsValid: () => true,
     evidenceExists: () => true,
     githubRunIsSuccessful: () => true,
     auditCiRunIsValid: () => true,
@@ -199,6 +250,72 @@ describe("V1 release gate", () => {
         "auth:production-built",
       ]),
     );
+  });
+
+  it("rejects a passing human-review gate when the M3-273 ledger remains blocked", () => {
+    const humanReviewStatus = passingHumanReviewStatus();
+    humanReviewStatus.technicalStatus = "passed";
+    humanReviewStatus.humanAdjudicationCompleted = false;
+    humanReviewStatus.pendingAdjudicationCount = 24;
+    humanReviewStatus.cleanPacketApproved = false;
+    humanReviewStatus.qualityGate = {
+      status: "blocked",
+      blockers: [
+        "adjudication-pending:24",
+        "hook-prose-disposition-pending",
+        "oracle-content-disposition-pending:24",
+      ],
+    };
+
+    const result = evaluate({ humanReviewStatus });
+
+    expect(result.blockers).toEqual(
+      expect.arrayContaining([
+        "human-blind-review:ledger-blocked",
+        "human-blind-review:pending-adjudications",
+      ]),
+    );
+  });
+
+  it("requires the M3-273 human-review ledger and keeps variance approval on #240", () => {
+    const missing = evaluate({ humanReviewStatus: undefined });
+    expect(missing.blockers).toContain("human-blind-review:status-ledger-missing");
+
+    const wrongOwner = passingHumanReviewStatus();
+    wrongOwner.separateDecisions[0].owner = "#273";
+    const result = evaluate({ humanReviewStatus: wrongOwner });
+
+    expect(result.blockers).toContain("human-blind-review:variance-owner-mismatch");
+  });
+
+  it("rejects a self-contradictory passing human-review ledger", () => {
+    const humanReviewStatus = passingHumanReviewStatus();
+    humanReviewStatus.technicalStatus = "blocked";
+    humanReviewStatus.cleanPacketApproved = false;
+
+    const result = evaluate({ humanReviewStatus });
+
+    expect(result.blockers).toContain("human-blind-review:ledger-state-invalid");
+  });
+
+  it("rejects a recorded human-review status that differs from recomputed evidence", () => {
+    const humanReviewStatus = passingHumanReviewStatus();
+    const recordedHumanReviewStatus = {
+      ...structuredClone(humanReviewStatus),
+      proposalPacketSha256: "b".repeat(64),
+    };
+
+    const result = evaluate({ humanReviewStatus, recordedHumanReviewStatus });
+
+    expect(result.blockers).toContain("human-blind-review:status-ledger-mismatch");
+  });
+
+  it("rejects stale #273 artifacts or an unverifiable external human attestation", () => {
+    const stale = evaluate({ humanReviewArtifactsFresh: false });
+    expect(stale.blockers).toContain("human-blind-review:artifact-stale");
+
+    const unverified = evaluate({ humanAttestationIsValid: () => false });
+    expect(unverified.blockers).toContain("human-blind-review:human-attestation-invalid");
   });
 
   it("rejects pass gates that point at missing evidence", () => {

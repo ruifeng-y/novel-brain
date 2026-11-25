@@ -1,7 +1,7 @@
 # M3-07c-01 Non-UI V1 Capability Evidence Audit
 
 > Issue: #236
-> Audited: 2026-11-24; updated 2026-11-26 after #240
+> Audited: 2026-11-24; updated 2026-11-26 after #240 approval and #273 preparation
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
 > Verification: historical #236 audit baseline from
 > [Production CI #45332565381](https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381)
@@ -39,7 +39,7 @@ The three blocked capabilities are:
 | --- | --- | --- |
 | EVAL-002 | The variance threshold is approved, but final release-head Production CI has not yet bound the complete evidence set. | #242 |
 | EVAL-004 | Smoke response model `deepseek-flash` does not match the canary policy request model `deepseek-chat`. | #271 |
-| CONT-001 | Deterministic continuity evaluation passes and #239 records human raw scores, but 24 sample texts expose defect metadata and await adjudication; `hook_prose_score = 1.882353 < 4`. | #273 |
+| CONT-001 | Deterministic continuity evaluation passes and #239 records human raw scores. #273 proposes a non-approved 204-sample cleanup packet and 24-sample decision request, but real adjudications remain 0/24; `hook_prose_score = 1.882353 < 4` has no completed disposition. The variance threshold is independently approved by #240. | #273 |
 
 `PERF-001`, `AGENT-007` and `QUALITY-009` remain authorized post-V1 deferrals and are not
 part of this audit.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildContinuityBlindReviewPacket } from "../src/blind-review";
+import { buildContinuityBlindReviewPacket, sanitizeBlindReviewText } from "../src/blind-review";
 import { generateContinuityFixture } from "../src/fixture";
 import { createContinuityPlan } from "../src/plan";
 
@@ -34,6 +34,35 @@ describe("continuity blind review packet", () => {
     expect(first.packet.items.every((item) => !item.candidateText.includes("【连续性证据】"))).toBe(
       true,
     );
+    expect(
+      first.packet.items.every((item) => !/与已确认事实“[^”]+”冲突。/u.test(item.candidateText)),
+    ).toBe(true);
+  });
+
+  it("strips explicit oracle annotations without weakening the underlying scenario text", () => {
+    const annotated =
+      "沈砚在顾青尚不知情时，当众说出了只有作者真相才知道的身世秘密。 与已确认事实“身世：真实身世被宗门封存”冲突。";
+
+    expect(sanitizeBlindReviewText(annotated)).toBe(
+      "沈砚在顾青尚不知情时，当众说出了只有作者真相才知道的身世秘密。",
+    );
+  });
+
+  it("fails closed when another oracle marker survives packet construction", () => {
+    const tampered = structuredClone(fixture);
+    for (const chapter of tampered.chapters) {
+      chapter.content += "\n【连续性证据】";
+    }
+    for (const chapter of tampered.branchChapters) {
+      chapter.content += "\n【连续性证据】";
+    }
+
+    expect(() =>
+      buildContinuityBlindReviewPacket({
+        fixture: tampered,
+        samplesPerStratum: 2,
+      }),
+    ).toThrow("BLIND_REVIEW_ORACLE_CONTENT");
   });
 
   it("withholds hidden author truth and provider identity from reviewers", () => {
