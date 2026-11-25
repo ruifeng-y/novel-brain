@@ -13,6 +13,7 @@ const { computeCheckExitCode, computeReviewStatus } = await import(
 
 const readText = (fileName) => readFileSync(path.join(evidenceDir, fileName), "utf8");
 const readJson = (fileName) => JSON.parse(readText(fileName));
+const readRootJson = (filePath) => JSON.parse(readFileSync(path.join(root, filePath), "utf8"));
 
 describe("M3-239 human blind-review evidence", () => {
   const validation = readJson("validation.json");
@@ -240,5 +241,14 @@ describe("M3-239 human blind-review evidence", () => {
         checkFilesOnly: true,
       }),
     ).toBe(1);
+  });
+
+  it("keeps threshold and quality-remediation follow-ups on the correct issues", () => {
+    const capabilityEvidence = readRootJson(
+      "docs/implementation/m3-236-non-ui-capability-evidence.json",
+    );
+
+    expect(capabilityEvidence.capabilities["EVAL-002"].gap.issue).toBe("#240");
+    expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#273");
   });
 });

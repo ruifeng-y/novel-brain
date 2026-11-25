@@ -476,7 +476,7 @@
       "evidence": ["quality-regression", "quality-eval-http"],
       "gap": {
         "reason": "rubric 与回归门禁已实现，但正式 inter-rater variance threshold 尚未批准。",
-        "issue": "#273"
+        "issue": "#240"
       }
     },
     "EVAL-003": {
@@ -496,7 +496,7 @@
       "evidence": ["continuity-evaluator", "human-blind-review"],
       "gap": {
         "reason": "人工原始评分已记录，但 24 个样本文本暴露缺陷元信息且仍待裁决；hook/prose 为 1.882353，低于 4/5，inter-rater variance threshold 也仍待批准。",
-        "issue": "#240"
+        "issue": "#273"
       }
     }
   }
