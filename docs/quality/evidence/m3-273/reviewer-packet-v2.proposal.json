@@ -19,6 +19,12 @@
     "rubricSha256": "247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b",
     "sourceContaminatedSampleCount": 24
   },
+  "reviewerReadiness": {
+    "status": "not-ready",
+    "cleanBlindReview": false,
+    "semanticOracleReviewRequired": true,
+    "caveat": "This proposal only removes the detected explicit oracle annotation. The adversarial event text and required beats still require a human packet decision; this is not a semantic clean-packet approval."
+  },
   "samples": [
     {
       "blindSampleId": "Q001",
@@ -1833,5 +1839,5 @@
       ]
     }
   ],
-  "proposalSha256": "385876e432fe4056c460708b6ddcb814db9625a4255f7643fbf1ad2f1320c02d"
+  "proposalSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3"
 }

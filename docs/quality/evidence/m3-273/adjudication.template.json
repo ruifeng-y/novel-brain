@@ -3,13 +3,24 @@
   "issue": 273,
   "reviewId": "m3-239-2026-11-25",
   "status": "awaiting-human-input",
-  "proposalPacketSha256": "385876e432fe4056c460708b6ddcb814db9625a4255f7643fbf1ad2f1320c02d",
+  "proposalPacketSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3",
   "instructions": [
     "只能由真实产品/质量负责人在完成审查后填写。",
     "不得由模型补写、推断或伪造裁决、时间、身份和影响。",
     "不得通过修改冻结 rubric、原始评分或删除失败样本来解除门禁。",
     "本文件不批准 inter-rater variance threshold；该决定仍归 #240。"
   ],
+  "humanAttestation": {
+    "provider": "github_issue_comment",
+    "issue": 273,
+    "requiredMarker": "M3-273-HUMAN-ATTESTATION",
+    "proposalSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3",
+    "commentUrl": null,
+    "commentId": null,
+    "author": null,
+    "attestedAt": null,
+    "statement": null
+  },
   "packetDecision": {
     "decision": null,
     "oldScoresImpact": null,

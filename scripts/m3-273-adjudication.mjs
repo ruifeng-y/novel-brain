@@ -9,6 +9,7 @@ const REVIEW_ID = "m3-239-2026-11-25";
 const PROPOSED_AT = "2026-11-26";
 const PROPOSAL_VERSION = "quality-benchmark-clean-blind-proposal-v2";
 const PACKET_VERSION = "quality-benchmark-human-review-v1";
+const HUMAN_ATTESTATION_MARKER = "M3-273-HUMAN-ATTESTATION";
 const PACKET_DECISIONS = new Set([
   "refreeze_clean_packet",
   "replace_affected_samples",
@@ -150,6 +151,13 @@ export function buildM3_273Artifacts({ root, adjudicationOverride }) {
       rubricSha256: source.packet.source.rubricSha256,
       sourceContaminatedSampleCount: contaminatedSampleIds.length,
     },
+    reviewerReadiness: {
+      status: "not-ready",
+      cleanBlindReview: false,
+      semanticOracleReviewRequired: true,
+      caveat:
+        "This proposal only removes the detected explicit oracle annotation. The adversarial event text and required beats still require a human packet decision; this is not a semantic clean-packet approval.",
+    },
     samples: proposedSamples,
   };
   const proposalPacket = {
@@ -167,6 +175,7 @@ export function buildM3_273Artifacts({ root, adjudicationOverride }) {
     sampleCountBefore: source.packet.samples.length,
     sampleCountAfter: proposedSamples.length,
     samplesDeleted: 0,
+    semanticOracleReviewRequired: true,
     transforms,
   };
   const adjudicationTemplate = createAdjudicationTemplate({
@@ -344,18 +353,17 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
     }
   }
   if (packetDecisionComplete) {
-    const sampleDecisions = new Set(
-      entries
-        .filter((entry) => completedIds.includes(entry.blindSampleId))
-        .map((entry) => entry.decision),
-    );
-    const mismatch =
-      (packetDecision.decision === "refreeze_clean_packet" &&
-        [...sampleDecisions].some((decision) => decision !== "accept_clean_proposal")) ||
-      (packetDecision.decision === "replace_affected_samples" &&
-        !sampleDecisions.has("replace_sample")) ||
-      (packetDecision.decision === "preserve_with_product_owner_approval" &&
-        !sampleDecisions.has("preserve_source_with_product_owner_approval"));
+    const completedIdSet = new Set(completedIds);
+    const sampleDecisions = entries
+      .filter((entry) => completedIdSet.has(entry.blindSampleId))
+      .map((entry) => entry.decision);
+    const expectedSampleDecision =
+      packetDecision.decision === "refreeze_clean_packet"
+        ? "accept_clean_proposal"
+        : packetDecision.decision === "replace_affected_samples"
+          ? "replace_sample"
+          : "preserve_source_with_product_owner_approval";
+    const mismatch = sampleDecisions.some((decision) => decision !== expectedSampleDecision);
     if (mismatch) {
       blockers.push("packet-decision-sample-disposition-mismatch");
       packetDecisionComplete = false;
@@ -382,23 +390,36 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
       blockers.push("hook-prose-remeasurement-pending");
     }
   } else {
-    if (
-      !hasText(hookDecision.followUpIssue) ||
-      !isIsoTimestamp(hookDecision.expiresAt) ||
-      Date.parse(hookDecision.expiresAt) <= Date.parse(hookDecision.decidedAt)
-    ) {
+    if (!hasText(hookDecision.followUpIssue) || !isIsoTimestamp(hookDecision.expiresAt)) {
       blockers.push("hook-prose-waiver-incomplete");
+    } else if (
+      Date.parse(hookDecision.expiresAt) <= Date.parse(hookDecision.decidedAt) ||
+      Date.parse(hookDecision.expiresAt) <= Date.now()
+    ) {
+      blockers.push("hook-prose-waiver-expired");
     } else {
       hookProseDispositionComplete = true;
     }
   }
 
+  const humanAttestationComplete = isCompleteHumanAttestation(
+    adjudication?.humanAttestation,
+    artifacts.proposalPacket.proposalSha256,
+  );
+  if (!humanAttestationComplete) {
+    blockers.push(
+      hasAnyHumanAttestationInput(adjudication?.humanAttestation)
+        ? "human-attestation-incomplete"
+        : "human-attestation-pending",
+    );
+  }
   const humanAdjudicationCompleted =
     adjudication?.status === "complete" &&
     unresolvedSampleIds.length === 0 &&
     nonHumanCount === 0 &&
     incompleteCount === 0 &&
-    evidenceDriftCount === 0;
+    evidenceDriftCount === 0 &&
+    humanAttestationComplete;
   const qualityBlockers = [...new Set(blockers)].sort(compareStrings);
   const status = {
     schemaVersion: 1,
@@ -410,8 +431,10 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
     completedAdjudicationCount: completedIds.length,
     pendingAdjudicationCount: unresolvedSampleIds.length,
     pendingSampleIds: unresolvedSampleIds,
+    decisionPayloadSha256: sha256Json(adjudication),
     proposalPacketSha256: artifacts.proposalPacket.proposalSha256,
     cleanPacketProposed: true,
+    reviewerReady: false,
     cleanPacketApproved:
       packetDecisionComplete && packetDecision.decision === "refreeze_clean_packet",
     oracleContentDisposition: packetDecisionComplete
@@ -430,6 +453,19 @@ export function evaluateM3_273Adjudication({ artifacts, adjudication }) {
           }
         : null,
     packetDispositionComplete: packetDecisionComplete,
+    humanAttestation: humanAttestationComplete
+      ? {
+          provider: adjudication.humanAttestation.provider,
+          issue: adjudication.humanAttestation.issue,
+          requiredMarker: adjudication.humanAttestation.requiredMarker,
+          proposalSha256: adjudication.humanAttestation.proposalSha256,
+          commentUrl: adjudication.humanAttestation.commentUrl,
+          commentId: adjudication.humanAttestation.commentId,
+          author: adjudication.humanAttestation.author,
+          attestedAt: adjudication.humanAttestation.attestedAt,
+          statement: adjudication.humanAttestation.statement,
+        }
+      : null,
     qualityGate: {
       status: qualityBlockers.length === 0 ? "pass" : "blocked",
       blockers: qualityBlockers,
@@ -504,6 +540,17 @@ function createAdjudicationTemplate(input) {
       "不得通过修改冻结 rubric、原始评分或删除失败样本来解除门禁。",
       "本文件不批准 inter-rater variance threshold；该决定仍归 #240。",
     ],
+    humanAttestation: {
+      provider: "github_issue_comment",
+      issue: ISSUE,
+      requiredMarker: HUMAN_ATTESTATION_MARKER,
+      proposalSha256: input.proposalPacket.proposalSha256,
+      commentUrl: null,
+      commentId: null,
+      author: null,
+      attestedAt: null,
+      statement: null,
+    },
     packetDecision: {
       decision: null,
       oldScoresImpact: null,
@@ -586,6 +633,14 @@ Issue: #273
 - Oracle cleanup: 必须保留全部 204 个样本身份；当前提案只移除 24 条文本末尾的显式事实对照注释。
 - Threshold boundary: 不得在本文件中批准 inter-rater variance threshold；#240 保持独立。
 
+## 外部真人声明
+
+负责人必须先在本仓库 Issue #273 发布分别签名的 GitHub comment，正文包含
+\`${HUMAN_ATTESTATION_MARKER}\` 和候选包哈希 \`${input.proposalPacket.proposalSha256}\`，
+再把评论 URL、评论编号、评论作者、评论时间和原声明填入 \`humanAttestation\`。
+发布门禁会通过 GitHub API 核对 Issue 编号、评论作者关联、评论时间和正文标记；只填写
+\`adjudicatorKind: "human"\` 不能满足真人证据要求。
+
 ## Hook/prose 处置
 
 - Observed: \`hook_prose_score = 1.882353\`
@@ -636,6 +691,34 @@ function isCompleteHookDecision(value) {
   );
 }
 
+function isCompleteHumanAttestation(value, proposalSha256) {
+  return Boolean(
+    value?.provider === "github_issue_comment" &&
+    value.issue === ISSUE &&
+    value.requiredMarker === HUMAN_ATTESTATION_MARKER &&
+    value.proposalSha256 === proposalSha256 &&
+    /^https:\/\/github\.com\/ruifeng-y\/novel-brain\/issues\/273#issuecomment-\d+$/u.test(
+      value.commentUrl ?? "",
+    ) &&
+    /^\d+$/u.test(value.commentId ?? "") &&
+    value.commentUrl.endsWith(`#issuecomment-${value.commentId}`) &&
+    hasText(value.author) &&
+    isIsoTimestamp(value.attestedAt) &&
+    hasText(value.statement) &&
+    value.statement.includes(HUMAN_ATTESTATION_MARKER) &&
+    value.statement.includes(proposalSha256),
+  );
+}
+
+function hasAnyHumanAttestationInput(value) {
+  return Boolean(
+    value &&
+    ["commentUrl", "commentId", "author", "attestedAt", "statement"].some((field) =>
+      hasText(value[field]),
+    ),
+  );
+}
+
 function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
@@ -682,7 +765,8 @@ function isPendingQualityBlocker(blocker) {
     /^oracle-content-disposition-pending:\d+$/u.test(blocker) ||
     blocker === "hook-prose-disposition-pending" ||
     blocker === "hook-prose-remeasurement-pending" ||
-    blocker === "clean-blind-review-required"
+    blocker === "clean-blind-review-required" ||
+    blocker === "human-attestation-pending"
   );
 }
 

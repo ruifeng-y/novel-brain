@@ -40,6 +40,17 @@ issue: a new clean human blind review is still required. Only an explicit produc
 preservation decision can retain the contaminated source without that rerun, and the hook/prose
 failure still needs remediation or a complete unexpired waiver.
 
+The proposal is intentionally marked `reviewerReadiness.status = not-ready`. Removing the
+explicit fact-conflict suffix does not prove that the remaining adversarial event text is
+semantically blind. Do not send the proposal to reviewers until a human packet decision and the
+required new clean review are recorded.
+
+Before the local adjudication file can count as human evidence, an owner/member/collaborator
+must post a GitHub comment on #273 containing `M3-273-HUMAN-ATTESTATION` and the proposal
+SHA-256. The comment URL, ID, author, timestamp and statement must be recorded in
+`humanAttestation`. Release verification queries GitHub and rejects self-declared
+`adjudicatorKind: "human"` without that external comment.
+
 Every decision requires a human adjudicator identity, attestation ID, rationale, impact and
 timestamp. Model-written or inferred decisions are invalid.
 

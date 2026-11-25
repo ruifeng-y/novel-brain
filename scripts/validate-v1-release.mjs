@@ -422,7 +422,13 @@ function validateActionEvidence(
   return blockers;
 }
 
-function validateHumanReviewStatus(evidence, humanReviewStatus, recordedHumanReviewStatus) {
+function validateHumanReviewStatus(
+  evidence,
+  humanReviewStatus,
+  recordedHumanReviewStatus,
+  humanReviewArtifactsFresh,
+  humanAttestationIsValid,
+) {
   const blockers = [];
   const gate = (Array.isArray(evidence?.gates) ? evidence.gates : []).find(
     (candidate) => candidate?.id === "human-blind-review",
@@ -436,6 +442,9 @@ function validateHumanReviewStatus(evidence, humanReviewStatus, recordedHumanRev
     JSON.stringify(recordedHumanReviewStatus) !== JSON.stringify(humanReviewStatus)
   ) {
     blockers.push("human-blind-review:status-ledger-mismatch");
+  }
+  if (!humanReviewArtifactsFresh) {
+    blockers.push("human-blind-review:artifact-stale");
   }
   if (
     humanReviewStatus.schemaVersion !== 1 ||
@@ -487,7 +496,8 @@ function validateHumanReviewStatus(evidence, humanReviewStatus, recordedHumanRev
         "preserve_with_product_owner_approval",
       ].includes(humanReviewStatus.oracleContentDisposition.decision) ||
       !humanReviewStatus.oracleContentDisposition.oldScoresImpact?.trim() ||
-      humanReviewStatus.hookProseDispositionComplete !== true)
+      humanReviewStatus.hookProseDispositionComplete !== true ||
+      !humanReviewStatus.humanAttestation)
   ) {
     blockers.push("human-blind-review:ledger-state-invalid");
   }
@@ -498,6 +508,9 @@ function validateHumanReviewStatus(evidence, humanReviewStatus, recordedHumanRev
       Date.parse(humanReviewStatus.hookProseDisposition.expiresAt) <= Date.now())
   ) {
     blockers.push("human-blind-review:hook-prose-waiver-expired");
+  }
+  if (gate?.status === "pass" && !humanAttestationIsValid(humanReviewStatus.humanAttestation)) {
+    blockers.push("human-blind-review:human-attestation-invalid");
   }
   return blockers;
 }
@@ -514,6 +527,8 @@ export function evaluateV1Release({
   actionEvidence,
   humanReviewStatus,
   recordedHumanReviewStatus = humanReviewStatus,
+  humanReviewArtifactsFresh = true,
+  humanAttestationIsValid = () => false,
   evidenceExists = () => false,
   githubRunIsSuccessful = () => false,
   auditCiRunIsValid = () => false,
@@ -556,7 +571,13 @@ export function evaluateV1Release({
       fileContains,
     }),
     ...validateActionEvidence(actionEvidence, actionContract, { evidenceExists, fileContains }),
-    ...validateHumanReviewStatus(evidence, humanReviewStatus, recordedHumanReviewStatus),
+    ...validateHumanReviewStatus(
+      evidence,
+      humanReviewStatus,
+      recordedHumanReviewStatus,
+      humanReviewArtifactsFresh,
+      humanAttestationIsValid,
+    ),
   ];
   return { ready: blockers.length === 0, blockers };
 }
@@ -612,6 +633,40 @@ export function isSuccessfulGithubActionsRun(reference, context = {}) {
       "{status: .status, conclusion: .conclusion, url: .html_url, headSha: .head_sha, path: .path, event: .event}",
     );
     return isValidGithubActionsRunData(reference, run, context);
+  } catch {
+    return false;
+  }
+}
+
+function isGithubHumanAttestationValid(attestation) {
+  if (
+    attestation?.provider !== "github_issue_comment" ||
+    attestation.issue !== 273 ||
+    attestation.requiredMarker !== "M3-273-HUMAN-ATTESTATION" ||
+    !/^[a-f0-9]{64}$/u.test(attestation.proposalSha256 ?? "") ||
+    !/^\d+$/u.test(attestation.commentId ?? "") ||
+    attestation.commentUrl !==
+      `https://github.com/${EXPECTED_GITHUB_REPOSITORY}/issues/273#issuecomment-${attestation.commentId}`
+  ) {
+    return false;
+  }
+  try {
+    const comment = queryGithubApi(
+      `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/comments/${attestation.commentId}`,
+      "{body: .body, issueUrl: .issue_url, author: .user.login, authorAssociation: .author_association, createdAt: .created_at}",
+    );
+    const attestedAt = Date.parse(attestation.attestedAt);
+    const createdAt = Date.parse(comment.createdAt);
+    return (
+      comment.author === attestation.author &&
+      ["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.authorAssociation) &&
+      comment.issueUrl?.endsWith(`/repos/${EXPECTED_GITHUB_REPOSITORY}/issues/273`) &&
+      Number.isFinite(attestedAt) &&
+      Number.isFinite(createdAt) &&
+      Math.abs(attestedAt - createdAt) <= 60_000 &&
+      comment.body?.includes("M3-273-HUMAN-ATTESTATION") &&
+      comment.body?.includes(attestation.proposalSha256)
+    );
   } catch {
     return false;
   }
@@ -710,9 +765,9 @@ function main() {
   const recordedHumanReviewStatus = JSON.parse(
     readFileSync("docs/quality/evidence/m3-273/status.json", "utf8"),
   );
-  const humanReviewStatus = buildM3_273Artifacts({
+  const humanReviewArtifacts = buildM3_273Artifacts({
     root: process.cwd(),
-  }).status;
+  });
   const result = evaluateV1Release({
     evidence: JSON.parse(readFileSync("docs/implementation/v1-release-evidence.json", "utf8")),
     traceability: readFileSync("docs/planning/v1-capability-traceability.md", "utf8"),
@@ -727,8 +782,10 @@ function main() {
     deviationApprovals: JSON.parse(readFileSync("docs/ui/v1-ui-deviations.json", "utf8")),
     actionContract: JSON.parse(readFileSync("docs/ui/v1-action-contract.json", "utf8")),
     actionEvidence: JSON.parse(readFileSync("docs/implementation/v1-action-evidence.json", "utf8")),
-    humanReviewStatus,
+    humanReviewStatus: humanReviewArtifacts.status,
     recordedHumanReviewStatus,
+    humanReviewArtifactsFresh: humanReviewArtifacts.artifactFreshness.stalePaths.length === 0,
+    humanAttestationIsValid: isGithubHumanAttestationValid,
     evidenceExists: isNonEmptyFile,
     githubRunIsSuccessful: isSuccessfulGithubActionsRun,
     auditCiRunIsValid: isAuditCiRun,

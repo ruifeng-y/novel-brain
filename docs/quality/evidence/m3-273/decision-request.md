@@ -13,6 +13,14 @@ Issue: #273
 - Oracle cleanup: 必须保留全部 204 个样本身份；当前提案只移除 24 条文本末尾的显式事实对照注释。
 - Threshold boundary: 不得在本文件中批准 inter-rater variance threshold；#240 保持独立。
 
+## 外部真人声明
+
+负责人必须先在本仓库 Issue #273 发布分别签名的 GitHub comment，正文包含
+`M3-273-HUMAN-ATTESTATION` 和候选包哈希 `602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3`，
+再把评论 URL、评论编号、评论作者、评论时间和原声明填入 `humanAttestation`。
+发布门禁会通过 GitHub API 核对 Issue 编号、评论作者关联、评论时间和正文标记；只填写
+`adjudicatorKind: "human"` 不能满足真人证据要求。
+
 ## Hook/prose 处置
 
 - Observed: `hook_prose_score = 1.882353`

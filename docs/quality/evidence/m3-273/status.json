@@ -33,18 +33,22 @@
     "Q189",
     "Q196"
   ],
-  "proposalPacketSha256": "385876e432fe4056c460708b6ddcb814db9625a4255f7643fbf1ad2f1320c02d",
+  "decisionPayloadSha256": "c4793a21778a280b155db6b78cea71a34f2ca9e2834b5c7c1e219c96297b2f6a",
+  "proposalPacketSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3",
   "cleanPacketProposed": true,
+  "reviewerReady": false,
   "cleanPacketApproved": false,
   "oracleContentDisposition": null,
   "hookProseDispositionComplete": false,
   "hookProseDisposition": null,
   "packetDispositionComplete": false,
+  "humanAttestation": null,
   "qualityGate": {
     "status": "blocked",
     "blockers": [
       "adjudication-pending:24",
       "hook-prose-disposition-pending",
+      "human-attestation-pending",
       "oracle-content-disposition-pending:24"
     ]
   },

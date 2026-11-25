@@ -110,6 +110,17 @@ const passingHumanReviewStatus = () => ({
     owner: "product-owner",
     expiresAt: "2099-12-31T00:00:00.000Z",
   },
+  humanAttestation: {
+    provider: "github_issue_comment",
+    issue: 273,
+    requiredMarker: "M3-273-HUMAN-ATTESTATION",
+    proposalSha256: "a".repeat(64),
+    commentUrl: "https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-999999",
+    commentId: "999999",
+    author: "ruifeng-y",
+    attestedAt: "2026-11-26T00:00:00.000Z",
+    statement: `M3-273-HUMAN-ATTESTATION ${"a".repeat(64)}`,
+  },
   qualityGate: {
     status: "pass",
     blockers: [],
@@ -177,6 +188,8 @@ const evaluate = (overrides = {}) =>
     actionEvidence: passingActionEvidence(),
     deviationApprovals: passingDeviationApprovals(),
     humanReviewStatus: passingHumanReviewStatus(),
+    humanReviewArtifactsFresh: true,
+    humanAttestationIsValid: () => true,
     evidenceExists: () => true,
     githubRunIsSuccessful: () => true,
     auditCiRunIsValid: () => true,
@@ -292,6 +305,14 @@ describe("V1 release gate", () => {
     const result = evaluate({ humanReviewStatus, recordedHumanReviewStatus });
 
     expect(result.blockers).toContain("human-blind-review:status-ledger-mismatch");
+  });
+
+  it("rejects stale #273 artifacts or an unverifiable external human attestation", () => {
+    const stale = evaluate({ humanReviewArtifactsFresh: false });
+    expect(stale.blockers).toContain("human-blind-review:artifact-stale");
+
+    const unverified = evaluate({ humanAttestationIsValid: () => false });
+    expect(unverified.blockers).toContain("human-blind-review:human-attestation-invalid");
   });
 
   it("rejects pass gates that point at missing evidence", () => {

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": 273,
   "reviewId": "m3-239-2026-11-25",
-  "proposalPacketSha256": "385876e432fe4056c460708b6ddcb814db9625a4255f7643fbf1ad2f1320c02d",
+  "proposalPacketSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3",
   "sourcePacketFileSha256": "769abdfdb7f8486712d8fcd5b3784c14ffee5476572eb51e9839f4d1c19d432e",
   "sourcePacketCanonicalSha256": "3fdae556029834bfcb97c321c3486c1fe3d57df9d6630cc99484a0ea56ce847c",
   "sourceContaminatedSampleIds": [
@@ -34,6 +34,7 @@
   "sampleCountBefore": 204,
   "sampleCountAfter": 204,
   "samplesDeleted": 0,
+  "semanticOracleReviewRequired": true,
   "transforms": [
     {
       "blindSampleId": "Q005",

@@ -45,6 +45,14 @@ describe("M3-273 hidden-truth adjudication", () => {
       ),
     ).toBe(true);
     expect(artifacts.proposalPacket.status).toBe("proposed-not-approved");
+    expect(artifacts.proposalPacket.reviewerReadiness).toEqual({
+      status: "not-ready",
+      cleanBlindReview: false,
+      semanticOracleReviewRequired: true,
+      caveat:
+        "This proposal only removes the detected explicit oracle annotation. The adversarial event text and required beats still require a human packet decision; this is not a semantic clean-packet approval.",
+    });
+    expect(artifacts.status.reviewerReady).toBe(false);
     expect(typeof artifacts.status.cleanPacketApproved).toBe("boolean");
     expect(
       artifacts.status.completedAdjudicationCount + artifacts.status.pendingAdjudicationCount,
@@ -77,6 +85,16 @@ describe("M3-273 hidden-truth adjudication", () => {
     const template = artifacts.adjudicationTemplate;
 
     expect(template.status).toBe("awaiting-human-input");
+    expect(template.humanAttestation).toMatchObject({
+      provider: "github_issue_comment",
+      issue: 273,
+      requiredMarker: "M3-273-HUMAN-ATTESTATION",
+      commentUrl: null,
+      commentId: null,
+      author: null,
+      attestedAt: null,
+      statement: null,
+    });
     expect(template.packetDecision).toMatchObject({
       decision: null,
       oldScoresImpact: null,
@@ -161,6 +179,15 @@ describe("M3-273 hidden-truth adjudication", () => {
       evaluateM3_273Adjudication({ artifacts, adjudication: wrongBeatsHash }).qualityGate.blockers,
     ).toContain("adjudication-sample-evidence-drift:1");
 
+    const mixedPreserve = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(mixedPreserve, {
+      packetDecision: "preserve_with_product_owner_approval",
+    });
+    mixedPreserve.adjudications[0].decision = "accept_clean_proposal";
+    expect(
+      evaluateM3_273Adjudication({ artifacts, adjudication: mixedPreserve }).qualityGate.blockers,
+    ).toContain("packet-decision-sample-disposition-mismatch");
+
     const missingOldScoreImpact = structuredClone(artifacts.adjudicationTemplate);
     completeHumanDecisions(missingOldScoreImpact);
     missingOldScoreImpact.packetDecision.oldScoresImpact = null;
@@ -230,8 +257,29 @@ describe("M3-273 hidden-truth adjudication", () => {
     adjudication.hookProseDisposition.expiresAt = "2000-01-01T00:00:00.000Z";
 
     expect(evaluateM3_273Adjudication({ artifacts, adjudication }).qualityGate.blockers).toContain(
-      "hook-prose-waiver-incomplete",
+      "hook-prose-waiver-expired",
     );
+  });
+
+  it("requires an external GitHub issue comment attestation before human completion", async () => {
+    const artifacts = await buildM3_273Artifacts({ root });
+    const adjudication = structuredClone(artifacts.adjudicationTemplate);
+    completeHumanDecisions(adjudication, {
+      packetDecision: "preserve_with_product_owner_approval",
+    });
+    adjudication.hookProseDisposition.decision = "approve_waiver";
+    adjudication.hookProseDisposition.followUpIssue = "#242";
+    adjudication.hookProseDisposition.expiresAt = "2099-12-31T00:00:00.000Z";
+    adjudication.humanAttestation.commentUrl = null;
+    adjudication.humanAttestation.commentId = null;
+    adjudication.humanAttestation.author = null;
+    adjudication.humanAttestation.attestedAt = null;
+    adjudication.humanAttestation.statement = null;
+
+    const status = evaluateM3_273Adjudication({ artifacts, adjudication });
+
+    expect(status.humanAdjudicationCompleted).toBe(false);
+    expect(status.qualityGate.blockers).toContain("human-attestation-pending");
   });
 
   it("rebuilds status from an explicitly supplied human decision file", async () => {
@@ -278,6 +326,17 @@ function completeHumanDecisions(adjudication, { packetDecision = "refreeze_clean
         ? "replace_sample"
         : "accept_clean_proposal";
   adjudication.status = "complete";
+  adjudication.humanAttestation = {
+    provider: "github_issue_comment",
+    issue: 273,
+    requiredMarker: "M3-273-HUMAN-ATTESTATION",
+    proposalSha256: adjudication.proposalPacketSha256,
+    commentUrl: "https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-999999",
+    commentId: "999999",
+    author: "ruifeng-y",
+    attestedAt: "2026-11-26T00:00:00.000Z",
+    statement: `M3-273-HUMAN-ATTESTATION ${adjudication.proposalPacketSha256}`,
+  };
   adjudication.packetDecision = {
     decision: packetDecision,
     oldScoresImpact: "invalidated_for_clean_review",

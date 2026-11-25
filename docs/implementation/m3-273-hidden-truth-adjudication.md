@@ -21,6 +21,7 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
   - 样本数仍为 204，删除样本数为 0。
   - 只对 24 个样本应用 `strip-explicit-oracle-annotation-v1`。
   - 候选包状态固定为 `proposed-not-approved`。
+  - `reviewerReadiness.status` 固定为 `not-ready`；移除显式注释不等于通过语义盲评。
   - reviewer-facing sample schema 仍仅为 `blindSampleId`、`genre`、`text`、
     `requiredBeats`。
 - 生成 24 项空白裁决模板和 owner-only 决策请求；所有真人字段保持 `null`。
@@ -29,6 +30,7 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
   - `pendingAdjudicationCount: 24`
   - no approved clean packet
   - `hook-prose-disposition-pending`
+  - `human-attestation-pending`
   - inter-rater variance threshold 仍独立归属 #240。
 - `buildContinuityBlindReviewPacket` 现在会移除显式事实对照注释，并在报告中拒绝仍含
   oracle 注释的 re-hashed packet：`blind-review-oracle-content-leak`。
@@ -36,6 +38,9 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
   `human-blind-review` gate 声称 pass，或 #240 的独立批准尚未登记，发布检查会失败。
 - `pnpm release:check` 会从 proposal、cleanup audit、空白模板或真人 `adjudication.json`
   重新计算状态，并拒绝与 `status.json` 不一致的手改账本。
+- 真人证据必须绑定 #273 上由 owner/member/collaborator 发布的 GitHub comment；发布检查会
+  通过 API 核对评论作者关联、时间、正文 marker 和 proposal hash，不信任本地自报的
+  `adjudicatorKind`。
 - 选择 `refreeze_clean_packet` 或 `replace_affected_samples` 后仍需新的 clean human
   blind review；本票不会用算法删除注释代替重新盲评。
 
@@ -57,6 +62,7 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
 ## 仍需真人完成
 
 - 24/24 样本的真实裁决、理由、影响、裁决人、attestation 和时间。
+- #273 的外部 GitHub 真人声明 comment URL、ID、作者和原声明。
 - 明确候选包重冻、样本替换或经产品负责人批准保留，以及旧评分是否失效。
 - `hook_prose_score = 1.882353 < 4` 的修复重跑或完整 waiver。
 - #240 单独审批 inter-rater variance threshold；#273 无权代批。
