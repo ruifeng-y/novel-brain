@@ -47,12 +47,13 @@ commit `6bc4fa2a83172ae3ece9d75065462d973397333f`.
 - All 15 non-static production pages have complete, verified action evidence.
 - UI-001..UI-009 are `verified` in the traceability ledger.
 - The release gate now reports UI capability and parity evidence as passing.
-- V1 traceability records 113 of 116 V1 capabilities as `verified`; EVAL-002,
-  EVAL-004 and CONT-001 retain bounded evidence gaps.
+- V1 traceability records 113 of 116 V1 capabilities as `verified`; EVAL-002
+  awaits final release-head CI, while EVAL-004 and CONT-001 retain bounded
+  evidence gaps.
 - The remaining release blockers are pending human adjudication/oracle content,
-  the failed human prose-quality threshold, the approved inter-rater variance
-  threshold, smoke model alias alignment (#271), quality remediation (#273) and the final #104 Production
-  CI. #238 does not close #104.
+  the failed human prose-quality threshold, smoke model alias alignment (#271),
+  quality remediation (#273) and the final #104 Production CI. The inter-rater
+  variance threshold is approved separately under #240. #238 does not close #104.
 
 ## 4. Verification
 
@@ -93,13 +94,14 @@ Local verification:
 ## 5. Boundary
 
 This ticket does not claim that every V1 capability is already `verified` or
-authorized-deferred. EVAL-002, EVAL-004 and CONT-001 remain explicit, bounded
-release blockers. #239 records the human review, #240 owns the variance decision,
-#271 owns the smoke model alias gap, and #104 remains open until those release
-gates close.
+authorized-deferred. EVAL-004 and CONT-001 remain explicit, bounded release
+blockers. #239 records the human review, #240 records the approved variance
+threshold but its capability verification remains with #242, #271 owns the smoke model alias gap, and #104 remains open until the
+remaining release gates close.
 
 This report does not record or substitute for:
 
 - the recorded human blind-review scores in `docs/quality/evidence/m3-239/` (#239);
-- the approved inter-rater variance threshold (#240);
+- the approved inter-rater variance threshold evidence in
+  `docs/quality/evidence/m3-240/review-policy.json`;
 - the final V1 release decision and final Production CI (#242/#104).

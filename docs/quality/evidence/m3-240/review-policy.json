@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "issue": 240,
+  "decisionId": "interRaterVarianceThreshold",
+  "interRaterVarianceThreshold": 0.1,
+  "owner": "product-owner",
+  "decidedAt": "2026-11-26T00:00:00+08:00",
+  "rationale": "V1 accepts integer or half-step scores on the 1-5 hook/prose scale. A 0.1 variance ceiling rejects every full one-point disagreement because two scores one point apart have variance 0.25, while allowing one half-step difference because variance is 0.0625. The frozen 816-score review observed maxVariance 0, so this policy passed the recorded evidence without a post-hoc threshold change.",
+  "releaseGate": {
+    "comparison": "maxVariance > interRaterVarianceThreshold",
+    "blocker": "inter-rater-variance-above-threshold",
+    "releaseStatus": "blocked",
+    "waiverAllowed": false
+  },
+  "onExceeded": {
+    "identify": "sample-and-dimension pairs whose reviewer score variance exceeds the approved threshold",
+    "preserveOriginalScores": true,
+    "routeTo": "adjudication or an additional independent reviewer",
+    "rerun": "rerun the full quality and release gate after resolution",
+    "waiver": "not allowed for the V1 quality claim"
+  },
+  "completionTimeWarningDecision": {
+    "warning": "reviewer-completion-times-identical",
+    "accepted": true,
+    "rationale": "接受为残余 warning。两名评审人的 reviewedAt/submittedAt 表示同批次的提交时间，而非经记录的实际评审耗时；独立评分声明、64/204 个 hook confidence 差异和不同的 retained concerns 提供辅助证据。408/408 配对同分不作为独立评审的证明，cleanBlindReview 仍为 false，该 warning 继续保留。"
+  },
+  "frozenEvidence": {
+    "reviewId": "m3-239-2026-11-25",
+    "datasetSha256": "90c8c8c44540ae99246e243ac16c1158d7cee3485ac4b5c1a901b3b7164e753b",
+    "rubricSha256": "247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b",
+    "gateBlindPacketSha256": "91b3c844070a69a4eea51d6583d816d5d732d9ccad95f972a2d6a77b0287c2fb",
+    "humanScoreRows": 816,
+    "sampleDimensionPairs": 408,
+    "observedMaxVariance": 0
+  }
+}

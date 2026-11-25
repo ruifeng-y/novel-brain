@@ -2,21 +2,21 @@
 
 > Owner: M3-07 #104
 > Status: **BLOCKED** - this checklist does not itself authorize a V1 release claim.
-> Updated: 2026-11-25.
+> Updated: 2026-11-26.
 
 Machine-readable release evidence and waiver ownership live in `docs/implementation/v1-release-evidence.json`; authorized scope deferrals live in `docs/planning/v1-deferrals.json`; page deviations live in `docs/ui/v1-ui-deviations.json`; the required action IDs live in `docs/ui/v1-action-contract.json`; per-action API/persistence evidence lives in `docs/implementation/v1-action-evidence.json`. `pnpm release:check` rejects unknown gates, unregistered deferrals, empty local evidence, unsuccessful GitHub Actions runs, P0 failures, invalid waivers, unapproved deviations, pending action audits and any production page that is not release-approved.
 
 ## 1. Release scope decisions
 
 - `PERF-001` / `#137` is explicitly deferred from the V1 capacity claim. V1 must not claim that 10,000,000-character capacity has been certified.
-- `CONT-001` deterministic long-horizon implementation is complete and #239 records the human raw scores as `complete-with-warnings`. The V1 claim remains blocked because 24 samples await adjudication and contain oracle metadata, `hook_prose_score = 1.882353 < 4` and no inter-rater threshold is approved.
+- `CONT-001` deterministic long-horizon implementation is complete and #239 records the human raw scores as `complete-with-warnings`. The V1 claim remains blocked because 24 samples await adjudication and contain oracle metadata and `hook_prose_score = 1.882353 < 4`. The inter-rater variance threshold is approved as `0.1` by `product-owner` on 2026-11-26.
 - Real DeepSeek smoke passed manually in the protected `provider-smoke` GitHub environment. Ordinary CI still has no real-provider dependency.
 
 ## 2. Evidence ledger
 
 | Gate | Evidence | Status |
 | --- | --- | --- |
-| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/m3-238-ui-capability-evidence.json`, `docs/quality/evidence/m3-239/validation.json`; `node scripts/validate-readiness.mjs` | structure pass; 113/116 V1 capabilities verified; EVAL-002, EVAL-004 and CONT-001 retain bounded gaps |
+| Capability mapping | `docs/planning/v1-capability-manifest.md`, `docs/planning/v1-capability-traceability.md`, `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/m3-236-non-ui-capability-evidence.json`, `docs/implementation/m3-238-ui-capability-evidence.json`, `docs/quality/evidence/m3-240/review-policy.json`; `node scripts/validate-readiness.mjs` | structure pass; 113/116 V1 capabilities and 104/107 non-UI capabilities verified; EVAL-002 awaits final release-head CI through #242; EVAL-004 and CONT-001 retain bounded gaps |
 | UI parity | `docs/ui/v1-ui-parity-matrix.md`, `docs/implementation/m3-238-ui-capability-evidence.json`; 17 production page specs; 68 required production Golden files at 390/900/1180/1440 | all 17 production pages are `parity-verified`; UI-001..UI-009 are verified; release-level evidence remains blocked |
 | Visual regression | ADR 0027, `docs/ui/production-visual-regression.md`, Production CI `playwright`; 0.5% tolerance and retained diff artifacts | release gate requires current-HEAD normal PR Production CI, Deployment Smoke and Readiness; final #104 normal PR CI pending |
 | Author language and prototype-only leakage | `expectAuthorFacingLanguage`, `expectNoPrototypeOnlyLeakage` across page parity specs | current UI capability evidence pass; final #104 normal PR CI pending |
@@ -28,7 +28,7 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 | Backup, restore and retention | `docs/implementation/m3-04b-backup-restore.md`; backup/restore drill evidence | pass |
 | Quality registry and deterministic regression | `docs/implementation/m3-06a-quality-benchmark-registry.md`; frozen dataset/rubric and P0 gate tests | pass |
 | Real-provider smoke | `.github/workflows/provider-smoke.yml`; [protected manual run 45557765302](https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302); `docs/implementation/evidence/m3-07e-01-provider-smoke-success-2026-11-25.json` | pass / DeepSeek official HTTPS API, `finishReason: stop`, 1 network call |
-| Human blind review and variance threshold | `docs/implementation/m3-239-human-blind-review.md`, `docs/quality/evidence/m3-239/validation.json`, `docs/quality/evidence/m3-239/human-scores.json` | record complete-with-warnings; 24 oracle-content cases and adjudications pending; `outline_adherence` pass, `hook_prose_score` fail, variance threshold blocked by #240 |
+| Human blind review and variance threshold | `docs/implementation/m3-239-human-blind-review.md`, `docs/implementation/m3-240-variance-threshold.md`, `docs/quality/evidence/m3-240/review-policy.json`, `docs/quality/evidence/m3-239/validation.json`, `docs/quality/evidence/m3-239/human-scores.json` | record complete-with-warnings; threshold `0.1` approved with observed `maxVariance = 0`; 24 oracle-content cases and adjudications pending; `outline_adherence` pass, `hook_prose_score` fail |
 | 10M capacity | `#137` / `PERF-001` | explicitly deferred; excluded from V1 claims |
 | Final #104 Production CI | `Production CI/check`, `Production CI/playwright`, `Deployment Smoke/compose-smoke` | blocked until the final release PR run is green |
 
@@ -57,10 +57,9 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 
 ## 4. Remaining blockers
 
-1. Complete the remaining non-UI capability gaps: approved variance threshold (#240), smoke model alias alignment (#271) and the failed human prose-quality gate.
+1. Complete the remaining non-UI capability gaps: final release-head verification (#242), smoke model alias alignment (#271) and continuity adjudication/remediation (#273), including the failed human prose-quality gate.
 2. Remove or explicitly resolve the 24 long-horizon text samples that expose defect metadata, then record real adjudication results under #273.
-3. Approve and record the inter-rater variance threshold with an owner and rationale.
-4. Resolve the recorded quality failure: `hook_prose_score = 1.882353` is below the `4/5` release threshold.
-5. Run the final #104 Production CI and update the `final-production-ci` evidence gate with the green run URL.
+3. Resolve the recorded quality failure: `hook_prose_score = 1.882353` is below the `4/5` release threshold.
+4. Run the final #104 Production CI and update the `final-production-ci` evidence gate with the green run URL.
 
 Until then the release decision is **BLOCKED**, and no V1 quality or capacity claim may be made.

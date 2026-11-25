@@ -1,9 +1,11 @@
 # M3-07c-01 Non-UI V1 Capability Evidence Audit
 
 > Issue: #236
-> Audited: 2026-11-24; updated 2026-11-25 after #241
+> Audited: 2026-11-24; updated 2026-11-26 after #240
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
-> Verification: [Production CI #45332565381](https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381) on code head `491d059`
+> Verification: historical #236 audit baseline from
+> [Production CI #45332565381](https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381)
+> on code head `491d059`; current release-head verification remains #242.
 > Result: 104 / 107 non-UI V1 capabilities verified; 3 retained as implemented with bounded gaps.
 
 ## 1. Audit Rule
@@ -35,9 +37,9 @@ The three blocked capabilities are:
 
 | Capability | Gap | Follow-up |
 | --- | --- | --- |
-| EVAL-002 | The release-level inter-rater variance threshold is not approved. | #240 |
+| EVAL-002 | The variance threshold is approved, but final release-head Production CI has not yet bound the complete evidence set. | #242 |
 | EVAL-004 | Smoke response model `deepseek-flash` does not match the canary policy request model `deepseek-chat`. | #271 |
-| CONT-001 | Deterministic continuity evaluation passes and #239 records human raw scores, but 24 sample texts expose defect metadata and await adjudication; `hook_prose_score = 1.882353 < 4` and the variance threshold remains unapproved. | #273 |
+| CONT-001 | Deterministic continuity evaluation passes and #239 records human raw scores, but 24 sample texts expose defect metadata and await adjudication; `hook_prose_score = 1.882353 < 4`. | #273 |
 
 `PERF-001`, `AGENT-007` and `QUALITY-009` remain authorized post-V1 deferrals and are not
 part of this audit.
@@ -81,6 +83,6 @@ V1 RELEASE BLOCKED
 The final audit blocker is expected until the current PR has an exact-head
 Production CI run; #242 records the final release CI.
 
-The remaining non-UI blockers are tracked by #240, #271 and #273 plus the failed quality claim
+The remaining non-UI blockers are tracked by #242, #271 and #273 plus the failed quality claim
 under #104. UI capability
 closure was completed by #238; final release evidence and CI remain #242.

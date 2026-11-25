@@ -92,11 +92,14 @@
       "id": "human-blind-review",
       "status": "blocked",
       "owner": "product-owner",
-      "rationale": "Human raw scores are recorded, but 24 samples expose defect metadata and await adjudication, hook/prose scores average 1.882353 below the required 4/5 and the inter-rater variance threshold remains unapproved.",
+      "rationale": "Human raw scores are recorded in #239 with the accepted reviewer-completion-times-identical warning. The approved threshold 0.1 passes observed maxVariance 0, but 24 samples expose defect metadata and await adjudication, and hook/prose scores average 1.882353 below the required 4/5.",
       "evidence": [
         "docs/quality/v1-quality-benchmark-registry.md",
         "docs/quality/v1-long-horizon-continuity-benchmark.md",
         "docs/implementation/m3-239-human-blind-review.md",
+        "docs/implementation/m3-240-variance-threshold.md",
+        "docs/quality/evidence/m3-240/review-policy.json",
+        "scripts/test/m3-240-variance-threshold.test.mjs",
         "docs/quality/evidence/m3-239/validation.json",
         "docs/quality/evidence/m3-239/human-scores.json"
       ]
