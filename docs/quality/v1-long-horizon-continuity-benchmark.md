@@ -1,7 +1,7 @@
 # V1 3000–4000 章跨卷叙事连续性基准
 
 > Owner: M3 #103 (quality/release package) / #138 (implementation)
-> Status: implementation complete with deterministic full/maximum fixture evidence; actual human review is recorded in #239, but the observed prose score fails the quality gate and the variance threshold remains unapproved.
+> Status: implementation complete with deterministic full/maximum fixture evidence; human raw scores are recorded in #239, but 24 cases await adjudication, the observed prose score fails the quality gate and the variance threshold remains unapproved.
 > This benchmark verifies long-horizon story correctness. It does not certify storage capacity or infrastructure performance.
 
 ## 1. Objective and claim boundary
@@ -152,7 +152,7 @@ Any threshold change requires an explicit decision/ADR and a versioned benchmark
 - LLM self-scoring can triage and explain candidate defects, but can never be sole release evidence.
 - The required number of blind samples and inter-rater agreement threshold are decision-required until signed off; do not invent a pass threshold.
 
-Recorded evidence: `docs/quality/evidence/m3-239/` contains two signed reviewer records, 816 raw scores and deterministic validation. The reviewers flagged all 24 defect-metadata cases for follow-up adjudication because the frozen samples contain continuity labels rather than narrative prose. The observed `hook_prose_score` is `1.882353`, below the `4/5` gate; that result is a release blocker, not a threshold decision.
+Recorded evidence: `docs/quality/evidence/m3-239/` contains two signed reviewer records, 816 raw scores and deterministic validation. The reviewers flagged all 24 defect-metadata cases for follow-up adjudication because the frozen samples contain continuity labels rather than narrative prose. Those adjudications are not yet recorded, so the protocol's "confidence, disagreement and adjudication" requirement is incomplete. The observed `hook_prose_score` is `1.882353`, below the `4/5` gate; that result is a release blocker, not a threshold decision.
 
 ## 8. Regression protocol and release gate
 

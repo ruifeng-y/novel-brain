@@ -14,7 +14,8 @@
 - `#98/#99/#100/#101/#103` package parents 已用子项合并与 CI 证据关闭。
 - `PERF-001/#137` 按 V1 范围决定延期，V1 不声明 10M 容量已认证；`#102/#137` 已关闭。
 - V1 总发布清单见 `docs/implementation/v1-release-checklist.md`；机器可执行门禁读取 `docs/implementation/v1-release-evidence.json`、`docs/planning/v1-deferrals.json`、`docs/ui/v1-ui-deviations.json`、`docs/ui/v1-action-contract.json` 和 `docs/implementation/v1-action-evidence.json`，并校验 P0、waiver owner/rationale、required gates、页面 parity、授权延期、deviation 审批、逐动作 API/持久化证据和证据可复现性。
-- #239 已完成并归档真实 human blind review；观察值为 `outline_adherence = 1.000000`、`hook_prose_score = 1.882353`，其中文风门禁失败。
+- #239 已归档 816 条人工原始评分；两名评审人共同标记 24 个长线样本文本包含缺陷元信息且待裁决，因此盲评尚不能标记完成。
+- 观察值为 `outline_adherence = 1.000000`、`hook_prose_score = 1.882353`，其中文风门禁失败。
 - #239 未批准 `interRaterVarianceThreshold`；该决策仍属于 #240。
 
 ## 验证
@@ -28,7 +29,7 @@
 
 自动化完成不等于 V1 release approved。以下证据仍缺失：
 
-- Non-UI capability 审计已完成：107 项中 104 项 `verified`，EVAL-002、EVAL-004、CONT-001 仍有有界缺口；CONT-001 的人工评审已完成，但 `hook_prose_score` 低于门槛，且阈值仍待 #240；CHANGE-004 至 CHANGE-007 已由 #263 补齐证据并绑定 Production CI；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
+- Non-UI capability 审计已完成：107 项中 104 项 `verified`，EVAL-002、EVAL-004、CONT-001 仍有有界缺口；CONT-001 的 24 个样本裁决仍待完成，`hook_prose_score` 低于门槛，且阈值仍待 #240；CHANGE-004 至 CHANGE-007 已由 #263 补齐证据并绑定 Production CI；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
 - UI-001..UI-009 与总 traceability 已由 #238 完成，17 页与 UI capability 不再是发布阻塞项；
 - `hook_prose_score = 1.882353 < 4` 的人工质量失败；
 - 已批准的 inter-rater variance threshold；

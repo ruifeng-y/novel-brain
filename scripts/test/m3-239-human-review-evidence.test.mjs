@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,9 +15,12 @@ describe("M3-239 human blind-review evidence", () => {
   const validation = readJson("validation.json");
   const humanScores = readJson("human-scores.json");
 
-  it("records two complete reviewers without changing the frozen rubric", () => {
-    expect(validation.status).toBe("passed");
-    expect(validation.humanReviewCompleted).toBe(true);
+  it("records two reviewer filesets without claiming adjudication is complete", () => {
+    expect(validation.status).toBe("blocked");
+    expect(validation.technicalStatus).toBe("blocked");
+    expect(validation.humanReviewRecorded).toBe(true);
+    expect(validation.humanReviewCompleted).toBe(false);
+    expect(validation.reviewerIdentityEvidence).toBe("self_attested_pseudonymous");
     expect(validation.datasetSha256).toBe(
       "90c8c8c44540ae99246e243ac16c1158d7cee3485ac4b5c1a901b3b7164e753b",
     );
@@ -26,9 +30,17 @@ describe("M3-239 human blind-review evidence", () => {
     expect(validation.gateBlindPacketSha256).toBe(
       "91b3c844070a69a4eea51d6583d816d5d732d9ccad95f972a2d6a77b0287c2fb",
     );
+    expect(validation.reviewerPacketFileSha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect(validation.reviewerPacketCanonicalSha256).toMatch(/^[a-f0-9]{64}$/u);
+    expect(validation.reviewerPacketFileSha256).not.toBe(validation.gateBlindPacketSha256);
     expect(validation.observedReviewers).toBe(2);
     expect(validation.observedSamples).toBe(204);
     expect(validation.observedHumanScores).toBe(816);
+    expect(validation.adjudicationSampleIds).toHaveLength(24);
+    expect(validation.unresolvedAdjudicationIds).toHaveLength(24);
+    expect(validation.completedAdjudicationCount).toBe(0);
+    expect(validation.structuralBlockers).toContain("adjudication-pending:24");
+    expect(validation.structuralBlockers).toContain("oracle-content-present:24");
     expect(humanScores.humanScores).toHaveLength(816);
   });
 
@@ -64,6 +76,7 @@ describe("M3-239 human blind-review evidence", () => {
         (score) =>
           score.scorerType === "human_blind" &&
           score.blindPacketSha256 === validation.gateBlindPacketSha256 &&
+          score.reviewPacketFileSha256 === validation.reviewerPacketFileSha256 &&
           score.evidenceQuotes.length > 0 &&
           score.confidence >= 0 &&
           score.confidence <= 1,
@@ -72,6 +85,10 @@ describe("M3-239 human blind-review evidence", () => {
     expect(validation.privacyScan.totalFindingCount).toBe(0);
     expect(validation.privacyScan.privateManuscriptFieldsIncluded).toBe(false);
     expect(validation.privacyScan.oracleFieldsIncluded).toBe(false);
+    expect(validation.privacyScan.oracleContentIncluded).toBe(true);
+    expect(validation.privacyScan.defectMetadataTextSampleIds).toHaveLength(24);
+    expect(validation.privacyScan.reviewerPacketSchemaFieldsOnly).toBe(true);
+    expect(validation.privacyScan.sourceContentMatchesFrozenSyntheticDataset).toBe(true);
   });
 
   it("records the failed quality gate without approving a variance threshold", () => {
@@ -99,5 +116,39 @@ describe("M3-239 human blind-review evidence", () => {
       ],
     });
     expect(validation.warnings).toContain("reviewer-completion-times-identical");
+  });
+
+  it("reproduces generated evidence from the raw packet and reviewer files", () => {
+    const output = execFileSync(
+      process.execPath,
+      [path.join(evidenceDir, "validate-review.mjs"), "--check"],
+      { cwd: root, encoding: "utf8" },
+    );
+    const result = JSON.parse(output);
+
+    expect(result).toMatchObject({
+      mode: "check",
+      status: "blocked",
+      technicalStatus: "blocked",
+      humanReviewCompleted: false,
+      staleFiles: [],
+    });
+  });
+
+  it("provides a pending adjudication template without inventing decisions", () => {
+    const template = readJson("adjudication.template.json");
+
+    expect(template.status).toBe("unfilled");
+    expect(template.adjudications).toHaveLength(24);
+    expect(
+      template.adjudications.every(
+        (entry) =>
+          entry.decision === null &&
+          entry.rationale === null &&
+          entry.adjudicatorId === null &&
+          entry.reviewerAttestationId === null &&
+          entry.decidedAt === null,
+      ),
+    ).toBe(true);
   });
 });

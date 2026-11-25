@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "reviewId": "m3-239-2026-11-25",
+  "status": "unfilled",
+  "owner": "product-owner",
+  "instructions": "Record real adjudications for every flagged sample. Do not use this template to approve the inter-rater variance threshold.",
+  "adjudications": [
+    {
+      "blindSampleId": "Q005",
+      "datasetSampleId": "long-horizon:34c6a1a1-1813-7d64-81c3-f6601d00bf3a",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q026",
+      "datasetSampleId": "long-horizon:8e6c52dc-e798-7219-8e33-5a49ce4034f8",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q034",
+      "datasetSampleId": "long-horizon:63cac527-f915-7115-898a-1ceba6387075",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q055",
+      "datasetSampleId": "long-horizon:aa978572-2345-7347-86d4-115ffe7402c4",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q056",
+      "datasetSampleId": "long-horizon:9e48e7d7-a00c-7238-85f4-ab03bce90dd5",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q067",
+      "datasetSampleId": "long-horizon:a00db5ab-9d1c-78e6-951c-5bba5e108254",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q075",
+      "datasetSampleId": "long-horizon:8e7bd8d2-4a4d-75c8-b958-79dfb460ea37",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q081",
+      "datasetSampleId": "long-horizon:baf9375a-66d8-7645-9fd5-566e7aee765a",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q083",
+      "datasetSampleId": "long-horizon:8a5af746-0f64-7482-b101-833244833444",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q084",
+      "datasetSampleId": "long-horizon:b167737e-b483-752c-bcef-0a892a8e5ed8",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q088",
+      "datasetSampleId": "long-horizon:c127c949-e5d0-7feb-aa67-ebdaefc60e18",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q093",
+      "datasetSampleId": "long-horizon:192f700e-1069-7e2e-a9d7-20c47706eaf5",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q096",
+      "datasetSampleId": "long-horizon:390a62d1-0700-7228-b314-98922fa1f519",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q123",
+      "datasetSampleId": "long-horizon:0d24c9fd-681f-70f5-b9c2-bbb3587a0a0b",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q130",
+      "datasetSampleId": "long-horizon:a1818166-ed50-75dd-adf9-b60792d3c06a",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q149",
+      "datasetSampleId": "long-horizon:3b758333-3e08-7896-9f8d-ae2ff25e4f79",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q158",
+      "datasetSampleId": "long-horizon:3cc35faf-667e-79d9-ba72-10a67e763de4",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q160",
+      "datasetSampleId": "long-horizon:4893ac54-7adb-79cc-96a9-713d8969c502",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q162",
+      "datasetSampleId": "long-horizon:23fbd96e-de64-71bb-816c-f0c9d6a32fd1",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q168",
+      "datasetSampleId": "long-horizon:0188cf39-464e-72c1-ab5b-0518f0341535",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q182",
+      "datasetSampleId": "long-horizon:32477622-f702-74fa-afdc-6d598a83ff47",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q186",
+      "datasetSampleId": "long-horizon:58705aef-3273-70b0-9f5b-e50f18d6c623",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q189",
+      "datasetSampleId": "long-horizon:5f8bf2cc-7b2d-7806-be53-571921247644",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    },
+    {
+      "blindSampleId": "Q196",
+      "datasetSampleId": "long-horizon:4f8808b7-2ab9-752c-9261-37dc21d1eca9",
+      "decision": null,
+      "rationale": null,
+      "adjudicatorId": null,
+      "reviewerAttestationId": null,
+      "decidedAt": null
+    }
+  ]
+}

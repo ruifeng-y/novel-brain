@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const evidenceDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(evidenceDir, "../../../..");
+const checkOnly = process.argv.includes("--check");
 const reviewerIds = ["reviewer-01", "reviewer-02"];
 const dimensions = ["outline_adherence", "hook_prose_score"];
+const allowedPacketSampleFields = ["blindSampleId", "genre", "requiredBeats", "text"];
 const packets = readJson(path.join(evidenceDir, "packet.json"));
 const key = readJson(path.join(evidenceDir, "key.json"));
 const rubric = readJson(path.join(root, "docs/quality/quality-benchmark-v1.rubric.json"));
@@ -20,6 +22,12 @@ const datasetSamples = new Map(
 const datasetSampleIds = new Map(
   key.entries.map((entry) => [entry.blindSampleId, entry.datasetSampleId]),
 );
+const packetFile = fileEvidence(path.join(evidenceDir, "packet.json"));
+const packetCanonicalSha256 = sha256CanonicalJson(packets.samples);
+const adjudicationPath = path.join(evidenceDir, "adjudication.json");
+const adjudication = exists(adjudicationPath) ? readJson(adjudicationPath) : null;
+let packetContentMismatchCount = 0;
+let unexpectedPacketFieldCount = 0;
 
 if (packets.source.datasetSha256 !== dataset.manifest.datasetSha256) {
   blockers.push("packet-dataset-hash-mismatch");
@@ -56,16 +64,29 @@ for (const [blindSampleId, datasetSampleId] of datasetSampleIds) {
       (beat, index) => normalize(beat) !== normalize(datasetSample.requiredBeats[index]),
     )
   ) {
+    packetContentMismatchCount += 1;
     blockers.push(`packet-dataset-content-mismatch:${blindSampleId}`);
   }
-  const allowedFields = ["blindSampleId", "genre", "requiredBeats", "text"];
-  if (Object.keys(packetSample).sort().join(",") !== allowedFields.join(",")) {
+  if (Object.keys(packetSample).sort().join(",") !== allowedPacketSampleFields.join(",")) {
+    unexpectedPacketFieldCount += 1;
     blockers.push(`packet-sample-fields-unexpected:${blindSampleId}`);
   }
 }
 const privacyScan = scanPrivacy(packets.samples);
+privacyScan.reviewerPacketSchemaFieldsOnly = unexpectedPacketFieldCount === 0;
+privacyScan.sourceContentMatchesFrozenSyntheticDataset =
+  packetContentMismatchCount === 0 && datasetSampleIds.size === packets.samples.length;
+privacyScan.privateManuscriptFieldsIncluded = !privacyScan.reviewerPacketSchemaFieldsOnly;
+privacyScan.oracleFieldsIncluded = !privacyScan.reviewerPacketSchemaFieldsOnly;
+privacyScan.defectMetadataTextSampleIds = packets.samples
+  .filter((sample) => /与已确认事实|冲突|seeded defect|oracle/iu.test(sample.text))
+  .map((sample) => sample.blindSampleId);
+privacyScan.oracleContentIncluded = privacyScan.defectMetadataTextSampleIds.length > 0;
 if (privacyScan.totalFindingCount !== 0) {
   blockers.push("reviewer-packet-privacy-scan-failed");
+}
+if (privacyScan.oracleContentIncluded) {
+  blockers.push(`oracle-content-present:${privacyScan.defectMetadataTextSampleIds.length}`);
 }
 
 const reviewers = [];
@@ -183,6 +204,7 @@ for (const reviewerId of reviewerIds) {
       reviewerAttestationId: row.reviewer_attestation_id,
       reviewedAt: row.reviewed_at,
       blindPacketSha256: packets.source.gateBlindPacketSha256,
+      reviewPacketFileSha256: packetFile.sha256,
       retainedConcern: row.retained_concern || null,
     });
   }
@@ -257,7 +279,36 @@ const thresholdResults = dimensions.map((dimension) => {
   };
 });
 const observedMaxVariance = computeMaxVariance(humanScores);
-const structuralStatus = blockers.length === 0 ? "passed" : "blocked";
+const adjudicationSampleIds = [
+  ...new Set(reviewers.flatMap((reviewer) => reviewer.samplesRequiringAdjudication)),
+].sort();
+const adjudicationById = new Map(
+  (adjudication?.adjudications ?? []).map((entry) => [entry.blindSampleId, entry]),
+);
+const completedAdjudicationIds = adjudicationSampleIds.filter((blindSampleId) => {
+  const entry = adjudicationById.get(blindSampleId);
+  return Boolean(
+    hasText(entry?.decision) &&
+    hasText(entry?.rationale) &&
+    hasText(entry?.adjudicatorId) &&
+    hasText(entry?.reviewerAttestationId) &&
+    isIsoTimestamp(entry?.decidedAt),
+  );
+});
+const unresolvedAdjudicationIds = adjudicationSampleIds.filter(
+  (blindSampleId) => !completedAdjudicationIds.includes(blindSampleId),
+);
+if (unresolvedAdjudicationIds.length > 0) {
+  blockers.push(`adjudication-pending:${unresolvedAdjudicationIds.length}`);
+}
+const structuralBlockers = [...new Set(blockers)].sort();
+const technicalBlockers = structuralBlockers.filter(
+  (blocker) => !blocker.startsWith("adjudication-pending:"),
+);
+const technicalStatus = technicalBlockers.length === 0 ? "passed" : "blocked";
+const humanReviewCompleted =
+  technicalStatus === "passed" && adjudicationSampleIds.length === 0;
+const structuralStatus = humanReviewCompleted ? "passed" : "blocked";
 const releaseBlockers = [
   ...thresholdResults.filter((result) => !result.passed).map((result) => `threshold-failed:${result.id}`),
   "decision-required:interRaterVarianceThreshold",
@@ -267,10 +318,15 @@ const validation = {
   issue: 239,
   reviewId: "m3-239-2026-11-25",
   status: structuralStatus,
-  humanReviewCompleted: structuralStatus === "passed",
+  technicalStatus,
+  humanReviewRecorded: humanScores.length === packets.samples.length * dimensions.length * reviewerIds.length,
+  humanReviewCompleted,
+  reviewerIdentityEvidence: "self_attested_pseudonymous",
   datasetSha256: packets.source.datasetSha256,
   rubricSha256: packets.source.rubricSha256,
   gateBlindPacketSha256: packets.source.gateBlindPacketSha256,
+  reviewerPacketFileSha256: packetFile.sha256,
+  reviewerPacketCanonicalSha256: packetCanonicalSha256,
   expectedReviewers: reviewerIds.length,
   observedReviewers: new Set(humanScores.map((score) => score.scorerId)).size,
   expectedSamples: packets.samples.length,
@@ -286,7 +342,11 @@ const validation = {
     status: releaseBlockers.length === 0 ? "pass" : "blocked",
     blockers: releaseBlockers,
   },
-  structuralBlockers: [...new Set(blockers)].sort(),
+  structuralBlockers,
+  adjudicationSampleIds,
+  unresolvedAdjudicationIds,
+  completedAdjudicationCount: completedAdjudicationIds.length,
+  expectedAdjudicationFile: "docs/quality/evidence/m3-239/adjudication.json",
   warnings: [...new Set(warnings)].sort(),
   sourcePacket: fileEvidence(path.join(evidenceDir, "packet.json")),
   sourceKey: fileEvidence(path.join(evidenceDir, "key.json")),
@@ -295,12 +355,15 @@ const validation = {
   privacyScan,
 };
 
-writeJson(path.join(evidenceDir, "human-scores.json"), {
+const humanScoresEvidence = {
   schemaVersion: 1,
   reviewId: validation.reviewId,
+  humanReviewCompleted: validation.humanReviewCompleted,
   datasetSha256: validation.datasetSha256,
   rubricSha256: validation.rubricSha256,
   gateBlindPacketSha256: validation.gateBlindPacketSha256,
+  reviewerPacketFileSha256: validation.reviewerPacketFileSha256,
+  reviewerPacketCanonicalSha256: validation.reviewerPacketCanonicalSha256,
   reviewers: reviewers.map((reviewer) => ({
     reviewerId: reviewer.reviewerId,
     reviewerDisplayName: reviewer.reviewerDisplayName,
@@ -310,25 +373,77 @@ writeJson(path.join(evidenceDir, "human-scores.json"), {
     retainedConcerns: reviewer.retainedConcerns,
     samplesRequiringAdjudication: reviewer.samplesRequiringAdjudication,
   })),
+  adjudicationSampleIds: validation.adjudicationSampleIds,
+  unresolvedAdjudicationIds: validation.unresolvedAdjudicationIds,
   humanScores,
-});
-writeJson(path.join(evidenceDir, "validation.json"), validation);
-writeText(path.join(evidenceDir, "validation.md"), renderValidation(validation));
+};
+const adjudicationTemplate = {
+  schemaVersion: 1,
+  reviewId: validation.reviewId,
+  status: "unfilled",
+  owner: "product-owner",
+  instructions:
+    "Record real adjudications for every flagged sample. Do not use this template to approve the inter-rater variance threshold.",
+  adjudications: adjudicationSampleIds.map((blindSampleId) => ({
+    blindSampleId,
+    datasetSampleId: datasetSampleIds.get(blindSampleId),
+    decision: null,
+    rationale: null,
+    adjudicatorId: null,
+    reviewerAttestationId: null,
+    decidedAt: null,
+  })),
+};
+const outputs = [
+  {
+    file: path.join(evidenceDir, "human-scores.json"),
+    content: `${JSON.stringify(humanScoresEvidence, null, 2)}\n`,
+  },
+  {
+    file: path.join(evidenceDir, "validation.json"),
+    content: `${JSON.stringify(validation, null, 2)}\n`,
+  },
+  {
+    file: path.join(evidenceDir, "validation.md"),
+    content: renderValidation(validation),
+  },
+  {
+    file: path.join(evidenceDir, "adjudication.template.json"),
+    content: `${JSON.stringify(adjudicationTemplate, null, 2)}\n`,
+  },
+];
+const staleFiles = [];
+if (checkOnly) {
+  for (const output of outputs) {
+    if (!exists(output.file) || readFileSync(output.file, "utf8") !== output.content) {
+      staleFiles.push(path.relative(root, output.file).replaceAll("\\", "/"));
+    }
+  }
+} else {
+  for (const output of outputs) {
+    writeText(output.file, output.content);
+  }
+}
 
 process.stdout.write(
   `${JSON.stringify(
     {
+      mode: checkOnly ? "check" : "write",
       status: validation.status,
+      technicalStatus: validation.technicalStatus,
       humanReviewCompleted: validation.humanReviewCompleted,
       thresholdResults: validation.thresholdResults,
       qualityGate: validation.qualityGate,
       warnings: validation.warnings,
+      structuralBlockers: validation.structuralBlockers,
+      staleFiles,
     },
     null,
     2,
   )}\n`,
 );
-process.exitCode = structuralStatus === "passed" ? 0 : 1;
+process.exitCode =
+  staleFiles.length > 0 || (!checkOnly && technicalStatus !== "passed") ? 1 : 0;
 
 function signedQuestionnaire(markdown) {
   const signature = markdown.match(/^- 评审人签名\/可审计化名:[ \t]*(.*?)\r?$/mu)?.[1]?.trim();
@@ -443,16 +558,29 @@ function renderValidation(report) {
 
 > Structural status: **${report.status.toUpperCase()}**
 >
+> Technical validation: **${report.technicalStatus.toUpperCase()}**
+>
+> Adjudication status: **${report.unresolvedAdjudicationIds.length === 0 ? "COMPLETE" : "PENDING"}**
+>
 > Quality gate: **${report.qualityGate.status.toUpperCase()}**
 
 ## Frozen evidence
 
 - Dataset SHA-256: \`${report.datasetSha256}\`
 - Rubric SHA-256: \`${report.rubricSha256}\`
-- Gate blind-packet SHA-256: \`${report.gateBlindPacketSha256}\`
+- Evaluator gate hash: \`${report.gateBlindPacketSha256}\`
+- Reviewer packet file SHA-256: \`${report.reviewerPacketFileSha256}\`
+- Reviewer packet canonical SHA-256: \`${report.reviewerPacketCanonicalSha256}\`
 - Reviewers: ${report.observedReviewers}/${report.expectedReviewers}
 - Samples: ${report.observedSamples}/${report.expectedSamples}
 - Human score rows: ${report.observedHumanScores}/${report.expectedHumanScores}
+
+## Adjudication
+
+- Human review recorded: ${report.humanReviewRecorded ? "yes" : "no"}
+- Human review completed: ${report.humanReviewCompleted ? "yes" : "no"}
+- Completed adjudications: ${report.completedAdjudicationCount}/${report.adjudicationSampleIds.length}
+- Pending samples: ${report.unresolvedAdjudicationIds.length === 0 ? "none" : report.unresolvedAdjudicationIds.join(", ")}
 
 ## Thresholds
 
@@ -467,11 +595,11 @@ ${report.thresholdResults
 
 ## Release boundary
 
-- Human structural evidence: ${report.humanReviewCompleted ? "complete" : "incomplete"}
 - Observed max inter-rater variance: ${report.observedMaxVariance}
 - Approved inter-rater variance threshold: not recorded
 - Threshold decision owner: #240
 - Quality release gate blockers: ${report.qualityGate.blockers.map((blocker) => `\`${blocker}\``).join(", ")}
+- Structural blockers: ${report.structuralBlockers.length === 0 ? "none" : report.structuralBlockers.map((blocker) => `\`${blocker}\``).join(", ")}
 
 ## Warnings
 
@@ -489,6 +617,10 @@ function isIsoTimestamp(value) {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
 }
 
+function hasText(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function fileEvidence(filePath) {
   return {
     path: path.relative(root, filePath).replaceAll("\\", "/"),
@@ -497,12 +629,17 @@ function fileEvidence(filePath) {
   };
 }
 
-function readJson(filePath) {
-  return JSON.parse(readFileSync(filePath, "utf8"));
+function exists(filePath) {
+  try {
+    statSync(filePath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-function writeJson(filePath, value) {
-  writeText(filePath, `${JSON.stringify(value, null, 2)}\n`);
+function readJson(filePath) {
+  return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
 function writeText(filePath, value) {

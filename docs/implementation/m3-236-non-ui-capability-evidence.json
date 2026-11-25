@@ -495,8 +495,8 @@
       "status": "implemented",
       "evidence": ["continuity-evaluator", "human-blind-review"],
       "gap": {
-        "reason": "真实人工盲评已记录，但 hook/prose 为 1.882353，低于 4/5；inter-rater variance threshold 仍待批准。",
-        "issue": "#240"
+        "reason": "人工原始评分已记录，但 24 个样本文本暴露缺陷元信息且仍待裁决；hook/prose 为 1.882353，低于 4/5，inter-rater variance threshold 也仍待批准。",
+        "issue": "#239"
       }
     }
   }
