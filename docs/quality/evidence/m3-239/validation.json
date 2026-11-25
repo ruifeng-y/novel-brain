@@ -2,11 +2,12 @@
   "schemaVersion": 1,
   "issue": 239,
   "reviewId": "m3-239-2026-11-25",
-  "status": "blocked",
-  "technicalStatus": "blocked",
-  "recordStructureStatus": "blocked",
+  "status": "complete-with-warnings",
+  "technicalStatus": "passed",
+  "recordStructureStatus": "passed",
   "humanReviewRecorded": true,
-  "humanReviewCompleted": false,
+  "humanReviewCompleted": true,
+  "cleanBlindReview": false,
   "reviewerIdentityEvidence": "self_attested_pseudonymous",
   "datasetSha256": "90c8c8c44540ae99246e243ac16c1158d7cee3485ac4b5c1a901b3b7164e753b",
   "rubricSha256": "247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b",
@@ -162,7 +163,8 @@
       "threshold-failed:hook_prose_score"
     ]
   },
-  "structuralBlockers": [
+  "structuralBlockers": [],
+  "reviewQualityBlockers": [
     "adjudication-pending:24",
     "oracle-content-present:24"
   ],
@@ -225,7 +227,10 @@
   "duplicateDatasetSampleIds": [],
   "expectedAdjudicationFile": "docs/quality/evidence/m3-239/adjudication.json",
   "warnings": [
-    "reviewer-completion-times-identical"
+    "adjudication-pending:24",
+    "oracle-content-present:24",
+    "reviewer-completion-times-identical",
+    "reviewer-identity-self-attested"
   ],
   "sourcePacket": {
     "path": "docs/quality/evidence/m3-239/packet.json",

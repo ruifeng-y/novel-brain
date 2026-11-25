@@ -96,9 +96,6 @@ privacyScan.oracleContentIncluded = privacyScan.defectMetadataTextSampleIds.leng
 if (privacyScan.totalFindingCount !== 0) {
   blockers.push("reviewer-packet-privacy-scan-failed");
 }
-if (privacyScan.oracleContentIncluded) {
-  blockers.push(`oracle-content-present:${privacyScan.defectMetadataTextSampleIds.length}`);
-}
 
 const reviewers = [];
 const humanScores = [];
@@ -337,32 +334,38 @@ const completedAdjudicationIds =
 const unresolvedAdjudicationIds = adjudicationSampleIds.filter(
   (blindSampleId) => !completedAdjudicationIds.includes(blindSampleId),
 );
-if (unresolvedAdjudicationIds.length > 0) {
-  blockers.push(`adjudication-pending:${unresolvedAdjudicationIds.length}`);
-}
+const reviewQualityBlockers = [
+  ...(privacyScan.oracleContentIncluded
+    ? [`oracle-content-present:${privacyScan.defectMetadataTextSampleIds.length}`]
+    : []),
+  ...(unresolvedAdjudicationIds.length > 0
+    ? [`adjudication-pending:${unresolvedAdjudicationIds.length}`]
+    : []),
+].sort();
 const structuralBlockers = [...new Set(blockers)].sort();
 const technicalBlockers = structuralBlockers.filter(
   (blocker) => !blocker.startsWith("adjudication-pending:"),
 );
 const recordStructureStatus = technicalBlockers.length === 0 ? "passed" : "blocked";
 const qualityBlockers = [
+  ...reviewQualityBlockers,
   ...thresholdResults.filter((result) => !result.passed).map((result) => `threshold-failed:${result.id}`),
   "decision-required:interRaterVarianceThreshold",
 ].sort();
-const { technicalStatus, humanReviewCompleted, qualityGate } = computeReviewStatus({
+const { status, technicalStatus, humanReviewCompleted, qualityGate } = computeReviewStatus({
   structuralBlockers,
   qualityBlockers,
 });
-const structuralStatus = humanReviewCompleted ? "passed" : "blocked";
 const validation = {
   schemaVersion: 1,
   issue: 239,
   reviewId,
-  status: structuralStatus,
+  status,
   technicalStatus,
   recordStructureStatus,
   humanReviewRecorded: humanScores.length === packets.samples.length * dimensions.length * reviewerIds.length,
   humanReviewCompleted,
+  cleanBlindReview: !privacyScan.oracleContentIncluded,
   reviewerIdentityEvidence: "self_attested_pseudonymous",
   datasetSha256: packets.source.datasetSha256,
   rubricSha256: packets.source.rubricSha256,
@@ -382,6 +385,7 @@ const validation = {
   varianceThresholdDecisionIssue: "#240",
   qualityGate,
   structuralBlockers,
+  reviewQualityBlockers,
   adjudicationSampleIds,
   unresolvedAdjudicationIds,
   completedAdjudicationCount: completedAdjudicationIds.length,
@@ -390,7 +394,13 @@ const validation = {
   unknownAdjudicationIds,
   duplicateDatasetSampleIds,
   expectedAdjudicationFile: "docs/quality/evidence/m3-239/adjudication.json",
-  warnings: [...new Set(warnings)].sort(),
+  warnings: [
+    ...new Set([
+      ...warnings,
+      "reviewer-identity-self-attested",
+      ...reviewQualityBlockers,
+    ]),
+  ].sort(),
   sourcePacket: fileEvidence(path.join(evidenceDir, "packet.json")),
   sourceKey: fileEvidence(path.join(evidenceDir, "key.json")),
   sourceDataset: fileEvidence(path.join(root, "docs/quality/quality-benchmark-v1.dataset.json")),

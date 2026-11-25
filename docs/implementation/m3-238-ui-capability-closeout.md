@@ -49,10 +49,10 @@ commit `6bc4fa2a83172ae3ece9d75065462d973397333f`.
 - The release gate now reports UI capability and parity evidence as passing.
 - V1 traceability records 113 of 116 V1 capabilities as `verified`; EVAL-002,
   EVAL-004 and CONT-001 retain bounded evidence gaps.
-- The remaining release blockers are pending human adjudication, the failed
-  human prose-quality threshold, the approved inter-rater variance threshold,
-  smoke model alias alignment (#271) and the final #104 Production CI. #238
-  does not close #104.
+- The remaining release blockers are pending human adjudication/oracle content,
+  the failed human prose-quality threshold, the approved inter-rater variance
+  threshold, smoke model alias alignment (#271) and the final #104 Production
+  CI. #238 does not close #104.
 
 ## 4. Verification
 

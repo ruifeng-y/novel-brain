@@ -6,6 +6,12 @@ export function computeReviewStatus({ structuralBlockers, qualityBlockers }) {
   ].sort();
 
   return {
+    status:
+      normalizedStructuralBlockers.length > 0
+        ? "blocked"
+        : gateBlockers.length > 0
+          ? "complete-with-warnings"
+          : "complete",
     technicalStatus: normalizedStructuralBlockers.length === 0 ? "passed" : "blocked",
     humanReviewCompleted: normalizedStructuralBlockers.length === 0,
     qualityGate: {

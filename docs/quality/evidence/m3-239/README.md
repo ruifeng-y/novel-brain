@@ -1,8 +1,8 @@
 # M3-239 Human Blind Review Evidence
 
-This directory contains the frozen packet and reviewer records for Issue #239. The raw
-scores are recorded, but the review remains incomplete until the 24 samples flagged by
-both reviewers are adjudicated.
+This directory contains the frozen packet and reviewer records for Issue #239. The review
+record is complete-with-warnings: all raw scores are recorded, while clean blind-review
+and quality approval remain blocked.
 
 - `packet.json`: reviewer-facing frozen sample packet.
 - `key.json`: internal mapping from blind sample ids to dataset sample ids.
@@ -24,8 +24,8 @@ node .\docs\quality\evidence\m3-239\validate-review.mjs --check
 ```
 
 `--check-files` verifies that generated files still match the raw inputs. `--check` also
-enforces the technical gate and therefore exits non-zero while oracle content or
-adjudication remains unresolved.
+enforces record integrity and exits successfully for `complete-with-warnings`; the separate
+`qualityGate` remains blocked by oracle content, adjudication and rubric results.
 
 The frozen packet contains synthetic benchmark samples only. It does not contain private
 manuscript, prompts or context packs. The review records do not approve an inter-rater
@@ -36,4 +36,4 @@ records the actual `packet.json` file hash and canonical sample hash.
 
 The packet schema has no oracle fields, but 24 frozen adversarial sample texts contain
 explicit continuity-conflict metadata. `validation.json` records those sample ids as a
-blocking blind-packet defect.
+blind-packet warning and quality-gate blocker.

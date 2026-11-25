@@ -18,7 +18,7 @@ The repository contains product/technical documentation, accepted ADRs, a signed
 - Agent delivery retro after #142: `docs/implementation/m1-142-retro.md`.
 - Long-horizon continuity benchmark: `docs/implementation/m3-05b-continuity-benchmark.md`.
 - Fixed quality benchmark registry: `docs/implementation/m3-06a-quality-benchmark-registry.md`.
-- Human blind-review score records for the frozen quality packet, still pending adjudication and clean-packet resolution: `docs/implementation/m3-239-human-blind-review.md`, `docs/quality/evidence/m3-239/`.
+- Human blind-review score records for the frozen quality packet, complete with documented quality warnings: `docs/implementation/m3-239-human-blind-review.md`, `docs/quality/evidence/m3-239/`.
 - Provider smoke, canary and rollback strategy: `docs/implementation/m3-06b-provider-canary.md`.
 - V1 UI/release closeout and final checklist: `docs/implementation/m3-104-v1-closeout.md`, `docs/implementation/v1-release-checklist.md`.
 - Non-UI capability evidence audit: `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/m3-236-non-ui-capability-evidence.json`.

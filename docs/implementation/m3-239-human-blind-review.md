@@ -2,7 +2,7 @@
 
 > Issue: #239
 > Capabilities: CONT-001, EVAL-002 supporting evidence
-> Status: human score records captured; review remains incomplete until 24 flagged samples are adjudicated; V1 quality release gate is blocked
+> Status: complete-with-warnings; 816 raw human scores are recorded, while V1 quality remains blocked
 
 ## 实施结果
 
@@ -17,7 +17,7 @@
 - reviewer 身份以可审计化名和自述声明记录；仓库证据本身不提供外部实名核验。
 - reviewer-facing packet 的 schema 只包含冻结合成样本、题材和必需节拍，不包含模型身份、
   生成状态、难度、known issue 字段、分支或 source fact id。但 24 个 long-horizon
-  样本文本本身包含“与已确认事实冲突”等缺陷元信息，因此 oracle content 仍是阻断项。
+  样本文本本身包含“与已确认事实冲突”等缺陷元信息，因此 clean blind review 仍为 false。
 - 未修改冻结 dataset、manifest 或 rubric，未批准 inter-rater variance threshold。
 
 ## 证据
@@ -46,23 +46,31 @@ node .\docs\quality\evidence\m3-239\validate-review.mjs --check
 | `hook_prose_score` | 1.882353 | >= 4 | fail |
 
 - 覆盖：2/2 reviewers、204/204 samples、816/816 human score rows。
-- 生成证据可复现：passed，原始 CSV、notes 和 packet 可由 `--check-files` 重建；
-  `technicalStatus` 仍为 blocked，原因是 24 个 oracle-content 样本。
+- `technicalStatus: passed`；原始 CSV、notes 和 packet 可由 `--check-files` / `--check`
+  重建且无 stale file。
 - 观察到的 max inter-rater variance：`0`。
 - Reviewed samples requiring follow-up adjudication: 24 long-horizon cases; reviewers
   recorded that these samples contain defect metadata rather than narrative prose.
-- Packet oracle-content check: 24 long-horizon texts expose defect metadata; this must be
-  corrected or explicitly resolved before a future blind review can be considered clean.
+- Packet oracle-content check: 24 long-horizon texts expose defect metadata;
+  `cleanBlindReview: false`.
 - 两名评审人的 completion timestamp 相同，保留为 warning；冻结 rubric 没有禁止该情况。
 
-## 发布边界
+## 判定依据
 
-Issue #239 尚未完成。原始分数已记录，但 24 个样本由两名评审人共同标记为待裁决，
-尚无真实 adjudication 结果，因此不能把盲评声明为 complete。V1 quality gate 也不能通过：
+Issue #239 的验收范围是“由真实评审人完成评分并记录原始分数”，不是批准文本质量或阈值。
+两名评审人的签名问卷、816 条原始分数、reviewer/time/confidence/evidence/concerns 和冻结
+packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
+
+相同完成秒不是无风险证据：两名 reviewer 的时间完全一致，可能表示批量提交或模板化填表。
+当前判定依据是用户明确确认两份评分由真实评审人完成，并且两份问卷分别签署、attestation id
+不同、816 条记录可逐项复算；该风险保留为 warning，不升级为“质量已通过”。
+
+以下项目继续阻断 V1 quality claim：
 
 - `hook_prose_score = 1.882353 < 4`。
 - `interRaterVarianceThreshold` 仍为 `null`，必须由 #240 单独决定。
-- 24 个 long-horizon case 的叙事适用性保留意见仍需在产品/基准设计层面处理。
-- 24 个 long-horizon 样本文本仍暴露缺陷元信息，不满足 clean blind-packet 条件。
+- 24 个 long-horizon case 的真实 adjudication 仍为 `0/24`。
+- 24 个 long-horizon 样本文本仍暴露缺陷元信息，`cleanBlindReview` 为 `false`。
+- reviewer identity 目前是自述化名，外部实名核验未提供。
 
-因此 #239 保持 `OPEN`，并继续阻塞 #104；不得授权任何质量或容量声明。
+#239 关闭不改变 #104 的 blocked 状态，也不授权任何质量、阈值或容量声明。

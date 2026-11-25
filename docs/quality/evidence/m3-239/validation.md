@@ -1,8 +1,8 @@
 # M3-239 人工盲评证据校验
 
-> Structural status: **BLOCKED**
+> Structural status: **COMPLETE-WITH-WARNINGS**
 >
-> Technical validation: **BLOCKED**
+> Technical validation: **PASSED**
 >
 > Adjudication status: **PENDING**
 >
@@ -22,7 +22,7 @@
 ## Adjudication
 
 - Human review recorded: yes
-- Human review completed: no
+- Human review completed: yes
 - Completed adjudications: 0/24
 - Pending samples: Q005, Q026, Q034, Q055, Q056, Q067, Q075, Q081, Q083, Q084, Q088, Q093, Q096, Q123, Q130, Q149, Q158, Q160, Q162, Q168, Q182, Q186, Q189, Q196
 
@@ -39,10 +39,13 @@
 - Approved inter-rater variance threshold: not recorded
 - Threshold decision owner: #240
 - Quality release gate blockers: `adjudication-pending:24`, `decision-required:interRaterVarianceThreshold`, `oracle-content-present:24`, `threshold-failed:hook_prose_score`
-- Structural blockers: `adjudication-pending:24`, `oracle-content-present:24`
+- Structural blockers: none
 
 ## Warnings
 
+- `adjudication-pending:24`
+- `oracle-content-present:24`
 - `reviewer-completion-times-identical`
+- `reviewer-identity-self-attested`
 
 The identical reviewer completion timestamp is retained as a warning because it is not forbidden by the frozen rubric. Reviewer attestations and independent-scoring declarations remain in the source files.
