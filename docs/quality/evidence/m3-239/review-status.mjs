@@ -7,11 +7,15 @@ export function computeReviewStatus({ structuralBlockers, qualityBlockers }) {
 
   return {
     technicalStatus: normalizedStructuralBlockers.length === 0 ? "passed" : "blocked",
-    humanReviewCompleted: gateBlockers.length === 0,
+    humanReviewCompleted: normalizedStructuralBlockers.length === 0,
     qualityGate: {
       status: gateBlockers.length === 0 ? "pass" : "blocked",
       blockers: gateBlockers,
     },
     gateBlockers,
   };
+}
+
+export function computeCheckExitCode({ technicalStatus, staleFiles, checkFilesOnly }) {
+  return staleFiles.length > 0 || (!checkFilesOnly && technicalStatus !== "passed") ? 1 : 0;
 }

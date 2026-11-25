@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const evidenceDir = path.join(root, "docs/quality/evidence/m3-239");
-const { computeReviewStatus } = await import(
+const { computeCheckExitCode, computeReviewStatus } = await import(
   pathToFileURL(path.join(evidenceDir, "review-status.mjs")).href
 );
 
@@ -45,6 +45,7 @@ describe("M3-239 human blind-review evidence", () => {
     expect(validation.adjudicationFileStatus).toBe("missing");
     expect(validation.duplicateAdjudicationIds).toEqual([]);
     expect(validation.unknownAdjudicationIds).toEqual([]);
+    expect(validation.duplicateDatasetSampleIds).toEqual([]);
     expect(validation.structuralBlockers).toContain("adjudication-pending:24");
     expect(validation.structuralBlockers).toContain("oracle-content-present:24");
     expect(humanScores.humanScores).toHaveLength(816);
@@ -188,5 +189,43 @@ describe("M3-239 human blind-review evidence", () => {
       status: "blocked",
       blockers: ["adjudication-pending:1"],
     });
+  });
+
+  it("separates completed review structure from quality-gate approval", () => {
+    const result = computeReviewStatus({
+      structuralBlockers: [],
+      qualityBlockers: ["decision-required:interRaterVarianceThreshold"],
+    });
+
+    expect(result.technicalStatus).toBe("passed");
+    expect(result.humanReviewCompleted).toBe(true);
+    expect(result.qualityGate).toEqual({
+      status: "blocked",
+      blockers: ["decision-required:interRaterVarianceThreshold"],
+    });
+  });
+
+  it("computes non-zero check exits for technical blockers and stale files", () => {
+    expect(
+      computeCheckExitCode({
+        technicalStatus: "blocked",
+        staleFiles: [],
+        checkFilesOnly: false,
+      }),
+    ).toBe(1);
+    expect(
+      computeCheckExitCode({
+        technicalStatus: "blocked",
+        staleFiles: [],
+        checkFilesOnly: true,
+      }),
+    ).toBe(0);
+    expect(
+      computeCheckExitCode({
+        technicalStatus: "passed",
+        staleFiles: ["validation.json"],
+        checkFilesOnly: true,
+      }),
+    ).toBe(1);
   });
 });

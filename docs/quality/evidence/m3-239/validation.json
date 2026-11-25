@@ -222,6 +222,7 @@
   "adjudicationFileStatus": "missing",
   "duplicateAdjudicationIds": [],
   "unknownAdjudicationIds": [],
+  "duplicateDatasetSampleIds": [],
   "expectedAdjudicationFile": "docs/quality/evidence/m3-239/adjudication.json",
   "warnings": [
     "reviewer-completion-times-identical"

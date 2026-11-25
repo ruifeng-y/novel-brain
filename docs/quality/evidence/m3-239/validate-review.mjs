@@ -3,7 +3,7 @@ import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { computeReviewStatus } from "./review-status.mjs";
+import { computeCheckExitCode, computeReviewStatus } from "./review-status.mjs";
 
 const evidenceDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(evidenceDir, "../../../..");
@@ -25,6 +25,10 @@ const datasetSamples = new Map(
 );
 const datasetSampleIds = new Map(
   key.entries.map((entry) => [entry.blindSampleId, entry.datasetSampleId]),
+);
+const mappedDatasetSampleIds = [...datasetSampleIds.values()];
+const duplicateDatasetSampleIds = mappedDatasetSampleIds.filter(
+  (datasetSampleId, index, values) => values.indexOf(datasetSampleId) !== index,
 );
 const packetFile = fileEvidence(path.join(evidenceDir, "packet.json"));
 const packetCanonicalSha256 = sha256CanonicalJson(packets.samples);
@@ -52,6 +56,9 @@ if (samples.size !== packets.samples.length) {
 }
 if (datasetSampleIds.size !== packets.samples.length) {
   blockers.push("key-sample-coverage-mismatch");
+}
+if (duplicateDatasetSampleIds.length > 0) {
+  blockers.push(`dataset-sample-id-duplicate:${duplicateDatasetSampleIds.length}`);
 }
 for (const [blindSampleId, datasetSampleId] of datasetSampleIds) {
   const packetSample = samples.get(blindSampleId);
@@ -381,6 +388,7 @@ const validation = {
   adjudicationFileStatus: adjudication ? "present" : "missing",
   duplicateAdjudicationIds,
   unknownAdjudicationIds,
+  duplicateDatasetSampleIds,
   expectedAdjudicationFile: "docs/quality/evidence/m3-239/adjudication.json",
   warnings: [...new Set(warnings)].sort(),
   sourcePacket: fileEvidence(path.join(evidenceDir, "packet.json")),
@@ -477,8 +485,11 @@ process.stdout.write(
     2,
   )}\n`,
 );
-process.exitCode =
-  staleFiles.length > 0 || (!checkFilesOnly && technicalStatus !== "passed") ? 1 : 0;
+process.exitCode = computeCheckExitCode({
+  technicalStatus,
+  staleFiles,
+  checkFilesOnly,
+});
 
 function signedQuestionnaire(markdown) {
   const signature = markdown.match(/^- 评审人签名\/可审计化名:[ \t]*(.*?)\r?$/mu)?.[1]?.trim();
