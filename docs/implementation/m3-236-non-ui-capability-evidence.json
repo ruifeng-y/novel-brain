@@ -291,6 +291,10 @@
     "oracle-adjudication-tool": {
       "kind": "guardrail",
       "path": "scripts/test/m3-273-hidden-truth-adjudication.test.mjs"
+    },
+    "oracle-adjudication-record": {
+      "kind": "manual_signoff",
+      "path": "docs/quality/evidence/m3-273/adjudication.json"
     }
   },
   "capabilities": {
@@ -520,11 +524,12 @@
         "continuity-evaluator",
         "human-blind-review",
         "oracle-adjudication-tool",
-        "oracle-adjudication-status"
+        "oracle-adjudication-status",
+        "oracle-adjudication-record"
       ],
       "gap": {
-        "reason": "人工原始评分已记录；#273 已生成保留全部样本身份的非批准清洗提案和 24 项真人裁决请求，但 24 个缺陷元信息样本仍待裁决，hook/prose 1.882353 的处置也未完成。",
-        "issue": "#273"
+        "reason": "产品负责人已完成 24/24 替换裁决并选择 invalidated_for_clean_review；#278 将重建 clean 204 样本包，#279 将修复 benchmark 文风并完成全量人工重评。hook/prose 仍为 1.882353 < 4。",
+        "issue": "#278"
       }
     }
   }

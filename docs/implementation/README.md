@@ -19,7 +19,7 @@ The repository contains product/technical documentation, accepted ADRs, a signed
 - Long-horizon continuity benchmark: `docs/implementation/m3-05b-continuity-benchmark.md`.
 - Fixed quality benchmark registry: `docs/implementation/m3-06a-quality-benchmark-registry.md`.
 - Human blind-review score records for the frozen quality packet, complete with documented quality warnings: `docs/implementation/m3-239-human-blind-review.md`, `docs/quality/evidence/m3-239/`.
-- Hidden-truth cleanup proposal, 24-sample adjudication request and machine blocker state: `docs/implementation/m3-273-hidden-truth-adjudication.md`, `docs/quality/evidence/m3-273/`.
+- Hidden-truth decisions, replacement/review follow-up map and machine blocker state: `docs/implementation/m3-273-hidden-truth-adjudication.md`, `docs/quality/evidence/m3-273/`.
 - Provider smoke, canary and rollback strategy: `docs/implementation/m3-06b-provider-canary.md`.
 - V1 UI/release closeout and final checklist: `docs/implementation/m3-104-v1-closeout.md`, `docs/implementation/v1-release-checklist.md`.
 - Non-UI capability evidence audit: `docs/implementation/m3-236-non-ui-capability-audit.md`, `docs/implementation/m3-236-non-ui-capability-evidence.json`.

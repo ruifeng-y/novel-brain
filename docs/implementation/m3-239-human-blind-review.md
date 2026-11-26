@@ -74,10 +74,13 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 
 ## #273 后续准备
 
-#273 已在 `docs/quality/evidence/m3-273/` 生成保留 204 个样本身份的非批准清洗包提案、
-24 项空白真实裁决模板和机器状态账本。该提案不是新冻结 packet，旧评分也未失效或改写；
-状态仍为 0/24 裁决、hook/prose 处置 pending。必须由真实产品/质量负责人填写
-`adjudication.json` 后才能重新生成并验证状态。
+#273 已在 `docs/quality/evidence/m3-273/adjudication.json` 记录 24/24 产品负责人
+`replace_sample` 决定，并将旧评分对 clean review 的影响记为
+`invalidated_for_clean_review`。`hook_prose_score` 选择 `remediate_and_rerun`。
+#278 负责 24 个替代文本与 clean packet；#279 负责完整 204 样本重评。外部 GitHub
+attestation 已由 `ruifeng-y` 本人发布并记录。
+
+旧 #239 文件保持原样；其结果段中的 0/24 和 `threshold: null` 是当时的历史快照。
 
 #240 已独立批准 `interRaterVarianceThreshold = 0.1`；该历史快照中的 `null` 不改变，
 下游必须消费 `docs/quality/evidence/m3-240/review-policy.json`。

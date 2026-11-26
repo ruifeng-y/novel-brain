@@ -250,11 +250,12 @@ describe("M3-239 human blind-review evidence", () => {
       "docs/implementation/m3-236-non-ui-capability-evidence.json",
     );
 
-    expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#273");
+    expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#278");
     const remediationReason = capabilityEvidence.capabilities["CONT-001"].gap.reason;
     expect(remediationReason).not.toContain("inter-rater variance threshold");
-    expect(remediationReason).toContain("缺陷元信息");
-    expect(remediationReason).toContain("待裁决");
+    expect(remediationReason).toContain("24/24");
+    expect(remediationReason).toContain("#278");
+    expect(remediationReason).toContain("#279");
     expect(remediationReason).toContain("hook/prose");
   });
 });

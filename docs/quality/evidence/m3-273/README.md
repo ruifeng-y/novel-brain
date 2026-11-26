@@ -1,6 +1,6 @@
 # M3-273 Hidden-Truth Adjudication Evidence
 
-> Status: **blocked-awaiting-human-adjudication**
+> Status: **decision-and-attestation-complete-follow-ups-pending**
 >
 > Issue: #273
 
@@ -18,6 +18,11 @@ record a fabricated adjudication.
   hashes for all 24 affected samples. Do not send this file to blind reviewers.
 - `adjudication.template.json`: blank decision structure for 24 sample decisions, the packet
   disposition, old-score impact and `hook_prose_score` disposition.
+- `adjudication.json`: 24/24 product-owner decisions recorded as `replace_sample`; external
+  attestation recorded at
+  [#issuecomment-7183183858](https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-7183183858).
+- `attestation-comment.md`: exact owner-authored attestation comment, published as
+  [#issuecomment-7183183858](https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-7183183858).
 - `decision-request.md`: owner-facing decision request. This is not a reviewer packet.
 - `status.json`: machine-readable gate state consumed by `pnpm release:check`.
 
@@ -28,17 +33,15 @@ The variance threshold is not part of this ledger's approval. #240 already appro
 through `docs/quality/evidence/m3-240/review-policy.json`; this issue only detects drift from
 that independent decision.
 
-## Required Human Decisions
+## Recorded Decision
 
-1. Record one real adjudication for every entry in `adjudication.template.json`.
-2. Decide whether the clean proposal is re-frozen, affected samples are replaced, or the
-   contaminated source is retained with explicit product-owner approval.
-3. Record whether the old 816 scores are invalidated for a clean review or retained only as
-   warning evidence.
-4. Record whether `hook_prose_score = 1.882353 < 4` requires remediation and rerun, or a
-   fully owned, dated waiver with impact and follow-up.
-5. Consume the approved inter-rater variance threshold from #240 (`0.1`). This evidence cannot
-   approve or change it.
+1. `packetDecision = replace_affected_samples`.
+2. `oldScoresImpact = invalidated_for_clean_review`.
+3. All 24 adjudications are `replace_sample`.
+4. `hookProseDisposition = remediate_and_rerun`, owner `ruifeng-y`, follow-up #279.
+5. #278 owns replacement approval and clean-packet rebuild; #279 owns corpus remediation and
+   the full 204-sample two-reviewer rerun.
+6. The inter-rater variance threshold remains #240's independently approved `0.1`.
 
 `refreeze_clean_packet` and `replace_affected_samples` do not become release-ready in this
 issue: a new clean human blind review is still required. Only an explicit product-owner
@@ -50,13 +53,9 @@ explicit fact-conflict suffix does not prove that the remaining adversarial even
 semantically blind. Do not send the proposal to reviewers until a human packet decision and the
 required new clean review are recorded.
 
-Before the local adjudication file can count as human evidence, complete all decision fields,
-run `node scripts/m3-273-adjudication.mjs --payload-hash`, then have an
-owner/member/collaborator post a GitHub comment on #273 containing
-`M3-273-HUMAN-ATTESTATION`, the proposal SHA-256 and the decision payload SHA-256. Record the
-comment URL, ID, author, timestamp and statement in `humanAttestation`. Release verification
-queries GitHub and rejects self-declared `adjudicatorKind: "human"` without that external
-comment or after any decision payload changes.
+The local adjudication record now points to the owner-authored GitHub comment
+`#issuecomment-7183183858`. Release verification queries GitHub and rejects self-declared
+`adjudicatorKind: "human"` without an external comment or after any decision payload changes.
 
 Every decision requires a human adjudicator identity, attestation ID, rationale, impact and
 timestamp. Model-written or inferred decisions are invalid.
@@ -78,5 +77,5 @@ never creates or edits `adjudication.json`. `--check` fails on stale generated e
 `pnpm release:check` recomputes the ledger from the proposal, cleanup audit, template and human
 decision file; it rejects a hand-edited `status.json` that differs from recomputed evidence.
 
-The proposed packet remains non-reviewable until the responsible human records the packet
-decision. A text-pattern-clean result is not by itself a semantic quality approval.
+The proposal remains non-reviewable until #278 supplies human-approved replacements and #279
+completes the full rerun. A text-pattern-clean result is not by itself semantic quality approval.
