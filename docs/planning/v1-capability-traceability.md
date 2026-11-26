@@ -1,6 +1,6 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-26。共 **119 个唯一能力 ID**；116 个 V1 能力中 114 个已有可执行证据并标为 `verified`，2 个保留有界缺口。107 个非 UI V1 能力中 105 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 已按产品决定延期。CONT-001 的人工原始评分已由 #239 记录为 `complete-with-warnings`；#273 已记录 24/24 替换裁决并使旧评分对 clean review 失效，#278/#279 负责 clean packet 与全量重评。EVAL-002 的 variance threshold 已由 #240 批准为 `0.1`；最终 release-head CI 仍由 #242 收口。
+> 状态：V1 delivery ledger，2026-11-26。共 **119 个唯一能力 ID**；116 个 V1 能力中 114 个已有可执行证据并标为 `verified`，2 个保留有界缺口。107 个非 UI V1 能力中 105 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 已按产品决定延期。CONT-001 的人工原始评分已由 #239 记录为 `complete-with-warnings`；#273 已记录 24/24 替换裁决并使旧评分对 clean review 失效。#278 已生成 24 个 oracle-free 替换候选、204 样本 candidate packet 和可复现 manifest，但 `0/24` 人工批准且未冻结；#279 负责全量重评。EVAL-002 的 variance threshold 已由 #240 批准为 `0.1`；最终 release-head CI 仍由 #242 收口。
 > `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
 
 ## 状态定义
@@ -137,7 +137,7 @@
 | EVAL-003 | 真实 DeepSeek smoke | V1 | verified | #140 | #79, #241 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-003`; [protected run 45557765302](https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302) | M3 |
 | EVAL-004 | Prompt/模型灰度与回滚 | V1 | verified | #140 | #241, #271 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-004`; approved model identity and fail-closed alias tests; [Production CI 45686912713](https://github.com/ruifeng-y/novel-brain/actions/runs/45686912713) | M3 |
 | PERF-001 | 1000 万字容量/性能/恢复基准 | 后续 | deferred | — | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 产品决定 V1 不声明 10M 容量；未来重启需重新认证 | Post-V1 |
-| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | implemented | #138 | #106–#119/#86/#90/#115/#239/#273/#278/#279 | ADR 0017/0019/0022; #138 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CONT-001`; `docs/quality/evidence/m3-273/adjudication.json`; 24/24 replacement decisions; #278 clean packet, #279 full rerun; hook/prose 1.882353 < 4; gap #278/#279 | M3 |
+| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | implemented | #138 | #106–#119/#86/#90/#115/#239/#273/#278/#279 | ADR 0017/0019/0022; #138 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CONT-001`; `docs/quality/evidence/m3-273/adjudication.json`; `docs/quality/evidence/m3-278/status.json`; 24 candidates, 0/24 human approvals, packet not frozen; #279 full rerun; hook/prose 1.882353 < 4; gap #278/#279 | M3 |
 
 ## 强制规则
 

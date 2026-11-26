@@ -1,7 +1,7 @@
 # V1 固定质量基准 Registry 与回归门禁
 
 > Owner: M3 #103 / #139
-> Status: #239 raw-score capture is `complete-with-warnings`; #240 approves the variance threshold at `0.1`. #273 records 24/24 product-owner replace decisions, invalidates old scores for clean review and records external attestation; #278 rebuilds the clean packet and #279 reruns the full human review. The hook/prose gate remains pending.
+> Status: #239 raw-score capture is `complete-with-warnings`; #240 approves the variance threshold at `0.1`. #273 records 24/24 product-owner replace decisions and invalidates old scores for clean review. #278 now has 24 oracle-free replacement candidates but `0/24` human approvals and no frozen packet; #279 reruns the full human review. The hook/prose gate remains pending.
 
 ## Dataset
 
@@ -65,7 +65,7 @@ The recorded result does not pass the V1 quality gate:
 - The packet schema excludes oracle fields, but the same 24 sample texts expose continuity-conflict metadata. A future clean blind review must remove that leakage or record an explicit product-owner resolution.
 - #273 removes the explicit oracle annotation in a proposed 204-sample packet without deleting any sample. The product/quality owner recorded replacement, old-score impact and 24/24 sample adjudications; the proposal remains `proposed-not-approved` because it is not a semantic clean-packet replacement.
 - #273 records 24/24 `replace_sample` adjudications, `oldScoresImpact = invalidated_for_clean_review`, `hook_prose_disposition = remediate_and_rerun` and an owner-authored external GitHub attestation.
-- #278 owns replacement approval and clean-packet rebuild. #279 owns benchmark prose remediation and the complete 204-sample two-reviewer rerun. #242 is blocked until both finish.
+- #278 owns replacement approval and clean-packet rebuild. Its current candidate packet is `candidate-not-approved`, with `0/24` human approvals, `freezeAllowed=false`, and reproducible dataset/packet/manifest hashes in `docs/quality/evidence/m3-278/`. #279 owns benchmark prose remediation and the complete 204-sample two-reviewer rerun. #242 is blocked until both finish.
 - The inter-rater variance threshold is approved as `0.1` under #240; observed `maxVariance = 0` passes it.
 
-The V1 quality claim remains blocked until #278 rebuilds the replacement packet and #279 completes the hook/prose remediation and full rerun. The threshold decision is complete and does not change the frozen rubric.
+The V1 quality claim remains blocked until #278 completes 24/24 human approval and freezes the replacement packet, then #279 completes the hook/prose remediation and full rerun. The threshold decision is complete and does not change the frozen rubric.

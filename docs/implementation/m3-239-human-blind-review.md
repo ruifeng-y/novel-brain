@@ -68,7 +68,7 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 以下项目继续阻断 V1 quality claim：
 
 - `hook_prose_score = 1.882353 < 4`。
-- 24/24 替换裁决已完成；#278 的 clean packet 与 #279 的全量重评仍待完成。
+- 24/24 替换裁决已完成；#278 已生成 24 个候选和 204 样本 candidate packet，但 `0/24` 人工批准、尚未冻结；#279 的全量重评仍待完成。
 - 旧 24 个 long-horizon 样本文本仍暴露缺陷元信息，旧 packet 的 `cleanBlindReview` 为 `false`，因此不得复用。
 - reviewer identity 目前是自述化名，外部实名核验未提供。
 
@@ -77,7 +77,7 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 #273 已在 `docs/quality/evidence/m3-273/adjudication.json` 记录 24/24 产品负责人
 `replace_sample` 决定，并将旧评分对 clean review 的影响记为
 `invalidated_for_clean_review`。`hook_prose_score` 选择 `remediate_and_rerun`。
-#278 负责 24 个替代文本与 clean packet；#279 负责完整 204 样本重评。外部 GitHub
+#278 已生成 24 个替代文本、可复现 manifest 与 candidate packet；当前等待 owner 逐项批准后冻结。 #279 负责完整 204 样本重评。外部 GitHub
 attestation 已由 `ruifeng-y` 本人发布并记录。
 
 旧 #239 文件保持原样；其结果段中的 0/24 和 `threshold: null` 是当时的历史快照。

@@ -295,6 +295,18 @@
     "oracle-adjudication-record": {
       "kind": "manual_signoff",
       "path": "docs/quality/evidence/m3-273/adjudication.json"
+    },
+    "clean-packet-candidate-tool": {
+      "kind": "guardrail",
+      "path": "scripts/test/m3-278-clean-blind-packet.test.mjs"
+    },
+    "clean-packet-candidate-status": {
+      "kind": "manual_signoff",
+      "path": "docs/quality/evidence/m3-278/status.json"
+    },
+    "clean-packet-candidate-manifest": {
+      "kind": "manual_signoff",
+      "path": "docs/quality/evidence/m3-278/replacement-manifest.json"
     }
   },
   "capabilities": {
@@ -525,10 +537,13 @@
         "human-blind-review",
         "oracle-adjudication-tool",
         "oracle-adjudication-status",
-        "oracle-adjudication-record"
+        "oracle-adjudication-record",
+        "clean-packet-candidate-tool",
+        "clean-packet-candidate-status",
+        "clean-packet-candidate-manifest"
       ],
       "gap": {
-        "reason": "产品负责人已完成 24/24 替换裁决并选择 invalidated_for_clean_review；#278 将重建 clean 204 样本包，#279 将修复 benchmark 文风并完成全量人工重评。hook/prose 仍为 1.882353 < 4。",
+        "reason": "产品负责人已完成 24/24 替换裁决并选择 invalidated_for_clean_review；#278 已生成 24 个无 oracle 候选、204 样本 candidate packet 与可复现 manifest，但 0/24 人工批准且未冻结；#279 将修复 benchmark 文风并完成全量人工重评。hook/prose 仍为 1.882353 < 4。",
         "issue": "#278",
         "issues": ["#278", "#279"]
       }

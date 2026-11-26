@@ -28,7 +28,7 @@ Release gate 仅在 `maxVariance > 0.1` 时记录
 5. V1 quality claim 不接受 waiver，也不允许通过调整阈值解除阻断。
 
 批准阈值只解除 `decision-required:interRaterVarianceThreshold`。当前 release 仍因
-`hook_prose_score = 1.882353 < 4`、#278 的 clean packet 重建、#279 的完整 204 样本
+`hook_prose_score = 1.882353 < 4`、#278 的 24/24 人工批准与 packet 冻结、#279 的完整 204 样本
 重评和 #242 release-head CI 保持 blocked。
 
 ## Completion Time Warning

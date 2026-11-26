@@ -27,7 +27,7 @@
     `requiredBeats`。
 - 记录 `adjudication.json`：24/24 `replace_sample`、旧评分
   `invalidated_for_clean_review`、hook/prose `remediate_and_rerun`。
-- #278 负责 24 个替代文本和 clean packet 重建；#279 负责 benchmark 文风修复及完整
+- #278 已生成 24 个替代文本和 clean packet candidate；等待 24/24 人工批准后冻结。#279 负责 benchmark 文风修复及完整
   204 样本双人重评；两者均阻塞 #242。
 - 生成机器状态 `docs/quality/evidence/m3-273/status.json`，当前结果为：
   - `completedAdjudicationCount: 24`

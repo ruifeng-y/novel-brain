@@ -2,7 +2,7 @@
 
 > Issue: #139
 > Capabilities: QUALITY-006, EVAL-001, EVAL-002
-> Status: implementation complete; automated registry/execution/regression evidence recorded; #239 archives human raw scores as complete-with-warnings and #240 approves variance threshold `0.1`. #273 records replacement decisions; #278/#279 and the failed hook/prose threshold keep release use blocked.
+> Status: implementation complete; automated registry/execution/regression evidence recorded; #239 archives human raw scores as complete-with-warnings and #240 approves variance threshold `0.1`. #273 records replacement decisions; #278 has 24 unapproved replacement candidates and no frozen packet, while #279 and the failed hook/prose threshold keep release use blocked.
 
 ## 实现范围
 
@@ -66,7 +66,7 @@ pnpm quality regress --baseline baseline-report.json --candidate artifacts/quali
 
 - Automated tests intentionally use clearly labeled synthetic reviewer records to verify the gate implementation; they are not release blind-review evidence.
 - Human review has supplied two reviewers per sample, required outline-beat evidence, consistent reviewer attestations and both the evaluator gate hash and actual packet hash; see `docs/implementation/m3-239-human-blind-review.md`.
-- Both reviewers flagged the same 24 long-horizon cases. #273 records 24/24 product-owner `replace_sample` decisions and invalidates old scores for clean review; #278/#279 own the replacement packet and full rerun.
+- Both reviewers flagged the same 24 long-horizon cases. #273 records 24/24 product-owner `replace_sample` decisions and invalidates old scores for clean review. #278 now has 24 oracle-free replacement candidates, a reproducible manifest and a 204-sample candidate packet, but `0/24` human approvals and no frozen packet; #279 owns the full rerun.
 - The recorded `hook_prose_score` is `1.882353`, below the required `4/5`.
 - #240 approves `interRaterVarianceThreshold = 0.1`; the observed `maxVariance = 0` passes the trusted review policy without changing the frozen rubric.
 - The current gate blocks model-only judgement and any non-approved dataset/rubric artifact.

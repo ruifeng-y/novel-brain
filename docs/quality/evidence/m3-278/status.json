@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "issue": 278,
+  "reviewId": "m3-239-2026-11-25",
+  "status": "awaiting-human-approval",
+  "candidateDatasetVersion": "quality-benchmark-v2",
+  "candidateDatasetSha256": "9147541ae2c874a9f62a1c839d44a55eb7343becd902b27719f79de790148bd2",
+  "candidatePacketVersion": "quality-benchmark-clean-blind-v3",
+  "candidatePacketSha256": "c3b1a08a92340ef9b56c4e234262e13499b2ef3fb634669b8a3750c322a70386",
+  "replacementManifestSha256": "bdef7908ee39cd38b18f088c5350f360340aaf943475ec697612ca44eb371ebf",
+  "approvalFileStatus": "template-only",
+  "approvalFilePath": "docs/quality/evidence/m3-278/approvals.json",
+  "approvedCount": 0,
+  "pendingCount": 24,
+  "pendingSampleIds": [
+    "Q005",
+    "Q026",
+    "Q034",
+    "Q055",
+    "Q056",
+    "Q067",
+    "Q075",
+    "Q081",
+    "Q083",
+    "Q084",
+    "Q088",
+    "Q093",
+    "Q096",
+    "Q123",
+    "Q130",
+    "Q149",
+    "Q158",
+    "Q160",
+    "Q162",
+    "Q168",
+    "Q182",
+    "Q186",
+    "Q189",
+    "Q196"
+  ],
+  "freezeAllowed": false,
+  "reviewerReady": false,
+  "cleanBlindReviewCompleted": false,
+  "oldScoresImpact": "invalidated_for_clean_review",
+  "reviewPolicy": {
+    "path": "docs/quality/evidence/m3-240/review-policy.json",
+    "interRaterVarianceThreshold": 0.1
+  },
+  "qualityGate": {
+    "status": "blocked",
+    "blockers": [
+      "human-approval-attestation-pending",
+      "replacement-approval-pending:24",
+      "clean-blind-review-required",
+      "hook-prose-remeasurement-pending"
+    ]
+  },
+  "blockers": [
+    "human-approval-attestation-pending",
+    "replacement-approval-pending:24",
+    "clean-blind-review-required",
+    "hook-prose-remeasurement-pending"
+  ],
+  "blockingIssues": [
+    "#279",
+    "#242"
+  ],
+  "downstream": {
+    "#242": {
+      "status": "blocked",
+      "blockedBy": [
+        "#278",
+        "#279"
+      ]
+    }
+  }
+}
