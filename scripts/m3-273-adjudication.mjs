@@ -216,6 +216,7 @@ export function buildM3_273Artifacts({ root, adjudicationOverride }) {
     proposalPacket,
     pendingSampleIds: contaminatedSampleIds,
     keyByBlindSampleId,
+    adjudication,
   });
   const artifacts = {
     ...artifactsBase,
@@ -612,6 +613,9 @@ function createAdjudicationTemplate(input) {
 }
 
 function buildDecisionRequest(input) {
+  if (input.adjudication?.status === "complete") {
+    return buildResolvedDecisionRecord(input);
+  }
   const proposedById = new Map(
     input.proposalPacket.samples.map((sample) => [sample.blindSampleId, sample]),
   );
@@ -672,6 +676,43 @@ Issue: #273
 ${rows.join("\n").trimEnd()}
 `.trimEnd() + "\n"
   );
+}
+
+function buildResolvedDecisionRecord(input) {
+  const proposedById = new Map(
+    input.proposalPacket.samples.map((sample) => [sample.blindSampleId, sample]),
+  );
+  const rows = input.adjudication.adjudications.map((entry) => {
+    const proposed = proposedById.get(entry.blindSampleId);
+    return `| ${entry.blindSampleId} | ${entry.decision} | ${entry.adjudicatorId} | ${entry.decidedAt} | ${proposed.requiredBeats.map((beat) => `\`${beat}\``).join("、")} |`;
+  });
+  return `# M3-273 人类裁决记录
+
+> Status: decision complete
+>
+> Owner: \`${input.adjudication.packetDecision.adjudicatorId}\`
+
+Issue: #273
+
+- Packet decision: \`${input.adjudication.packetDecision.decision}\`
+- Old-score impact: \`${input.adjudication.packetDecision.oldScoresImpact}\`
+- Hook/prose disposition: \`${input.adjudication.hookProseDisposition.decision}\`
+- Hook/prose follow-up: ${input.adjudication.hookProseDisposition.followUpIssue}
+- Attestation: ${input.adjudication.humanAttestation.commentUrl ?? "pending"}
+- Proposal SHA-256: \`${input.adjudication.proposalPacketSha256}\`
+- Decision payload SHA-256: \`${input.adjudication.humanAttestation.decisionPayloadSha256 ?? "pending"}\`
+
+## 24 个样本
+
+| Sample | Decision | Adjudicator | Decided at | Required beats |
+| --- | --- | --- | --- | --- |
+${rows.join("\n")}
+
+## Follow-up
+
+- #278: 24 个替代文本与 clean packet
+- #279: benchmark corpus 修复与完整 204 样本双人重评
+`;
 }
 
 function serializeArtifacts(artifacts) {

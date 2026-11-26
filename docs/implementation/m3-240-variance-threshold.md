@@ -2,7 +2,7 @@
 
 > Issue: #240
 > Capabilities: EVAL-002
-> Status: decision complete; V1 release remains blocked by #242, #271, #273 and `hook_prose_score`
+> Status: decision complete; V1 release remains blocked by #242, #278, #279 and `hook_prose_score`
 
 ## 决定
 

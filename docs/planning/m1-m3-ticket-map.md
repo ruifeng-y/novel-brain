@@ -82,7 +82,7 @@ PERF-001 is not part of the V1 release claim. CONT-001 has human raw-score evide
 - Run from repository root: `node scripts/validate-readiness.mjs`.
 - The validator checks manifest ↔ traceability set equality, one primary issue per V1 capability, production UI page ownership/evidence paths, prototype-only states page, missing issue nodes, self-dependencies and dependency cycles.
 - The graph's `blocked_by` edges represent implementation blockers. Package-child membership is represented separately as `children`; closing a package requires its children and its stated integration gates.
-- GitHub native dependency edges are not assumed. Until native edges are available, issue bodies plus this graph are the canonical dependency record.
+- GitHub native dependency edges and this graph are kept in sync for current release blockers; issue bodies remain the bounded acceptance contract.
 
 ## 8. Completion rules
 

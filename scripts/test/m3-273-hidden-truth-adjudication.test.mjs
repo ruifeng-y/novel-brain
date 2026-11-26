@@ -343,8 +343,9 @@ describe("M3-273 hidden-truth adjudication", () => {
         blockers: [],
       },
     });
-    expect(artifacts.decisionRequest).toContain("`adjudicatorKind`");
-    expect(artifacts.decisionRequest).toContain("Required beats:");
+    expect(artifacts.decisionRequest).toContain("# M3-273 人类裁决记录");
+    expect(artifacts.decisionRequest).toContain("Decision payload SHA-256");
+    expect(artifacts.decisionRequest).not.toContain("待负责人填写");
   });
 });
 
