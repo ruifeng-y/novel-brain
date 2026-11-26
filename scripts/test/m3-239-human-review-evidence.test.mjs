@@ -251,6 +251,7 @@ describe("M3-239 human blind-review evidence", () => {
     );
 
     expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#278");
+    expect(capabilityEvidence.capabilities["CONT-001"].gap.issues).toEqual(["#278", "#279"]);
     const remediationReason = capabilityEvidence.capabilities["CONT-001"].gap.reason;
     expect(remediationReason).not.toContain("inter-rater variance threshold");
     expect(remediationReason).toContain("24/24");

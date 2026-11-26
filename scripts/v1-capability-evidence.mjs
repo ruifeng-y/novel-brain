@@ -230,6 +230,20 @@ function validateCapabilityEvidence(
     } else if (!gapIssueIsValid(gap.issue)) {
       blockers.push(`capability-audit:gap-issue-invalid:${row.id}:${gap.issue}`);
     }
+    if (gap?.issues !== undefined && !Array.isArray(gap.issues)) {
+      blockers.push(`capability-audit:gap-issues-invalid:${row.id}`);
+      continue;
+    }
+    const additionalGapIssues = (gap?.issues ?? [])
+      .filter((issue) => issue !== gap?.issue)
+      .map(String);
+    for (const issue of new Set(additionalGapIssues)) {
+      if (!GAP_ISSUE.test(issue)) {
+        blockers.push(`capability-audit:gap-issue-missing:${row.id}:${issue}`);
+      } else if (!gapIssueIsValid(issue)) {
+        blockers.push(`capability-audit:gap-issue-invalid:${row.id}:${issue}`);
+      }
+    }
   }
 
   return blockers;

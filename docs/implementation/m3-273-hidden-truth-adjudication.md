@@ -63,7 +63,7 @@
   `docs/quality/evidence/m3-273/adjudication.template.json`
 - 已记录真人决定：
   `docs/quality/evidence/m3-273/adjudication.json`
-- 待本人发布的 attestation 正文：
+- 已由本人发布的 attestation 正文：
   `docs/quality/evidence/m3-273/attestation-comment.md`
 - 决策请求：
   `docs/quality/evidence/m3-273/decision-request.md`

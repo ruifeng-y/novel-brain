@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-12",
+  "updated_at": "2026-11-26",
   "repository": "ruifeng-y/novel-brain",
   "semantics": {
     "blocked_by": "Issue cannot start until each blocker is complete and integrated.",
@@ -450,7 +450,10 @@
         151,
         152
       ],
-      "children": [],
+      "children": [
+        278,
+        279
+      ],
       "parent": null
     },
     "106": {
@@ -1007,6 +1010,38 @@
       "blocked_by": [],
       "children": [],
       "parent": 144
+    },
+    "242": {
+      "type": "integration",
+      "blocked_by": [
+        278,
+        279
+      ],
+      "children": [],
+      "parent": null
+    },
+    "273": {
+      "type": "leaf",
+      "blocked_by": [],
+      "children": [],
+      "parent": null
+    },
+    "278": {
+      "type": "leaf",
+      "blocked_by": [
+        273
+      ],
+      "children": [],
+      "parent": 104
+    },
+    "279": {
+      "type": "leaf",
+      "blocked_by": [
+        273,
+        278
+      ],
+      "children": [],
+      "parent": 104
     }
   }
 }

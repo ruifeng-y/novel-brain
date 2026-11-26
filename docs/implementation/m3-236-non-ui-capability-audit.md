@@ -82,6 +82,6 @@ V1 RELEASE BLOCKED
 The final audit blocker is expected until the current PR has an exact-head
 Production CI run; #242 records the final release CI.
 
-The remaining non-UI blockers are tracked by #242 and #273 plus the failed quality claim
+The remaining non-UI blockers are tracked by #242, #278 and #279 plus the failed quality claim
 under #104. UI capability
 closure was completed by #238; final release evidence and CI remain #242.

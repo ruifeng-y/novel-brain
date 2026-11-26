@@ -529,7 +529,8 @@
       ],
       "gap": {
         "reason": "产品负责人已完成 24/24 替换裁决并选择 invalidated_for_clean_review；#278 将重建 clean 204 样本包，#279 将修复 benchmark 文风并完成全量人工重评。hook/prose 仍为 1.882353 < 4。",
-        "issue": "#278"
+        "issue": "#278",
+        "issues": ["#278", "#279"]
       }
     }
   }

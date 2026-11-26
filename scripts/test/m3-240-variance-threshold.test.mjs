@@ -169,6 +169,7 @@ describe("M3-240 approved inter-rater variance threshold", () => {
       },
     });
     expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#278");
+    expect(capabilityEvidence.capabilities["CONT-001"].gap.issues).toEqual(["#278", "#279"]);
     expect(traceability).toMatch(/\| EVAL-002 \| 评分 rubric\/阈值\/回归 \| V1 \| implemented \|/u);
     expect(traceability).toContain(policyPath);
   });
