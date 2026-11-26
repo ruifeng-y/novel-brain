@@ -49,9 +49,9 @@ commit `6bc4fa2a83172ae3ece9d75065462d973397333f`.
 - The release gate now reports UI capability and parity evidence as passing.
 - V1 traceability records 114 of 116 V1 capabilities as `verified`; EVAL-002
   awaits final release-head CI, while CONT-001 retains a bounded evidence gap.
-- The remaining release blockers are pending human adjudication/oracle content,
-  the failed human prose-quality threshold, quality remediation (#273) and the
-  final #104 Production CI. The inter-rater
+- The remaining release blockers are #278 clean-packet rebuild, #279 benchmark
+  prose remediation and full 204-sample rerun, and the final #242 Production CI.
+  The inter-rater
   variance threshold is approved separately under #240. #238 does not close #104.
 
 ## 4. Verification
