@@ -22,7 +22,7 @@ packet or a fabricated human approval.
 - `approval-request.md`: owner review entrance with sample ID, scenario family, severity, candidate
   narrative, required beats and per-item approval fields.
 - `review-disposition.md`: disposition of the external review notes, including the 6 fixed hard
-  findings and 11 owner decisions that remain pending.
+  findings and 11 recorded owner decisions; final 24/24 sample approval remains pending.
 - `review-findings.source.json`: machine-readable external review disposition source. It pins the
   supplied review notes SHA-256 and the exact hard findings and owner decision prompts.
 - `approval-request.review-notes.md`: exact copy of the user-supplied external review notes; its

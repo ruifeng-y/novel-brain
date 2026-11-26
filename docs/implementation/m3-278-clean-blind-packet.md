@@ -49,7 +49,8 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
 - `approval-request.md` 是 owner 审阅入口，列出 sample ID、场景 family、severity、候选叙事、
   必须保留的 beats 和逐项 approval 字段。
 - `review-findings.source.json` 固定外部审查原文 SHA-256 与机器可读处置；
-  `review-disposition.md` 记录 6 项硬问题已修，11 项语义取舍仍待 owner 裁决。
+  `review-disposition.md` 记录 6 项硬问题已修、11 项负责人裁决已记录；最终 24/24
+  sample approval 仍待完成。
 
 ## 候选 Hash
 
