@@ -1,6 +1,7 @@
 # M3-278 外部审查处置记录
 
-> 来源：`approval-request.review-notes.md`
+> 来源：`review-findings.source.json`，其中固定用户提供的
+> `approval-request.review-notes.md` SHA-256。
 >
 > 性质：审查发现处置，不是审批 payload。
 
@@ -19,9 +20,10 @@
 
 Q026、Q075、Q088、Q093、Q096、Q130、Q149、Q160、Q182、Q186、Q189。
 
-逐项问题已写入 `approval-request.md` 的“待负责人裁决”章节。模型没有填写
+逐项问题已写入 `approval-request.md` 的“待负责人裁决”章节，并在 approval template
+中增加 `reviewDecision` 与 `reviewDecisionRationale`。模型没有填写
 `decision`、`rationale`、`impact`、`adjudicatorId`、`adjudicatorKind`、
-`attestationId` 或 `decidedAt`。
+`attestationId`、`decidedAt`、`reviewDecision` 或 `reviewDecisionRationale`。
 
 ## Owner 可见性
 

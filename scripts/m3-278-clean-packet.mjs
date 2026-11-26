@@ -45,6 +45,7 @@ const PATHS = {
   adjudicationStatus: "docs/quality/evidence/m3-273/status.json",
   reviewPolicy: "docs/quality/evidence/m3-240/review-policy.json",
   replacementCandidates: `${EVIDENCE_DIR}/replacement-candidates.source.json`,
+  reviewFindings: `${EVIDENCE_DIR}/review-findings.source.json`,
 };
 const REVIEWER_SAMPLE_FIELDS = ["blindSampleId", "genre", "requiredBeats", "text"];
 const REVIEWER_PACKET_FIELDS = [
@@ -74,52 +75,7 @@ const REVIEWER_PACKET_READINESS_FIELDS = [
   "status",
 ];
 const REVIEWER_GENRES = new Set(["仙侠", "历史", "都市"]);
-const OWNER_DECISION_PROMPTS = [
-  {
-    blindSampleId: "Q026",
-    prompt: "是否将“自小怕黑”补入必需节拍，确保长期恐惧也属于评审契约？",
-  },
-  {
-    blindSampleId: "Q075",
-    prompt: "跨册同步异常是否保留，或改为仅保留两册分歧并更新节拍？",
-  },
-  {
-    blindSampleId: "Q088",
-    prompt: "是否删除“时间戳也落在同一天”这一过度定证句？",
-  },
-  {
-    blindSampleId: "Q093",
-    prompt: "既定事实是忘川书，是否将正文改为忘川书所有权冲突？",
-  },
-  {
-    blindSampleId: "Q096",
-    prompt: "是否将“第三年秋提剑回城”补为必需节拍？",
-  },
-  {
-    blindSampleId: "Q130",
-    prompt: "既定事实是忘川书，是否将正文改为忘川书使用权冲突？",
-  },
-  {
-    blindSampleId: "Q149",
-    prompt: "既定事实是灵魂转移，是否将分身共享记忆改为同一机制？",
-  },
-  {
-    blindSampleId: "Q160",
-    prompt: "既定事实是照骨镜真名，是否将归墟令伏笔改为照骨镜伏笔？",
-  },
-  {
-    blindSampleId: "Q182",
-    prompt: "是否保留预知式知识越界，或恢复平行版本来源并避免 oracle 提示？",
-  },
-  {
-    blindSampleId: "Q186",
-    prompt: "该样本应考事实转移，还是旁人的错误身份主张？",
-  },
-  {
-    blindSampleId: "Q189",
-    prompt: "既定事实是左臂骨折，是否改为骨折未愈却恢复能力的冲突？",
-  },
-];
+const OWNER_REVIEW_DECISIONS = new Set(["accept_current", "revise_candidate", "reject_candidate"]);
 const REVIEWER_LEAKAGE_PATTERNS = [
   {
     code: "explicit-confirmed-fact-conflict",
@@ -200,6 +156,7 @@ export function assertM3_278ReviewerPacketClean(packet) {
     packet.status !== "candidate-not-approved" ||
     packet.packetVersion !== CANDIDATE_PACKET_VERSION ||
     !/^[a-f0-9]{64}$/u.test(packet.packetSha256 ?? "") ||
+    packet.packetSha256 !== sha256Json(omit(packet, ["packetSha256"])) ||
     !Array.isArray(packet.samples) ||
     packet.samples.length !== 204
   ) {
@@ -287,13 +244,20 @@ function scanM3_278NestedReviewerLeakage(value, pathName = "packet") {
   return findings;
 }
 
-export function assertM3_278ReplacementCoverage(candidates) {
+export function assertM3_278ReplacementCoverage(
+  candidates,
+  { expectedBlindSampleIds = [], expectedDatasetSampleIds = [] } = {},
+) {
   const blindSampleIds = candidates.map((candidate) => candidate.blindSampleId);
   const datasetSampleIds = candidates.map((candidate) => candidate.datasetSampleId);
   if (
     candidates.length !== 24 ||
     new Set(blindSampleIds).size !== 24 ||
-    new Set(datasetSampleIds).size !== 24
+    new Set(datasetSampleIds).size !== 24 ||
+    expectedBlindSampleIds.length !== 24 ||
+    expectedDatasetSampleIds.length !== 24 ||
+    !sameStringSet(blindSampleIds, expectedBlindSampleIds) ||
+    !sameStringSet(datasetSampleIds, expectedDatasetSampleIds)
   ) {
     throw new Error("M3_278_REPLACEMENT_COVERAGE_INVALID");
   }
@@ -358,7 +322,30 @@ export async function buildM3_278Artifacts({
       };
     }),
   };
-  assertM3_278ReplacementCoverage(replacementCandidates.candidates);
+  const expectedBlindSampleIds = source.adjudication.adjudications.map(
+    (entry) => entry.blindSampleId,
+  );
+  assertM3_278ReplacementCoverage(replacementCandidates.candidates, {
+    expectedBlindSampleIds,
+    expectedDatasetSampleIds: expectedBlindSampleIds.map((blindSampleId) =>
+      keyByBlindSampleId.get(blindSampleId),
+    ),
+  });
+  const replacementIdSet = new Set(
+    replacementCandidates.candidates.map((candidate) => candidate.blindSampleId),
+  );
+  const hardFindingIds = source.reviewFindings.hardFindings.map((entry) => entry.blindSampleId);
+  const ownerDecisionIds = source.reviewFindings.ownerDecisions.map((entry) => entry.blindSampleId);
+  if (
+    hardFindingIds.length !== 6 ||
+    new Set(hardFindingIds).size !== 6 ||
+    ownerDecisionIds.length !== 11 ||
+    new Set(ownerDecisionIds).size !== 11 ||
+    [...hardFindingIds, ...ownerDecisionIds].some((id) => !replacementIdSet.has(id)) ||
+    !/^[a-f0-9]{64}$/u.test(source.reviewFindings.sourceSha256 ?? "")
+  ) {
+    throw new Error("M3_278_REVIEW_FINDINGS_INVALID");
+  }
 
   const candidateDataset = createCandidateDataset(source.dataset, replacementCandidates.candidates);
   const candidatePacket = createCandidatePacket({
@@ -378,6 +365,8 @@ export async function buildM3_278Artifacts({
     candidatePacket,
     candidateDataset,
     replacementManifest,
+    ownerDecisions: source.reviewFindings.ownerDecisions,
+    reviewFindingsSha256: source.fileSha256.reviewFindings,
   });
   const approvalPath = path.join(root, APPROVALS_FILE);
   const approvalFilePresent = existsSync(approvalPath);
@@ -407,6 +396,7 @@ export async function buildM3_278Artifacts({
   const approvalRequest = createApprovalRequest({
     replacementCandidates,
     approvalTemplate,
+    ownerDecisions: source.reviewFindings.ownerDecisions,
   });
   const status = {
     schemaVersion: 1,
@@ -427,8 +417,9 @@ export async function buildM3_278Artifacts({
     approvedCount: approvalStatus.approvedCount,
     pendingCount: approvalStatus.pendingCount,
     pendingSampleIds: approvalStatus.pendingSampleIds,
-    ownerDecisionPendingCount: OWNER_DECISION_PROMPTS.length,
-    hardReviewFindingsResolved: 6,
+    ownerDecisionPendingCount: source.reviewFindings.ownerDecisions.length,
+    hardReviewFindingsResolved: source.reviewFindings.hardFindings.length,
+    reviewFindingsSha256: source.fileSha256.reviewFindings,
     freezeAllowed: approvalStatus.freezeAllowed,
     humanAttestationComplete: approvalStatus.humanAttestationComplete,
     humanAttestationVerified: approvalStatus.humanAttestationVerified,
@@ -495,14 +486,12 @@ export function verifyM3_278CandidateDatasetDigest(dataset) {
   const manifestWithoutDigest = omit(dataset.manifest, ["datasetSha256"]);
   return (
     dataset.manifest.datasetSha256 ===
-    sha256Text(
-      JSON.stringify({
-        schemaVersion: dataset.schemaVersion,
-        chapterSamples: dataset.chapterSamples,
-        adversarialCases: dataset.adversarialCases,
-        manifest: manifestWithoutDigest,
-      }),
-    )
+    sha256Json({
+      schemaVersion: dataset.schemaVersion,
+      chapterSamples: dataset.chapterSamples,
+      adversarialCases: dataset.adversarialCases,
+      manifest: manifestWithoutDigest,
+    })
   );
 }
 
@@ -540,6 +529,8 @@ export function evaluateM3_278Approvals({
   let incompleteCount = 0;
   let evidenceDriftCount = 0;
   let identityMismatchCount = 0;
+  let reviewDecisionIncompleteCount = 0;
+  let reviewDecisionBlockingCount = 0;
   const attestationAuthor = approvals?.humanAttestation?.author;
 
   if (approvals?.schemaVersion !== approvalTemplate.schemaVersion) {
@@ -555,6 +546,9 @@ export function evaluateM3_278Approvals({
   }
   if (approvals?.replacementManifestSha256 !== approvalTemplate.replacementManifestSha256) {
     blockers.push("approval-replacement-manifest-mismatch");
+  }
+  if (approvals?.reviewFindingsSha256 !== approvalTemplate.reviewFindingsSha256) {
+    blockers.push("approval-review-findings-mismatch");
   }
   const duplicateIds = entries
     .map((entry) => entry?.blindSampleId)
@@ -610,6 +604,22 @@ export function evaluateM3_278Approvals({
       identityMismatchCount += 1;
       continue;
     }
+    if (expected.reviewDecisionPrompt) {
+      if (
+        !OWNER_REVIEW_DECISIONS.has(entry.reviewDecision) ||
+        !hasText(entry.reviewDecisionRationale)
+      ) {
+        reviewDecisionIncompleteCount += 1;
+        continue;
+      }
+      if (entry.reviewDecision !== "accept_current") {
+        reviewDecisionBlockingCount += 1;
+        continue;
+      }
+    } else if (entry.reviewDecision !== "not-required") {
+      reviewDecisionIncompleteCount += 1;
+      continue;
+    }
     approvedIds.push(entry.blindSampleId);
   }
 
@@ -629,6 +639,12 @@ export function evaluateM3_278Approvals({
   }
   if (identityMismatchCount > 0) {
     blockers.push(`replacement-approval-identity-mismatch:${identityMismatchCount}`);
+  }
+  if (reviewDecisionIncompleteCount > 0) {
+    blockers.push(`owner-review-decision-incomplete:${reviewDecisionIncompleteCount}`);
+  }
+  if (reviewDecisionBlockingCount > 0) {
+    blockers.push(`owner-review-decision-blocks-freeze:${reviewDecisionBlockingCount}`);
   }
   if (hasHumanInput(approvals) && approvals?.status !== "complete") {
     blockers.push("approval-status-pending");
@@ -681,6 +697,7 @@ function readM3_278Source(root) {
     adjudicationStatus: readJson(root, PATHS.adjudicationStatus),
     reviewPolicy: readJson(root, PATHS.reviewPolicy),
     replacementCandidates: readJson(root, PATHS.replacementCandidates),
+    reviewFindings: readJson(root, PATHS.reviewFindings),
     fileSha256: Object.fromEntries(
       Object.entries(PATHS).map(([key, relativePath]) => [
         key,
@@ -765,12 +782,14 @@ function createApprovalTemplate({
   candidatePacket,
   candidateDataset,
   replacementManifest,
+  ownerDecisions,
+  reviewFindingsSha256,
 }) {
   const manifestEntryById = new Map(
     replacementManifest.replacements.map((entry) => [entry.blindSampleId, entry]),
   );
   const decisionPromptById = new Map(
-    OWNER_DECISION_PROMPTS.map((entry) => [entry.blindSampleId, entry.prompt]),
+    ownerDecisions.map((entry) => [entry.blindSampleId, entry.prompt]),
   );
   return {
     schemaVersion: 1,
@@ -780,6 +799,7 @@ function createApprovalTemplate({
     candidatePacketSha256: candidatePacket.packetSha256,
     candidateDatasetSha256: candidateDataset.manifest.datasetSha256,
     replacementManifestSha256: replacementManifest.manifestSha256,
+    reviewFindingsSha256,
     instructions: [
       "只能由真实产品/质量负责人逐项审查并填写。",
       "不得由模型补写、推断或伪造批准、身份、时间、理由和影响。",
@@ -812,6 +832,8 @@ function createApprovalTemplate({
         severity: candidate.severity,
         establishedFact: candidate.establishedFact,
         reviewDecisionPrompt: decisionPromptById.get(candidate.blindSampleId) ?? null,
+        reviewDecision: decisionPromptById.has(candidate.blindSampleId) ? null : "not-required",
+        reviewDecisionRationale: null,
         originalTextSha256: manifestEntry.originalTextSha256,
         originalRequiredBeatsSha256: manifestEntry.originalRequiredBeatsSha256,
         replacementTextSha256: manifestEntry.replacementTextSha256,
@@ -890,6 +912,8 @@ function createReplacementManifest({
       sourceAdjudicationSha256: source.fileSha256.adjudication,
       sourceAdjudicationStatusSha256: source.fileSha256.adjudicationStatus,
       candidateSourceSha256: source.fileSha256.replacementCandidates,
+      reviewFindingsSha256: source.fileSha256.reviewFindings,
+      reviewSourceSha256: source.reviewFindings.sourceSha256,
       reviewPolicy: {
         path: PATHS.reviewPolicy,
         sha256: source.fileSha256.reviewPolicy,
@@ -919,7 +943,7 @@ function createReplacementManifest({
   };
 }
 
-function createApprovalRequest({ replacementCandidates, approvalTemplate }) {
+function createApprovalRequest({ replacementCandidates, approvalTemplate, ownerDecisions }) {
   const approvalById = new Map(
     approvalTemplate.approvals.map((entry) => [entry.blindSampleId, entry]),
   );
@@ -953,6 +977,12 @@ ${candidate.requiredBeats.map((beat) => `- ${beat}`).join("\n")}
 - [ ] \`adjudicatorKind\`: 必须为 \`human\`
 - [ ] \`attestationId\`: \`M3-278-APPROVAL-${candidate.blindSampleId}\`
 - [ ] \`decidedAt\`: ISO 时间戳
+${
+  approval.reviewDecisionPrompt
+    ? `- [ ] \`reviewDecision\`: \`accept_current\`、\`revise_candidate\` 或 \`reject_candidate\`
+- [ ] \`reviewDecisionRationale\`: 对该裁决问题的书面结论`
+    : ""
+}
 `;
   });
   return `# M3-278 长线替换候选逐项审批
@@ -966,6 +996,7 @@ Issue: #278
 - Candidate dataset: \`${approvalTemplate.candidateDatasetSha256}\`
 - Candidate reviewer packet: \`${approvalTemplate.candidatePacketSha256}\`
 - Replacement manifest: \`${approvalTemplate.replacementManifestSha256}\`
+- Review findings: \`${approvalTemplate.reviewFindingsSha256}\`
 - Required approvals: 24/24
 - Old scores: \`invalidated_for_clean_review\`
 - Variance threshold: #240 已批准为 \`0.1\`，本票不得改写
@@ -979,7 +1010,7 @@ Issue: #278
 
 ## 待负责人裁决
 
-${OWNER_DECISION_PROMPTS.map((entry) => `- ${entry.blindSampleId}: ${entry.prompt}`).join("\n")}
+${ownerDecisions.map((entry) => `- ${entry.blindSampleId}: ${entry.prompt}`).join("\n")}
 
 填写完 24 项后先将 \`status\` 改为 \`complete\`，再运行
 \`pnpm quality:clean-packet -- --payload-hash\`，把输出的 approval payload hash 写入
@@ -1061,7 +1092,7 @@ function createCandidateDataset(sourceDataset, candidates) {
     ...withoutDigest,
     manifest: {
       ...manifestWithoutDigest,
-      datasetSha256: sha256Text(JSON.stringify(withoutDigest)),
+      datasetSha256: sha256Json(withoutDigest),
     },
   };
 }
@@ -1151,6 +1182,12 @@ function omit(value, keys) {
 
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function sameStringSet(left, right) {
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+  return leftSet.size === rightSet.size && [...leftSet].every((value) => rightSet.has(value));
 }
 
 function hasText(value) {

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "sourceDocument": "approval-request.review-notes.md",
+  "sourceSha256": "7f5260fb816dc231507578da8f03ecfef90314558369c04410921ed6bde81e83",
+  "hardFindings": [
+    {
+      "blindSampleId": "Q034",
+      "finding": "必需节拍缺少真正的违规句。",
+      "resolution": "把茶棚人物提前知道密信补为必需节拍。"
+    },
+    {
+      "blindSampleId": "Q055",
+      "finding": "只证明顾青不知情，没有证明沈砚无权知情。",
+      "resolution": "补充沈砚从未打开旧匣、也无人告知。"
+    },
+    {
+      "blindSampleId": "Q067",
+      "finding": "既定事实是左臂骨折，正文却写成断腕且要求接骨。",
+      "resolution": "改回左臂夹板未拆。"
+    },
+    {
+      "blindSampleId": "Q081",
+      "finding": "正文使用旧信，没有违反照骨镜真名预言。",
+      "resolution": "改为照骨镜与冬至祭真名提前泄露。"
+    },
+    {
+      "blindSampleId": "Q084",
+      "finding": "正文考渡口十二小时，与北境关晚三十日的既定事实不一致。",
+      "resolution": "改为北境关驿路晚三十日放行。"
+    },
+    {
+      "blindSampleId": "Q123",
+      "finding": "墨迹新旧把分支污染写成伪造文书。",
+      "resolution": "改为三份同源抄本在共同祖先页直接分歧。"
+    }
+  ],
+  "ownerDecisions": [
+    {
+      "blindSampleId": "Q026",
+      "prompt": "是否将“自小怕黑”补入必需节拍，确保长期恐惧也属于评审契约？"
+    },
+    {
+      "blindSampleId": "Q075",
+      "prompt": "跨册同步异常是否保留，或改为仅保留两册分歧并更新节拍？"
+    },
+    {
+      "blindSampleId": "Q088",
+      "prompt": "是否删除“时间戳也落在同一天”这一过度定证句？"
+    },
+    {
+      "blindSampleId": "Q093",
+      "prompt": "既定事实是忘川书，是否将正文改为忘川书所有权冲突？"
+    },
+    {
+      "blindSampleId": "Q096",
+      "prompt": "是否将“第三年秋提剑回城”补为必需节拍？"
+    },
+    {
+      "blindSampleId": "Q130",
+      "prompt": "既定事实是忘川书，是否将正文改为忘川书使用权冲突？"
+    },
+    {
+      "blindSampleId": "Q149",
+      "prompt": "既定事实是灵魂转移，是否将分身共享记忆改为同一机制？"
+    },
+    {
+      "blindSampleId": "Q160",
+      "prompt": "既定事实是照骨镜真名，是否将归墟令伏笔改为照骨镜伏笔？"
+    },
+    {
+      "blindSampleId": "Q182",
+      "prompt": "是否保留预知式知识越界，或恢复平行版本来源并避免 oracle 提示？"
+    },
+    {
+      "blindSampleId": "Q186",
+      "prompt": "该样本应考事实转移，还是旁人的错误身份主张？"
+    },
+    {
+      "blindSampleId": "Q189",
+      "prompt": "既定事实是左臂骨折，是否改为骨折未愈却恢复能力的冲突？"
+    }
+  ]
+}

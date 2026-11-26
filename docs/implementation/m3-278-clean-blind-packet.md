@@ -37,7 +37,8 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
   approval payload；reviewer packet 仍只包含四个盲评字段。
 - 外部审查指出的 6 项硬问题已修正：Q034 节拍补入违规句，Q055 补齐无权知情，Q067 改回
   左臂骨折，Q081 改回照骨镜伏笔，Q084 对齐北境关时间事实，Q123 移除墨迹伪造机制。
-- 11 项需要产品/语义取舍的问题作为“待负责人裁决”列表写入 approval request，不由模型代签。
+- 11 项需要产品/语义取舍的问题作为“待负责人裁决”列表写入 approval request，并增加
+  `reviewDecision` / `reviewDecisionRationale` 供负责人显式回答，不由模型代签。
 - 外部 attestation 会通过 GitHub API 核对 comment 作者关联、Issue 278、创建时间、正文
   marker、candidate packet hash、replacement manifest hash 和 24 项审批 payload hash；
   comment 作者必须是产品/质量负责人 `ruifeng-y` 且关联为 `OWNER`。每个
@@ -47,16 +48,17 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
   文本中直接写“分支”“未来真相”等 oracle 提示。
 - `approval-request.md` 是 owner 审阅入口，列出 sample ID、场景 family、severity、候选叙事、
   必须保留的 beats 和逐项 approval 字段。
-- `review-disposition.md` 记录外部审查处置：6 项硬问题已修，11 项语义取舍仍待 owner 裁决。
+- `review-findings.source.json` 固定外部审查原文 SHA-256 与机器可读处置；
+  `review-disposition.md` 记录 6 项硬问题已修，11 项语义取舍仍待 owner 裁决。
 
 ## 候选 Hash
 
 - Candidate dataset:
-  `0bf8a06d3ecf8d9c574a0d43aef9a5dea95555857873b4212add73436acdc6bd`
+  `c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd`
 - Candidate reviewer packet:
-  `bc7adc54e7ae328754d270a08ffa24a332b6a7e2d6305b9e2ce7e6141176ddde`
+  `9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a`
 - Replacement/change manifest:
-  `c064eb6c5b2c0f7a69204a9f2d5ea8fda4c19160348ce10fd21371a1c492243f`
+  `f80cceb39ee6eb40e6d99177c0c1f2e229ce15dfb0f95f0820d2457a5a40fb33`
 - Frozen rubric: `247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b`
 - #240 variance policy: `0.1`
 

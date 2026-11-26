@@ -23,13 +23,15 @@ packet or a fabricated human approval.
   narrative, required beats and per-item approval fields.
 - `review-disposition.md`: disposition of the external review notes, including the 6 fixed hard
   findings and 11 owner decisions that remain pending.
+- `review-findings.source.json`: machine-readable external review disposition source. It pins the
+  supplied review notes SHA-256 and the exact hard findings and owner decision prompts.
 - `status.json`: machine-readable pending state consumed by the implementation evidence.
 
 ## Current Gate
 
-- Candidate dataset SHA-256: `0bf8a06d3ecf8d9c574a0d43aef9a5dea95555857873b4212add73436acdc6bd`
-- Candidate packet SHA-256: `bc7adc54e7ae328754d270a08ffa24a332b6a7e2d6305b9e2ce7e6141176ddde`
-- Replacement manifest SHA-256: `c064eb6c5b2c0f7a69204a9f2d5ea8fda4c19160348ce10fd21371a1c492243f`
+- Candidate dataset SHA-256: `c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd`
+- Candidate packet SHA-256: `9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a`
+- Replacement manifest SHA-256: `f80cceb39ee6eb40e6d99177c0c1f2e229ce15dfb0f95f0820d2457a5a40fb33`
 - Human approvals: `0/24`
 - Freeze allowed: `false`
 - Owner-visible established facts are bound in `replacement-manifest.json` and

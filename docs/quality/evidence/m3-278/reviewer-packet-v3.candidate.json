@@ -10,7 +10,7 @@
     "sourceDatasetVersion": "quality-benchmark-v1",
     "sourceDatasetSha256": "90c8c8c44540ae99246e243ac16c1158d7cee3485ac4b5c1a901b3b7164e753b",
     "candidateDatasetVersion": "quality-benchmark-v2",
-    "candidateDatasetSha256": "0bf8a06d3ecf8d9c574a0d43aef9a5dea95555857873b4212add73436acdc6bd",
+    "candidateDatasetSha256": "c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd",
     "rubricVersion": "adr-0022-v1",
     "rubricSha256": "247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b"
   },
@@ -1859,5 +1859,5 @@
       ]
     }
   ],
-  "packetSha256": "bc7adc54e7ae328754d270a08ffa24a332b6a7e2d6305b9e2ce7e6141176ddde"
+  "packetSha256": "9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a"
 }

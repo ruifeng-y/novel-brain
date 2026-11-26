@@ -49,9 +49,16 @@ describe("M3-278 clean blind packet", () => {
     expect(packetIds).toEqual(artifacts.source.key.entries.map((entry) => entry.blindSampleId));
     const duplicateDatasetMapping = structuredClone(artifacts.replacementCandidates.candidates);
     duplicateDatasetMapping[1].datasetSampleId = duplicateDatasetMapping[0].datasetSampleId;
-    expect(() => assertM3_278ReplacementCoverage(duplicateDatasetMapping)).toThrow(
-      "M3_278_REPLACEMENT_COVERAGE_INVALID",
-    );
+    expect(() =>
+      assertM3_278ReplacementCoverage(duplicateDatasetMapping, {
+        expectedBlindSampleIds: artifacts.replacementCandidates.candidates.map(
+          (candidate) => candidate.blindSampleId,
+        ),
+        expectedDatasetSampleIds: artifacts.replacementCandidates.candidates.map(
+          (candidate) => candidate.datasetSampleId,
+        ),
+      }),
+    ).toThrow("M3_278_REPLACEMENT_COVERAGE_INVALID");
   });
 
   it("keeps reviewer-facing samples free of oracle, defect and approval metadata", async () => {
@@ -100,6 +107,7 @@ describe("M3-278 clean blind packet", () => {
       })),
     });
     leakedPacket.samples[0].text = "这段文本带有与已确认事实“测试”冲突。";
+    rehashReviewerPacket(leakedPacket);
     expect(() => assertM3_278ReviewerPacketClean(leakedPacket)).toThrow(
       "M3_278_REVIEWER_PACKET_LEAKAGE",
     );
@@ -155,6 +163,7 @@ describe("M3-278 clean blind packet", () => {
     });
     nestedLeakString.samples[0].text = "干净叙事。";
     nestedLeakString.source.sourcePacketVersion = "oracle-v1";
+    rehashReviewerPacket(nestedLeakString);
     expect(() => assertM3_278ReviewerPacketClean(nestedLeakString)).toThrow(
       "M3_278_REVIEWER_PACKET_LEAKAGE",
     );
@@ -172,6 +181,13 @@ describe("M3-278 clean blind packet", () => {
     leakedPacketHash.samples[0].text = "干净叙事。";
     leakedPacketHash.packetSha256 = "body_continuity";
     expect(() => assertM3_278ReviewerPacketClean(leakedPacketHash)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    const changedAfterHash = createReviewerPacketForTest({
+      samples: structuredClone(leakedPacket.samples),
+    });
+    changedAfterHash.samples[0].text = "哈希后改写。";
+    expect(() => assertM3_278ReviewerPacketClean(changedAfterHash)).toThrow(
       "M3_278_REVIEWER_PACKET_INVALID",
     );
   });
@@ -198,6 +214,11 @@ describe("M3-278 clean blind packet", () => {
       ownerDecisionPendingCount: 11,
       hardReviewFindingsResolved: 6,
     });
+    expect(artifacts.approvalTemplate.reviewFindingsSha256).toBe(
+      artifacts.source.fileSha256.reviewFindings,
+    );
+    expect(artifacts.source.reviewFindings.hardFindings).toHaveLength(6);
+    expect(artifacts.source.reviewFindings.ownerDecisions).toHaveLength(11);
 
     expect(candidateById.get("Q034").requiredBeats).toContain(
       "北境关的茶棚里，披斗篷的人却已经念出信中那桩秘事，连末尾的暗记都没有错。",
@@ -420,6 +441,17 @@ describe("M3-278 clean blind packet", () => {
     });
     expect(payloadResult.approvalStatus.freezeAllowed).toBe(false);
     expect(payloadResult.approvalStatus.blockers).toContain("human-approval-attestation-pending");
+
+    const reviseDecision = structuredClone(humanApproval);
+    reviseDecision.approvals.find((entry) => entry.blindSampleId === "Q026").reviewDecision =
+      "revise_candidate";
+    const reviseResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: reviseDecision,
+      attestationVerifier: async () => true,
+    });
+    expect(reviseResult.approvalStatus.freezeAllowed).toBe(false);
+    expect(reviseResult.approvalStatus.blockers).toContain("owner-review-decision-blocks-freeze:1");
   });
 
   it("binds every replacement to source evidence and reproduces all artifact hashes", async () => {
@@ -437,6 +469,20 @@ describe("M3-278 clean blind packet", () => {
     expect(first.candidatePacket.packetSha256).toBe(second.candidatePacket.packetSha256);
     expect(manifest.manifestSha256).toBe(second.replacementManifest.manifestSha256);
     expect(verifyM3_278CandidateDatasetDigest(first.candidateDataset)).toBe(true);
+    const { datasetSha256, ...manifestWithoutDigest } = first.candidateDataset.manifest;
+    expect(datasetSha256).toBe(
+      hashCanonical({
+        schemaVersion: first.candidateDataset.schemaVersion,
+        chapterSamples: first.candidateDataset.chapterSamples,
+        adversarialCases: first.candidateDataset.adversarialCases,
+        manifest: manifestWithoutDigest,
+      }),
+    );
+    const reorderedDataset = structuredClone(first.candidateDataset);
+    reorderedDataset.manifest = Object.fromEntries(
+      Object.entries(reorderedDataset.manifest).reverse(),
+    );
+    expect(verifyM3_278CandidateDatasetDigest(reorderedDataset)).toBe(true);
     expect(verifyM3_278ReplacementManifest(manifest)).toBe(true);
     expect(manifest.replacements).toHaveLength(24);
     expect(new Set(manifest.replacements.map((entry) => entry.blindSampleId)).size).toBe(24);
@@ -491,7 +537,7 @@ describe("M3-278 clean blind packet", () => {
 });
 
 function createReviewerPacketForTest({ samples }) {
-  return {
+  const packet = {
     schemaVersion: 1,
     packetVersion: "quality-benchmark-clean-blind-v3",
     status: "candidate-not-approved",
@@ -513,8 +559,22 @@ function createReviewerPacketForTest({ samples }) {
       humanReplacementApprovalRequired: 24,
     },
     samples,
-    packetSha256: "a".repeat(64),
+    packetSha256: null,
   };
+  return rehashReviewerPacket(packet);
+}
+
+function rehashReviewerPacket(packet) {
+  packet.packetSha256 = hashCanonical({
+    schemaVersion: packet.schemaVersion,
+    packetVersion: packet.packetVersion,
+    status: packet.status,
+    issue: packet.issue,
+    source: packet.source,
+    reviewerReadiness: packet.reviewerReadiness,
+    samples: packet.samples,
+  });
+  return packet;
 }
 
 function hashCanonical(value) {
@@ -546,6 +606,8 @@ function fillHumanApprovals(approval, { adjudicatorKind = "human" } = {}) {
     adjudicatorKind,
     attestationId: `M3-278-APPROVAL-${entry.blindSampleId}`,
     decidedAt: "2026-11-26T00:00:00.000Z",
+    reviewDecision: entry.reviewDecisionPrompt ? "accept_current" : "not-required",
+    reviewDecisionRationale: entry.reviewDecisionPrompt ? "接受当前候选并保留该语义。" : null,
   }));
   approval.humanAttestation = {
     ...approval.humanAttestation,

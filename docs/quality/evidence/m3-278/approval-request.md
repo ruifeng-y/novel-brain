@@ -6,9 +6,10 @@
 
 Issue: #278
 
-- Candidate dataset: `0bf8a06d3ecf8d9c574a0d43aef9a5dea95555857873b4212add73436acdc6bd`
-- Candidate reviewer packet: `bc7adc54e7ae328754d270a08ffa24a332b6a7e2d6305b9e2ce7e6141176ddde`
-- Replacement manifest: `c064eb6c5b2c0f7a69204a9f2d5ea8fda4c19160348ce10fd21371a1c492243f`
+- Candidate dataset: `c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd`
+- Candidate reviewer packet: `9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a`
+- Replacement manifest: `f80cceb39ee6eb40e6d99177c0c1f2e229ce15dfb0f95f0820d2457a5a40fb33`
+- Review findings: `7e4af8b8c85e85aa98e6c418059b00008712f371f4941c50bedfdc528f9f7418`
 - Required approvals: 24/24
 - Old scores: `invalidated_for_clean_review`
 - Variance threshold: #240 已批准为 `0.1`，本票不得改写
@@ -69,6 +70,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q005`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q026
 
 - Dataset sample: `long-horizon:8e6c52dc-e798-7219-8e33-5a49ce4034f8`
@@ -98,6 +100,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q026`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q034
 
@@ -130,6 +134,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q034`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q055
 
 - Dataset sample: `long-horizon:aa978572-2345-7347-86d4-115ffe7402c4`
@@ -161,6 +166,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q055`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q056
 
 - Dataset sample: `long-horizon:9e48e7d7-a00c-7238-85f4-ab03bce90dd5`
@@ -190,6 +196,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q056`
 - [ ] `decidedAt`: ISO 时间戳
+
 
 ### Q067
 
@@ -221,6 +228,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q067`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q075
 
 - Dataset sample: `long-horizon:8e7bd8d2-4a4d-75c8-b958-79dfb460ea37`
@@ -250,6 +258,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q075`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q081
 
@@ -281,6 +291,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q081`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q083
 
 - Dataset sample: `long-horizon:8a5af746-0f64-7482-b101-833244833444`
@@ -310,6 +321,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q083`
 - [ ] `decidedAt`: ISO 时间戳
+
 
 ### Q084
 
@@ -341,6 +353,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q084`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q088
 
 - Dataset sample: `long-horizon:c127c949-e5d0-7feb-aa67-ebdaefc60e18`
@@ -370,6 +383,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q088`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q093
 
@@ -400,6 +415,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q093`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q096
 
@@ -430,6 +447,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q096`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q123
 
@@ -461,6 +480,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q123`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q130
 
 - Dataset sample: `long-horizon:a1818166-ed50-75dd-adf9-b60792d3c06a`
@@ -490,6 +510,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q130`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q149
 
@@ -520,6 +542,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q149`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q158
 
@@ -551,6 +575,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q158`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q160
 
 - Dataset sample: `long-horizon:4893ac54-7adb-79cc-96a9-713d8969c502`
@@ -580,6 +605,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q160`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q162
 
@@ -611,6 +638,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q162`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q168
 
 - Dataset sample: `long-horizon:0188cf39-464e-72c1-ab5b-0518f0341535`
@@ -641,6 +669,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `attestationId`: `M3-278-APPROVAL-Q168`
 - [ ] `decidedAt`: ISO 时间戳
 
+
 ### Q182
 
 - Dataset sample: `long-horizon:32477622-f702-74fa-afdc-6d598a83ff47`
@@ -670,6 +699,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q182`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q186
 
@@ -700,6 +731,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q186`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q189
 
@@ -730,6 +763,8 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `adjudicatorKind`: 必须为 `human`
 - [ ] `attestationId`: `M3-278-APPROVAL-Q189`
 - [ ] `decidedAt`: ISO 时间戳
+- [ ] `reviewDecision`: `accept_current`、`revise_candidate` 或 `reject_candidate`
+- [ ] `reviewDecisionRationale`: 对该裁决问题的书面结论
 
 ### Q196
 
