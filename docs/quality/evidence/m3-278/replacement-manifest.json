@@ -13,8 +13,8 @@
     "sourceValidationSha256": "b6ee1554667ecb89eff4442e572ddad031b1b1eed38027ae0c26733da45cb574",
     "sourceAdjudicationSha256": "01f872aba2bb984a940ad7860f14030dae0388bb6ab677f4cdcf0334c9265c9c",
     "sourceAdjudicationStatusSha256": "3c37919d7d88daa24b4392e0ea607b530ebdfbc56d587f24ed54150616c6ab43",
-    "candidateSourceSha256": "e4df612d563da3dc5f993cfb65e45a6bf228818965aa73fc680d10243613be04",
-    "reviewFindingsSha256": "fbe42af16a0dea511f5af414f8afe338b3c05b3dc77f947cf718b451515c00dc",
+    "candidateSourceSha256": "5a5942b401d7c20568069e27235947e901336fcc74e18bf6ad5ad20fe88a4fe2",
+    "reviewFindingsSha256": "75247aebe157fb59db1901aaf8aaf553fc38ce20f960d7f69979e4d32895de99",
     "reviewSourceSha256": "7f5260fb816dc231507578da8f03ecfef90314558369c04410921ed6bde81e83",
     "reviewPolicy": {
       "path": "docs/quality/evidence/m3-240/review-policy.json",
@@ -30,9 +30,9 @@
   },
   "candidate": {
     "datasetVersion": "quality-benchmark-v2",
-    "datasetSha256": "c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd",
+    "datasetSha256": "3f754fe2ed302b43a742e66182562b7b64038c88ac65c7eebca5468af5a70dbf",
     "packetVersion": "quality-benchmark-clean-blind-v3",
-    "packetSha256": "9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a",
+    "packetSha256": "146236987d2d8452e00493416f0b2536809aea049b6e197f4ef2bf0ca0154d2b",
     "sampleCount": 204,
     "replacementCount": 24,
     "samplesDeleted": 0
@@ -67,7 +67,7 @@
       "originalTextSha256": "a1dbdfd3b2bdc2588822e588087c18c88a9e567f28c73190ed81e8f7dd42ad59",
       "replacementTextSha256": "aa3004f47b9061091d75c72807d1e13ee5182491ed353d3ad6e44934c0c09fac",
       "originalRequiredBeatsSha256": "c2182b0ba03afd41ef9d7cdf2d913a61714f52e7e8f94504c62f8a3c5af13705",
-      "requiredBeatsSha256": "58d25fb3a0f8153e7533a1dcd113d66dff01c5ff19fc3d5f5b33f13b6902f88e",
+      "requiredBeatsSha256": "6f6c84e37a154381d4b15719bb852b7cca87d57a59e45216b12a2a3edf83fab2",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "ab8b337c923dbda66badbe14109da8b1780043f275116925246e63dcd272c5d9",
@@ -160,7 +160,7 @@
       "establishedFact": "分支正史：仅 early-divergence 分支存在的连续性事实",
       "establishedFactSha256": "399bb8e4108743667b4182c2ae747001e92dd279efa7a12e7e3149e8151c4a28",
       "originalTextSha256": "6c4bb79c2c63bf4c0437ea7c617fe04430780b343f39f8b7ca1ef1821831f856",
-      "replacementTextSha256": "76e1da9a7282f6b129132dcd84cf552505151b43fcf97c6c6091478e13e55d22",
+      "replacementTextSha256": "0e67d7ed72e6947ce9c81af303837a6c369b4274ffaba3ed283cd24dbccd8a90",
       "originalRequiredBeatsSha256": "994b3e264c6f0eeb572c69d0494aa506c3bbc247d366ec6198837482725507a1",
       "requiredBeatsSha256": "ed3ad37f04483c89a91a0f013a7aa9411c04bb5d340680692cf26160e92e80f5",
       "evidence": {
@@ -236,7 +236,7 @@
       "establishedFact": "时间：北境关比旧城晚三十日",
       "establishedFactSha256": "7989bdd040264bb850ed043e6ef2d535b125ff1cbed137e5287ddb368ff4dd3a",
       "originalTextSha256": "9a30a394e81788d4c841d84052c169cc99984ea62013d5319cd0ef6d8a7a18e9",
-      "replacementTextSha256": "987d023891348e520fdf487d2e12146083edebc133968e036406275a5843de2b",
+      "replacementTextSha256": "b9f8e97f0e227ef11e9095fc82e2ca6db462736373bac625ab8a45bc3a12563c",
       "originalRequiredBeatsSha256": "b9ad221fa16834606d6174374fcbb7756bbd8f0137929cf654a0f377a1864fbb",
       "requiredBeatsSha256": "fd4509c0cb1d36479f038599d306a68fc9e06d527bd175d2d90ac2869a407cff",
       "evidence": {
@@ -255,9 +255,9 @@
       "establishedFact": "所有权：忘川书由沈砚保管",
       "establishedFactSha256": "42f0ad7f3b2c2038dab8cc7706472cb172a9048af76998344e8d26027e2e765b",
       "originalTextSha256": "710bda795cb1b43080ab8cdcd297039d3a20f929f7420e3c0a2ce547fa14026e",
-      "replacementTextSha256": "53b9ac5c98c869288658c16e7ea0d2aba8fe90f8de2b4143177a73a00e90c3c9",
+      "replacementTextSha256": "a9a9574b03657852704f6080b3cffa296902a8f24310a038868ef304bf80499e",
       "originalRequiredBeatsSha256": "bfe25bd5937a1c20a6f5bdd206d23326bdc6a19920436f878fcf4d916b51a49d",
-      "requiredBeatsSha256": "b77abf2e580df0cf1cf500b1a86df68126638db91c5e51f986ed4438f108e1fc",
+      "requiredBeatsSha256": "975982f1f19be92bce1b8cacf66f6846fc68d85e7f8b01d6d5d5761012e3a8ac",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "b60a49e1b76ffc0e036e98f692ab6108d5f9afe0b8d0d9c7bb203b230bef3139",
@@ -276,7 +276,7 @@
       "originalTextSha256": "32b3fb373c8d8c2492445f56ef9d8a902fabc3ba0edf992a0771b8ba1e3fbacc",
       "replacementTextSha256": "90828719e92ccf668252a30f613086cc2f477880e0b2b5ad327c095c2e87d43a",
       "originalRequiredBeatsSha256": "ecb1292e0a1cd98c0e2731f945cf4b3418b632a35425fcb336a76a31ba4e9cac",
-      "requiredBeatsSha256": "89be7fea3a47e734278724b23a318fbb4397bd756ae312f557c49b93be1789cc",
+      "requiredBeatsSha256": "de3909694f903912a0630535f3f50ecbfce3cfc1d0a1dcfd0f7e0bec4187b610",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "bec819fc999615c30de7996f00680c713d98ae8b76a92fc50ae8ea9988184ed8",
@@ -312,9 +312,9 @@
       "establishedFact": "所有权：忘川书由沈砚保管",
       "establishedFactSha256": "42f0ad7f3b2c2038dab8cc7706472cb172a9048af76998344e8d26027e2e765b",
       "originalTextSha256": "ba98dee6b315c1384f4246f50cbe97c1647acd79a9b96d492744b10f56c14cdb",
-      "replacementTextSha256": "9dd58492034bb95445676eaa139dbcae91979ad68354eb04f2e4f9fe397d6418",
+      "replacementTextSha256": "ffe5234ffd8def206cf7422a2acb339935197c9fd10da1ad292664038b41732a",
       "originalRequiredBeatsSha256": "0f676340233e25f0ea5d812a8bf859ef7438c159fae43616e1bb07779c733789",
-      "requiredBeatsSha256": "cbbbc236ac0c6123e277d55ad645ecaeacde30cb01b843d6154a210e3b304daa",
+      "requiredBeatsSha256": "8739b88dfc154b4ee4ed25fab258c4442e5527815b9467a2528fcdc073e3afb1",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "d0481bc32a5c3241c7ed4fa9d744a9d80794b2392ac6220c36ab0c33c51c2e15",
@@ -331,9 +331,9 @@
       "establishedFact": "身份：灵魂转移至新身体",
       "establishedFactSha256": "c3cfbfe23d2490c3ff061012248ee69ee810c3dc211fa2f31563c963eaeaadfa",
       "originalTextSha256": "6bd2b363a708cea656a83213e39dde8066b04d303d7499f8a9e119e2855de53f",
-      "replacementTextSha256": "fabf15b570e2234a9045c355001699cab8ab85a37e54cfc7c46200b9ae3d1748",
+      "replacementTextSha256": "f65816cde63714e1f634caa38cfe699e89a4905787c3bd2c9b73693dbc44663c",
       "originalRequiredBeatsSha256": "2e1fc487cac1d994b65aee6bb8acd1938cc1adeb6cde65ad4436e897254156df",
-      "requiredBeatsSha256": "4d3d9f01e5b542b7d56cc83ab63fc5dcee4747804a732953db57bfd021a5848e",
+      "requiredBeatsSha256": "dc9543342e471acebfc7faf59466560984f09d34cfa3bb61259ba2081d16ef72",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "ad65d6dea185b4a717c1feb2d3d41da28981c62d8c5495775f8b7de3c2ffe4f0",
@@ -369,9 +369,9 @@
       "establishedFact": "预言：照骨镜会指向真名",
       "establishedFactSha256": "4d3ec012afa895993d4ea8384b5919cf970edafa06ee6e642b4b3f591bb18545",
       "originalTextSha256": "47715ad4f2afd5e754fb6f22731ccde415d1b53769ba9b993b8fc82a698977ea",
-      "replacementTextSha256": "d6ae6842800356cb8a120b7787a132957cbfd5a4a953dafc32bb5d06539794b7",
+      "replacementTextSha256": "fb9c3d59157a95212405a771bddfa0e0e941b78da3112acd280684fbde5a2861",
       "originalRequiredBeatsSha256": "0a8414fd73ef39815c1fe71375e5db450ba01fef00fb019a545fdd97f1150e36",
-      "requiredBeatsSha256": "61d1968939dd1fe1dcf8d3abbae31281d1f83f051a2c60c6cd3a4f8db9a897e6",
+      "requiredBeatsSha256": "b12e14d48e3f673160ba40fb6715cef9203ec85392251f3a8880bd97ae4a5163",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "e13cacbc371139fb2b730e8f6be709d0dce9a8fdeaa51afe7222e16499cbd726",
@@ -426,9 +426,9 @@
       "establishedFact": "身世：真实身世被宗门封存",
       "establishedFactSha256": "cd51de3d41f8678be775980a6277d41fa84daa65936e14304f0b3e13e5df5ad6",
       "originalTextSha256": "b8801abacb4dbb44891347b223104b93e929b12acb0dd136432e7cdbe215514b",
-      "replacementTextSha256": "b2b60428685b3be8d3c0a594f97bd35b53ce282efafdb23fb0b848fa6e8968dc",
+      "replacementTextSha256": "4d524f9fdeac092b0829798ed40153b4614e05bd969b295f10f501074213d08a",
       "originalRequiredBeatsSha256": "95eeaca471073eb113a61321405d5ee18889a0153dedea8c8bcea4c56eb24d06",
-      "requiredBeatsSha256": "28b1b826f5aeea90cb6c4b2e2ba26f1dd22f4ad993d3cea74946bb1c092b5d8f",
+      "requiredBeatsSha256": "913e462fd8078fada16d741fe05a5b1d5d9c88bb2171296a877b6a1db63cdd55",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "70c40c5a8d201354e3359372c54d7ee29f413fbb521a269dc9daa946bf35b268",
@@ -464,9 +464,9 @@
       "establishedFact": "身体：左臂骨折尚未痊愈",
       "establishedFactSha256": "cb95dd147a2b8c22f1cfea9be4f5a53409450b9084156ca10466548965ae9892",
       "originalTextSha256": "af5969dce82d98801be6981f6980e05001dc4e250b8f0ea9383184c1d7031709",
-      "replacementTextSha256": "1e3befeb4b7b0c0aaae5fb70d2e068b7cedaacf4b6949568068554ecbd5346d7",
+      "replacementTextSha256": "94c32bcdf3301b5f5558342c1c5a833e34fa2332dc656a034e284e9e9cb3bbea",
       "originalRequiredBeatsSha256": "a3ab1a644aa2fa09fde8f8d70ecda625388b825bc84d2a3d1528ca24bb9c5907",
-      "requiredBeatsSha256": "1b7ec9f0cebb7d2e41bf94018a0ddfe5617f3f4e58596229561a97d5fee5f455",
+      "requiredBeatsSha256": "f272f3ef6526aa178c1dff39fd530b4fb2305982684f4379e1c5a357f624e91c",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "f3a3d7cc313803e60a76988a2d11f63e824d131c1a483c1f5c18ae01716f200c",
@@ -495,5 +495,5 @@
       }
     }
   ],
-  "manifestSha256": "f8a8f0315c32fa5e751faa70fc2723916730cde9193456b838401a7ccb29e5a3"
+  "manifestSha256": "2a222605d92c3f822eb364d9aff5b3f12fa63346214a78fc1e9efdfb8da8e991"
 }

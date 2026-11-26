@@ -31,15 +31,16 @@ packet or a fabricated human approval.
 
 ## Current Gate
 
-- Candidate dataset SHA-256: `c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd`
-- Candidate packet SHA-256: `9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a`
-- Replacement manifest SHA-256: `f8a8f0315c32fa5e751faa70fc2723916730cde9193456b838401a7ccb29e5a3`
+- Candidate dataset SHA-256: `3f754fe2ed302b43a742e66182562b7b64038c88ac65c7eebca5468af5a70dbf`
+- Candidate packet SHA-256: `146236987d2d8452e00493416f0b2536809aea049b6e197f4ef2bf0ca0154d2b`
+- Replacement manifest SHA-256: `2a222605d92c3f822eb364d9aff5b3f12fa63346214a78fc1e9efdfb8da8e991`
 - Human approvals: `0/24`
 - Freeze allowed: `false`
 - Owner-visible established facts are bound in `replacement-manifest.json` and
   `approvals.template.json`, but never included in the reviewer packet.
-- The 11 semantic decisions identified by the external review are listed explicitly in
-  `approval-request.md`; they remain owner decisions, not model approvals.
+- The 11 semantic decisions identified by the external review are recorded in
+  `review-findings.source.json` and displayed in `approval-request.md`; final per-sample
+  approval is still blank and remains a human gate.
 - Old scores: `invalidated_for_clean_review`
 - Variance threshold: #240 policy `0.1`, unchanged
 - Downstream: #279 full rerun; #242 remains blocked by #278 and #279

@@ -212,9 +212,10 @@ describe("M3-278 clean blind packet", () => {
     const noBlockingCount = artifacts.source.reviewFindings.noBlockingFindings.length;
     expect(reviewerSerialized).not.toContain("establishedFact");
     expect(artifacts.approvalRequest).toContain("- 既定事实:");
-    expect(artifacts.approvalRequest.match(/^- Q\d{3}:/gmu)).toHaveLength(ownerDecisionCount);
+    expect(artifacts.approvalRequest.match(/^- Q\d{3} \[/gmu)).toHaveLength(ownerDecisionCount);
     expect(artifacts.status).toMatchObject({
-      ownerDecisionPendingCount: ownerDecisionCount,
+      ownerDecisionPendingCount: 0,
+      reviewDecisionRecordedCount: ownerDecisionCount,
       hardReviewFindingsResolved: hardFindingCount,
     });
     expect(artifacts.approvalTemplate.reviewFindingsSha256).toBe(
@@ -234,6 +235,40 @@ describe("M3-278 clean blind packet", () => {
     expect(candidateById.get("Q081").text).toContain("照骨镜");
     expect(candidateById.get("Q084").text).toContain("北境关");
     expect(candidateById.get("Q123").text).not.toContain("墨迹");
+  });
+
+  it("records all eleven owner decisions and applies the approved candidate revisions", async () => {
+    const artifacts = await buildM3_278Artifacts({ root });
+    const candidateById = new Map(
+      artifacts.replacementCandidates.candidates.map((candidate) => [
+        candidate.blindSampleId,
+        candidate,
+      ]),
+    );
+
+    expect(artifacts.status).toMatchObject({
+      ownerDecisionPendingCount: 0,
+      reviewDecisionRecordedCount: 11,
+    });
+    expect(artifacts.approvalRequest).toContain("Q026 [revise_candidate]");
+    expect(artifacts.approvalRequest).toContain("Q186 [accept_current]");
+
+    expect(candidateById.get("Q026").requiredBeats).toContain(
+      "他自小怕黑，仍握着刀守在门外，说天亮前谁也不能进去。",
+    );
+    expect(candidateById.get("Q075").text).not.toMatch(/抄进第一册|空白页/u);
+    expect(candidateById.get("Q088").text).not.toContain("时间戳");
+    expect(candidateById.get("Q096").requiredBeats).toContain(
+      "后来另一册村志补记：裴照在第三年秋提剑回城，肩上的旧伤还是雪谷留下的那道。",
+    );
+    expect(candidateById.get("Q093").text).toContain("忘川书");
+    expect(candidateById.get("Q130").text).toContain("忘川书");
+    expect(candidateById.get("Q149").text).toContain("灵魂转入新身体");
+    expect(candidateById.get("Q160").text).toContain("照骨镜");
+    expect(candidateById.get("Q182").text).toContain("封存身世");
+    expect(candidateById.get("Q186").text).toContain("同一个灵魂");
+    expect(candidateById.get("Q189").text).toContain("夹板");
+    expect(candidateById.get("Q189").text).toContain("完整剑印");
   });
 
   it("validates GitHub approval attestations by owner, issue, time and exact payload", () => {

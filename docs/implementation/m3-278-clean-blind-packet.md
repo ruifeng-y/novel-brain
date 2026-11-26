@@ -37,8 +37,8 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
   approval payload；reviewer packet 仍只包含四个盲评字段。
 - 外部审查指出的 6 项硬问题已修正：Q034 节拍补入违规句，Q055 补齐无权知情，Q067 改回
   左臂骨折，Q081 改回照骨镜伏笔，Q084 对齐北境关时间事实，Q123 移除墨迹伪造机制。
-- 11 项需要产品/语义取舍的问题作为“待负责人裁决”列表写入 approval request，并增加
-  `reviewDecision` / `reviewDecisionRationale` 供负责人显式回答，不由模型代签。
+- 11 项产品/语义取舍已按负责人确认记录到 `review-findings.source.json`，并展示在 approval
+  request；`reviewDecision` / `reviewDecisionRationale` 仍保留给最终逐项批准确认。
 - 外部 attestation 会通过 GitHub API 核对 comment 作者关联、Issue 278、创建时间、正文
   marker、candidate packet hash、replacement manifest hash 和 24 项审批 payload hash；
   comment 作者必须是产品/质量负责人 `ruifeng-y` 且关联为 `OWNER`。每个
@@ -54,11 +54,11 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
 ## 候选 Hash
 
 - Candidate dataset:
-  `c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd`
+  `3f754fe2ed302b43a742e66182562b7b64038c88ac65c7eebca5468af5a70dbf`
 - Candidate reviewer packet:
-  `9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a`
+  `146236987d2d8452e00493416f0b2536809aea049b6e197f4ef2bf0ca0154d2b`
 - Replacement/change manifest:
-  `f8a8f0315c32fa5e751faa70fc2723916730cde9193456b838401a7ccb29e5a3`
+  `2a222605d92c3f822eb364d9aff5b3f12fa63346214a78fc1e9efdfb8da8e991`
 - Frozen rubric: `247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b`
 - #240 variance policy: `0.1`
 

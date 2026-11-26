@@ -346,6 +346,9 @@ export async function buildM3_278Artifacts({
     new Set(reviewedIds).size !== reviewedIds.length ||
     reviewedIds.length !== replacementIdSet.size ||
     !sameStringSet(reviewedIds, [...replacementIdSet]) ||
+    source.reviewFindings.ownerDecisions.some(
+      (entry) => !OWNER_REVIEW_DECISIONS.has(entry.decision) || !hasText(entry.resolution),
+    ) ||
     source.fileSha256.reviewNotes !== source.reviewFindings.sourceSha256
   ) {
     throw new Error("M3_278_REVIEW_FINDINGS_INVALID");
@@ -421,7 +424,12 @@ export async function buildM3_278Artifacts({
     approvedCount: approvalStatus.approvedCount,
     pendingCount: approvalStatus.pendingCount,
     pendingSampleIds: approvalStatus.pendingSampleIds,
-    ownerDecisionPendingCount: source.reviewFindings.ownerDecisions.length,
+    ownerDecisionPendingCount: source.reviewFindings.ownerDecisions.filter(
+      (entry) => !hasText(entry.decision),
+    ).length,
+    reviewDecisionRecordedCount: source.reviewFindings.ownerDecisions.filter((entry) =>
+      hasText(entry.decision),
+    ).length,
     hardReviewFindingsResolved: source.reviewFindings.hardFindings.length,
     reviewFindingsSha256: source.fileSha256.reviewFindings,
     freezeAllowed: approvalStatus.freezeAllowed,
@@ -1012,9 +1020,14 @@ Issue: #278
 发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
 \`adjudicatorId\` 必须等于评论作者，每个 \`attestationId\` 必须使用该样本的固定审批 token。
 
-## 待负责人裁决
+## 负责人裁决记录
 
-${ownerDecisions.map((entry) => `- ${entry.blindSampleId}: ${entry.prompt}`).join("\n")}
+${ownerDecisions
+  .map(
+    (entry) =>
+      `- ${entry.blindSampleId} [${entry.decision}]: ${entry.prompt} → ${entry.resolution}`,
+  )
+  .join("\n")}
 
 填写完 24 项后先将 \`status\` 改为 \`complete\`，再运行
 \`pnpm quality:clean-packet -- --payload-hash\`，把输出的 approval payload hash 写入

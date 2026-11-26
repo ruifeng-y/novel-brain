@@ -37,47 +37,69 @@
   "ownerDecisions": [
     {
       "blindSampleId": "Q026",
-      "prompt": "是否将“自小怕黑”补入必需节拍，确保长期恐惧也属于评审契约？"
+      "prompt": "是否将“自小怕黑”补入必需节拍，确保长期恐惧也属于评审契约？",
+      "decision": "revise_candidate",
+      "resolution": "把“他自小怕黑，仍握着刀守在门外，说天亮前谁也不能进去。”补入必需节拍。"
     },
     {
       "blindSampleId": "Q075",
-      "prompt": "跨册同步异常是否保留，或改为仅保留两册分歧并更新节拍？"
+      "prompt": "跨册同步异常是否保留，或改为仅保留两册分歧并更新节拍？",
+      "decision": "revise_candidate",
+      "resolution": "删除跨册同步异常，只保留两册在共同断点后的分歧。"
     },
     {
       "blindSampleId": "Q088",
-      "prompt": "是否删除“时间戳也落在同一天”这一过度定证句？"
+      "prompt": "是否删除“时间戳也落在同一天”这一过度定证句？",
+      "decision": "revise_candidate",
+      "resolution": "删除“时间戳也落在同一天”，只保留两地守军看见沈砚。"
     },
     {
       "blindSampleId": "Q093",
-      "prompt": "既定事实是忘川书，是否将正文改为忘川书所有权冲突？"
+      "prompt": "既定事实是忘川书，是否将正文改为忘川书所有权冲突？",
+      "decision": "revise_candidate",
+      "resolution": "改为闻雪未经借阅事件直接支配沈砚保管的忘川书。"
     },
     {
       "blindSampleId": "Q096",
-      "prompt": "是否将“第三年秋提剑回城”补为必需节拍？"
+      "prompt": "是否将“第三年秋提剑回城”补为必需节拍？",
+      "decision": "revise_candidate",
+      "resolution": "把“后来另一册村志补记：裴照在第三年秋提剑回城，肩上的旧伤还是雪谷留下的那道。”补入节拍。"
     },
     {
       "blindSampleId": "Q130",
-      "prompt": "既定事实是忘川书，是否将正文改为忘川书使用权冲突？"
+      "prompt": "既定事实是忘川书，是否将正文改为忘川书使用权冲突？",
+      "decision": "revise_candidate",
+      "resolution": "改为顾青在无转移或借用事件时把忘川书当作自己的信物使用。"
     },
     {
       "blindSampleId": "Q149",
-      "prompt": "既定事实是灵魂转移，是否将分身共享记忆改为同一机制？"
+      "prompt": "既定事实是灵魂转移，是否将分身共享记忆改为同一机制？",
+      "decision": "revise_candidate",
+      "resolution": "改为灵魂转移后的记忆继承规则被无事件绕过。"
     },
     {
       "blindSampleId": "Q160",
-      "prompt": "既定事实是照骨镜真名，是否将归墟令伏笔改为照骨镜伏笔？"
+      "prompt": "既定事实是照骨镜真名，是否将归墟令伏笔改为照骨镜伏笔？",
+      "decision": "revise_candidate",
+      "resolution": "改为照骨镜真名预言在预定揭示窗口前被人物当作已经解释。"
     },
     {
       "blindSampleId": "Q182",
-      "prompt": "是否保留预知式知识越界，或恢复平行版本来源并避免 oracle 提示？"
+      "prompt": "是否保留预知式知识越界，或恢复平行版本来源并避免 oracle 提示？",
+      "decision": "revise_candidate",
+      "resolution": "改为顾青无权知情时直接使用封存身世，不写平行版本或未来真相。"
     },
     {
       "blindSampleId": "Q186",
-      "prompt": "该样本应考事实转移，还是旁人的错误身份主张？"
+      "prompt": "该样本应考事实转移，还是旁人的错误身份主张？",
+      "decision": "accept_current",
+      "resolution": "保留旁人错误认定同一灵魂的主张型冲突。"
     },
     {
       "blindSampleId": "Q189",
-      "prompt": "既定事实是左臂骨折，是否改为骨折未愈却恢复能力的冲突？"
+      "prompt": "既定事实是左臂骨折，是否改为骨折未愈却恢复能力的冲突？",
+      "decision": "revise_candidate",
+      "resolution": "改为左臂夹板未拆却无治疗事件恢复完整施法能力。"
     }
   ],
   "noBlockingFindings": [

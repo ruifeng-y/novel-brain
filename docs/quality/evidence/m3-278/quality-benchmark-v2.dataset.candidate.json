@@ -3482,9 +3482,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 3",
-      "text": "顾青在破庙那夜没有读过密信。封存名册仍然锁在祠堂，连沈砚都只知道自己的姓氏有疑。可顾青一进门便说出沈砚会在白塔下认祖，并以此命令守军打开北门。他说得笃定，仿佛刚刚读过那封信。",
+      "text": "顾青从未进过封存身世的祠堂，也没人向他出示名册。当前名册仍锁在宗门石室，连沈砚都只知道自己的姓氏有疑。可顾青一进门便说出沈砚真正的姓氏、被换走的年月和守门人的名字。他说得笃定，仿佛刚刚读过那本名册。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "f7ad4383e7b2ce6bc59c327a0c91c923e38d5649e6250b1b991219bb954eb83a",
+      "sourceHash": "7a3d7fee2372651dcdd6045a2156a1aeec7e208dd4d08480f5e46f8eba1f538e",
       "knownIssues": [
         {
           "code": "knowledge_boundary",
@@ -3493,8 +3493,8 @@
         }
       ],
       "requiredBeats": [
-        "顾青在破庙那夜没有读过密信。",
-        "可顾青一进门便说出沈砚会在白塔下认祖，并以此命令守军打开北门。"
+        "顾青从未进过封存身世的祠堂，也没人向他出示名册。",
+        "可顾青一进门便说出沈砚真正的姓氏、被换走的年月和守门人的名字。"
       ],
       "family": "knowledge_boundary",
       "chapterNumber": 420,
@@ -3560,9 +3560,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 6",
-      "text": "返魂术的代价已经抽干，沈砚的经脉像被霜冻住，连端碗都手抖。夜里剑阵示警，他却从榻上跃起，一剑劈开三重山门。没有人替他续脉，也没有新的丹药或献祭事件，袖中的左臂骨伤还在渗血。",
+      "text": "沈砚左臂的夹板还没拆，骨裂处一碰就疼。夜里剑阵示警，他却用受伤的左臂结出完整剑印，单手劈开三重山门。屋里没有接骨药，也没有新的治疗或献祭事件。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "012a6e82842be7d3718e677df1ef1b59122cffdd491e73f98e1d70087827c123",
+      "sourceHash": "837869193f6e7e69f35a991e90fab43679ab982743fbe9809ce1039ce567447f",
       "knownIssues": [
         {
           "code": "body_continuity",
@@ -3571,8 +3571,8 @@
         }
       ],
       "requiredBeats": [
-        "返魂术的代价已经抽干，沈砚的经脉像被霜冻住，连端碗都手抖。",
-        "夜里剑阵示警，他却从榻上跃起，一剑劈开三重山门。"
+        "沈砚左臂的夹板还没拆，骨裂处一碰就疼。",
+        "夜里剑阵示警，他却用受伤的左臂结出完整剑印，单手劈开三重山门。"
       ],
       "family": "body_continuity",
       "chapterNumber": 840,
@@ -3638,9 +3638,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 9",
-      "text": "裴照的分身离开主峰时，带走了自己的剑和干粮，也带走了一条限制：不能共享本体记忆。三日后，分身却准确叫出本体昨夜才取的化名，还知道只有主峰密室里才写下的布防图。它笑着说，这些事刚从另一具身体里传来。",
+      "text": "裴照的灵魂转入新身体时，祭坛只允许保留原身的三段记忆。三日后，新身体却准确叫出本体昨夜才取的化名，还知道只有主峰密室里才写下的布防图。他说这些记忆未经祭坛许可，自己便从旧身里跟了过来。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "2f1f33b6b71d13eda23c42cb075ce468ec4e367c42ef9f65d753863c3606f789",
+      "sourceHash": "c79644617353bcaffba3affcfa8b7c4a868f0fa2870bbd62c253f5809fe78e72",
       "knownIssues": [
         {
           "code": "identity_transition",
@@ -3649,8 +3649,8 @@
         }
       ],
       "requiredBeats": [
-        "裴照的分身离开主峰时，带走了自己的剑和干粮，也带走了一条限制：不能共享本体记忆。",
-        "三日后，分身却准确叫出本体昨夜才取的化名，还知道只有主峰密室里才写下的布防图。"
+        "裴照的灵魂转入新身体时，祭坛只允许保留原身的三段记忆。",
+        "三日后，新身体却准确叫出本体昨夜才取的化名，还知道只有主峰密室里才写下的布防图。"
       ],
       "family": "identity_transition",
       "chapterNumber": 1260,
@@ -3690,9 +3690,9 @@
       "genre": "仙侠",
       "difficulty": "medium",
       "title": "长线连续性对抗样本 11",
-      "text": "照骨镜已经由宗门封存在锁山堂，钥匙挂在三位长老共同看守的铜匣里。闻雪没有递上掌门手令，也没有经过锁山堂，只从自己偏院的木箱中取出同一面铜镜，拂去镜背的封泥。她说这面镜子一直由她保管。",
+      "text": "忘川书仍锁在沈砚的玄铁匣里，匣钥由他随身保管。闻雪没有递上借阅文书，也没有取得沈砚的口令，却从自己偏院的木箱中取出同一部忘川书，翻开扉页。她说这部书一直由她保管。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "403d0839a3d37a2f273c01c19af0d5067e1c85754152298511441d328f70c535",
+      "sourceHash": "9f45d1b97fa2b0d341ef62f52e977171cf70f78b9dbd0679a8fd7ae2800664c7",
       "knownIssues": [
         {
           "code": "inventory_rights",
@@ -3701,8 +3701,8 @@
         }
       ],
       "requiredBeats": [
-        "照骨镜已经由宗门封存在锁山堂，钥匙挂在三位长老共同看守的铜匣里。",
-        "闻雪没有递上掌门手令，也没有经过锁山堂，只从自己偏院的木箱中取出同一面铜镜，拂去镜背的封泥。"
+        "忘川书仍锁在沈砚的玄铁匣里，匣钥由他随身保管。",
+        "闻雪没有递上借阅文书，也没有取得沈砚的口令，却从自己偏院的木箱中取出同一部忘川书，翻开扉页。"
       ],
       "family": "inventory_rights",
       "chapterNumber": 1540,
@@ -3716,9 +3716,9 @@
       "genre": "仙侠",
       "difficulty": "medium",
       "title": "长线连续性对抗样本 12",
-      "text": "归墟令的转移记录停在沈砚名下，宗门的执令簿上还留着未销的旧印。顾青没有递交借令文书，也没有取得沈砚的口令，却在祭台上举起归墟令，向众人宣告这是自己的信物。守令弟子翻遍记录，找不到任何转移事件。",
+      "text": "忘川书的借用记录停在沈砚名下，宗门的书册上还留着未销的旧印。顾青没有递交借阅文书，也没有取得沈砚的口令，却在祭台上举起忘川书，向众人宣告这是自己的信物。守书弟子翻遍记录，找不到任何转移事件。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "6baf8fe1fa8b352817215e5459dbc9e975d99d04264e1e353d223d79284e6194",
+      "sourceHash": "fc39b2770745b6ff8b648d98e960f55f7e33a6a234606a61b04ad2b8fcaca9c4",
       "knownIssues": [
         {
           "code": "inventory_rights",
@@ -3727,8 +3727,8 @@
         }
       ],
       "requiredBeats": [
-        "归墟令的转移记录停在沈砚名下，宗门的执令簿上还留着未销的旧印。",
-        "顾青没有递交借令文书，也没有取得沈砚的口令，却在祭台上举起归墟令，向众人宣告这是自己的信物。"
+        "忘川书的借用记录停在沈砚名下，宗门的书册上还留着未销的旧印。",
+        "顾青没有递交借阅文书，也没有取得沈砚的口令，却在祭台上举起忘川书，向众人宣告这是自己的信物。"
       ],
       "family": "inventory_rights",
       "chapterNumber": 1680,
@@ -3742,9 +3742,9 @@
       "genre": "仙侠",
       "difficulty": "medium",
       "title": "长线连续性对抗样本 13",
-      "text": "北境关的报时鼓比旧城晚三十日，旧城刚落第一场雪，关外应该还没有入冬。沈砚却在同一日先出现在旧城钟楼，又在北境关的烽台上收剑。两地的守军都看见了他，时间戳也落在同一天。",
+      "text": "北境关的报时鼓比旧城晚三十日，旧城刚落第一场雪，关外应该还没有入冬。沈砚却在同一日先出现在旧城钟楼，又在北境关的烽台上收剑。两地的守军都看见了他。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "75ccd6a41b23e6a8ca6303492cb08054fbc5b2600b8fba6ecbc0bf1f1c2d78cf",
+      "sourceHash": "2eeb66cc59f9201628c2c681703838510df6ed1f774a509a5cdf3d6e34338b47",
       "knownIssues": [
         {
           "code": "travel_time",
@@ -3847,9 +3847,9 @@
       "genre": "仙侠",
       "difficulty": "medium",
       "title": "长线连续性对抗样本 17",
-      "text": "归墟令上的双主纹样还缺最后一笔，旧卷写着要到秋分才由两名持令者共同落印。春末的宴席上，顾青却举起酒杯，说双主之秘早已解释清楚，归墟令从此只认一人。席间没有人问那一笔是什么时候补上的。",
+      "text": "照骨镜的预言刻字还缺最后一笔，旧卷写着要到冬至祭才由镜面显出真名。春末的宴席上，顾青却举起酒杯，说真名早已解释清楚，照骨镜从此只认一人。席间没有人问那一笔是什么时候补上的。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "c3ee1d8f48f30a1ae32f9e14f26f7204a55cac8fb782c56cd0208dd5785054ab",
+      "sourceHash": "29c4848a8adede877d4623b329e729dbb9d53ed90e4c4980b110c786ec551055",
       "knownIssues": [
         {
           "code": "foreshadow_payoff",
@@ -3858,8 +3858,8 @@
         }
       ],
       "requiredBeats": [
-        "归墟令上的双主纹样还缺最后一笔，旧卷写着要到秋分才由两名持令者共同落印。",
-        "春末的宴席上，顾青却举起酒杯，说双主之秘早已解释清楚，归墟令从此只认一人。"
+        "照骨镜的预言刻字还缺最后一笔，旧卷写着要到冬至祭才由镜面显出真名。",
+        "春末的宴席上，顾青却举起酒杯，说真名早已解释清楚，照骨镜从此只认一人。"
       ],
       "family": "foreshadow_payoff",
       "chapterNumber": 2380,
@@ -3953,7 +3953,7 @@
       "title": "长线连续性对抗样本 21",
       "text": "旧城火起后，顾青把证人藏在药铺地窖，连夜画好三条撤离路线。他自小怕黑，仍握着刀守在门外，说天亮前谁也不能进去。天刚亮，他却推开地窖门，让人把证人绑去城门换粮。先前那份恐惧和守到最后的决定，像从未存在过。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "1c8833a60dee9d1299b2a0246970ed0ee4111d58f05158973842234b4bdfb63d",
+      "sourceHash": "f0c4ee5b4bd6d1caca75c45296800e99394be925f6523e0e20915369f21665a0",
       "knownIssues": [
         {
           "code": "motivation_drift",
@@ -3963,6 +3963,7 @@
       ],
       "requiredBeats": [
         "旧城火起后，顾青把证人藏在药铺地窖，连夜画好三条撤离路线。",
+        "他自小怕黑，仍握着刀守在门外，说天亮前谁也不能进去。",
         "天刚亮，他却推开地窖门，让人把证人绑去城门换粮。"
       ],
       "family": "motivation_drift",
@@ -3977,9 +3978,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 22",
-      "text": "沈砚在旧城翻开两册同源年表。第一册写到北道断桥便停笔，第二册却继续写着白塔祭坛三层台阶、石兽位置和第七盏灯。他把第二册的句子抄进第一册，第一册原先空白的那页立刻显出同样的字迹。",
+      "text": "沈砚在旧城翻开两册同源年表。第一册写到北道断桥便停笔，第二册却继续写着白塔祭坛三层台阶、石兽位置和第七盏灯。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "a78935f8fb678b9ee93b97b079c25d48d1fcc163ce7a83a3b958b8e2d958246a",
+      "sourceHash": "e44d8709b880a63568f9df4e7ff6d42a8abafe569cb314ecc1236aca44146233",
       "knownIssues": [
         {
           "code": "branch_divergence",
@@ -4005,7 +4006,7 @@
       "title": "长线连续性对抗样本 23",
       "text": "雪谷战后，顾青把裴照的尸身封进冰棺，村志只写到葬礼。后来另一册村志补记：裴照在第三年秋提剑回城，肩上的旧伤还是雪谷留下的那道。顾青把两册并排摊开，发现共同的葬礼记录之后，一册写坟茔长草，另一册却写活人归门。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "e7cc0eac580407bc6d71cef491077bac39c10290cecfcb6cb2c5108e6ddca144",
+      "sourceHash": "ef0b3b0b9a22e030958be6a0760186d4a304ef775955bde284908e5b5bd3c019",
       "knownIssues": [
         {
           "code": "branch_divergence",
@@ -4015,6 +4016,7 @@
       ],
       "requiredBeats": [
         "雪谷战后，顾青把裴照的尸身封进冰棺，村志只写到葬礼。",
+        "后来另一册村志补记：裴照在第三年秋提剑回城，肩上的旧伤还是雪谷留下的那道。",
         "顾青把两册并排摊开，发现共同的葬礼记录之后，一册写坟茔长草，另一册却写活人归门。"
       ],
       "family": "branch_divergence",
@@ -7173,7 +7175,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "f7ad4383e7b2ce6bc59c327a0c91c923e38d5649e6250b1b991219bb954eb83a",
+        "sourceHash": "7a3d7fee2372651dcdd6045a2156a1aeec7e208dd4d08480f5e46f8eba1f538e",
         "knownIssues": [
           {
             "code": "knowledge_boundary",
@@ -7182,8 +7184,8 @@
           }
         ],
         "requiredBeats": [
-          "顾青在破庙那夜没有读过密信。",
-          "可顾青一进门便说出沈砚会在白塔下认祖，并以此命令守军打开北门。"
+          "顾青从未进过封存身世的祠堂，也没人向他出示名册。",
+          "可顾青一进门便说出沈砚真正的姓氏、被换走的年月和守门人的名字。"
         ]
       },
       {
@@ -7230,7 +7232,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "012a6e82842be7d3718e677df1ef1b59122cffdd491e73f98e1d70087827c123",
+        "sourceHash": "837869193f6e7e69f35a991e90fab43679ab982743fbe9809ce1039ce567447f",
         "knownIssues": [
           {
             "code": "body_continuity",
@@ -7239,8 +7241,8 @@
           }
         ],
         "requiredBeats": [
-          "返魂术的代价已经抽干，沈砚的经脉像被霜冻住，连端碗都手抖。",
-          "夜里剑阵示警，他却从榻上跃起，一剑劈开三重山门。"
+          "沈砚左臂的夹板还没拆，骨裂处一碰就疼。",
+          "夜里剑阵示警，他却用受伤的左臂结出完整剑印，单手劈开三重山门。"
         ]
       },
       {
@@ -7287,7 +7289,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "2f1f33b6b71d13eda23c42cb075ce468ec4e367c42ef9f65d753863c3606f789",
+        "sourceHash": "c79644617353bcaffba3affcfa8b7c4a868f0fa2870bbd62c253f5809fe78e72",
         "knownIssues": [
           {
             "code": "identity_transition",
@@ -7296,8 +7298,8 @@
           }
         ],
         "requiredBeats": [
-          "裴照的分身离开主峰时，带走了自己的剑和干粮，也带走了一条限制：不能共享本体记忆。",
-          "三日后，分身却准确叫出本体昨夜才取的化名，还知道只有主峰密室里才写下的布防图。"
+          "裴照的灵魂转入新身体时，祭坛只允许保留原身的三段记忆。",
+          "三日后，新身体却准确叫出本体昨夜才取的化名，还知道只有主峰密室里才写下的布防图。"
         ]
       },
       {
@@ -7325,7 +7327,7 @@
         "genre": "仙侠",
         "difficulty": "medium",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "403d0839a3d37a2f273c01c19af0d5067e1c85754152298511441d328f70c535",
+        "sourceHash": "9f45d1b97fa2b0d341ef62f52e977171cf70f78b9dbd0679a8fd7ae2800664c7",
         "knownIssues": [
           {
             "code": "inventory_rights",
@@ -7334,8 +7336,8 @@
           }
         ],
         "requiredBeats": [
-          "照骨镜已经由宗门封存在锁山堂，钥匙挂在三位长老共同看守的铜匣里。",
-          "闻雪没有递上掌门手令，也没有经过锁山堂，只从自己偏院的木箱中取出同一面铜镜，拂去镜背的封泥。"
+          "忘川书仍锁在沈砚的玄铁匣里，匣钥由他随身保管。",
+          "闻雪没有递上借阅文书，也没有取得沈砚的口令，却从自己偏院的木箱中取出同一部忘川书，翻开扉页。"
         ]
       },
       {
@@ -7344,7 +7346,7 @@
         "genre": "仙侠",
         "difficulty": "medium",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "6baf8fe1fa8b352817215e5459dbc9e975d99d04264e1e353d223d79284e6194",
+        "sourceHash": "fc39b2770745b6ff8b648d98e960f55f7e33a6a234606a61b04ad2b8fcaca9c4",
         "knownIssues": [
           {
             "code": "inventory_rights",
@@ -7353,8 +7355,8 @@
           }
         ],
         "requiredBeats": [
-          "归墟令的转移记录停在沈砚名下，宗门的执令簿上还留着未销的旧印。",
-          "顾青没有递交借令文书，也没有取得沈砚的口令，却在祭台上举起归墟令，向众人宣告这是自己的信物。"
+          "忘川书的借用记录停在沈砚名下，宗门的书册上还留着未销的旧印。",
+          "顾青没有递交借阅文书，也没有取得沈砚的口令，却在祭台上举起忘川书，向众人宣告这是自己的信物。"
         ]
       },
       {
@@ -7363,7 +7365,7 @@
         "genre": "仙侠",
         "difficulty": "medium",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "75ccd6a41b23e6a8ca6303492cb08054fbc5b2600b8fba6ecbc0bf1f1c2d78cf",
+        "sourceHash": "2eeb66cc59f9201628c2c681703838510df6ed1f774a509a5cdf3d6e34338b47",
         "knownIssues": [
           {
             "code": "travel_time",
@@ -7440,7 +7442,7 @@
         "genre": "仙侠",
         "difficulty": "medium",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "c3ee1d8f48f30a1ae32f9e14f26f7204a55cac8fb782c56cd0208dd5785054ab",
+        "sourceHash": "29c4848a8adede877d4623b329e729dbb9d53ed90e4c4980b110c786ec551055",
         "knownIssues": [
           {
             "code": "foreshadow_payoff",
@@ -7449,8 +7451,8 @@
           }
         ],
         "requiredBeats": [
-          "归墟令上的双主纹样还缺最后一笔，旧卷写着要到秋分才由两名持令者共同落印。",
-          "春末的宴席上，顾青却举起酒杯，说双主之秘早已解释清楚，归墟令从此只认一人。"
+          "照骨镜的预言刻字还缺最后一笔，旧卷写着要到冬至祭才由镜面显出真名。",
+          "春末的宴席上，顾青却举起酒杯，说真名早已解释清楚，照骨镜从此只认一人。"
         ]
       },
       {
@@ -7516,7 +7518,7 @@
         "genre": "仙侠",
         "difficulty": "easy",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "1c8833a60dee9d1299b2a0246970ed0ee4111d58f05158973842234b4bdfb63d",
+        "sourceHash": "f0c4ee5b4bd6d1caca75c45296800e99394be925f6523e0e20915369f21665a0",
         "knownIssues": [
           {
             "code": "motivation_drift",
@@ -7526,6 +7528,7 @@
         ],
         "requiredBeats": [
           "旧城火起后，顾青把证人藏在药铺地窖，连夜画好三条撤离路线。",
+          "他自小怕黑，仍握着刀守在门外，说天亮前谁也不能进去。",
           "天刚亮，他却推开地窖门，让人把证人绑去城门换粮。"
         ]
       },
@@ -7535,7 +7538,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "a78935f8fb678b9ee93b97b079c25d48d1fcc163ce7a83a3b958b8e2d958246a",
+        "sourceHash": "e44d8709b880a63568f9df4e7ff6d42a8abafe569cb314ecc1236aca44146233",
         "knownIssues": [
           {
             "code": "branch_divergence",
@@ -7554,7 +7557,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "e7cc0eac580407bc6d71cef491077bac39c10290cecfcb6cb2c5108e6ddca144",
+        "sourceHash": "ef0b3b0b9a22e030958be6a0760186d4a304ef775955bde284908e5b5bd3c019",
         "knownIssues": [
           {
             "code": "branch_divergence",
@@ -7564,6 +7567,7 @@
         ],
         "requiredBeats": [
           "雪谷战后，顾青把裴照的尸身封进冰棺，村志只写到葬礼。",
+          "后来另一册村志补记：裴照在第三年秋提剑回城，肩上的旧伤还是雪谷留下的那道。",
           "顾青把两册并排摊开，发现共同的葬礼记录之后，一册写坟茔长草，另一册却写活人归门。"
         ]
       },
@@ -7590,6 +7594,6 @@
     "decisionRequired": [
       "interRaterVarianceThreshold"
     ],
-    "datasetSha256": "c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd"
+    "datasetSha256": "3f754fe2ed302b43a742e66182562b7b64038c88ac65c7eebca5468af5a70dbf"
   }
 }

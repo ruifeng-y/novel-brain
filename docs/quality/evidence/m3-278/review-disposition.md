@@ -16,12 +16,13 @@
 | Q084 | 对齐“北境关比旧城晚三十日”既定事实，移除船夫矛盾。 |
 | Q123 | 移除墨迹新旧暗示，改为同源抄本在共同祖先页直接分歧。 |
 
-## 仍需负责人裁决的 11 项
+## 已记录负责人裁决的 11 项
 
 Q026、Q075、Q088、Q093、Q096、Q130、Q149、Q160、Q182、Q186、Q189。
 
-逐项问题已写入 `approval-request.md` 的“待负责人裁决”章节，并在 approval template
-中增加 `reviewDecision` 与 `reviewDecisionRationale`。模型没有填写
+逐项决定与处理结果已写入 `review-findings.source.json`，并展示在 `approval-request.md`
+的“负责人裁决记录”章节。approval template 仍保留 `reviewDecision` 与
+`reviewDecisionRationale` 供最终逐项批准时确认。模型没有填写
 `decision`、`rationale`、`impact`、`adjudicatorId`、`adjudicatorKind`、
 `attestationId`、`decidedAt`、`reviewDecision` 或 `reviewDecisionRationale`。
 
@@ -33,4 +34,5 @@ Q026、Q075、Q088、Q093、Q096、Q130、Q149、Q160、Q182、Q186、Q189。
 `review-findings.source.json` 另记录 7 项无阻塞样本，三类集合合计精确覆盖 24 个候选：
 Q005、Q056、Q083、Q158、Q162、Q168、Q196。
 
-当前仍为 `0/24` 人工批准、`freezeAllowed=false`，没有冻结 packet，也没有发布 attestation。
+当前 11 项审查裁决已记录，但仍为 `0/24` 最终人工批准、`freezeAllowed=false`，没有冻结
+packet，也没有发布 attestation。
