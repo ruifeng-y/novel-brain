@@ -41,7 +41,7 @@
   "freezeAllowed": false,
   "humanAttestationComplete": false,
   "humanAttestationVerified": false,
-  "approvalPayloadSha256": "22985ee2c0060defb42634372e762bdf34cb3e940a4a76bdb2e9b517654836c7",
+  "approvalPayloadSha256": "74b34947235a0db83c16cda227d9877920626ff80a48ddcd250803ebf1702913",
   "reviewerReady": false,
   "cleanBlindReviewCompleted": false,
   "oldScoresImpact": "invalidated_for_clean_review",

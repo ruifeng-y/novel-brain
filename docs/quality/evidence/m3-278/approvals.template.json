@@ -9,6 +9,7 @@
   "instructions": [
     "只能由真实产品/质量负责人逐项审查并填写。",
     "不得由模型补写、推断或伪造批准、身份、时间、理由和影响。",
+    "填写 24 项后先将 status 改为 complete，再生成 approval payload hash。",
     "24/24 全部批准且外部 GitHub attestation 通过前，不得冻结 clean packet。",
     "本文件不改写 #240 已批准的 inter-rater variance threshold 0.1。"
   ],

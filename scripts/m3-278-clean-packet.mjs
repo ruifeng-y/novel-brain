@@ -57,6 +57,22 @@ const REVIEWER_PACKET_FIELDS = [
   "source",
   "status",
 ];
+const REVIEWER_PACKET_SOURCE_FIELDS = [
+  "candidateDatasetSha256",
+  "candidateDatasetVersion",
+  "rubricSha256",
+  "rubricVersion",
+  "sourceDatasetSha256",
+  "sourceDatasetVersion",
+  "sourcePacketCanonicalSha256",
+  "sourcePacketFileSha256",
+  "sourcePacketVersion",
+];
+const REVIEWER_PACKET_READINESS_FIELDS = [
+  "cleanBlindReview",
+  "humanReplacementApprovalRequired",
+  "status",
+];
 const REVIEWER_GENRES = new Set(["仙侠", "历史", "都市"]);
 const REVIEWER_LEAKAGE_PATTERNS = [
   {
@@ -139,6 +155,22 @@ export function assertM3_278ReviewerPacketClean(packet) {
     throw new Error("M3_278_REVIEWER_PACKET_INVALID");
   }
   if (
+    !packet.source ||
+    Array.isArray(packet.source) ||
+    typeof packet.source !== "object" ||
+    Object.keys(packet.source).sort().join(",") !== REVIEWER_PACKET_SOURCE_FIELDS.join(",") ||
+    !packet.reviewerReadiness ||
+    Array.isArray(packet.reviewerReadiness) ||
+    typeof packet.reviewerReadiness !== "object" ||
+    Object.keys(packet.reviewerReadiness).sort().join(",") !==
+      REVIEWER_PACKET_READINESS_FIELDS.join(",") ||
+    packet.reviewerReadiness.status !== "not-ready" ||
+    packet.reviewerReadiness.cleanBlindReview !== false ||
+    packet.reviewerReadiness.humanReplacementApprovalRequired !== 24
+  ) {
+    throw new Error("M3_278_REVIEWER_PACKET_INVALID");
+  }
+  if (
     packet.samples.some(
       (sample) =>
         !sample ||
@@ -166,6 +198,37 @@ export function assertM3_278ReviewerPacketClean(packet) {
   if (findings.length > 0) {
     throw new Error(`M3_278_REVIEWER_PACKET_LEAKAGE:${JSON.stringify(findings)}`);
   }
+  const metadataFindings = scanM3_278NestedReviewerLeakage({
+    source: packet.source,
+    reviewerReadiness: packet.reviewerReadiness,
+  });
+  if (metadataFindings.length > 0) {
+    throw new Error(`M3_278_REVIEWER_PACKET_LEAKAGE:${JSON.stringify(metadataFindings)}`);
+  }
+}
+
+function scanM3_278NestedReviewerLeakage(value, pathName = "packet") {
+  const findings = [];
+  if (typeof value === "string") {
+    for (const { code, pattern } of REVIEWER_LEAKAGE_PATTERNS) {
+      const match = value.match(pattern);
+      if (match) findings.push({ code, field: pathName, match: match[0] });
+    }
+    return findings;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => {
+      findings.push(...scanM3_278NestedReviewerLeakage(entry, `${pathName}[${index}]`));
+    });
+    return findings;
+  }
+  if (value && typeof value === "object") {
+    for (const [key, entry] of Object.entries(value)) {
+      findings.push(...scanM3_278NestedReviewerLeakage(key, `${pathName}.<key>`));
+      findings.push(...scanM3_278NestedReviewerLeakage(entry, `${pathName}.${key}`));
+    }
+  }
+  return findings;
 }
 
 export function assertM3_278ReplacementCoverage(candidates) {
@@ -660,6 +723,7 @@ function createApprovalTemplate({
     instructions: [
       "只能由真实产品/质量负责人逐项审查并填写。",
       "不得由模型补写、推断或伪造批准、身份、时间、理由和影响。",
+      "填写 24 项后先将 status 改为 complete，再生成 approval payload hash。",
       "24/24 全部批准且外部 GitHub attestation 通过前，不得冻结 clean packet。",
       "本文件不改写 #240 已批准的 inter-rater variance threshold 0.1。",
     ],
@@ -848,8 +912,10 @@ Issue: #278
 发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
 \`adjudicatorId\` 必须等于评论作者，每个 \`attestationId\` 必须等于该评论 ID。
 
-填写完 24 项后运行 \`pnpm quality:clean-packet -- --payload-hash\`，把输出的
-approval payload hash 写入 comment 与 \`humanAttestation.approvalPayloadSha256\`。
+填写完 24 项后先将 \`status\` 改为 \`complete\`，再运行
+\`pnpm quality:clean-packet -- --payload-hash\`，把输出的 approval payload hash 写入
+comment 与 \`humanAttestation.approvalPayloadSha256\`。修改任何审批字段后必须重新生成
+payload hash 和 comment；只修改 \`humanAttestation\` 不会改变 payload。
 
 ${sections.join("\n").trimEnd()}
 `;

@@ -20,8 +20,10 @@ Issue: #278
 发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
 `adjudicatorId` 必须等于评论作者，每个 `attestationId` 必须等于该评论 ID。
 
-填写完 24 项后运行 `pnpm quality:clean-packet -- --payload-hash`，把输出的
-approval payload hash 写入 comment 与 `humanAttestation.approvalPayloadSha256`。
+填写完 24 项后先将 `status` 改为 `complete`，再运行
+`pnpm quality:clean-packet -- --payload-hash`，把输出的 approval payload hash 写入
+comment 与 `humanAttestation.approvalPayloadSha256`。修改任何审批字段后必须重新生成
+payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 
 ### Q005
 

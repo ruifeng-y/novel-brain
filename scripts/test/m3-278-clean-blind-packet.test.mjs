@@ -134,6 +134,30 @@ describe("M3-278 clean blind packet", () => {
     expect(() => assertM3_278ReviewerPacketClean(hiddenTopLevel)).toThrow(
       "M3_278_REVIEWER_PACKET_INVALID",
     );
+    const nestedHiddenField = createReviewerPacketForTest({
+      samples: structuredClone(leakedPacket.samples),
+    });
+    nestedHiddenField.samples[0].text = "干净叙事。";
+    nestedHiddenField.source.oracle = "hidden-fact";
+    expect(() => assertM3_278ReviewerPacketClean(nestedHiddenField)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    const nestedLeakValue = createReviewerPacketForTest({
+      samples: structuredClone(leakedPacket.samples),
+    });
+    nestedLeakValue.samples[0].text = "干净叙事。";
+    nestedLeakValue.reviewerReadiness.expectedDisposition = "approve";
+    expect(() => assertM3_278ReviewerPacketClean(nestedLeakValue)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    const nestedLeakString = createReviewerPacketForTest({
+      samples: structuredClone(leakedPacket.samples),
+    });
+    nestedLeakString.samples[0].text = "干净叙事。";
+    nestedLeakString.source.sourcePacketVersion = "oracle-v1";
+    expect(() => assertM3_278ReviewerPacketClean(nestedLeakString)).toThrow(
+      "M3_278_REVIEWER_PACKET_LEAKAGE",
+    );
   });
 
   it("validates GitHub approval attestations by owner, issue, time and exact payload", () => {
@@ -222,6 +246,15 @@ describe("M3-278 clean blind packet", () => {
     expect(() => assertM3_278FreezeAllowed(pending.approvalStatus)).toThrow(
       "M3_278_FREEZE_BLOCKED",
     );
+    const pendingPayload = computeM3_278ApprovalPayloadSha256(pending.approvalTemplate);
+    const completeStatus = structuredClone(pending.approvalTemplate);
+    completeStatus.status = "complete";
+    const completePayload = computeM3_278ApprovalPayloadSha256(completeStatus);
+    expect(completePayload).not.toBe(pendingPayload);
+    const attestationOnly = structuredClone(completeStatus);
+    attestationOnly.humanAttestation.commentUrl =
+      "https://github.com/ruifeng-y/novel-brain/issues/278#issuecomment-999999";
+    expect(computeM3_278ApprovalPayloadSha256(attestationOnly)).toBe(completePayload);
 
     const modelApproval = structuredClone(pending.approvalTemplate);
     fillHumanApprovals(modelApproval, { adjudicatorKind: "model" });
@@ -413,8 +446,22 @@ function createReviewerPacketForTest({ samples }) {
     packetVersion: "test",
     status: "candidate-not-approved",
     issue: 278,
-    source: {},
-    reviewerReadiness: {},
+    source: {
+      sourcePacketVersion: "m3-239-quality-blind-review-v1",
+      sourcePacketFileSha256: "b".repeat(64),
+      sourcePacketCanonicalSha256: "c".repeat(64),
+      sourceDatasetVersion: "quality-benchmark-v1",
+      sourceDatasetSha256: "d".repeat(64),
+      candidateDatasetVersion: "quality-benchmark-v2",
+      candidateDatasetSha256: "e".repeat(64),
+      rubricVersion: "adr-0022-v1",
+      rubricSha256: "f".repeat(64),
+    },
+    reviewerReadiness: {
+      status: "not-ready",
+      cleanBlindReview: false,
+      humanReplacementApprovalRequired: 24,
+    },
     samples,
     packetSha256: "a".repeat(64),
   };

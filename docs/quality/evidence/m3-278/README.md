@@ -10,7 +10,8 @@ packet or a fabricated human approval.
 
 ## Files
 
-- `replacement-candidates.source.json`: owner-authored candidate narratives and required beats.
+- `replacement-candidates.source.json`: model-drafted candidate narratives and required beats,
+  prepared for owner review and not represented as human-authored.
 - `replacement-manifest.json`: original/replacement/required-beats hashes, source evidence and
   candidate dataset/packet hashes for all 24 replacements.
 - `quality-benchmark-v2.dataset.candidate.json`: complete 204-sample candidate dataset. It is not
