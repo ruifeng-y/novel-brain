@@ -58,3 +58,15 @@ pnpm quality:clean-packet
 pnpm quality:clean-packet -- --check
 pnpm exec vitest run scripts/test/m3-278-clean-blind-packet.test.mjs
 ```
+
+After all 24 samples and the GitHub attestation are approved:
+
+```powershell
+pnpm quality:clean-packet -- --payload-hash
+pnpm quality:clean-packet
+pnpm quality:clean-packet -- --freeze
+```
+
+`--freeze` refuses stale candidates or incomplete/unverified approvals. On success it writes the
+frozen v2 dataset/manifest, final reviewer packet, freeze manifest and frozen status. The old v1
+dataset, packet and 816 scores are never overwritten.

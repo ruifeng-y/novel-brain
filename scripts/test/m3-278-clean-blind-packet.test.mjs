@@ -8,7 +8,9 @@ import {
   assertM3_278ReviewerPacketClean,
   assertM3_278ReplacementCoverage,
   assertM3_278FreezeAllowed,
+  assertM3_278FreezeArtifactsFresh,
   buildM3_278Artifacts,
+  buildM3_278FrozenArtifacts,
   computeM3_278ApprovalPayloadSha256,
   scanM3_278ReviewerLeakage,
   verifyM3_278GithubApprovalAttestation,
@@ -17,6 +19,7 @@ import {
 } from "../m3-278-clean-packet.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const REVIEWER_SAMPLE_FIELD_NAMES = ["blindSampleId", "genre", "requiredBeats", "text"].join(",");
 
 describe("M3-278 clean blind packet", () => {
   it("drafts exactly one replacement for every adjudicated sample and preserves 204 identities", async () => {
@@ -269,6 +272,85 @@ describe("M3-278 clean blind packet", () => {
     expect(candidateById.get("Q186").text).toContain("同一个灵魂");
     expect(candidateById.get("Q189").text).toContain("夹板");
     expect(candidateById.get("Q189").text).toContain("完整剑印");
+  });
+
+  it("creates deterministic frozen artifacts only after complete human approval", async () => {
+    const pending = await buildM3_278Artifacts({ root });
+    expect(pending.status).toMatchObject({
+      freezeCommand: "pnpm quality:clean-packet -- --freeze",
+      frozenArtifactPaths: expect.arrayContaining([
+        "docs/quality/quality-benchmark-v2.dataset.json",
+        "docs/quality/quality-benchmark-v2.manifest.json",
+      ]),
+    });
+    expect(() => buildM3_278FrozenArtifacts(pending)).toThrow("M3_278_FREEZE_BLOCKED");
+    expect(() => assertM3_278FreezeArtifactsFresh({ status: "stale" })).toThrow(
+      "M3_278_FREEZE_ARTIFACT_STALE",
+    );
+    expect(() => assertM3_278FreezeArtifactsFresh({ status: "passed" })).not.toThrow();
+
+    const approvals = structuredClone(pending.approvalTemplate);
+    fillHumanApprovals(approvals);
+    const approved = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: approvals,
+      attestationVerifier: async () => true,
+    });
+    const first = buildM3_278FrozenArtifacts(approved);
+    const second = buildM3_278FrozenArtifacts(approved);
+
+    expect(first.dataset.manifest).toMatchObject({
+      datasetVersion: "quality-benchmark-v2",
+      datasetSha256: approved.candidateDataset.manifest.datasetSha256,
+    });
+    expect(first.dataset.chapterSamples.length + first.dataset.adversarialCases.length).toBe(204);
+    expect(first.packet).toMatchObject({
+      status: "frozen",
+      reviewerReadiness: {
+        status: "ready-for-clean-review",
+        cleanBlindReview: false,
+        humanReplacementApprovalRequired: 0,
+      },
+    });
+    expect(first.packet.samples).toHaveLength(204);
+    expect(
+      first.packet.samples.every(
+        (sample) => Object.keys(sample).sort().join(",") === REVIEWER_SAMPLE_FIELD_NAMES,
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(first.packet)).not.toContain("humanAttestation");
+    expect(JSON.stringify(first.packet)).not.toContain("approvalPayloadSha256");
+    expect(first.packet.packetSha256).toBe(second.packet.packetSha256);
+    expect(first.freezeManifest.freezeSha256).toBe(second.freezeManifest.freezeSha256);
+    expect(first.freezeManifest).toMatchObject({
+      status: "frozen",
+      source: {
+        candidateDatasetSha256: approved.candidateDataset.manifest.datasetSha256,
+        candidatePacketSha256: approved.candidatePacket.packetSha256,
+        replacementManifestSha256: approved.replacementManifest.manifestSha256,
+        approvalPayloadSha256: approved.approvalStatus.approvalPayloadSha256,
+      },
+      frozen: {
+        datasetVersion: "quality-benchmark-v2",
+        datasetSha256: approved.candidateDataset.manifest.datasetSha256,
+        packetVersion: "quality-benchmark-clean-blind-v3",
+        packetSha256: first.packet.packetSha256,
+        sampleCount: 204,
+        replacementCount: 24,
+      },
+    });
+    expect(first.status).toMatchObject({
+      status: "frozen",
+      reviewerReady: true,
+      cleanBlindReviewCompleted: false,
+      qualityGate: {
+        status: "blocked",
+        blockers: expect.arrayContaining([
+          "clean-blind-review-required",
+          "hook-prose-remeasurement-pending",
+        ]),
+      },
+    });
   });
 
   it("validates GitHub approval attestations by owner, issue, time and exact payload", () => {

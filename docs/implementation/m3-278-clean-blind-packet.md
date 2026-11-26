@@ -80,6 +80,28 @@ owner 审阅入口：
 #278 发布包含 `M3-278-HUMAN-APPROVAL` 和候选 packet hash 的外部 GitHub comment。当前
 `status.json` 的 pending sample IDs 为全部 24 个 flagged ID。
 
+## 冻结入口
+
+24/24 人工批准和外部 GitHub attestation 通过后，依次运行：
+
+```powershell
+pnpm quality:clean-packet -- --payload-hash
+pnpm quality:clean-packet
+pnpm quality:clean-packet -- --freeze
+```
+
+`--freeze` 会再次校验候选产物 freshness、24/24 approval、review decision、human attestation
+和 GitHub API 证据；任一条件不满足都不会写入冻结产物。成功时生成：
+
+- `docs/quality/quality-benchmark-v2.dataset.json`
+- `docs/quality/quality-benchmark-v2.manifest.json`
+- `docs/quality/evidence/m3-278/reviewer-packet-v3.json`
+- `docs/quality/evidence/m3-278/freeze-manifest.json`
+- `docs/quality/evidence/m3-278/frozen-status.json`
+
+冻结后的 packet 只标记 `frozen` / `ready-for-clean-review`，不包含 approval payload 或 owner
+身份；clean blind review 仍由 #279 完成。
+
 ## 验证
 
 ```powershell
@@ -98,7 +120,8 @@ pnpm exec vitest run scripts/test/m3-278-clean-blind-packet.test.mjs
 
 ## 仍未完成
 
-- 真实产品/质量负责人逐项批准 24/24 replacement。
-- 批准完成后冻结 clean v2 dataset/packet，再交给 #279 做完整 204 样本双人盲评。
+- 真实产品/质量负责人逐项批准 24/24 replacement 并发布 GitHub attestation。
+- 运行 `pnpm quality:clean-packet -- --freeze` 冻结 clean v2 dataset/packet，再交给 #279 做
+  完整 204 样本双人盲评。
 - #279 修复 benchmark prose 并重评；`hook_prose_score` 仍为 `1.882353 < 4`。
 - #242 最终 Production CI 与 V1 release decision。

@@ -43,6 +43,14 @@
   "hardReviewFindingsResolved": 6,
   "reviewFindingsSha256": "75247aebe157fb59db1901aaf8aaf553fc38ce20f960d7f69979e4d32895de99",
   "freezeAllowed": false,
+  "freezeCommand": "pnpm quality:clean-packet -- --freeze",
+  "frozenArtifactPaths": [
+    "docs/quality/quality-benchmark-v2.dataset.json",
+    "docs/quality/quality-benchmark-v2.manifest.json",
+    "docs/quality/evidence/m3-278/reviewer-packet-v3.json",
+    "docs/quality/evidence/m3-278/freeze-manifest.json",
+    "docs/quality/evidence/m3-278/frozen-status.json"
+  ],
   "humanAttestationComplete": false,
   "humanAttestationVerified": false,
   "approvalPayloadSha256": "33e6a6d27ae99f782c14c369b82495bd6a26796c3a16ce31fa0082a387707ffb",

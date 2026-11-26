@@ -33,6 +33,13 @@ const OUTPUT_FILES = {
   approvalRequest: `${EVIDENCE_DIR}/approval-request.md`,
   status: `${EVIDENCE_DIR}/status.json`,
 };
+const FREEZE_OUTPUT_FILES = {
+  dataset: "docs/quality/quality-benchmark-v2.dataset.json",
+  datasetManifest: "docs/quality/quality-benchmark-v2.manifest.json",
+  packet: `${EVIDENCE_DIR}/reviewer-packet-v3.json`,
+  freezeManifest: `${EVIDENCE_DIR}/freeze-manifest.json`,
+  status: `${EVIDENCE_DIR}/frozen-status.json`,
+};
 const APPROVALS_FILE = `${EVIDENCE_DIR}/approvals.json`;
 const PATHS = {
   sourceDataset: "docs/quality/quality-benchmark-v1.dataset.json",
@@ -433,6 +440,8 @@ export async function buildM3_278Artifacts({
     hardReviewFindingsResolved: source.reviewFindings.hardFindings.length,
     reviewFindingsSha256: source.fileSha256.reviewFindings,
     freezeAllowed: approvalStatus.freezeAllowed,
+    freezeCommand: "pnpm quality:clean-packet -- --freeze",
+    frozenArtifactPaths: Object.values(FREEZE_OUTPUT_FILES),
     humanAttestationComplete: approvalStatus.humanAttestationComplete,
     humanAttestationVerified: approvalStatus.humanAttestationVerified,
     approvalPayloadSha256: approvalStatus.approvalPayloadSha256,
@@ -471,6 +480,7 @@ export async function buildM3_278Artifacts({
     candidatePacket,
     replacementManifest,
     approvalTemplate,
+    approvals,
     approvalStatus,
     approvalRequest,
     status,
@@ -520,6 +530,109 @@ export function assertM3_278FreezeAllowed(approvalStatus) {
     throw new Error(
       `M3_278_FREEZE_BLOCKED:${approvalStatus?.blockers?.join(",") ?? "approval-status-missing"}`,
     );
+  }
+}
+
+export function assertM3_278FreezeArtifactsFresh(artifactFreshness) {
+  if (artifactFreshness?.status !== "passed") {
+    throw new Error(
+      `M3_278_FREEZE_ARTIFACT_STALE:${artifactFreshness?.stalePaths?.join(",") ?? "freshness-missing"}`,
+    );
+  }
+}
+
+export function buildM3_278FrozenArtifacts(artifacts) {
+  assertM3_278FreezeAllowed(artifacts?.approvalStatus);
+  const dataset = structuredClone(artifacts.candidateDataset);
+  const packetWithoutHash = {
+    ...omit(artifacts.candidatePacket, ["packetSha256"]),
+    status: "frozen",
+    reviewerReadiness: {
+      status: "ready-for-clean-review",
+      cleanBlindReview: false,
+      humanReplacementApprovalRequired: 0,
+    },
+  };
+  const packet = {
+    ...packetWithoutHash,
+    packetSha256: sha256Json(packetWithoutHash),
+  };
+  const datasetManifestSha256 = sha256Json(dataset.manifest);
+  const freezeManifestWithoutHash = {
+    schemaVersion: 1,
+    issue: ISSUE,
+    status: "frozen",
+    source: {
+      candidateDatasetSha256: artifacts.candidateDataset.manifest.datasetSha256,
+      candidatePacketSha256: artifacts.candidatePacket.packetSha256,
+      replacementManifestSha256: artifacts.replacementManifest.manifestSha256,
+      approvalPayloadSha256: artifacts.approvalStatus.approvalPayloadSha256,
+      humanAttestationCommentId: artifacts.approvals.humanAttestation.commentId,
+      reviewFindingsSha256: artifacts.source.fileSha256.reviewFindings,
+      reviewNotesSha256: artifacts.source.fileSha256.reviewNotes,
+      oldEvidence: {
+        datasetSha256: artifacts.source.fileSha256.sourceDataset,
+        packetSha256: artifacts.source.fileSha256.sourcePacket,
+        scoresSha256: artifacts.source.fileSha256.sourceScores,
+        rubricSha256: artifacts.source.fileSha256.sourceRubric,
+      },
+    },
+    frozen: {
+      datasetVersion: dataset.manifest.datasetVersion,
+      datasetSha256: dataset.manifest.datasetSha256,
+      datasetManifestSha256,
+      packetVersion: packet.packetVersion,
+      packetSha256: packet.packetSha256,
+      sampleCount: packet.samples.length,
+      replacementCount: artifacts.replacementManifest.replacements.length,
+    },
+  };
+  const freezeManifest = {
+    ...freezeManifestWithoutHash,
+    freezeSha256: sha256Json(freezeManifestWithoutHash),
+  };
+  const status = {
+    schemaVersion: 1,
+    issue: ISSUE,
+    reviewId: REVIEW_ID,
+    status: "frozen",
+    reviewerReady: true,
+    cleanBlindReviewCompleted: false,
+    approvedCount: artifacts.approvalStatus.approvedCount,
+    approvalPayloadSha256: artifacts.approvalStatus.approvalPayloadSha256,
+    frozenDatasetVersion: dataset.manifest.datasetVersion,
+    frozenDatasetSha256: dataset.manifest.datasetSha256,
+    frozenDatasetManifestSha256: datasetManifestSha256,
+    frozenPacketVersion: packet.packetVersion,
+    frozenPacketSha256: packet.packetSha256,
+    freezeManifestSha256: freezeManifest.freezeSha256,
+    qualityGate: {
+      status: "blocked",
+      blockers: ["clean-blind-review-required", "hook-prose-remeasurement-pending"],
+    },
+    blockingIssues: ["#279", "#242"],
+  };
+  return {
+    dataset,
+    datasetManifest: dataset.manifest,
+    packet,
+    freezeManifest,
+    status,
+  };
+}
+
+export function writeM3_278FrozenArtifacts(root, frozenArtifacts) {
+  const contents = serializeM3_278FrozenArtifacts(frozenArtifacts);
+  for (const [key, relativePath] of Object.entries(FREEZE_OUTPUT_FILES)) {
+    const absolutePath = path.join(root, relativePath);
+    if (existsSync(absolutePath) && readFileSync(absolutePath, "utf8") !== contents[key]) {
+      throw new Error(`M3_278_FROZEN_ARTIFACT_DRIFT:${relativePath}`);
+    }
+  }
+  for (const [key, relativePath] of Object.entries(FREEZE_OUTPUT_FILES)) {
+    const absolutePath = path.join(root, relativePath);
+    mkdirSync(path.dirname(absolutePath), { recursive: true });
+    writeFileSync(absolutePath, contents[key], "utf8");
   }
 }
 
@@ -1049,6 +1162,16 @@ function serializeM3_278Artifacts(artifacts) {
   };
 }
 
+function serializeM3_278FrozenArtifacts(frozenArtifacts) {
+  return {
+    dataset: `${JSON.stringify(frozenArtifacts.dataset, null, 2)}\n`,
+    datasetManifest: `${JSON.stringify(frozenArtifacts.datasetManifest, null, 2)}\n`,
+    packet: `${JSON.stringify(frozenArtifacts.packet, null, 2)}\n`,
+    freezeManifest: `${JSON.stringify(frozenArtifacts.freezeManifest, null, 2)}\n`,
+    status: `${JSON.stringify(frozenArtifacts.status, null, 2)}\n`,
+  };
+}
+
 export function writeM3_278Artifacts(root, artifacts) {
   for (const [key, relativePath] of Object.entries(OUTPUT_FILES)) {
     const absolutePath = path.join(root, relativePath);
@@ -1371,6 +1494,34 @@ async function main() {
         2,
       )}\n`,
     );
+    return;
+  }
+  if (process.argv.includes("--freeze")) {
+    try {
+      const artifacts = await buildM3_278Artifacts({ root });
+      assertM3_278FreezeArtifactsFresh(artifacts.artifactFreshness);
+      const frozen = buildM3_278FrozenArtifacts(artifacts);
+      writeM3_278FrozenArtifacts(root, frozen);
+      process.stdout.write(
+        `${JSON.stringify(
+          {
+            mode: "freeze",
+            issue: ISSUE,
+            status: frozen.status.status,
+            approvedCount: frozen.status.approvedCount,
+            frozenDatasetSha256: frozen.status.frozenDatasetSha256,
+            frozenDatasetManifestSha256: frozen.status.frozenDatasetManifestSha256,
+            frozenPacketSha256: frozen.status.frozenPacketSha256,
+            freezeManifestSha256: frozen.status.freezeManifestSha256,
+          },
+          null,
+          2,
+        )}\n`,
+      );
+    } catch (error) {
+      process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+      process.exitCode = 1;
+    }
     return;
   }
   const checkOnly = process.argv.includes("--check");
