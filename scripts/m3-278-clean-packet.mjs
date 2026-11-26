@@ -8,6 +8,8 @@ import { runCli } from "./cli-entry.mjs";
 const ISSUE = 278;
 const REVIEW_ID = "m3-239-2026-11-25";
 const EXPECTED_GITHUB_REPOSITORY = "ruifeng-y/novel-brain";
+const EXPECTED_PRODUCT_QUALITY_OWNER = "ruifeng-y";
+const APPROVAL_DECISION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const CANDIDATE_DATASET_VERSION = "quality-benchmark-v2";
 const CANDIDATE_PACKET_VERSION = "quality-benchmark-clean-blind-v3";
 const EXPECTED_SOURCE_HASHES = {
@@ -17,6 +19,9 @@ const EXPECTED_SOURCE_HASHES = {
   sourceDataset: "0d3f204c75fab5a52ef1940cb69a584516ae20c3b9b85cd2bfd3c1490a7f8ea6",
   sourceRubric: "5cbec16e8b2967cbe54c9a2606ea82fa8b22c53b833bf07a71037d09991bd1a4",
   sourceValidation: "b6ee1554667ecb89eff4442e572ddad031b1b1eed38027ae0c26733da45cb574",
+  adjudication: "01f872aba2bb984a940ad7860f14030dae0388bb6ab677f4cdcf0334c9265c9c",
+  adjudicationStatus: "3c37919d7d88daa24b4392e0ea607b530ebdfbc56d587f24ed54150616c6ab43",
+  reviewPolicy: "c918948fa87a4dca5f7fc0a7d357c287865fd5b0998a93460c37ecca19685538",
 };
 const OLD_SCORES_SHA256 = "8d512dbf052429fa51debc053cbc046772ab50638afa7e9c0eb5a2c8240e20bc";
 const EVIDENCE_DIR = "docs/quality/evidence/m3-278";
@@ -84,6 +89,9 @@ export function scanM3_278ReviewerLeakage(sample) {
     }
     return findings;
   }
+  if (!sample || typeof sample !== "object" || Array.isArray(sample)) {
+    return [{ code: "invalid-reviewer-sample", field: "sample", match: String(sample) }];
+  }
   const unexpectedFields = Object.keys(sample ?? {}).filter(
     (field) => !REVIEWER_SAMPLE_FIELDS.includes(field),
   );
@@ -109,14 +117,47 @@ export function scanM3_278ReviewerLeakage(sample) {
 }
 
 export function assertM3_278ReviewerPacketClean(packet) {
-  const findings = (packet?.samples ?? []).flatMap((sample) =>
+  if (!packet || !Array.isArray(packet.samples) || packet.samples.length !== 204) {
+    throw new Error("M3_278_REVIEWER_PACKET_INVALID");
+  }
+  if (
+    packet.samples.some(
+      (sample) =>
+        !sample ||
+        typeof sample !== "object" ||
+        Array.isArray(sample) ||
+        Object.keys(sample).sort().join(",") !== REVIEWER_SAMPLE_FIELDS.join(",") ||
+        !hasText(sample.blindSampleId) ||
+        !hasText(sample.genre) ||
+        !hasText(sample.text) ||
+        !Array.isArray(sample.requiredBeats) ||
+        sample.requiredBeats.length === 0 ||
+        sample.requiredBeats.some((beat) => !hasText(beat)),
+    ) ||
+    new Set(packet.samples.map((sample) => sample.blindSampleId)).size !== 204
+  ) {
+    throw new Error("M3_278_REVIEWER_PACKET_INVALID");
+  }
+  const findings = packet.samples.flatMap((sample) =>
     scanM3_278ReviewerLeakage(sample).map((finding) => ({
-      blindSampleId: sample.blindSampleId,
+      blindSampleId: sample?.blindSampleId ?? null,
       ...finding,
     })),
   );
   if (findings.length > 0) {
     throw new Error(`M3_278_REVIEWER_PACKET_LEAKAGE:${JSON.stringify(findings)}`);
+  }
+}
+
+export function assertM3_278ReplacementCoverage(candidates) {
+  const blindSampleIds = candidates.map((candidate) => candidate.blindSampleId);
+  const datasetSampleIds = candidates.map((candidate) => candidate.datasetSampleId);
+  if (
+    candidates.length !== 24 ||
+    new Set(blindSampleIds).size !== 24 ||
+    new Set(datasetSampleIds).size !== 24
+  ) {
+    throw new Error("M3_278_REPLACEMENT_COVERAGE_INVALID");
   }
 }
 
@@ -178,6 +219,7 @@ export async function buildM3_278Artifacts({
       };
     }),
   };
+  assertM3_278ReplacementCoverage(replacementCandidates.candidates);
 
   const candidateDataset = createCandidateDataset(source.dataset, replacementCandidates.candidates);
   const candidatePacket = createCandidatePacket({
@@ -415,7 +457,8 @@ export function evaluateM3_278Approvals({
       !hasText(entry.impact) ||
       !hasText(entry.adjudicatorId) ||
       !hasText(entry.attestationId) ||
-      !isIsoTimestamp(entry.decidedAt)
+      !isIsoTimestamp(entry.decidedAt) ||
+      !isDecisionFresh(entry.decidedAt, approvals?.humanAttestation?.attestedAt)
     ) {
       incompleteCount += 1;
       continue;
@@ -518,6 +561,16 @@ function verifySourceIntegrity(source) {
     manifest: omit(source.dataset.manifest, ["datasetSha256"]),
   };
   const packetCanonicalSha256 = sha256Json(source.packet.samples);
+  const keyByBlindSampleId = new Map(
+    source.key.entries.map((entry) => [entry.blindSampleId, entry.datasetSampleId]),
+  );
+  const datasetById = new Map(
+    [...source.dataset.chapterSamples, ...source.dataset.adversarialCases].map((sample) => [
+      sample.id,
+      sample,
+    ]),
+  );
+  const adjudications = source.adjudication.adjudications ?? [];
   if (
     source.dataset.manifest.datasetSha256 !== sha256Text(JSON.stringify(datasetWithoutDigest)) ||
     source.fileSha256.sourcePacket !== EXPECTED_SOURCE_HASHES.sourcePacket ||
@@ -533,6 +586,9 @@ function verifySourceIntegrity(source) {
     source.packet.source?.datasetSha256 !== source.dataset.manifest.datasetSha256 ||
     source.packet.source?.rubricSha256 !== source.rubric.sha256 ||
     source.fileSha256.sourceScores !== OLD_SCORES_SHA256 ||
+    source.fileSha256.adjudication !== EXPECTED_SOURCE_HASHES.adjudication ||
+    source.fileSha256.adjudicationStatus !== EXPECTED_SOURCE_HASHES.adjudicationStatus ||
+    source.fileSha256.reviewPolicy !== EXPECTED_SOURCE_HASHES.reviewPolicy ||
     source.scores.reviewId !== REVIEW_ID ||
     source.scores.scoreCaptureCompleted !== true ||
     source.scores.humanScores?.length !== 816 ||
@@ -543,8 +599,20 @@ function verifySourceIntegrity(source) {
     source.adjudication.status !== "complete" ||
     source.adjudication.packetDecision?.decision !== "replace_affected_samples" ||
     source.adjudication.packetDecision?.oldScoresImpact !== "invalidated_for_clean_review" ||
-    source.adjudication.adjudications?.length !== 24 ||
+    adjudications.length !== 24 ||
+    new Set(adjudications.map((entry) => entry.blindSampleId)).size !== 24 ||
+    new Set(adjudications.map((entry) => entry.datasetSampleId)).size !== 24 ||
+    adjudications.some(
+      (entry) =>
+        entry.decision !== "replace_sample" ||
+        entry.adjudicatorKind !== "human" ||
+        keyByBlindSampleId.get(entry.blindSampleId) !== entry.datasetSampleId ||
+        !datasetById.has(entry.datasetSampleId) ||
+        sha256Text(datasetById.get(entry.datasetSampleId)?.text ?? "") !== entry.originalTextSha256,
+    ) ||
     source.adjudicationStatus.completedAdjudicationCount !== 24 ||
+    source.adjudicationStatus.pendingAdjudicationCount !== 0 ||
+    source.adjudicationStatus.proposalPacketSha256 !== source.adjudication.proposalPacketSha256 ||
     source.reviewPolicy.issue !== 240 ||
     source.reviewPolicy.decisionId !== "interRaterVarianceThreshold" ||
     source.reviewPolicy.interRaterVarianceThreshold !== 0.1
@@ -942,10 +1010,54 @@ function hasHumanInput(approvals) {
 }
 
 function isIsoTimestamp(value) {
+  return parseStrictIsoTimestamp(value) !== null;
+}
+
+function parseStrictIsoTimestamp(value) {
+  if (typeof value !== "string") return null;
+  const match =
+    /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})(?:\.(?<millisecond>\d{1,3}))?(?<offset>Z|[+-]\d{2}:\d{2})$/u.exec(
+      value,
+    );
+  if (!match?.groups) return null;
+  const year = Number(match.groups.year);
+  const month = Number(match.groups.month);
+  const day = Number(match.groups.day);
+  const hour = Number(match.groups.hour);
+  const minute = Number(match.groups.minute);
+  const second = Number(match.groups.second);
+  const millisecond = Number((match.groups.millisecond ?? "").padEnd(3, "0"));
+  const localAsUtc = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+  const localDate = new Date(localAsUtc);
+  if (
+    localDate.getUTCFullYear() !== year ||
+    localDate.getUTCMonth() !== month - 1 ||
+    localDate.getUTCDate() !== day ||
+    localDate.getUTCHours() !== hour ||
+    localDate.getUTCMinutes() !== minute ||
+    localDate.getUTCSeconds() !== second ||
+    localDate.getUTCMilliseconds() !== millisecond
+  ) {
+    return null;
+  }
+  const offset = match.groups.offset;
+  const offsetMinutes =
+    offset === "Z"
+      ? 0
+      : (offset.startsWith("-") ? -1 : 1) *
+        (Number(offset.slice(1, 3)) * 60 + Number(offset.slice(4, 6)));
+  const timestamp = localAsUtc - offsetMinutes * 60_000;
+  return timestamp === Date.parse(value) ? timestamp : null;
+}
+
+function isDecisionFresh(decidedAt, attestedAt) {
+  const decided = parseStrictIsoTimestamp(decidedAt);
+  const attested = parseStrictIsoTimestamp(attestedAt);
   return (
-    typeof value === "string" &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/u.test(value) &&
-    Number.isFinite(Date.parse(value))
+    decided !== null &&
+    attested !== null &&
+    decided <= attested + 60_000 &&
+    attested - decided <= APPROVAL_DECISION_WINDOW_MS
   );
 }
 
@@ -968,7 +1080,7 @@ function isCompleteHumanApprovalAttestation(
     ).test(value.commentUrl ?? "") &&
     /^\d+$/u.test(value.commentId ?? "") &&
     value.commentUrl.endsWith(`#issuecomment-${value.commentId}`) &&
-    hasText(value.author) &&
+    value.author === EXPECTED_PRODUCT_QUALITY_OWNER &&
     isIsoTimestamp(value.attestedAt) &&
     hasText(value.statement) &&
     value.statement.includes("M3-278-HUMAN-APPROVAL") &&
@@ -1001,8 +1113,8 @@ export function verifyM3_278GithubApprovalAttestation(
     const attestedAt = Date.parse(attestation.attestedAt);
     const createdAt = Date.parse(comment.createdAt);
     return (
-      comment.author === attestation.author &&
-      ["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.authorAssociation) &&
+      comment.author === EXPECTED_PRODUCT_QUALITY_OWNER &&
+      comment.authorAssociation === "OWNER" &&
       comment.issueUrl?.endsWith(`/repos/${EXPECTED_GITHUB_REPOSITORY}/issues/${ISSUE}`) &&
       Number.isFinite(attestedAt) &&
       Number.isFinite(createdAt) &&

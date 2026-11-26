@@ -35,9 +35,9 @@ packet or a fabricated human approval.
 
 The candidate packet must not be sent to blind reviewers until all 24 replacements are approved
 and an external GitHub attestation containing `M3-278-HUMAN-APPROVAL` is recorded on #278.
-The attestation is verified through the GitHub API for owner/member/collaborator association,
-Issue 278, comment time, exact statement, candidate packet hash, replacement manifest hash and
-the approval payload hash that covers all 24 item decisions.
+The attestation is verified through the GitHub API for the `ruifeng-y` product/quality owner
+with `OWNER` association, Issue 278, comment time, exact statement, candidate packet hash,
+replacement manifest hash and the approval payload hash that covers all 24 item decisions.
 
 ## Reproduction
 

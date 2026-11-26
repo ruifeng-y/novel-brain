@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertM3_278ReviewerPacketClean,
+  assertM3_278ReplacementCoverage,
   assertM3_278FreezeAllowed,
   buildM3_278Artifacts,
   computeM3_278ApprovalPayloadSha256,
@@ -46,6 +47,11 @@ describe("M3-278 clean blind packet", () => {
     expect(packetIds).toHaveLength(204);
     expect(new Set(packetIds).size).toBe(204);
     expect(packetIds).toEqual(artifacts.source.key.entries.map((entry) => entry.blindSampleId));
+    const duplicateDatasetMapping = structuredClone(artifacts.replacementCandidates.candidates);
+    duplicateDatasetMapping[1].datasetSampleId = duplicateDatasetMapping[0].datasetSampleId;
+    expect(() => assertM3_278ReplacementCoverage(duplicateDatasetMapping)).toThrow(
+      "M3_278_REPLACEMENT_COVERAGE_INVALID",
+    );
   });
 
   it("keeps reviewer-facing samples free of oracle, defect and approval metadata", async () => {
@@ -85,18 +91,33 @@ describe("M3-278 clean blind packet", () => {
     ]) {
       expect(serialized).not.toContain(marker);
     }
-    expect(() =>
-      assertM3_278ReviewerPacketClean({
-        samples: [
-          {
-            blindSampleId: "Q999",
-            genre: "仙侠",
-            text: "这段文本带有与已确认事实“测试”冲突。",
-            requiredBeats: [],
-          },
-        ],
-      }),
-    ).toThrow("M3_278_REVIEWER_PACKET_LEAKAGE");
+    const leakedPacket = {
+      samples: Array.from({ length: 204 }, (_, index) => ({
+        blindSampleId: `Q${String(index + 1).padStart(3, "0")}`,
+        genre: "仙侠",
+        text: "干净叙事。",
+        requiredBeats: ["干净叙事。"],
+      })),
+    };
+    leakedPacket.samples[0].text = "这段文本带有与已确认事实“测试”冲突。";
+    expect(() => assertM3_278ReviewerPacketClean(leakedPacket)).toThrow(
+      "M3_278_REVIEWER_PACKET_LEAKAGE",
+    );
+    expect(() => assertM3_278ReviewerPacketClean(undefined)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    expect(() => assertM3_278ReviewerPacketClean({ samples: [] })).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    expect(() => assertM3_278ReviewerPacketClean({ samples: Array(204).fill(null) })).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    const missingBeats = structuredClone(leakedPacket);
+    missingBeats.samples[0].text = "干净叙事。";
+    delete missingBeats.samples[0].requiredBeats;
+    expect(() => assertM3_278ReviewerPacketClean(missingBeats)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
   });
 
   it("validates GitHub approval attestations by owner, issue, time and exact payload", () => {
@@ -126,7 +147,20 @@ describe("M3-278 clean blind packet", () => {
     ).toBe(true);
     expect(
       verifyM3_278GithubApprovalAttestation(attestation, {
-        githubApi: () => ({ ...comment, authorAssociation: "NONE" }),
+        githubApi: () => ({ ...comment, authorAssociation: "COLLABORATOR" }),
+      }),
+    ).toBe(false);
+    expect(
+      verifyM3_278GithubApprovalAttestation(attestation, {
+        githubApi: () => ({ ...comment, author: "another-owner" }),
+      }),
+    ).toBe(false);
+    expect(
+      verifyM3_278GithubApprovalAttestation(attestation, {
+        githubApi: () => ({
+          ...comment,
+          issueUrl: "https://api.github.com/repos/ruifeng-y/novel-brain/issues/273",
+        }),
       }),
     ).toBe(false);
     expect(
@@ -203,6 +237,28 @@ describe("M3-278 clean blind packet", () => {
     expect(mismatchResult.approvalStatus.freezeAllowed).toBe(false);
     expect(mismatchResult.approvalStatus.blockers).toContain("approval-candidate-packet-mismatch");
 
+    const datasetMismatch = structuredClone(humanApproval);
+    datasetMismatch.candidateDatasetSha256 = "0".repeat(64);
+    const datasetMismatchResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: datasetMismatch,
+      attestationVerifier: async () => true,
+    });
+    expect(datasetMismatchResult.approvalStatus.blockers).toContain(
+      "approval-candidate-dataset-mismatch",
+    );
+
+    const manifestMismatch = structuredClone(humanApproval);
+    manifestMismatch.replacementManifestSha256 = "0".repeat(64);
+    const manifestMismatchResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: manifestMismatch,
+      attestationVerifier: async () => true,
+    });
+    expect(manifestMismatchResult.approvalStatus.blockers).toContain(
+      "approval-replacement-manifest-mismatch",
+    );
+
     const identityMismatch = structuredClone(humanApproval);
     identityMismatch.approvals[0].attestationId = "github-issue-comment-123";
     const identityResult = await buildM3_278Artifacts({
@@ -224,6 +280,24 @@ describe("M3-278 clean blind packet", () => {
     });
     expect(timestampResult.approvalStatus.freezeAllowed).toBe(false);
     expect(timestampResult.approvalStatus.blockers).toContain("replacement-approval-incomplete:1");
+
+    const invalidCalendar = structuredClone(humanApproval);
+    invalidCalendar.approvals[0].decidedAt = "2026-02-30T00:00:00.000Z";
+    const calendarResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: invalidCalendar,
+      attestationVerifier: async () => true,
+    });
+    expect(calendarResult.approvalStatus.blockers).toContain("replacement-approval-incomplete:1");
+
+    const staleDecision = structuredClone(humanApproval);
+    staleDecision.approvals[0].decidedAt = "2026-01-01T00:00:00.000Z";
+    const staleResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: staleDecision,
+      attestationVerifier: async () => true,
+    });
+    expect(staleResult.approvalStatus.blockers).toContain("replacement-approval-incomplete:1");
 
     const payloadDrift = structuredClone(humanApproval);
     payloadDrift.approvals[0].rationale += " 外部声明后补写。";
