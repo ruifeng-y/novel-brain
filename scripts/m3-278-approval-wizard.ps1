@@ -1,10 +1,11 @@
 ﻿[CmdletBinding()]
 param(
-  [ValidateSet("Review", "Statement", "Attestation")]
+  [ValidateSet("Review", "Draft", "Statement", "Attestation")]
   [string]$Mode = "Review",
   [string]$Root,
   [string]$OutputPath,
   [string]$ResponseFile,
+  [string]$GithubVerifierModule = "./scripts/m3-278-clean-packet.mjs",
   [switch]$Force
 )
 
@@ -140,10 +141,12 @@ M3-278-HUMAN-APPROVAL
 
 function Verify-GithubAttestation($Attestation) {
   $env:M3_278_ATTESTATION_JSON = $Attestation | ConvertTo-Json -Compress -Depth 20
+  $env:M3_278_GITHUB_VERIFIER_MODULE = $GithubVerifierModule
   $code = @(
-    "import { verifyM3_278GithubApprovalAttestation } from './scripts/m3-278-clean-packet.mjs';",
+    "import { pathToFileURL } from 'node:url';",
+    "const verifier = await import(pathToFileURL(process.env.M3_278_GITHUB_VERIFIER_MODULE).href);",
     "const attestation = JSON.parse(process.env.M3_278_ATTESTATION_JSON);",
-    "process.stdout.write(verifyM3_278GithubApprovalAttestation(attestation) ? 'true' : 'false');"
+    "process.stdout.write(verifier.verifyM3_278GithubApprovalAttestation(attestation) ? 'true' : 'false');"
   ) -join "`n"
   Push-Location $Root
   try {
@@ -166,7 +169,14 @@ if ($ResponseFile) {
   $script:UseResponseFile = $true
 }
 
-if ($Mode -eq "Review") {
+if ($Mode -eq "Review" -and $ResponseFile) {
+  Stop-Wizard "M3_278_RESPONSE_FILE_NOT_ALLOWED_FOR_REVIEW"
+}
+if ($Mode -eq "Draft" -and -not $ResponseFile) {
+  Stop-Wizard "M3_278_DRAFT_REQUIRES_RESPONSE_FILE"
+}
+
+if ($Mode -eq "Review" -or $Mode -eq "Draft") {
   if ((Test-Path -LiteralPath $OutputPath) -and -not $Force) {
     Stop-Wizard "M3_278_APPROVALS_EXISTS:$OutputPath"
   }
@@ -233,19 +243,36 @@ if ($Mode -eq "Review") {
         "accept_current",
         "revise_candidate",
         "reject_candidate"
-      ) $reviewDecision.decision
-      $reviewDecisionRationale = Read-InputLine "reviewDecisionRationale [$($reviewDecision.resolution)]"
-      if ($null -eq $reviewDecisionRationale) {
-        Stop-Wizard "M3_278_INPUT_EOF:reviewDecisionRationale"
-      }
-      if (-not $reviewDecisionRationale) {
-        $reviewDecisionRationale = $reviewDecision.resolution
-      }
-      $entry.reviewDecisionRationale = $reviewDecisionRationale.Trim()
+      )
+      $entry.reviewDecisionRationale = Read-Required "reviewDecisionRationale"
     } else {
       $entry.reviewDecision = "not-required"
       $entry.reviewDecisionRationale = $null
     }
+  }
+
+  $reviewComplete =
+    @(
+      $approvals.approvals | Where-Object {
+        $_.decision -ne "approve" -or
+        ($_.reviewDecisionPrompt -and $_.reviewDecision -ne "accept_current")
+      }
+    ).Count -eq 0
+
+  if ($Mode -eq "Draft") {
+    $approvals.status = "draft"
+    $approvals | Add-Member -NotePropertyName draftReviewComplete -NotePropertyValue $reviewComplete -Force
+    $approvals.humanAttestation.approvalPayloadSha256 = $null
+    $approvals.humanAttestation.statement = $null
+    Write-JsonFile $OutputPath $approvals
+    Write-Host ""
+    Write-Host "已写入不可冻结的审批草稿：$OutputPath"
+    Write-Host "draftReviewComplete=$reviewComplete"
+    exit 0
+  }
+
+  if (-not $reviewComplete) {
+    Stop-Wizard "M3_278_REVIEW_NOT_APPROVED"
   }
 
   $approvals.status = "complete"

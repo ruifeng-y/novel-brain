@@ -61,19 +61,24 @@ pnpm exec vitest run scripts/test/m3-278-clean-blind-packet.test.mjs
 
 ## Human approval wizard
 
-The interactive wizard never invents decisions. It displays each candidate and records only the
-owner's typed input:
+The interactive wizard never invents decisions. `Review` displays each candidate and records only
+the owner's typed input. It deliberately rejects `-ResponseFile`, so formal review cannot be
+silently generated from a prepared answer file:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/m3-278-approval-wizard.ps1 -Mode Review
 ```
 
 It writes `approvals.json`, computes the approval payload hash, and prints the exact GitHub comment
-statement. It does not publish the comment. A human-prepared response file can be used for batch
-entry:
+statement only after all 24 items are approved and all 11 recorded owner decisions accept the
+current candidate. It does not publish the comment.
+
+`Draft` is the non-interactive preparation path. It accepts a human-prepared response file, writes
+`status=draft`, and never computes a freezable approval payload. A draft cannot be used by
+`Statement`, `Attestation`, or `--freeze`:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/m3-278-approval-wizard.ps1 -Mode Review -ResponseFile .\responses.txt
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/m3-278-approval-wizard.ps1 -Mode Draft -ResponseFile .\responses.txt
 ```
 
 After publishing the comment:
