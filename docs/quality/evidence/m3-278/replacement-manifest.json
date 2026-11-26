@@ -13,7 +13,7 @@
     "sourceValidationSha256": "b6ee1554667ecb89eff4442e572ddad031b1b1eed38027ae0c26733da45cb574",
     "sourceAdjudicationSha256": "01f872aba2bb984a940ad7860f14030dae0388bb6ab677f4cdcf0334c9265c9c",
     "sourceAdjudicationStatusSha256": "3c37919d7d88daa24b4392e0ea607b530ebdfbc56d587f24ed54150616c6ab43",
-    "candidateSourceSha256": "c6291f8671f73653ff3f0f95877bb2fd70211c363ee26451361980e452782f16",
+    "candidateSourceSha256": "0e76c6afd66b3991f749d099c0d1b9850ab2a206ffff0b8610609be7a9b0bafd",
     "reviewPolicy": {
       "path": "docs/quality/evidence/m3-240/review-policy.json",
       "sha256": "c918948fa87a4dca5f7fc0a7d357c287865fd5b0998a93460c37ecca19685538",
@@ -28,9 +28,9 @@
   },
   "candidate": {
     "datasetVersion": "quality-benchmark-v2",
-    "datasetSha256": "e38afca7dd06e13a79cc9c3540b9a10eb0c34f61ec28bd29b46bb127038da306",
+    "datasetSha256": "b5404a7469887a18dee21a1937d3cec24777d5c79520e5c9e25a51e18c0e5e5d",
     "packetVersion": "quality-benchmark-clean-blind-v3",
-    "packetSha256": "9552e33f6379b02828c390550fca97784426a05222adaafe5405ddb056dc38f3",
+    "packetSha256": "3c33120dd10e95ee89ccd9351e192062b5b7b442aa1b8d11c1d70e394a693ebe",
     "sampleCount": 204,
     "replacementCount": 24,
     "samplesDeleted": 0
@@ -144,9 +144,9 @@
       "family": "branch_divergence",
       "severity": "P0",
       "originalTextSha256": "6c4bb79c2c63bf4c0437ea7c617fe04430780b343f39f8b7ca1ef1821831f856",
-      "replacementTextSha256": "531a498c08680e35533c5499654a3b325e4a811250a2fa9a15f8ceaa456b7ec0",
+      "replacementTextSha256": "76e1da9a7282f6b129132dcd84cf552505151b43fcf97c6c6091478e13e55d22",
       "originalRequiredBeatsSha256": "994b3e264c6f0eeb572c69d0494aa506c3bbc247d366ec6198837482725507a1",
-      "requiredBeatsSha256": "e772a9edcbe53101361f4d898fd7ed9086aaf24ad03526b9406d4f079cf2a641",
+      "requiredBeatsSha256": "ed3ad37f04483c89a91a0f013a7aa9411c04bb5d340680692cf26160e92e80f5",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "156edfdd96262546332f7ef3c57fb63505701f2bcee3f25897d5f07163d244ff",
@@ -246,9 +246,9 @@
       "family": "branch_divergence",
       "severity": "P0",
       "originalTextSha256": "32b3fb373c8d8c2492445f56ef9d8a902fabc3ba0edf992a0771b8ba1e3fbacc",
-      "replacementTextSha256": "4129c4c6808457068513805e3246cf0b552fc2e313ea71b3de03736531560e42",
+      "replacementTextSha256": "90828719e92ccf668252a30f613086cc2f477880e0b2b5ad327c095c2e87d43a",
       "originalRequiredBeatsSha256": "ecb1292e0a1cd98c0e2731f945cf4b3418b632a35425fcb336a76a31ba4e9cac",
-      "requiredBeatsSha256": "4a8b6c793bd7fd1e53e281967bc9c78215413e472843038c34e3a97ff2615eb6",
+      "requiredBeatsSha256": "89be7fea3a47e734278724b23a318fbb4397bd756ae312f557c49b93be1789cc",
       "evidence": {
         "adjudicationPath": "docs/quality/evidence/m3-273/adjudication.json",
         "adjudicationEntrySha256": "bec819fc999615c30de7996f00680c713d98ae8b76a92fc50ae8ea9988184ed8",
@@ -445,5 +445,5 @@
       }
     }
   ],
-  "manifestSha256": "8187aed7a9974b5726afb97ba21c1a91fbd35bc8ae25098ee8df100fc4218f1d"
+  "manifestSha256": "880487461a063c7125c8d711fe9191c96bc32e6b324fe26f126f59c56ab70ba6"
 }

@@ -34,18 +34,22 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
   replacement manifest 与每个 manifest entry 的 hash。模型批准、重复、未知、证据漂移、
   缺字段、非 human 或缺少外部 GitHub attestation 均不能解锁冻结。
 - 外部 attestation 会通过 GitHub API 核对 comment 作者关联、Issue 278、创建时间、正文
-  marker、candidate packet hash 与 replacement manifest hash；只填写本地 `human` 字段无效。
+  marker、candidate packet hash、replacement manifest hash 和 24 项审批 payload hash；
+  每个 `adjudicatorId` 必须等于评论作者，`attestationId` 必须等于该评论 ID，只填写本地
+  `human` 字段无效。
+- `branch_divergence` 候选使用同源年表或双册村志的叙事冲突表达分支隔离，不在 reviewer
+  文本中直接写“分支”“未来真相”等 oracle 提示。
 - `approval-request.md` 是 owner 审阅入口，列出 sample ID、场景 family、severity、候选叙事、
   必须保留的 beats 和逐项 approval 字段。
 
 ## 候选 Hash
 
 - Candidate dataset:
-  `e38afca7dd06e13a79cc9c3540b9a10eb0c34f61ec28bd29b46bb127038da306`
+  `b5404a7469887a18dee21a1937d3cec24777d5c79520e5c9e25a51e18c0e5e5d`
 - Candidate reviewer packet:
-  `9552e33f6379b02828c390550fca97784426a05222adaafe5405ddb056dc38f3`
+  `3c33120dd10e95ee89ccd9351e192062b5b7b442aa1b8d11c1d70e394a693ebe`
 - Replacement/change manifest:
-  `8187aed7a9974b5726afb97ba21c1a91fbd35bc8ae25098ee8df100fc4218f1d`
+  `880487461a063c7125c8d711fe9191c96bc32e6b324fe26f126f59c56ab70ba6`
 - Frozen rubric: `247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b`
 - #240 variance policy: `0.1`
 

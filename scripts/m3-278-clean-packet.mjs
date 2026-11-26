@@ -10,6 +10,14 @@ const REVIEW_ID = "m3-239-2026-11-25";
 const EXPECTED_GITHUB_REPOSITORY = "ruifeng-y/novel-brain";
 const CANDIDATE_DATASET_VERSION = "quality-benchmark-v2";
 const CANDIDATE_PACKET_VERSION = "quality-benchmark-clean-blind-v3";
+const EXPECTED_SOURCE_HASHES = {
+  sourcePacket: "769abdfdb7f8486712d8fcd5b3784c14ffee5476572eb51e9839f4d1c19d432e",
+  sourcePacketCanonical: "3fdae556029834bfcb97c321c3486c1fe3d57df9d6630cc99484a0ea56ce847c",
+  sourceKey: "93ae0b632df27fc66ee4fc5d89d5cbfd2d28ad557299b1c93df1e9bbc0ba0c98",
+  sourceDataset: "0d3f204c75fab5a52ef1940cb69a584516ae20c3b9b85cd2bfd3c1490a7f8ea6",
+  sourceRubric: "5cbec16e8b2967cbe54c9a2606ea82fa8b22c53b833bf07a71037d09991bd1a4",
+  sourceValidation: "b6ee1554667ecb89eff4442e572ddad031b1b1eed38027ae0c26733da45cb574",
+};
 const OLD_SCORES_SHA256 = "8d512dbf052429fa51debc053cbc046772ab50638afa7e9c0eb5a2c8240e20bc";
 const EVIDENCE_DIR = "docs/quality/evidence/m3-278";
 const OUTPUT_FILES = {
@@ -100,6 +108,18 @@ export function scanM3_278ReviewerLeakage(sample) {
   return findings;
 }
 
+export function assertM3_278ReviewerPacketClean(packet) {
+  const findings = (packet?.samples ?? []).flatMap((sample) =>
+    scanM3_278ReviewerLeakage(sample).map((finding) => ({
+      blindSampleId: sample.blindSampleId,
+      ...finding,
+    })),
+  );
+  if (findings.length > 0) {
+    throw new Error(`M3_278_REVIEWER_PACKET_LEAKAGE:${JSON.stringify(findings)}`);
+  }
+}
+
 export async function buildM3_278Artifacts({
   root,
   approvalsOverride,
@@ -165,6 +185,7 @@ export async function buildM3_278Artifacts({
     dataset: candidateDataset,
     source,
   });
+  assertM3_278ReviewerPacketClean(candidatePacket);
   const replacementManifest = createReplacementManifest({
     source,
     replacementCandidates,
@@ -181,10 +202,12 @@ export async function buildM3_278Artifacts({
   const approvalFilePresent = existsSync(approvalPath);
   const approvals =
     approvalsOverride ?? (approvalFilePresent ? readJson(root, APPROVALS_FILE) : approvalTemplate);
+  const approvalPayloadSha256 = computeM3_278ApprovalPayloadSha256(approvals);
   const structuralAttestationComplete = isCompleteHumanApprovalAttestation(
     approvals?.humanAttestation,
     approvalTemplate.candidatePacketSha256,
     approvalTemplate.replacementManifestSha256,
+    approvalPayloadSha256,
   );
   let humanAttestationVerified = false;
   if (structuralAttestationComplete) {
@@ -198,6 +221,7 @@ export async function buildM3_278Artifacts({
     approvalTemplate,
     approvals,
     humanAttestationVerified,
+    approvalPayloadSha256,
   });
   const approvalRequest = createApprovalRequest({
     replacementCandidates,
@@ -225,6 +249,7 @@ export async function buildM3_278Artifacts({
     freezeAllowed: approvalStatus.freezeAllowed,
     humanAttestationComplete: approvalStatus.humanAttestationComplete,
     humanAttestationVerified: approvalStatus.humanAttestationVerified,
+    approvalPayloadSha256: approvalStatus.approvalPayloadSha256,
     reviewerReady: false,
     cleanBlindReviewCompleted: false,
     oldScoresImpact: "invalidated_for_clean_review",
@@ -302,6 +327,10 @@ export function verifyM3_278ReplacementManifest(manifest) {
   return manifest.manifestSha256 === sha256Json(omit(manifest, ["manifestSha256"]));
 }
 
+export function computeM3_278ApprovalPayloadSha256(approvals) {
+  return sha256Json(omit(approvals, ["humanAttestation"]));
+}
+
 export function assertM3_278FreezeAllowed(approvalStatus) {
   if (!approvalStatus?.freezeAllowed) {
     throw new Error(
@@ -314,6 +343,7 @@ export function evaluateM3_278Approvals({
   approvalTemplate,
   approvals,
   humanAttestationVerified = false,
+  approvalPayloadSha256 = computeM3_278ApprovalPayloadSha256(approvals),
 }) {
   const expectedIds = approvalTemplate.approvals.map((entry) => entry.blindSampleId);
   const expectedIdSet = new Set(expectedIds);
@@ -326,6 +356,11 @@ export function evaluateM3_278Approvals({
   let nonHumanCount = 0;
   let incompleteCount = 0;
   let evidenceDriftCount = 0;
+  let identityMismatchCount = 0;
+  const attestationAuthor = approvals?.humanAttestation?.author;
+  const expectedAttestationId = /^\d+$/u.test(approvals?.humanAttestation?.commentId ?? "")
+    ? `github-issue-comment-${approvals.humanAttestation.commentId}`
+    : null;
 
   if (approvals?.schemaVersion !== approvalTemplate.schemaVersion) {
     blockers.push("approval-schema-invalid");
@@ -385,6 +420,14 @@ export function evaluateM3_278Approvals({
       incompleteCount += 1;
       continue;
     }
+    if (
+      entry.adjudicatorId !== attestationAuthor ||
+      !expectedAttestationId ||
+      entry.attestationId !== expectedAttestationId
+    ) {
+      identityMismatchCount += 1;
+      continue;
+    }
     approvedIds.push(entry.blindSampleId);
   }
 
@@ -402,6 +445,9 @@ export function evaluateM3_278Approvals({
   if (evidenceDriftCount > 0) {
     blockers.push(`replacement-approval-evidence-drift:${evidenceDriftCount}`);
   }
+  if (identityMismatchCount > 0) {
+    blockers.push(`replacement-approval-identity-mismatch:${identityMismatchCount}`);
+  }
   if (hasHumanInput(approvals) && approvals?.status !== "complete") {
     blockers.push("approval-status-pending");
   }
@@ -410,6 +456,7 @@ export function evaluateM3_278Approvals({
     approvals?.humanAttestation,
     approvalTemplate.candidatePacketSha256,
     approvalTemplate.replacementManifestSha256,
+    approvalPayloadSha256,
   );
   if (!humanAttestationComplete) {
     blockers.push("human-approval-attestation-pending");
@@ -434,6 +481,7 @@ export function evaluateM3_278Approvals({
     freezeAllowed,
     humanAttestationComplete,
     humanAttestationVerified,
+    approvalPayloadSha256,
     blockers: uniqueBlockers,
   };
 }
@@ -472,12 +520,16 @@ function verifySourceIntegrity(source) {
   const packetCanonicalSha256 = sha256Json(source.packet.samples);
   if (
     source.dataset.manifest.datasetSha256 !== sha256Text(JSON.stringify(datasetWithoutDigest)) ||
-    source.fileSha256.sourcePacket !== source.validation.reviewerPacketFileSha256 ||
+    source.fileSha256.sourcePacket !== EXPECTED_SOURCE_HASHES.sourcePacket ||
+    source.validation.reviewerPacketFileSha256 !== EXPECTED_SOURCE_HASHES.sourcePacket ||
     source.fileSha256.sourcePacket !== source.validation.sourcePacket?.sha256 ||
-    source.fileSha256.sourceKey !== source.validation.sourceKey?.sha256 ||
-    source.fileSha256.sourceDataset !== source.validation.sourceDataset?.sha256 ||
-    source.fileSha256.sourceRubric !== source.validation.sourceRubric?.sha256 ||
-    packetCanonicalSha256 !== source.validation.reviewerPacketCanonicalSha256 ||
+    source.fileSha256.sourceKey !== EXPECTED_SOURCE_HASHES.sourceKey ||
+    source.fileSha256.sourceDataset !== EXPECTED_SOURCE_HASHES.sourceDataset ||
+    source.fileSha256.sourceRubric !== EXPECTED_SOURCE_HASHES.sourceRubric ||
+    source.fileSha256.sourceValidation !== EXPECTED_SOURCE_HASHES.sourceValidation ||
+    packetCanonicalSha256 !== EXPECTED_SOURCE_HASHES.sourcePacketCanonical ||
+    source.validation.reviewerPacketCanonicalSha256 !==
+      EXPECTED_SOURCE_HASHES.sourcePacketCanonical ||
     source.packet.source?.datasetSha256 !== source.dataset.manifest.datasetSha256 ||
     source.packet.source?.rubricSha256 !== source.rubric.sha256 ||
     source.fileSha256.sourceScores !== OLD_SCORES_SHA256 ||
@@ -530,6 +582,7 @@ function createApprovalTemplate({
       requiredMarker: "M3-278-HUMAN-APPROVAL",
       candidatePacketSha256: candidatePacket.packetSha256,
       replacementManifestSha256: replacementManifest.manifestSha256,
+      approvalPayloadSha256: null,
       commentUrl: null,
       commentId: null,
       author: null,
@@ -682,7 +735,7 @@ ${candidate.requiredBeats.map((beat) => `- ${beat}`).join("\n")}
 - [ ] \`impact\`: 对 clean packet / #279 的影响
 - [ ] \`adjudicatorId\`: 产品/质量负责人身份
 - [ ] \`adjudicatorKind\`: 必须为 \`human\`
-- [ ] \`attestationId\`: 外部 attestation 关联 ID
+- [ ] \`attestationId\`: \`github-issue-comment-<commentId>\`
 - [ ] \`decidedAt\`: ISO 时间戳
 `;
   });
@@ -704,8 +757,12 @@ Issue: #278
 
 候选文件不是已冻结 packet。只有 24 个样本全部由真实产品/质量负责人逐项批准，并在 #278
 发布包含 \`M3-278-HUMAN-APPROVAL\`、candidate packet hash 和 replacement manifest hash
-的外部 GitHub attestation 后，才允许冻结。发布检查会通过 GitHub API 核对评论作者关联、
-Issue 278、评论时间与完整正文。
+以及填完 24 项后的 approval payload hash 的外部 GitHub attestation 后，才允许冻结。
+发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
+\`adjudicatorId\` 必须等于评论作者，每个 \`attestationId\` 必须等于该评论 ID。
+
+填写完 24 项后运行 \`pnpm quality:clean-packet -- --payload-hash\`，把输出的
+approval payload hash 写入 comment 与 \`humanAttestation.approvalPayloadSha256\`。
 
 ${sections.join("\n").trimEnd()}
 `;
@@ -885,13 +942,18 @@ function hasHumanInput(approvals) {
 }
 
 function isIsoTimestamp(value) {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
+  return (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/u.test(value) &&
+    Number.isFinite(Date.parse(value))
+  );
 }
 
 function isCompleteHumanApprovalAttestation(
   value,
   candidatePacketSha256,
   replacementManifestSha256,
+  approvalPayloadSha256,
 ) {
   return Boolean(
     value?.provider === "github_issue_comment" &&
@@ -899,6 +961,7 @@ function isCompleteHumanApprovalAttestation(
     value.requiredMarker === "M3-278-HUMAN-APPROVAL" &&
     value.candidatePacketSha256 === candidatePacketSha256 &&
     value.replacementManifestSha256 === replacementManifestSha256 &&
+    value.approvalPayloadSha256 === approvalPayloadSha256 &&
     new RegExp(
       `^https://github\\.com/${EXPECTED_GITHUB_REPOSITORY}/issues/${ISSUE}#issuecomment-\\d+$`,
       "u",
@@ -910,15 +973,20 @@ function isCompleteHumanApprovalAttestation(
     hasText(value.statement) &&
     value.statement.includes("M3-278-HUMAN-APPROVAL") &&
     value.statement.includes(candidatePacketSha256) &&
-    value.statement.includes(replacementManifestSha256),
+    value.statement.includes(replacementManifestSha256) &&
+    value.statement.includes(approvalPayloadSha256),
   );
 }
 
-export function verifyM3_278GithubApprovalAttestation(attestation) {
+export function verifyM3_278GithubApprovalAttestation(
+  attestation,
+  { githubApi = queryGithubApi } = {},
+) {
   if (
     attestation?.provider !== "github_issue_comment" ||
     attestation.issue !== ISSUE ||
     attestation.requiredMarker !== "M3-278-HUMAN-APPROVAL" ||
+    !/^[a-f0-9]{64}$/u.test(attestation.approvalPayloadSha256 ?? "") ||
     !/^\d+$/u.test(attestation.commentId ?? "") ||
     attestation.commentUrl !==
       `https://github.com/${EXPECTED_GITHUB_REPOSITORY}/issues/${ISSUE}#issuecomment-${attestation.commentId}`
@@ -926,7 +994,7 @@ export function verifyM3_278GithubApprovalAttestation(attestation) {
     return false;
   }
   try {
-    const comment = queryGithubApi(
+    const comment = githubApi(
       `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/comments/${attestation.commentId}`,
       "{body: .body, issueUrl: .issue_url, author: .user.login, authorAssociation: .author_association, createdAt: .created_at}",
     );
@@ -939,7 +1007,8 @@ export function verifyM3_278GithubApprovalAttestation(attestation) {
       Number.isFinite(attestedAt) &&
       Number.isFinite(createdAt) &&
       Math.abs(attestedAt - createdAt) <= 60_000 &&
-      comment.body?.trim() === attestation.statement?.trim()
+      comment.body?.trim() === attestation.statement?.trim() &&
+      comment.body?.includes(attestation.approvalPayloadSha256)
     );
   } catch {
     return false;
@@ -957,6 +1026,27 @@ function queryGithubApi(pathname, jq) {
 
 async function main() {
   const root = path.resolve(import.meta.dirname, "..");
+  if (process.argv.includes("--payload-hash")) {
+    const approvalPath = path.join(root, APPROVALS_FILE);
+    if (!existsSync(approvalPath)) {
+      process.stderr.write("M3_278_APPROVALS_FILE_MISSING\n");
+      process.exitCode = 1;
+      return;
+    }
+    const approvals = readJson(root, APPROVALS_FILE);
+    process.stdout.write(
+      `${JSON.stringify(
+        {
+          candidatePacketSha256: approvals.candidatePacketSha256,
+          replacementManifestSha256: approvals.replacementManifestSha256,
+          approvalPayloadSha256: computeM3_278ApprovalPayloadSha256(approvals),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    return;
+  }
   const checkOnly = process.argv.includes("--check");
   const artifacts = await buildM3_278Artifacts({ root });
   if (!checkOnly) {

@@ -3975,9 +3975,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 22",
-      "text": "破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。同行者问他何时来过，他只说梦里见过，却连石兽左爪的裂痕都描述得一字不差。",
+      "text": "沈砚在旧城翻开两册同源年表。第一册写到北道断桥便停笔，第二册却继续写着白塔祭坛三层台阶、石兽位置和第七盏灯。他把第二册的句子抄进第一册，第一册原先空白的那页立刻显出同样的字迹。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "dd31a528b4734d21ab10cd99dfa2f1253222882586b836cda0bee5301a565ba6",
+      "sourceHash": "a78935f8fb678b9ee93b97b079c25d48d1fcc163ce7a83a3b958b8e2d958246a",
       "knownIssues": [
         {
           "code": "branch_divergence",
@@ -3986,8 +3986,8 @@
         }
       ],
       "requiredBeats": [
-        "破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。",
-        "可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。"
+        "沈砚在旧城翻开两册同源年表。",
+        "第一册写到北道断桥便停笔，第二册却继续写着白塔祭坛三层台阶、石兽位置和第七盏灯。"
       ],
       "family": "branch_divergence",
       "chapterNumber": 300,
@@ -4001,9 +4001,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 23",
-      "text": "雪谷战后，裴照的尸身由顾青亲手封进冰棺。第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。城中没有人提起复活、替身或转世，顾青只是自然地叫他师兄。",
+      "text": "雪谷战后，顾青把裴照的尸身封进冰棺，村志只写到葬礼。后来另一册村志补记：裴照在第三年秋提剑回城，肩上的旧伤还是雪谷留下的那道。顾青把两册并排摊开，发现共同的葬礼记录之后，一册写坟茔长草，另一册却写活人归门。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "03efad0e351ea6d8a5b96e55b23d4358d626bd46264e2d8237158a06ad57edb3",
+      "sourceHash": "e7cc0eac580407bc6d71cef491077bac39c10290cecfcb6cb2c5108e6ddca144",
       "knownIssues": [
         {
           "code": "branch_divergence",
@@ -4012,8 +4012,8 @@
         }
       ],
       "requiredBeats": [
-        "雪谷战后，裴照的尸身由顾青亲手封进冰棺。",
-        "第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。"
+        "雪谷战后，顾青把裴照的尸身封进冰棺，村志只写到葬礼。",
+        "顾青把两册并排摊开，发现共同的葬礼记录之后，一册写坟茔长草，另一册却写活人归门。"
       ],
       "family": "branch_divergence",
       "chapterNumber": 1750,
@@ -7531,7 +7531,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "dd31a528b4734d21ab10cd99dfa2f1253222882586b836cda0bee5301a565ba6",
+        "sourceHash": "a78935f8fb678b9ee93b97b079c25d48d1fcc163ce7a83a3b958b8e2d958246a",
         "knownIssues": [
           {
             "code": "branch_divergence",
@@ -7540,8 +7540,8 @@
           }
         ],
         "requiredBeats": [
-          "破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。",
-          "可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。"
+          "沈砚在旧城翻开两册同源年表。",
+          "第一册写到北道断桥便停笔，第二册却继续写着白塔祭坛三层台阶、石兽位置和第七盏灯。"
         ]
       },
       {
@@ -7550,7 +7550,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "03efad0e351ea6d8a5b96e55b23d4358d626bd46264e2d8237158a06ad57edb3",
+        "sourceHash": "e7cc0eac580407bc6d71cef491077bac39c10290cecfcb6cb2c5108e6ddca144",
         "knownIssues": [
           {
             "code": "branch_divergence",
@@ -7559,8 +7559,8 @@
           }
         ],
         "requiredBeats": [
-          "雪谷战后，裴照的尸身由顾青亲手封进冰棺。",
-          "第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。"
+          "雪谷战后，顾青把裴照的尸身封进冰棺，村志只写到葬礼。",
+          "顾青把两册并排摊开，发现共同的葬礼记录之后，一册写坟茔长草，另一册却写活人归门。"
         ]
       },
       {
@@ -7586,6 +7586,6 @@
     "decisionRequired": [
       "interRaterVarianceThreshold"
     ],
-    "datasetSha256": "e38afca7dd06e13a79cc9c3540b9a10eb0c34f61ec28bd29b46bb127038da306"
+    "datasetSha256": "b5404a7469887a18dee21a1937d3cec24777d5c79520e5c9e25a51e18c0e5e5d"
   }
 }

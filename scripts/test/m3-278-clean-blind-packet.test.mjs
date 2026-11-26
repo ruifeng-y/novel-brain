@@ -5,9 +5,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
+  assertM3_278ReviewerPacketClean,
   assertM3_278FreezeAllowed,
   buildM3_278Artifacts,
+  computeM3_278ApprovalPayloadSha256,
   scanM3_278ReviewerLeakage,
+  verifyM3_278GithubApprovalAttestation,
   verifyM3_278CandidateDatasetDigest,
   verifyM3_278ReplacementManifest,
 } from "../m3-278-clean-packet.mjs";
@@ -82,6 +85,60 @@ describe("M3-278 clean blind packet", () => {
     ]) {
       expect(serialized).not.toContain(marker);
     }
+    expect(() =>
+      assertM3_278ReviewerPacketClean({
+        samples: [
+          {
+            blindSampleId: "Q999",
+            genre: "仙侠",
+            text: "这段文本带有与已确认事实“测试”冲突。",
+            requiredBeats: [],
+          },
+        ],
+      }),
+    ).toThrow("M3_278_REVIEWER_PACKET_LEAKAGE");
+  });
+
+  it("validates GitHub approval attestations by owner, issue, time and exact payload", () => {
+    const attestation = {
+      provider: "github_issue_comment",
+      issue: 278,
+      requiredMarker: "M3-278-HUMAN-APPROVAL",
+      approvalPayloadSha256: "a".repeat(64),
+      commentId: "7183183858",
+      commentUrl: "https://github.com/ruifeng-y/novel-brain/issues/278#issuecomment-7183183858",
+      author: "ruifeng-y",
+      attestedAt: "2026-11-26T06:00:00Z",
+      statement: `M3-278-HUMAN-APPROVAL ${"a".repeat(64)}`,
+    };
+    const comment = {
+      body: attestation.statement,
+      issueUrl: "https://api.github.com/repos/ruifeng-y/novel-brain/issues/278",
+      author: "ruifeng-y",
+      authorAssociation: "OWNER",
+      createdAt: "2026-11-26T06:00:20Z",
+    };
+
+    expect(
+      verifyM3_278GithubApprovalAttestation(attestation, {
+        githubApi: () => comment,
+      }),
+    ).toBe(true);
+    expect(
+      verifyM3_278GithubApprovalAttestation(attestation, {
+        githubApi: () => ({ ...comment, authorAssociation: "NONE" }),
+      }),
+    ).toBe(false);
+    expect(
+      verifyM3_278GithubApprovalAttestation(attestation, {
+        githubApi: () => ({ ...comment, createdAt: "2026-11-26T06:02:00Z" }),
+      }),
+    ).toBe(false);
+    expect(
+      verifyM3_278GithubApprovalAttestation(attestation, {
+        githubApi: () => ({ ...comment, body: `${comment.body}\n额外篡改` }),
+      }),
+    ).toBe(false);
   });
 
   it("blocks packet freeze until all 24 replacements and the human attestation are approved", async () => {
@@ -145,6 +202,38 @@ describe("M3-278 clean blind packet", () => {
     });
     expect(mismatchResult.approvalStatus.freezeAllowed).toBe(false);
     expect(mismatchResult.approvalStatus.blockers).toContain("approval-candidate-packet-mismatch");
+
+    const identityMismatch = structuredClone(humanApproval);
+    identityMismatch.approvals[0].attestationId = "github-issue-comment-123";
+    const identityResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: identityMismatch,
+      attestationVerifier: async () => true,
+    });
+    expect(identityResult.approvalStatus.freezeAllowed).toBe(false);
+    expect(identityResult.approvalStatus.blockers).toContain(
+      "replacement-approval-identity-mismatch:1",
+    );
+
+    const looseTimestamp = structuredClone(humanApproval);
+    looseTimestamp.approvals[0].decidedAt = "1";
+    const timestampResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: looseTimestamp,
+      attestationVerifier: async () => true,
+    });
+    expect(timestampResult.approvalStatus.freezeAllowed).toBe(false);
+    expect(timestampResult.approvalStatus.blockers).toContain("replacement-approval-incomplete:1");
+
+    const payloadDrift = structuredClone(humanApproval);
+    payloadDrift.approvals[0].rationale += " 外部声明后补写。";
+    const payloadResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: payloadDrift,
+      attestationVerifier: async () => true,
+    });
+    expect(payloadResult.approvalStatus.freezeAllowed).toBe(false);
+    expect(payloadResult.approvalStatus.blockers).toContain("human-approval-attestation-pending");
   });
 
   it("binds every replacement to source evidence and reproduces all artifact hashes", async () => {
@@ -185,6 +274,18 @@ describe("M3-278 clean blind packet", () => {
         (entry) =>
           entry.manifestEntrySha256 ===
           hashCanonical(manifestEntryBySampleId.get(entry.blindSampleId)),
+      ),
+    ).toBe(true);
+    const branchCandidates = first.replacementCandidates.candidates.filter(
+      (candidate) => candidate.family === "branch_divergence",
+    );
+    expect(branchCandidates).toHaveLength(3);
+    expect(
+      branchCandidates.every(
+        (candidate) =>
+          candidate.text.includes("同源") ||
+          candidate.text.includes("两册") ||
+          candidate.text.includes("旧稿"),
       ),
     ).toBe(true);
     expect(manifest.source.rubricSha256).toBe(first.source.rubric.sha256);
@@ -228,9 +329,9 @@ function fillHumanApprovals(approval, { adjudicatorKind = "human" } = {}) {
     decision: "approve",
     rationale: "候选叙事未暴露 oracle 元信息，并保留了该样本的场景与严重度。",
     impact: "可进入 clean packet 候选，但仍须等待完整人工重评。",
-    adjudicatorId: "quality-owner",
+    adjudicatorId: "ruifeng-y",
     adjudicatorKind,
-    attestationId: "att-quality-owner-m3-278",
+    attestationId: "github-issue-comment-999999",
     decidedAt: "2026-11-26T00:00:00.000Z",
   }));
   approval.humanAttestation = {
@@ -239,6 +340,10 @@ function fillHumanApprovals(approval, { adjudicatorKind = "human" } = {}) {
     commentId: "999999",
     author: "ruifeng-y",
     attestedAt: "2026-11-26T00:00:00.000Z",
-    statement: `M3-278-HUMAN-APPROVAL ${approval.candidatePacketSha256} ${approval.replacementManifestSha256}`,
+    approvalPayloadSha256: null,
+    statement: null,
   };
+  const approvalPayloadSha256 = computeM3_278ApprovalPayloadSha256(approval);
+  approval.humanAttestation.approvalPayloadSha256 = approvalPayloadSha256;
+  approval.humanAttestation.statement = `M3-278-HUMAN-APPROVAL ${approval.candidatePacketSha256} ${approval.replacementManifestSha256} ${approvalPayloadSha256}`;
 }

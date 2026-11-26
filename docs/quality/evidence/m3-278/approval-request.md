@@ -6,9 +6,9 @@
 
 Issue: #278
 
-- Candidate dataset: `e38afca7dd06e13a79cc9c3540b9a10eb0c34f61ec28bd29b46bb127038da306`
-- Candidate reviewer packet: `9552e33f6379b02828c390550fca97784426a05222adaafe5405ddb056dc38f3`
-- Replacement manifest: `8187aed7a9974b5726afb97ba21c1a91fbd35bc8ae25098ee8df100fc4218f1d`
+- Candidate dataset: `b5404a7469887a18dee21a1937d3cec24777d5c79520e5c9e25a51e18c0e5e5d`
+- Candidate reviewer packet: `3c33120dd10e95ee89ccd9351e192062b5b7b442aa1b8d11c1d70e394a693ebe`
+- Replacement manifest: `880487461a063c7125c8d711fe9191c96bc32e6b324fe26f126f59c56ab70ba6`
 - Required approvals: 24/24
 - Old scores: `invalidated_for_clean_review`
 - Variance threshold: #240 已批准为 `0.1`，本票不得改写
@@ -16,8 +16,12 @@ Issue: #278
 
 候选文件不是已冻结 packet。只有 24 个样本全部由真实产品/质量负责人逐项批准，并在 #278
 发布包含 `M3-278-HUMAN-APPROVAL`、candidate packet hash 和 replacement manifest hash
-的外部 GitHub attestation 后，才允许冻结。发布检查会通过 GitHub API 核对评论作者关联、
-Issue 278、评论时间与完整正文。
+以及填完 24 项后的 approval payload hash 的外部 GitHub attestation 后，才允许冻结。
+发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
+`adjudicatorId` 必须等于评论作者，每个 `attestationId` 必须等于该评论 ID。
+
+填写完 24 项后运行 `pnpm quality:clean-packet -- --payload-hash`，把输出的
+approval payload hash 写入 comment 与 `humanAttestation.approvalPayloadSha256`。
 
 ### Q005
 
@@ -45,7 +49,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q026
@@ -74,7 +78,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q034
@@ -103,7 +107,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q055
@@ -132,7 +136,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q056
@@ -161,7 +165,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q067
@@ -190,7 +194,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q075
@@ -199,18 +203,18 @@ Issue 278、评论时间与完整正文。
 - 场景 family: `branch_divergence`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `c4c32eeec93e8d044d5f2ed6517d85c59adde616e5ce08b462e475a29cd7f169`
-- 替代文本 SHA-256: `531a498c08680e35533c5499654a3b325e4a811250a2fa9a15f8ceaa456b7ec0`
-- 必需节拍 SHA-256: `e772a9edcbe53101361f4d898fd7ed9086aaf24ad03526b9406d4f079cf2a641`
+- Manifest entry SHA-256: `215fe64d42af5f9c711c13f76e45a6a8dbcb6ab9a18980b97e379ca30c606139`
+- 替代文本 SHA-256: `76e1da9a7282f6b129132dcd84cf552505151b43fcf97c6c6091478e13e55d22`
+- 必需节拍 SHA-256: `ed3ad37f04483c89a91a0f013a7aa9411c04bb5d340680692cf26160e92e80f5`
 
 候选叙事：
 
-> 破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。同行者问他何时来过，他只说梦里见过，却连石兽左爪的裂痕都描述得一字不差。
+> 沈砚在旧城翻开两册同源年表。第一册写到北道断桥便停笔，第二册却继续写着白塔祭坛三层台阶、石兽位置和第七盏灯。他把第二册的句子抄进第一册，第一册原先空白的那页立刻显出同样的字迹。
 
 必须保留的 beats：
 
-- 破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。
-- 可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。
+- 沈砚在旧城翻开两册同源年表。
+- 第一册写到北道断桥便停笔，第二册却继续写着白塔祭坛三层台阶、石兽位置和第七盏灯。
 
 逐项审批字段：
 
@@ -219,7 +223,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q081
@@ -248,7 +252,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q083
@@ -277,7 +281,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q084
@@ -306,7 +310,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q088
@@ -335,7 +339,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q093
@@ -364,7 +368,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q096
@@ -373,18 +377,18 @@ Issue 278、评论时间与完整正文。
 - 场景 family: `branch_divergence`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `38306863fa50a83577339e67186e1621d32ac9432cdf40f62363d836e96f8812`
-- 替代文本 SHA-256: `4129c4c6808457068513805e3246cf0b552fc2e313ea71b3de03736531560e42`
-- 必需节拍 SHA-256: `4a8b6c793bd7fd1e53e281967bc9c78215413e472843038c34e3a97ff2615eb6`
+- Manifest entry SHA-256: `b357059114b54fbaefa0dff92f571df71d976b68acb32c889c307a07275bc2d7`
+- 替代文本 SHA-256: `90828719e92ccf668252a30f613086cc2f477880e0b2b5ad327c095c2e87d43a`
+- 必需节拍 SHA-256: `89be7fea3a47e734278724b23a318fbb4397bd756ae312f557c49b93be1789cc`
 
 候选叙事：
 
-> 雪谷战后，裴照的尸身由顾青亲手封进冰棺。第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。城中没有人提起复活、替身或转世，顾青只是自然地叫他师兄。
+> 雪谷战后，顾青把裴照的尸身封进冰棺，村志只写到葬礼。后来另一册村志补记：裴照在第三年秋提剑回城，肩上的旧伤还是雪谷留下的那道。顾青把两册并排摊开，发现共同的葬礼记录之后，一册写坟茔长草，另一册却写活人归门。
 
 必须保留的 beats：
 
-- 雪谷战后，裴照的尸身由顾青亲手封进冰棺。
-- 第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。
+- 雪谷战后，顾青把裴照的尸身封进冰棺，村志只写到葬礼。
+- 顾青把两册并排摊开，发现共同的葬礼记录之后，一册写坟茔长草，另一册却写活人归门。
 
 逐项审批字段：
 
@@ -393,7 +397,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q123
@@ -422,7 +426,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q130
@@ -451,7 +455,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q149
@@ -480,7 +484,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q158
@@ -509,7 +513,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q160
@@ -538,7 +542,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q162
@@ -567,7 +571,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q168
@@ -596,7 +600,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q182
@@ -625,7 +629,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q186
@@ -654,7 +658,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q189
@@ -683,7 +687,7 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q196
@@ -712,5 +716,5 @@ Issue 278、评论时间与完整正文。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: 外部 attestation 关联 ID
+- [ ] `attestationId`: `github-issue-comment-<commentId>`
 - [ ] `decidedAt`: ISO 时间戳
