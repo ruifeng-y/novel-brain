@@ -6,15 +6,18 @@
 
 Issue: #278
 
-- Candidate dataset: `9147541ae2c874a9f62a1c839d44a55eb7343becd902b27719f79de790148bd2`
-- Candidate reviewer packet: `c3b1a08a92340ef9b56c4e234262e13499b2ef3fb634669b8a3750c322a70386`
+- Candidate dataset: `e38afca7dd06e13a79cc9c3540b9a10eb0c34f61ec28bd29b46bb127038da306`
+- Candidate reviewer packet: `9552e33f6379b02828c390550fca97784426a05222adaafe5405ddb056dc38f3`
+- Replacement manifest: `8187aed7a9974b5726afb97ba21c1a91fbd35bc8ae25098ee8df100fc4218f1d`
 - Required approvals: 24/24
 - Old scores: `invalidated_for_clean_review`
 - Variance threshold: #240 已批准为 `0.1`，本票不得改写
 - Downstream: #279 全量重评、#242 最终发布门禁
 
 候选文件不是已冻结 packet。只有 24 个样本全部由真实产品/质量负责人逐项批准，并在 #278
-发布包含 `M3-278-HUMAN-APPROVAL` 的外部 GitHub attestation 后，才允许冻结。
+发布包含 `M3-278-HUMAN-APPROVAL`、candidate packet hash 和 replacement manifest hash
+的外部 GitHub attestation 后，才允许冻结。发布检查会通过 GitHub API 核对评论作者关联、
+Issue 278、评论时间与完整正文。
 
 ### Q005
 
@@ -22,6 +25,7 @@ Issue: #278
 - 场景 family: `inventory_rights`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `c96fec82664056a883593c028c3380627d2ff8a2c07074646e343b833ff14002`
 - 替代文本 SHA-256: `cb64012e62f7a1c42119a80c30f42ad224a2bc30ade48285df4a624160113672`
 - 必需节拍 SHA-256: `059a4e40ecbb2341ee10165ef766562d963bacf10f5b7c7bb0140209e34c0627`
 
@@ -50,6 +54,7 @@ Issue: #278
 - 场景 family: `motivation_drift`
 - 严重度: `P2`
 - 题材 / 难度: `仙侠` / `easy`
+- Manifest entry SHA-256: `0fc3ffbc0a5dfe23b169dba80d4005b8a496352b89b84dd38aa16785fb12b5b5`
 - 替代文本 SHA-256: `aa3004f47b9061091d75c72807d1e13ee5182491ed353d3ad6e44934c0c09fac`
 - 必需节拍 SHA-256: `58d25fb3a0f8153e7533a1dcd113d66dff01c5ff19fc3d5f5b33f13b6902f88e`
 
@@ -78,6 +83,7 @@ Issue: #278
 - 场景 family: `travel_time`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `a3e5d57a2e014279833535914984b5ed2462e353d163ad2984cc0afc6ac79cb4`
 - 替代文本 SHA-256: `e4de886c923ec0e0c7750422d01569cd8c8444d78b26fed084ac4afe8eaf10b8`
 - 必需节拍 SHA-256: `e38068cbb0d413bd8940aa23b8da0570e5ac64ee03bbab28628dd94ce7c2dcb0`
 
@@ -106,6 +112,7 @@ Issue: #278
 - 场景 family: `knowledge_boundary`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
+- Manifest entry SHA-256: `92140be021b50400c3df34cc1cd8cce118ef08d2ce967389faa4770a97184761`
 - 替代文本 SHA-256: `e3b605a16348c291913a1799b70ce42e8cfe7e88916a38e6df80106e63b7da77`
 - 必需节拍 SHA-256: `8382a50c5b3e71300d371b862312531a8b8cc50212a97560248254885b3abb99`
 
@@ -134,6 +141,7 @@ Issue: #278
 - 场景 family: `motivation_drift`
 - 严重度: `P2`
 - 题材 / 难度: `仙侠` / `easy`
+- Manifest entry SHA-256: `025e4dbd21e19e2a1cf2e1716a74a0f959f94cb68fa67823f25052b89f3df89d`
 - 替代文本 SHA-256: `0c7be5d559c8e16bfd6e07a8ad797db14a0bd211c702ec19295b141376b6fdff`
 - 必需节拍 SHA-256: `071a683f4aa62f1b1b01f630d8adfd16a99ccde6e085bfab8997c714d46b7323`
 
@@ -162,6 +170,7 @@ Issue: #278
 - 场景 family: `body_continuity`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
+- Manifest entry SHA-256: `eb3df82c5c49b9680118db416d831161f8b994fdb0eaf7f671ec85d9c628b0c2`
 - 替代文本 SHA-256: `a98f85f14b4577c8c1bae22d9579f4b3bff26d8a8b4ffc968c4f8d9e983e74fe`
 - 必需节拍 SHA-256: `a1408ae6af10da2c4e05192e080a746197ea95b98e65087384549a537c6ec8f6`
 
@@ -190,16 +199,17 @@ Issue: #278
 - 场景 family: `branch_divergence`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
-- 替代文本 SHA-256: `fec0637bfa42c3080fa3f9025d8fdfd4d99e41cffed4a3133b5a6d6f7d9da4ee`
-- 必需节拍 SHA-256: `e1315e8bd31d0131b93037ef04d6695b218ce7f47b414dcf11b0bb81d50a3561`
+- Manifest entry SHA-256: `c4c32eeec93e8d044d5f2ed6517d85c59adde616e5ce08b462e475a29cd7f169`
+- 替代文本 SHA-256: `531a498c08680e35533c5499654a3b325e4a811250a2fa9a15f8ceaa456b7ec0`
+- 必需节拍 SHA-256: `e772a9edcbe53101361f4d898fd7ed9086aaf24ad03526b9406d4f079cf2a641`
 
 候选叙事：
 
-> 这一支时间线在破庙那夜就与另一支分开，沈砚从未见过白塔下的祭坛。可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。那是另一条分支十年后才发生的事，同行的人从未听他讲过。
+> 破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。同行者问他何时来过，他只说梦里见过，却连石兽左爪的裂痕都描述得一字不差。
 
 必须保留的 beats：
 
-- 这一支时间线在破庙那夜就与另一支分开，沈砚从未见过白塔下的祭坛。
+- 破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。
 - 可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。
 
 逐项审批字段：
@@ -218,6 +228,7 @@ Issue: #278
 - 场景 family: `foreshadow_payoff`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `bae2048baa852bf0fa4c2bb4b9a5f62944f76be00ce2f6bc4d847db93158bb6e`
 - 替代文本 SHA-256: `70e40d523cf8f1f1f5294be52cde141ed6eb731b486491d8fd49242ec5637bbe`
 - 必需节拍 SHA-256: `47fefc7d5903ca474ea0b1328d7fb0cbbafd21dd35f516ccf8a315e5bba12f83`
 
@@ -246,6 +257,7 @@ Issue: #278
 - 场景 family: `identity_transition`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
+- Manifest entry SHA-256: `bdb630fb77fbeb91a8d5c036ca2cc34cac29875472e98f245b2b8d2a157a920c`
 - 替代文本 SHA-256: `ed84d5ae161f6ace6bd50da0fc74b84f35bac275c8fc98df71df739c67963cd7`
 - 必需节拍 SHA-256: `0d24bb225786000f9163fa5c0c60a65dac1e24190067ba212ac57885e9f6c0c4`
 
@@ -274,6 +286,7 @@ Issue: #278
 - 场景 family: `travel_time`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `ec274a6fedfc9170c5f300bb7496a8d5a79487a7b39d922cad5711aa5b660cde`
 - 替代文本 SHA-256: `37ad620167b7121c8824917d5fc0e333be3fa4982b2dc5ecd2e4d5cb4c66b539`
 - 必需节拍 SHA-256: `77388297e89fbb2917f5504ca3d6b568b3d15e54c22094b95731254a5f8be1f7`
 
@@ -302,6 +315,7 @@ Issue: #278
 - 场景 family: `travel_time`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `1c8e9c193e907958db40662732bd38f313a59de649d3fe29c473d2c07da9b2e2`
 - 替代文本 SHA-256: `987d023891348e520fdf487d2e12146083edebc133968e036406275a5843de2b`
 - 必需节拍 SHA-256: `fd4509c0cb1d36479f038599d306a68fc9e06d527bd175d2d90ac2869a407cff`
 
@@ -330,6 +344,7 @@ Issue: #278
 - 场景 family: `inventory_rights`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `440647308b669fb4870671cabdf523cd547ad22524ff7ed81a2f8f96b0a6c80c`
 - 替代文本 SHA-256: `53b9ac5c98c869288658c16e7ea0d2aba8fe90f8de2b4143177a73a00e90c3c9`
 - 必需节拍 SHA-256: `b77abf2e580df0cf1cf500b1a86df68126638db91c5e51f986ed4438f108e1fc`
 
@@ -358,17 +373,18 @@ Issue: #278
 - 场景 family: `branch_divergence`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
-- 替代文本 SHA-256: `5b70004915bdad748cb6d634e6be6b6716c3e8e3e5e97e3e5e313b438b606275`
-- 必需节拍 SHA-256: `c4e45ed46c75609dd27893981c90dca919a7e7c58f2ebf9ed78a8ab676ca8b7c`
+- Manifest entry SHA-256: `38306863fa50a83577339e67186e1621d32ac9432cdf40f62363d836e96f8812`
+- 替代文本 SHA-256: `4129c4c6808457068513805e3246cf0b552fc2e313ea71b3de03736531560e42`
+- 必需节拍 SHA-256: `4a8b6c793bd7fd1e53e281967bc9c78215413e472843038c34e3a97ff2615eb6`
 
 候选叙事：
 
-> 中期分支里，裴照在雪谷战死，尸身由顾青亲手封进冰棺。另一条时间线写到第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。城中没有人提起复活、替身或转世，顾青只是自然地叫他师兄。
+> 雪谷战后，裴照的尸身由顾青亲手封进冰棺。第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。城中没有人提起复活、替身或转世，顾青只是自然地叫他师兄。
 
 必须保留的 beats：
 
-- 中期分支里，裴照在雪谷战死，尸身由顾青亲手封进冰棺。
-- 另一条时间线写到第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。
+- 雪谷战后，裴照的尸身由顾青亲手封进冰棺。
+- 第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。
 
 逐项审批字段：
 
@@ -386,17 +402,18 @@ Issue: #278
 - 场景 family: `branch_divergence`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
-- 替代文本 SHA-256: `b9818d6fd0dfaa3ef102ec992f67246b757502bc443b30e6b892794e5b1bf6d2`
-- 必需节拍 SHA-256: `41677a24d1a3886aa52ba56b18cf9b09f2fa4382417f81b74161c8f3036e23b0`
+- Manifest entry SHA-256: `d15f7f544946fc4d4fff47af7cd02b4ce571e032c81f0a4b7f70e0499a1ee320`
+- 替代文本 SHA-256: `c917cb0e759f06b04da5fe50ead95a936d69655f4281bc7a9bee199e40b2b795`
+- 必需节拍 SHA-256: `7a1c8f758a679456823a4704cdab538a9ed47b9ea0657828db600a02508eb33c`
 
 候选叙事：
 
-> 旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。可那一卷只写到少主人接掌旧宅，祭坛尚未开启，陌生面孔也没有出现。晚期分支里才发生的事，被史官写进了所有分支共用的总册。
+> 旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。可那一卷只写到少主人接掌旧宅，祭坛尚未开启，陌生面孔也没有出现。守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。
 
 必须保留的 beats：
 
 - 旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。
-- 晚期分支里才发生的事，被史官写进了所有分支共用的总册。
+- 守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。
 
 逐项审批字段：
 
@@ -414,6 +431,7 @@ Issue: #278
 - 场景 family: `inventory_rights`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `2cf05d0a79055f72cab8e8a0e51c6288d82d89bd1112a6fdb2c6a8ee35784d3f`
 - 替代文本 SHA-256: `9dd58492034bb95445676eaa139dbcae91979ad68354eb04f2e4f9fe397d6418`
 - 必需节拍 SHA-256: `cbbbc236ac0c6123e277d55ad645ecaeacde30cb01b843d6154a210e3b304daa`
 
@@ -442,6 +460,7 @@ Issue: #278
 - 场景 family: `identity_transition`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
+- Manifest entry SHA-256: `47a129cc1bc22ca3860e137790de0e7f908d9ec8f0abc9ebe00de31b85a7968e`
 - 替代文本 SHA-256: `fabf15b570e2234a9045c355001699cab8ab85a37e54cfc7c46200b9ae3d1748`
 - 必需节拍 SHA-256: `4d3d9f01e5b542b7d56cc83ab63fc5dcee4747804a732953db57bfd021a5848e`
 
@@ -470,6 +489,7 @@ Issue: #278
 - 场景 family: `knowledge_boundary`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
+- Manifest entry SHA-256: `731d509c29aafb4135d7a8607808bfbad72cc3ef7cffac8cd1e3bbc754351e61`
 - 替代文本 SHA-256: `52d3268716b0b9b11216b73e4c7991a84798ad8b68582d4599b9a6c990785d22`
 - 必需节拍 SHA-256: `d9ad70d166b41f7acd6620a400b85436065a06a961e14f7ed2805e760283d25a`
 
@@ -498,6 +518,7 @@ Issue: #278
 - 场景 family: `foreshadow_payoff`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `34e9751c57f908c1696a39c26c038551ba5731f3a795e326f3d4ac52d64f9d7c`
 - 替代文本 SHA-256: `d6ae6842800356cb8a120b7787a132957cbfd5a4a953dafc32bb5d06539794b7`
 - 必需节拍 SHA-256: `61d1968939dd1fe1dcf8d3abbae31281d1f83f051a2c60c6cd3a4f8db9a897e6`
 
@@ -526,6 +547,7 @@ Issue: #278
 - 场景 family: `foreshadow_payoff`
 - 严重度: `P1`
 - 题材 / 难度: `仙侠` / `medium`
+- Manifest entry SHA-256: `b178519e373d4c9b9237752e88ebcd13aee8ee6bd57fc97ddc44f1530208ae0e`
 - 替代文本 SHA-256: `e5a7df893571462282b2bdc0640b9999bc7fbe2c8646ce27f19242af799eba6d`
 - 必需节拍 SHA-256: `1daa1a15f875509f3c291b27c77600ceb0ac8e3752babd33f7585baff7a451d8`
 
@@ -554,6 +576,7 @@ Issue: #278
 - 场景 family: `motivation_drift`
 - 严重度: `P2`
 - 题材 / 难度: `仙侠` / `easy`
+- Manifest entry SHA-256: `2bc73110224f9e49496b0ecc19b60276e492052c37c181b3c3d798863e8c8554`
 - 替代文本 SHA-256: `bc503932d5e728d696819a05a173742e78dc6833a19eab5c241acaeec0d22777`
 - 必需节拍 SHA-256: `28ef1b8eb8ee33709cdc3d52f83ff0819d4acee82b93323e78740e2b6395c016`
 
@@ -582,17 +605,18 @@ Issue: #278
 - 场景 family: `knowledge_boundary`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
-- 替代文本 SHA-256: `83d6179fee41b6d3e71157e42d68e76eb941539f3afdc0d2dbcd3da643cd7c66`
-- 必需节拍 SHA-256: `ba42c7a3e3fbd2f7716565e306adcf0f2880b6bface2c169d5db62d47c2907c4`
+- Manifest entry SHA-256: `358d027813d68652e52bdcc2ba84410bd9b5aafa9e6024fb575a24ce9bc6b5e0`
+- 替代文本 SHA-256: `b2b60428685b3be8d3c0a594f97bd35b53ce282efafdb23fb0b848fa6e8968dc`
+- 必需节拍 SHA-256: `28b1b826f5aeea90cb6c4b2e2ba26f1dd22f4ad993d3cea74946bb1c092b5d8f`
 
 候选叙事：
 
-> 顾青在破庙那夜没有见过另一条分支里的密信。当前时间线的封存名册仍然锁在祠堂，连沈砚都只知道自己的姓氏有疑。可顾青一进门便说出未来的真相：沈砚会在白塔下认祖，并以此命令守军打开北门。他说得笃定，仿佛那封信刚刚读过。
+> 顾青在破庙那夜没有读过密信。封存名册仍然锁在祠堂，连沈砚都只知道自己的姓氏有疑。可顾青一进门便说出沈砚会在白塔下认祖，并以此命令守军打开北门。他说得笃定，仿佛刚刚读过那封信。
 
 必须保留的 beats：
 
-- 顾青在破庙那夜没有见过另一条分支里的密信。
-- 可顾青一进门便说出未来的真相：沈砚会在白塔下认祖，并以此命令守军打开北门。
+- 顾青在破庙那夜没有读过密信。
+- 可顾青一进门便说出沈砚会在白塔下认祖，并以此命令守军打开北门。
 
 逐项审批字段：
 
@@ -610,6 +634,7 @@ Issue: #278
 - 场景 family: `identity_transition`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
+- Manifest entry SHA-256: `55323fbba7cb00e926fd09b31b3bf902a39d85f9d00f1e91f45f34941913b36b`
 - 替代文本 SHA-256: `3bb77842974e0a2b8f2e9b1df326200bb9dfc10fcbb97fb60c9898c72d297beb`
 - 必需节拍 SHA-256: `8a8b824e80d2ff26c6bbf7cb03102bb5e974bbdf78e4285eaea9ff3455e548f1`
 
@@ -638,6 +663,7 @@ Issue: #278
 - 场景 family: `body_continuity`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
+- Manifest entry SHA-256: `2ff28bf860113187d9bae5020501206e91369c3a5dd107127541752899890e25`
 - 替代文本 SHA-256: `1e3befeb4b7b0c0aaae5fb70d2e068b7cedaacf4b6949568068554ecbd5346d7`
 - 必需节拍 SHA-256: `1b7ec9f0cebb7d2e41bf94018a0ddfe5617f3f4e58596229561a97d5fee5f455`
 
@@ -666,6 +692,7 @@ Issue: #278
 - 场景 family: `body_continuity`
 - 严重度: `P0`
 - 题材 / 难度: `仙侠` / `hard`
+- Manifest entry SHA-256: `8db6aa4406b4670b1dd14e95d85b22d184407068976a65b8d7837731af9ebaac`
 - 替代文本 SHA-256: `759ca61719c314f73061e7c1edeaf25a23b2b33a2111947f6e9ebe10aab7e493`
 - 必需节拍 SHA-256: `862f647b8b9bd0cf9f70ea6d023cfa95369b101b95cbc8b1b1dd7741f3de657d`
 

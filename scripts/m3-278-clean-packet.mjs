@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -6,8 +7,10 @@ import { runCli } from "./cli-entry.mjs";
 
 const ISSUE = 278;
 const REVIEW_ID = "m3-239-2026-11-25";
+const EXPECTED_GITHUB_REPOSITORY = "ruifeng-y/novel-brain";
 const CANDIDATE_DATASET_VERSION = "quality-benchmark-v2";
 const CANDIDATE_PACKET_VERSION = "quality-benchmark-clean-blind-v3";
+const OLD_SCORES_SHA256 = "8d512dbf052429fa51debc053cbc046772ab50638afa7e9c0eb5a2c8240e20bc";
 const EVIDENCE_DIR = "docs/quality/evidence/m3-278";
 const OUTPUT_FILES = {
   replacementManifest: `${EVIDENCE_DIR}/replacement-manifest.json`,
@@ -58,6 +61,10 @@ const REVIEWER_LEAKAGE_PATTERNS = [
     code: "generation-state",
     pattern: /生成状态|\bgenerated\b|\bgeneration\b/iu,
   },
+  {
+    code: "cross-branch-or-future-oracle",
+    pattern: /另一条分支|早期分支|中期分支|晚期分支|另一条时间线|未来的真相|未来真相|作者真相/iu,
+  },
 ];
 
 export function scanM3_278ReviewerLeakage(sample) {
@@ -93,7 +100,11 @@ export function scanM3_278ReviewerLeakage(sample) {
   return findings;
 }
 
-export async function buildM3_278Artifacts({ root, approvalsOverride }) {
+export async function buildM3_278Artifacts({
+  root,
+  approvalsOverride,
+  attestationVerifier = verifyM3_278GithubApprovalAttestation,
+}) {
   const source = readM3_278Source(root);
   const candidateById = new Map(
     source.replacementCandidates.candidates.map((candidate) => [
@@ -154,24 +165,39 @@ export async function buildM3_278Artifacts({ root, approvalsOverride }) {
     dataset: candidateDataset,
     source,
   });
-  const approvalTemplate = createApprovalTemplate({
-    replacementCandidates,
-    candidatePacket,
-    candidateDataset,
-  });
-  const approvalPath = path.join(root, APPROVALS_FILE);
-  const approvalFilePresent = existsSync(approvalPath);
-  const approvals =
-    approvalsOverride ?? (approvalFilePresent ? readJson(root, APPROVALS_FILE) : approvalTemplate);
-  const approvalStatus = evaluateM3_278Approvals({
-    approvalTemplate,
-    approvals,
-  });
   const replacementManifest = createReplacementManifest({
     source,
     replacementCandidates,
     candidateDataset,
     candidatePacket,
+  });
+  const approvalTemplate = createApprovalTemplate({
+    replacementCandidates,
+    candidatePacket,
+    candidateDataset,
+    replacementManifest,
+  });
+  const approvalPath = path.join(root, APPROVALS_FILE);
+  const approvalFilePresent = existsSync(approvalPath);
+  const approvals =
+    approvalsOverride ?? (approvalFilePresent ? readJson(root, APPROVALS_FILE) : approvalTemplate);
+  const structuralAttestationComplete = isCompleteHumanApprovalAttestation(
+    approvals?.humanAttestation,
+    approvalTemplate.candidatePacketSha256,
+    approvalTemplate.replacementManifestSha256,
+  );
+  let humanAttestationVerified = false;
+  if (structuralAttestationComplete) {
+    try {
+      humanAttestationVerified = Boolean(await attestationVerifier?.(approvals.humanAttestation));
+    } catch {
+      humanAttestationVerified = false;
+    }
+  }
+  const approvalStatus = evaluateM3_278Approvals({
+    approvalTemplate,
+    approvals,
+    humanAttestationVerified,
   });
   const approvalRequest = createApprovalRequest({
     replacementCandidates,
@@ -197,6 +223,8 @@ export async function buildM3_278Artifacts({ root, approvalsOverride }) {
     pendingCount: approvalStatus.pendingCount,
     pendingSampleIds: approvalStatus.pendingSampleIds,
     freezeAllowed: approvalStatus.freezeAllowed,
+    humanAttestationComplete: approvalStatus.humanAttestationComplete,
+    humanAttestationVerified: approvalStatus.humanAttestationVerified,
     reviewerReady: false,
     cleanBlindReviewCompleted: false,
     oldScoresImpact: "invalidated_for_clean_review",
@@ -282,7 +310,11 @@ export function assertM3_278FreezeAllowed(approvalStatus) {
   }
 }
 
-export function evaluateM3_278Approvals({ approvalTemplate, approvals }) {
+export function evaluateM3_278Approvals({
+  approvalTemplate,
+  approvals,
+  humanAttestationVerified = false,
+}) {
   const expectedIds = approvalTemplate.approvals.map((entry) => entry.blindSampleId);
   const expectedIdSet = new Set(expectedIds);
   const expectedById = new Map(
@@ -306,6 +338,9 @@ export function evaluateM3_278Approvals({ approvalTemplate, approvals }) {
   if (approvals?.candidateDatasetSha256 !== approvalTemplate.candidateDatasetSha256) {
     blockers.push("approval-candidate-dataset-mismatch");
   }
+  if (approvals?.replacementManifestSha256 !== approvalTemplate.replacementManifestSha256) {
+    blockers.push("approval-replacement-manifest-mismatch");
+  }
   const duplicateIds = entries
     .map((entry) => entry?.blindSampleId)
     .filter((blindSampleId, index, values) => values.indexOf(blindSampleId) !== index);
@@ -325,6 +360,11 @@ export function evaluateM3_278Approvals({ approvalTemplate, approvals }) {
     if (entry.decision !== "approve") continue;
     if (
       entry.datasetSampleId !== expected.datasetSampleId ||
+      entry.manifestEntrySha256 !== expected.manifestEntrySha256 ||
+      entry.originalTextSha256 !== expected.originalTextSha256 ||
+      entry.originalRequiredBeatsSha256 !== expected.originalRequiredBeatsSha256 ||
+      entry.family !== expected.family ||
+      entry.severity !== expected.severity ||
       entry.replacementTextSha256 !== expected.replacementTextSha256 ||
       entry.requiredBeatsSha256 !== expected.requiredBeatsSha256
     ) {
@@ -369,21 +409,20 @@ export function evaluateM3_278Approvals({ approvalTemplate, approvals }) {
   const humanAttestationComplete = isCompleteHumanApprovalAttestation(
     approvals?.humanAttestation,
     approvalTemplate.candidatePacketSha256,
+    approvalTemplate.replacementManifestSha256,
   );
   if (!humanAttestationComplete) {
     blockers.push("human-approval-attestation-pending");
+  } else if (!humanAttestationVerified) {
+    blockers.push("human-approval-attestation-unverified");
   }
 
   const uniqueBlockers = [...new Set(blockers)].sort(compareStrings);
   const freezeAllowed =
     approvals?.status === "complete" &&
-    pendingSampleIds.length === 0 &&
-    nonHumanCount === 0 &&
-    incompleteCount === 0 &&
-    evidenceDriftCount === 0 &&
-    duplicateIds.length === 0 &&
-    unknownIds.length === 0 &&
-    humanAttestationComplete;
+    humanAttestationComplete &&
+    humanAttestationVerified &&
+    uniqueBlockers.length === 0;
   return {
     schemaVersion: 1,
     issue: ISSUE,
@@ -394,6 +433,7 @@ export function evaluateM3_278Approvals({ approvalTemplate, approvals }) {
     pendingSampleIds,
     freezeAllowed,
     humanAttestationComplete,
+    humanAttestationVerified,
     blockers: uniqueBlockers,
   };
 }
@@ -429,20 +469,47 @@ function verifySourceIntegrity(source) {
     adversarialCases: source.dataset.adversarialCases,
     manifest: omit(source.dataset.manifest, ["datasetSha256"]),
   };
+  const packetCanonicalSha256 = sha256Json(source.packet.samples);
   if (
     source.dataset.manifest.datasetSha256 !== sha256Text(JSON.stringify(datasetWithoutDigest)) ||
+    source.fileSha256.sourcePacket !== source.validation.reviewerPacketFileSha256 ||
+    source.fileSha256.sourcePacket !== source.validation.sourcePacket?.sha256 ||
+    source.fileSha256.sourceKey !== source.validation.sourceKey?.sha256 ||
+    source.fileSha256.sourceDataset !== source.validation.sourceDataset?.sha256 ||
+    source.fileSha256.sourceRubric !== source.validation.sourceRubric?.sha256 ||
+    packetCanonicalSha256 !== source.validation.reviewerPacketCanonicalSha256 ||
+    source.packet.source?.datasetSha256 !== source.dataset.manifest.datasetSha256 ||
+    source.packet.source?.rubricSha256 !== source.rubric.sha256 ||
+    source.fileSha256.sourceScores !== OLD_SCORES_SHA256 ||
+    source.scores.reviewId !== REVIEW_ID ||
+    source.scores.scoreCaptureCompleted !== true ||
+    source.scores.humanScores?.length !== 816 ||
+    source.scores.datasetSha256 !== source.dataset.manifest.datasetSha256 ||
+    source.scores.rubricSha256 !== source.rubric.sha256 ||
+    source.scores.reviewerPacketFileSha256 !== source.fileSha256.sourcePacket ||
+    source.scores.reviewerPacketCanonicalSha256 !== packetCanonicalSha256 ||
     source.adjudication.status !== "complete" ||
     source.adjudication.packetDecision?.decision !== "replace_affected_samples" ||
     source.adjudication.packetDecision?.oldScoresImpact !== "invalidated_for_clean_review" ||
     source.adjudication.adjudications?.length !== 24 ||
     source.adjudicationStatus.completedAdjudicationCount !== 24 ||
+    source.reviewPolicy.issue !== 240 ||
+    source.reviewPolicy.decisionId !== "interRaterVarianceThreshold" ||
     source.reviewPolicy.interRaterVarianceThreshold !== 0.1
   ) {
     throw new Error("M3_278_SOURCE_DIGEST_MISMATCH");
   }
 }
 
-function createApprovalTemplate({ replacementCandidates, candidatePacket, candidateDataset }) {
+function createApprovalTemplate({
+  replacementCandidates,
+  candidatePacket,
+  candidateDataset,
+  replacementManifest,
+}) {
+  const manifestEntryById = new Map(
+    replacementManifest.replacements.map((entry) => [entry.blindSampleId, entry]),
+  );
   return {
     schemaVersion: 1,
     issue: ISSUE,
@@ -450,6 +517,7 @@ function createApprovalTemplate({ replacementCandidates, candidatePacket, candid
     status: "awaiting-human-approval",
     candidatePacketSha256: candidatePacket.packetSha256,
     candidateDatasetSha256: candidateDataset.manifest.datasetSha256,
+    replacementManifestSha256: replacementManifest.manifestSha256,
     instructions: [
       "只能由真实产品/质量负责人逐项审查并填写。",
       "不得由模型补写、推断或伪造批准、身份、时间、理由和影响。",
@@ -461,25 +529,37 @@ function createApprovalTemplate({ replacementCandidates, candidatePacket, candid
       issue: ISSUE,
       requiredMarker: "M3-278-HUMAN-APPROVAL",
       candidatePacketSha256: candidatePacket.packetSha256,
+      replacementManifestSha256: replacementManifest.manifestSha256,
       commentUrl: null,
       commentId: null,
       author: null,
       attestedAt: null,
       statement: null,
     },
-    approvals: replacementCandidates.candidates.map((candidate) => ({
-      blindSampleId: candidate.blindSampleId,
-      datasetSampleId: candidate.datasetSampleId,
-      replacementTextSha256: sha256Text(candidate.text),
-      requiredBeatsSha256: sha256Json(candidate.requiredBeats),
-      decision: null,
-      rationale: null,
-      impact: null,
-      adjudicatorId: null,
-      adjudicatorKind: null,
-      attestationId: null,
-      decidedAt: null,
-    })),
+    approvals: replacementCandidates.candidates.map((candidate) => {
+      const manifestEntry = manifestEntryById.get(candidate.blindSampleId);
+      if (!manifestEntry) {
+        throw new Error(`M3_278_APPROVAL_MANIFEST_MISSING:${candidate.blindSampleId}`);
+      }
+      return {
+        blindSampleId: candidate.blindSampleId,
+        datasetSampleId: candidate.datasetSampleId,
+        family: candidate.family,
+        severity: candidate.severity,
+        originalTextSha256: manifestEntry.originalTextSha256,
+        originalRequiredBeatsSha256: manifestEntry.originalRequiredBeatsSha256,
+        replacementTextSha256: manifestEntry.replacementTextSha256,
+        requiredBeatsSha256: manifestEntry.requiredBeatsSha256,
+        manifestEntrySha256: sha256Json(manifestEntry),
+        decision: null,
+        rationale: null,
+        impact: null,
+        adjudicatorId: null,
+        adjudicatorKind: null,
+        attestationId: null,
+        decidedAt: null,
+      };
+    }),
   };
 }
 
@@ -583,6 +663,7 @@ function createApprovalRequest({ replacementCandidates, approvalTemplate }) {
 - 场景 family: \`${candidate.family}\`
 - 严重度: \`${candidate.severity}\`
 - 题材 / 难度: \`${candidate.genre}\` / \`${candidate.difficulty}\`
+- Manifest entry SHA-256: \`${approval.manifestEntrySha256}\`
 - 替代文本 SHA-256: \`${approval.replacementTextSha256}\`
 - 必需节拍 SHA-256: \`${approval.requiredBeatsSha256}\`
 
@@ -615,13 +696,16 @@ Issue: #278
 
 - Candidate dataset: \`${approvalTemplate.candidateDatasetSha256}\`
 - Candidate reviewer packet: \`${approvalTemplate.candidatePacketSha256}\`
+- Replacement manifest: \`${approvalTemplate.replacementManifestSha256}\`
 - Required approvals: 24/24
 - Old scores: \`invalidated_for_clean_review\`
 - Variance threshold: #240 已批准为 \`0.1\`，本票不得改写
 - Downstream: #279 全量重评、#242 最终发布门禁
 
 候选文件不是已冻结 packet。只有 24 个样本全部由真实产品/质量负责人逐项批准，并在 #278
-发布包含 \`M3-278-HUMAN-APPROVAL\` 的外部 GitHub attestation 后，才允许冻结。
+发布包含 \`M3-278-HUMAN-APPROVAL\`、candidate packet hash 和 replacement manifest hash
+的外部 GitHub attestation 后，才允许冻结。发布检查会通过 GitHub API 核对评论作者关联、
+Issue 278、评论时间与完整正文。
 
 ${sections.join("\n").trimEnd()}
 `;
@@ -804,23 +888,71 @@ function isIsoTimestamp(value) {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
 }
 
-function isCompleteHumanApprovalAttestation(value, candidatePacketSha256) {
+function isCompleteHumanApprovalAttestation(
+  value,
+  candidatePacketSha256,
+  replacementManifestSha256,
+) {
   return Boolean(
     value?.provider === "github_issue_comment" &&
     value.issue === ISSUE &&
     value.requiredMarker === "M3-278-HUMAN-APPROVAL" &&
     value.candidatePacketSha256 === candidatePacketSha256 &&
-    /^https:\/\/github\.com\/ruifeng-y\/novel-brain\/issues\/278#issuecomment-\d+$/u.test(
-      value.commentUrl ?? "",
-    ) &&
+    value.replacementManifestSha256 === replacementManifestSha256 &&
+    new RegExp(
+      `^https://github\\.com/${EXPECTED_GITHUB_REPOSITORY}/issues/${ISSUE}#issuecomment-\\d+$`,
+      "u",
+    ).test(value.commentUrl ?? "") &&
     /^\d+$/u.test(value.commentId ?? "") &&
     value.commentUrl.endsWith(`#issuecomment-${value.commentId}`) &&
     hasText(value.author) &&
     isIsoTimestamp(value.attestedAt) &&
     hasText(value.statement) &&
     value.statement.includes("M3-278-HUMAN-APPROVAL") &&
-    value.statement.includes(candidatePacketSha256),
+    value.statement.includes(candidatePacketSha256) &&
+    value.statement.includes(replacementManifestSha256),
   );
+}
+
+export function verifyM3_278GithubApprovalAttestation(attestation) {
+  if (
+    attestation?.provider !== "github_issue_comment" ||
+    attestation.issue !== ISSUE ||
+    attestation.requiredMarker !== "M3-278-HUMAN-APPROVAL" ||
+    !/^\d+$/u.test(attestation.commentId ?? "") ||
+    attestation.commentUrl !==
+      `https://github.com/${EXPECTED_GITHUB_REPOSITORY}/issues/${ISSUE}#issuecomment-${attestation.commentId}`
+  ) {
+    return false;
+  }
+  try {
+    const comment = queryGithubApi(
+      `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/comments/${attestation.commentId}`,
+      "{body: .body, issueUrl: .issue_url, author: .user.login, authorAssociation: .author_association, createdAt: .created_at}",
+    );
+    const attestedAt = Date.parse(attestation.attestedAt);
+    const createdAt = Date.parse(comment.createdAt);
+    return (
+      comment.author === attestation.author &&
+      ["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.authorAssociation) &&
+      comment.issueUrl?.endsWith(`/repos/${EXPECTED_GITHUB_REPOSITORY}/issues/${ISSUE}`) &&
+      Number.isFinite(attestedAt) &&
+      Number.isFinite(createdAt) &&
+      Math.abs(attestedAt - createdAt) <= 60_000 &&
+      comment.body?.trim() === attestation.statement?.trim()
+    );
+  } catch {
+    return false;
+  }
+}
+
+function queryGithubApi(pathname, jq) {
+  const output = execFileSync("gh", ["api", pathname, "--jq", jq], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+    timeout: 15_000,
+  });
+  return JSON.parse(output);
 }
 
 async function main() {

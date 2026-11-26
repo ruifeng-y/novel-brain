@@ -3481,9 +3481,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 3",
-      "text": "顾青在破庙那夜没有见过另一条分支里的密信。当前时间线的封存名册仍然锁在祠堂，连沈砚都只知道自己的姓氏有疑。可顾青一进门便说出未来的真相：沈砚会在白塔下认祖，并以此命令守军打开北门。他说得笃定，仿佛那封信刚刚读过。",
+      "text": "顾青在破庙那夜没有读过密信。封存名册仍然锁在祠堂，连沈砚都只知道自己的姓氏有疑。可顾青一进门便说出沈砚会在白塔下认祖，并以此命令守军打开北门。他说得笃定，仿佛刚刚读过那封信。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "a3708b98fe7ecb9a4c32094bed5a097b8e6b90cd8162f052bd0965ca44f9e73a",
+      "sourceHash": "f7ad4383e7b2ce6bc59c327a0c91c923e38d5649e6250b1b991219bb954eb83a",
       "knownIssues": [
         {
           "code": "knowledge_boundary",
@@ -3492,8 +3492,8 @@
         }
       ],
       "requiredBeats": [
-        "顾青在破庙那夜没有见过另一条分支里的密信。",
-        "可顾青一进门便说出未来的真相：沈砚会在白塔下认祖，并以此命令守军打开北门。"
+        "顾青在破庙那夜没有读过密信。",
+        "可顾青一进门便说出沈砚会在白塔下认祖，并以此命令守军打开北门。"
       ],
       "family": "knowledge_boundary",
       "chapterNumber": 420,
@@ -3975,9 +3975,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 22",
-      "text": "这一支时间线在破庙那夜就与另一支分开，沈砚从未见过白塔下的祭坛。可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。那是另一条分支十年后才发生的事，同行的人从未听他讲过。",
+      "text": "破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。同行者问他何时来过，他只说梦里见过，却连石兽左爪的裂痕都描述得一字不差。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "17b854f83b709a7e3136fa1b1d1adc030f50e3aaf8a15b747b6017540eafef47",
+      "sourceHash": "dd31a528b4734d21ab10cd99dfa2f1253222882586b836cda0bee5301a565ba6",
       "knownIssues": [
         {
           "code": "branch_divergence",
@@ -3986,7 +3986,7 @@
         }
       ],
       "requiredBeats": [
-        "这一支时间线在破庙那夜就与另一支分开，沈砚从未见过白塔下的祭坛。",
+        "破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。",
         "可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。"
       ],
       "family": "branch_divergence",
@@ -4001,9 +4001,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 23",
-      "text": "中期分支里，裴照在雪谷战死，尸身由顾青亲手封进冰棺。另一条时间线写到第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。城中没有人提起复活、替身或转世，顾青只是自然地叫他师兄。",
+      "text": "雪谷战后，裴照的尸身由顾青亲手封进冰棺。第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。城中没有人提起复活、替身或转世，顾青只是自然地叫他师兄。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "d4dbff5b8d4c2471e4acf456b8a3b365de5d11abbffd0f13f1f3c60504e31c27",
+      "sourceHash": "03efad0e351ea6d8a5b96e55b23d4358d626bd46264e2d8237158a06ad57edb3",
       "knownIssues": [
         {
           "code": "branch_divergence",
@@ -4012,8 +4012,8 @@
         }
       ],
       "requiredBeats": [
-        "中期分支里，裴照在雪谷战死，尸身由顾青亲手封进冰棺。",
-        "另一条时间线写到第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。"
+        "雪谷战后，裴照的尸身由顾青亲手封进冰棺。",
+        "第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。"
       ],
       "family": "branch_divergence",
       "chapterNumber": 1750,
@@ -4027,9 +4027,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 24",
-      "text": "旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。可那一卷只写到少主人接掌旧宅，祭坛尚未开启，陌生面孔也没有出现。晚期分支里才发生的事，被史官写进了所有分支共用的总册。",
+      "text": "旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。可那一卷只写到少主人接掌旧宅，祭坛尚未开启，陌生面孔也没有出现。守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "d94cca8ae4316da51b897593a3f08e355800b16e28f56d81dd0ebc55b2f70102",
+      "sourceHash": "aa750f1f19a8a3b0a64e1225e8c4759c7cf51d496be0a55d8d90817af80e6d48",
       "knownIssues": [
         {
           "code": "branch_divergence",
@@ -4039,7 +4039,7 @@
       ],
       "requiredBeats": [
         "旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。",
-        "晚期分支里才发生的事，被史官写进了所有分支共用的总册。"
+        "守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。"
       ],
       "family": "branch_divergence",
       "chapterNumber": 3200,
@@ -7170,7 +7170,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "a3708b98fe7ecb9a4c32094bed5a097b8e6b90cd8162f052bd0965ca44f9e73a",
+        "sourceHash": "f7ad4383e7b2ce6bc59c327a0c91c923e38d5649e6250b1b991219bb954eb83a",
         "knownIssues": [
           {
             "code": "knowledge_boundary",
@@ -7179,8 +7179,8 @@
           }
         ],
         "requiredBeats": [
-          "顾青在破庙那夜没有见过另一条分支里的密信。",
-          "可顾青一进门便说出未来的真相：沈砚会在白塔下认祖，并以此命令守军打开北门。"
+          "顾青在破庙那夜没有读过密信。",
+          "可顾青一进门便说出沈砚会在白塔下认祖，并以此命令守军打开北门。"
         ]
       },
       {
@@ -7531,7 +7531,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "17b854f83b709a7e3136fa1b1d1adc030f50e3aaf8a15b747b6017540eafef47",
+        "sourceHash": "dd31a528b4734d21ab10cd99dfa2f1253222882586b836cda0bee5301a565ba6",
         "knownIssues": [
           {
             "code": "branch_divergence",
@@ -7540,7 +7540,7 @@
           }
         ],
         "requiredBeats": [
-          "这一支时间线在破庙那夜就与另一支分开，沈砚从未见过白塔下的祭坛。",
+          "破庙那夜以后，沈砚一直沿北道行走，从未见过白塔下的祭坛。",
           "可他推门便说出祭坛三层台阶与石兽的位置，还提醒众人别碰第七盏灯。"
         ]
       },
@@ -7550,7 +7550,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "d4dbff5b8d4c2471e4acf456b8a3b365de5d11abbffd0f13f1f3c60504e31c27",
+        "sourceHash": "03efad0e351ea6d8a5b96e55b23d4358d626bd46264e2d8237158a06ad57edb3",
         "knownIssues": [
           {
             "code": "branch_divergence",
@@ -7559,8 +7559,8 @@
           }
         ],
         "requiredBeats": [
-          "中期分支里，裴照在雪谷战死，尸身由顾青亲手封进冰棺。",
-          "另一条时间线写到第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。"
+          "雪谷战后，裴照的尸身由顾青亲手封进冰棺。",
+          "第三年秋，裴照却提剑走进城门，肩上的旧伤还是雪谷留下的那道。"
         ]
       },
       {
@@ -7569,7 +7569,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "d94cca8ae4316da51b897593a3f08e355800b16e28f56d81dd0ebc55b2f70102",
+        "sourceHash": "aa750f1f19a8a3b0a64e1225e8c4759c7cf51d496be0a55d8d90817af80e6d48",
         "knownIssues": [
           {
             "code": "branch_divergence",
@@ -7579,13 +7579,13 @@
         ],
         "requiredBeats": [
           "旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。",
-          "晚期分支里才发生的事，被史官写进了所有分支共用的总册。"
+          "守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。"
         ]
       }
     ],
     "decisionRequired": [
       "interRaterVarianceThreshold"
     ],
-    "datasetSha256": "9147541ae2c874a9f62a1c839d44a55eb7343becd902b27719f79de790148bd2"
+    "datasetSha256": "e38afca7dd06e13a79cc9c3540b9a10eb0c34f61ec28bd29b46bb127038da306"
   }
 }

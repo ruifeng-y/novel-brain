@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,6 +35,11 @@ describe("M3-278 clean blind packet", () => {
     );
     expect(datasetIds).toHaveLength(204);
     expect(new Set(datasetIds).size).toBe(204);
+    expect([...datasetIds].sort()).toEqual(
+      [...artifacts.source.dataset.chapterSamples, ...artifacts.source.dataset.adversarialCases]
+        .map((sample) => sample.id)
+        .sort(),
+    );
     expect(packetIds).toHaveLength(204);
     expect(new Set(packetIds).size).toBe(204);
     expect(packetIds).toEqual(artifacts.source.key.entries.map((entry) => entry.blindSampleId));
@@ -67,6 +73,12 @@ describe("M3-278 clean blind packet", () => {
       "P0",
       "P1",
       "P2",
+      "另一条分支",
+      "早期分支",
+      "中期分支",
+      "晚期分支",
+      "另一条时间线",
+      "未来的真相",
     ]) {
       expect(serialized).not.toContain(marker);
     }
@@ -96,6 +108,7 @@ describe("M3-278 clean blind packet", () => {
     const modelResult = await buildM3_278Artifacts({
       root,
       approvalsOverride: modelApproval,
+      attestationVerifier: async () => true,
     });
     expect(modelResult.approvalStatus.freezeAllowed).toBe(false);
     expect(modelResult.approvalStatus.blockers).toContain("replacement-approval-non-human:24");
@@ -105,6 +118,7 @@ describe("M3-278 clean blind packet", () => {
     const approved = await buildM3_278Artifacts({
       root,
       approvalsOverride: humanApproval,
+      attestationVerifier: async () => true,
     });
     expect(approved.approvalStatus).toMatchObject({
       status: "complete",
@@ -113,6 +127,24 @@ describe("M3-278 clean blind packet", () => {
       freezeAllowed: true,
     });
     expect(() => assertM3_278FreezeAllowed(approved.approvalStatus)).not.toThrow();
+
+    const unverified = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: humanApproval,
+      attestationVerifier: async () => false,
+    });
+    expect(unverified.approvalStatus.freezeAllowed).toBe(false);
+    expect(unverified.approvalStatus.blockers).toContain("human-approval-attestation-unverified");
+
+    const mismatched = structuredClone(humanApproval);
+    mismatched.candidatePacketSha256 = "0".repeat(64);
+    const mismatchResult = await buildM3_278Artifacts({
+      root,
+      approvalsOverride: mismatched,
+      attestationVerifier: async () => true,
+    });
+    expect(mismatchResult.approvalStatus.freezeAllowed).toBe(false);
+    expect(mismatchResult.approvalStatus.blockers).toContain("approval-candidate-packet-mismatch");
   });
 
   it("binds every replacement to source evidence and reproduces all artifact hashes", async () => {
@@ -120,6 +152,10 @@ describe("M3-278 clean blind packet", () => {
     const second = await buildM3_278Artifacts({ root });
     const manifest = first.replacementManifest;
 
+    expect(first.artifactFreshness).toEqual({
+      status: "passed",
+      stalePaths: [],
+    });
     expect(first.candidateDataset.manifest.datasetSha256).toBe(
       second.candidateDataset.manifest.datasetSha256,
     );
@@ -129,6 +165,10 @@ describe("M3-278 clean blind packet", () => {
     expect(verifyM3_278ReplacementManifest(manifest)).toBe(true);
     expect(manifest.replacements).toHaveLength(24);
     expect(new Set(manifest.replacements.map((entry) => entry.blindSampleId)).size).toBe(24);
+    expect(first.approvalTemplate.replacementManifestSha256).toBe(manifest.manifestSha256);
+    const manifestEntryBySampleId = new Map(
+      manifest.replacements.map((entry) => [entry.blindSampleId, entry]),
+    );
     for (const entry of manifest.replacements) {
       expect(entry.originalTextSha256).toMatch(/^[a-f0-9]{64}$/u);
       expect(entry.replacementTextSha256).toMatch(/^[a-f0-9]{64}$/u);
@@ -140,11 +180,19 @@ describe("M3-278 clean blind packet", () => {
         "docs/quality/evidence/m3-278/replacement-candidates.source.json",
       );
     }
+    expect(
+      first.approvalTemplate.approvals.every(
+        (entry) =>
+          entry.manifestEntrySha256 ===
+          hashCanonical(manifestEntryBySampleId.get(entry.blindSampleId)),
+      ),
+    ).toBe(true);
     expect(manifest.source.rubricSha256).toBe(first.source.rubric.sha256);
     expect(manifest.source.reviewPolicy.interRaterVarianceThreshold).toBe(0.1);
     expect(manifest.source.oldScores).toMatchObject({
       status: "invalidated_for_clean_review",
       includedInCleanReview: false,
+      sha256: "8d512dbf052429fa51debc053cbc046772ab50638afa7e9c0eb5a2c8240e20bc",
     });
     expect(first.status.blockingIssues).toEqual(["#279", "#242"]);
     expect(first.approvalRequest.match(/^### Q\d{3}$/gmu)).toHaveLength(24);
@@ -154,6 +202,24 @@ describe("M3-278 clean blind packet", () => {
     expect(first.approvalRequest).toContain("`adjudicatorKind`: 必须为 `human`");
   });
 });
+
+function hashCanonical(value) {
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(value)))
+    .digest("hex");
+}
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, canonicalize(entry)]),
+    );
+  }
+  return value;
+}
 
 function fillHumanApprovals(approval, { adjudicatorKind = "human" } = {}) {
   approval.status = "complete";
@@ -173,6 +239,6 @@ function fillHumanApprovals(approval, { adjudicatorKind = "human" } = {}) {
     commentId: "999999",
     author: "ruifeng-y",
     attestedAt: "2026-11-26T00:00:00.000Z",
-    statement: `M3-278-HUMAN-APPROVAL ${approval.candidatePacketSha256}`,
+    statement: `M3-278-HUMAN-APPROVAL ${approval.candidatePacketSha256} ${approval.replacementManifestSha256}`,
   };
 }

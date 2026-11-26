@@ -24,9 +24,9 @@ packet or a fabricated human approval.
 
 ## Current Gate
 
-- Candidate dataset SHA-256: `9147541ae2c874a9f62a1c839d44a55eb7343becd902b27719f79de790148bd2`
-- Candidate packet SHA-256: `c3b1a08a92340ef9b56c4e234262e13499b2ef3fb634669b8a3750c322a70386`
-- Replacement manifest SHA-256: `bdef7908ee39cd38b18f088c5350f360340aaf943475ec697612ca44eb371ebf`
+- Candidate dataset SHA-256: `e38afca7dd06e13a79cc9c3540b9a10eb0c34f61ec28bd29b46bb127038da306`
+- Candidate packet SHA-256: `9552e33f6379b02828c390550fca97784426a05222adaafe5405ddb056dc38f3`
+- Replacement manifest SHA-256: `8187aed7a9974b5726afb97ba21c1a91fbd35bc8ae25098ee8df100fc4218f1d`
 - Human approvals: `0/24`
 - Freeze allowed: `false`
 - Old scores: `invalidated_for_clean_review`
@@ -35,6 +35,8 @@ packet or a fabricated human approval.
 
 The candidate packet must not be sent to blind reviewers until all 24 replacements are approved
 and an external GitHub attestation containing `M3-278-HUMAN-APPROVAL` is recorded on #278.
+The attestation is verified through the GitHub API for owner/member/collaborator association,
+Issue 278, comment time, exact statement, candidate packet hash and replacement manifest hash.
 
 ## Reproduction
 

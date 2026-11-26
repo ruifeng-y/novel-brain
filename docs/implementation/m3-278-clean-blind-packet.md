@@ -30,19 +30,22 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
   没有删除样本。
 - 候选 reviewer packet 对全部 204 个样本执行泄漏扫描：oracle marker、内部证据字段、
   defect family、severity label、模型身份与生成状态均不得进入样本文本或字段。
-- `approvals.template.json` 固定 24 个逐项审批位置。模型批准、重复、未知、证据漂移、缺字段、
-  非 human 或缺少外部 GitHub attestation 均不能解锁冻结。
+- `approvals.template.json` 固定 24 个逐项审批位置，并绑定 candidate dataset、packet、
+  replacement manifest 与每个 manifest entry 的 hash。模型批准、重复、未知、证据漂移、
+  缺字段、非 human 或缺少外部 GitHub attestation 均不能解锁冻结。
+- 外部 attestation 会通过 GitHub API 核对 comment 作者关联、Issue 278、创建时间、正文
+  marker、candidate packet hash 与 replacement manifest hash；只填写本地 `human` 字段无效。
 - `approval-request.md` 是 owner 审阅入口，列出 sample ID、场景 family、severity、候选叙事、
   必须保留的 beats 和逐项 approval 字段。
 
 ## 候选 Hash
 
 - Candidate dataset:
-  `9147541ae2c874a9f62a1c839d44a55eb7343becd902b27719f79de790148bd2`
+  `e38afca7dd06e13a79cc9c3540b9a10eb0c34f61ec28bd29b46bb127038da306`
 - Candidate reviewer packet:
-  `c3b1a08a92340ef9b56c4e234262e13499b2ef3fb634669b8a3750c322a70386`
+  `9552e33f6379b02828c390550fca97784426a05222adaafe5405ddb056dc38f3`
 - Replacement/change manifest:
-  `bdef7908ee39cd38b18f088c5350f360340aaf943475ec697612ca44eb371ebf`
+  `8187aed7a9974b5726afb97ba21c1a91fbd35bc8ae25098ee8df100fc4218f1d`
 - Frozen rubric: `247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b`
 - #240 variance policy: `0.1`
 
