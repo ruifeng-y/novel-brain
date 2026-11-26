@@ -158,6 +158,22 @@ describe("M3-278 clean blind packet", () => {
     expect(() => assertM3_278ReviewerPacketClean(nestedLeakString)).toThrow(
       "M3_278_REVIEWER_PACKET_LEAKAGE",
     );
+    const leakedStatus = createReviewerPacketForTest({
+      samples: structuredClone(leakedPacket.samples),
+    });
+    leakedStatus.samples[0].text = "干净叙事。";
+    leakedStatus.status = "oracle";
+    expect(() => assertM3_278ReviewerPacketClean(leakedStatus)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    const leakedPacketHash = createReviewerPacketForTest({
+      samples: structuredClone(leakedPacket.samples),
+    });
+    leakedPacketHash.samples[0].text = "干净叙事。";
+    leakedPacketHash.packetSha256 = "body_continuity";
+    expect(() => assertM3_278ReviewerPacketClean(leakedPacketHash)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
   });
 
   it("validates GitHub approval attestations by owner, issue, time and exact payload", () => {
@@ -443,7 +459,7 @@ describe("M3-278 clean blind packet", () => {
 function createReviewerPacketForTest({ samples }) {
   return {
     schemaVersion: 1,
-    packetVersion: "test",
+    packetVersion: "quality-benchmark-clean-blind-v3",
     status: "candidate-not-approved",
     issue: 278,
     source: {
@@ -494,7 +510,7 @@ function fillHumanApprovals(approval, { adjudicatorKind = "human" } = {}) {
     impact: "可进入 clean packet 候选，但仍须等待完整人工重评。",
     adjudicatorId: "ruifeng-y",
     adjudicatorKind,
-    attestationId: "github-issue-comment-999999",
+    attestationId: `M3-278-APPROVAL-${entry.blindSampleId}`,
     decidedAt: "2026-11-26T00:00:00.000Z",
   }));
   approval.humanAttestation = {

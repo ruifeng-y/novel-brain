@@ -18,7 +18,7 @@ Issue: #278
 发布包含 `M3-278-HUMAN-APPROVAL`、candidate packet hash 和 replacement manifest hash
 以及填完 24 项后的 approval payload hash 的外部 GitHub attestation 后，才允许冻结。
 发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
-`adjudicatorId` 必须等于评论作者，每个 `attestationId` 必须等于该评论 ID。
+`adjudicatorId` 必须等于评论作者，每个 `attestationId` 必须使用该样本的固定审批 token。
 
 填写完 24 项后先将 `status` 改为 `complete`，再运行
 `pnpm quality:clean-packet -- --payload-hash`，把输出的 approval payload hash 写入
@@ -51,7 +51,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q005`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q026
@@ -80,7 +80,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q026`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q034
@@ -109,7 +109,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q034`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q055
@@ -138,7 +138,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q055`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q056
@@ -167,7 +167,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q056`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q067
@@ -196,7 +196,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q067`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q075
@@ -225,7 +225,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q075`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q081
@@ -254,7 +254,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q081`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q083
@@ -283,7 +283,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q083`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q084
@@ -312,7 +312,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q084`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q088
@@ -341,7 +341,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q088`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q093
@@ -370,7 +370,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q093`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q096
@@ -399,7 +399,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q096`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q123
@@ -428,7 +428,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q123`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q130
@@ -457,7 +457,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q130`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q149
@@ -486,7 +486,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q149`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q158
@@ -515,7 +515,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q158`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q160
@@ -544,7 +544,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q160`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q162
@@ -573,7 +573,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q162`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q168
@@ -602,7 +602,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q168`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q182
@@ -631,7 +631,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q182`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q186
@@ -660,7 +660,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q186`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q189
@@ -689,7 +689,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q189`
 - [ ] `decidedAt`: ISO 时间戳
 
 ### Q196
@@ -718,5 +718,5 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - [ ] `impact`: 对 clean packet / #279 的影响
 - [ ] `adjudicatorId`: 产品/质量负责人身份
 - [ ] `adjudicatorKind`: 必须为 `human`
-- [ ] `attestationId`: `github-issue-comment-<commentId>`
+- [ ] `attestationId`: `M3-278-APPROVAL-Q196`
 - [ ] `decidedAt`: ISO 时间戳

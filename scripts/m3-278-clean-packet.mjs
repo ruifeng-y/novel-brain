@@ -149,6 +149,11 @@ export function assertM3_278ReviewerPacketClean(packet) {
     Array.isArray(packet) ||
     typeof packet !== "object" ||
     Object.keys(packet).sort().join(",") !== REVIEWER_PACKET_FIELDS.join(",") ||
+    packet.schemaVersion !== 1 ||
+    packet.issue !== ISSUE ||
+    packet.status !== "candidate-not-approved" ||
+    packet.packetVersion !== CANDIDATE_PACKET_VERSION ||
+    !/^[a-f0-9]{64}$/u.test(packet.packetSha256 ?? "") ||
     !Array.isArray(packet.samples) ||
     packet.samples.length !== 204
   ) {
@@ -199,6 +204,11 @@ export function assertM3_278ReviewerPacketClean(packet) {
     throw new Error(`M3_278_REVIEWER_PACKET_LEAKAGE:${JSON.stringify(findings)}`);
   }
   const metadataFindings = scanM3_278NestedReviewerLeakage({
+    schemaVersion: packet.schemaVersion,
+    issue: packet.issue,
+    status: packet.status,
+    packetVersion: packet.packetVersion,
+    packetSha256: packet.packetSha256,
     source: packet.source,
     reviewerReadiness: packet.reviewerReadiness,
   });
@@ -482,9 +492,6 @@ export function evaluateM3_278Approvals({
   let evidenceDriftCount = 0;
   let identityMismatchCount = 0;
   const attestationAuthor = approvals?.humanAttestation?.author;
-  const expectedAttestationId = /^\d+$/u.test(approvals?.humanAttestation?.commentId ?? "")
-    ? `github-issue-comment-${approvals.humanAttestation.commentId}`
-    : null;
 
   if (approvals?.schemaVersion !== approvalTemplate.schemaVersion) {
     blockers.push("approval-schema-invalid");
@@ -547,8 +554,7 @@ export function evaluateM3_278Approvals({
     }
     if (
       entry.adjudicatorId !== attestationAuthor ||
-      !expectedAttestationId ||
-      entry.attestationId !== expectedAttestationId
+      entry.attestationId !== `M3-278-APPROVAL-${entry.blindSampleId}`
     ) {
       identityMismatchCount += 1;
       continue;
@@ -886,7 +892,7 @@ ${candidate.requiredBeats.map((beat) => `- ${beat}`).join("\n")}
 - [ ] \`impact\`: 对 clean packet / #279 的影响
 - [ ] \`adjudicatorId\`: 产品/质量负责人身份
 - [ ] \`adjudicatorKind\`: 必须为 \`human\`
-- [ ] \`attestationId\`: \`github-issue-comment-<commentId>\`
+- [ ] \`attestationId\`: \`M3-278-APPROVAL-${candidate.blindSampleId}\`
 - [ ] \`decidedAt\`: ISO 时间戳
 `;
   });
@@ -910,7 +916,7 @@ Issue: #278
 发布包含 \`M3-278-HUMAN-APPROVAL\`、candidate packet hash 和 replacement manifest hash
 以及填完 24 项后的 approval payload hash 的外部 GitHub attestation 后，才允许冻结。
 发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
-\`adjudicatorId\` 必须等于评论作者，每个 \`attestationId\` 必须等于该评论 ID。
+\`adjudicatorId\` 必须等于评论作者，每个 \`attestationId\` 必须使用该样本的固定审批 token。
 
 填写完 24 项后先将 \`status\` 改为 \`complete\`，再运行
 \`pnpm quality:clean-packet -- --payload-hash\`，把输出的 approval payload hash 写入

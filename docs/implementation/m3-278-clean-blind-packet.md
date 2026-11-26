@@ -36,8 +36,8 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
 - 外部 attestation 会通过 GitHub API 核对 comment 作者关联、Issue 278、创建时间、正文
   marker、candidate packet hash、replacement manifest hash 和 24 项审批 payload hash；
   comment 作者必须是产品/质量负责人 `ruifeng-y` 且关联为 `OWNER`。每个
-  `adjudicatorId` 必须等于评论作者，`attestationId` 必须等于该评论 ID，只填写本地
-  `human` 字段无效。
+  `adjudicatorId` 必须等于评论作者，`attestationId` 必须使用该样本的固定审批 token
+  `M3-278-APPROVAL-<sampleId>`，只填写本地 `human` 字段无效。
 - `branch_divergence` 候选使用同源年表或双册村志的叙事冲突表达分支隔离，不在 reviewer
   文本中直接写“分支”“未来真相”等 oracle 提示。
 - `approval-request.md` 是 owner 审阅入口，列出 sample ID、场景 family、severity、候选叙事、
