@@ -21,15 +21,21 @@ packet or a fabricated human approval.
 - `approvals.template.json`: blank 24-item human approval record bound to the candidate hashes.
 - `approval-request.md`: owner review entrance with sample ID, scenario family, severity, candidate
   narrative, required beats and per-item approval fields.
+- `review-disposition.md`: disposition of the external review notes, including the 6 fixed hard
+  findings and 11 owner decisions that remain pending.
 - `status.json`: machine-readable pending state consumed by the implementation evidence.
 
 ## Current Gate
 
-- Candidate dataset SHA-256: `b5404a7469887a18dee21a1937d3cec24777d5c79520e5c9e25a51e18c0e5e5d`
-- Candidate packet SHA-256: `3c33120dd10e95ee89ccd9351e192062b5b7b442aa1b8d11c1d70e394a693ebe`
-- Replacement manifest SHA-256: `880487461a063c7125c8d711fe9191c96bc32e6b324fe26f126f59c56ab70ba6`
+- Candidate dataset SHA-256: `0bf8a06d3ecf8d9c574a0d43aef9a5dea95555857873b4212add73436acdc6bd`
+- Candidate packet SHA-256: `bc7adc54e7ae328754d270a08ffa24a332b6a7e2d6305b9e2ce7e6141176ddde`
+- Replacement manifest SHA-256: `c064eb6c5b2c0f7a69204a9f2d5ea8fda4c19160348ce10fd21371a1c492243f`
 - Human approvals: `0/24`
 - Freeze allowed: `false`
+- Owner-visible established facts are bound in `replacement-manifest.json` and
+  `approvals.template.json`, but never included in the reviewer packet.
+- The 11 semantic decisions identified by the external review are listed explicitly in
+  `approval-request.md`; they remain owner decisions, not model approvals.
 - Old scores: `invalidated_for_clean_review`
 - Variance threshold: #240 policy `0.1`, unchanged
 - Downstream: #279 full rerun; #242 remains blocked by #278 and #279

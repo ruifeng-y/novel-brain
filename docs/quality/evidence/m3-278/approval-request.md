@@ -6,9 +6,9 @@
 
 Issue: #278
 
-- Candidate dataset: `b5404a7469887a18dee21a1937d3cec24777d5c79520e5c9e25a51e18c0e5e5d`
-- Candidate reviewer packet: `3c33120dd10e95ee89ccd9351e192062b5b7b442aa1b8d11c1d70e394a693ebe`
-- Replacement manifest: `880487461a063c7125c8d711fe9191c96bc32e6b324fe26f126f59c56ab70ba6`
+- Candidate dataset: `0bf8a06d3ecf8d9c574a0d43aef9a5dea95555857873b4212add73436acdc6bd`
+- Candidate reviewer packet: `bc7adc54e7ae328754d270a08ffa24a332b6a7e2d6305b9e2ce7e6141176ddde`
+- Replacement manifest: `c064eb6c5b2c0f7a69204a9f2d5ea8fda4c19160348ce10fd21371a1c492243f`
 - Required approvals: 24/24
 - Old scores: `invalidated_for_clean_review`
 - Variance threshold: #240 已批准为 `0.1`，本票不得改写
@@ -20,6 +20,20 @@ Issue: #278
 发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
 `adjudicatorId` 必须等于评论作者，每个 `attestationId` 必须使用该样本的固定审批 token。
 
+## 待负责人裁决
+
+- Q026: 是否将“自小怕黑”补入必需节拍，确保长期恐惧也属于评审契约？
+- Q075: 跨册同步异常是否保留，或改为仅保留两册分歧并更新节拍？
+- Q088: 是否删除“时间戳也落在同一天”这一过度定证句？
+- Q093: 既定事实是忘川书，是否将正文改为忘川书所有权冲突？
+- Q096: 是否将“第三年秋提剑回城”补为必需节拍？
+- Q130: 既定事实是忘川书，是否将正文改为忘川书使用权冲突？
+- Q149: 既定事实是灵魂转移，是否将分身共享记忆改为同一机制？
+- Q160: 既定事实是照骨镜真名，是否将归墟令伏笔改为照骨镜伏笔？
+- Q182: 是否保留预知式知识越界，或恢复平行版本来源并避免 oracle 提示？
+- Q186: 该样本应考事实转移，还是旁人的错误身份主张？
+- Q189: 既定事实是左臂骨折，是否改为骨折未愈却恢复能力的冲突？
+
 填写完 24 项后先将 `status` 改为 `complete`，再运行
 `pnpm quality:clean-packet -- --payload-hash`，把输出的 approval payload hash 写入
 comment 与 `humanAttestation.approvalPayloadSha256`。修改任何审批字段后必须重新生成
@@ -30,8 +44,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:34c6a1a1-1813-7d64-81c3-f6601d00bf3a`
 - 场景 family: `inventory_rights`
 - 严重度: `P1`
+- 既定事实: `所有权：忘川书由沈砚保管`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `c96fec82664056a883593c028c3380627d2ff8a2c07074646e343b833ff14002`
+- Manifest entry SHA-256: `3b3bed883f3d69e92dc09d7e30092f4fac7ce89de21cec54b31f7465cfdcc7d5`
 - 替代文本 SHA-256: `cb64012e62f7a1c42119a80c30f42ad224a2bc30ade48285df4a624160113672`
 - 必需节拍 SHA-256: `059a4e40ecbb2341ee10165ef766562d963bacf10f5b7c7bb0140209e34c0627`
 
@@ -59,8 +74,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:8e6c52dc-e798-7219-8e33-5a49ce4034f8`
 - 场景 family: `motivation_drift`
 - 严重度: `P2`
+- 既定事实: `目标：必须保护旧城证人`
 - 题材 / 难度: `仙侠` / `easy`
-- Manifest entry SHA-256: `0fc3ffbc0a5dfe23b169dba80d4005b8a496352b89b84dd38aa16785fb12b5b5`
+- Manifest entry SHA-256: `b661e942cb9f18d158c935a6d03ae28d076e0e76a235cf99f4f7c6e275ec11b7`
 - 替代文本 SHA-256: `aa3004f47b9061091d75c72807d1e13ee5182491ed353d3ad6e44934c0c09fac`
 - 必需节拍 SHA-256: `58d25fb3a0f8153e7533a1dcd113d66dff01c5ff19fc3d5f5b33f13b6902f88e`
 
@@ -88,10 +104,11 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:63cac527-f915-7115-898a-1ceba6387075`
 - 场景 family: `travel_time`
 - 严重度: `P1`
+- 既定事实: `时间：北境关比旧城晚三十日`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `a3e5d57a2e014279833535914984b5ed2462e353d163ad2984cc0afc6ac79cb4`
+- Manifest entry SHA-256: `c645adb69a675825f1f30070241b36fe74534cac4426f35f0dcfbcc0e7552476`
 - 替代文本 SHA-256: `e4de886c923ec0e0c7750422d01569cd8c8444d78b26fed084ac4afe8eaf10b8`
-- 必需节拍 SHA-256: `e38068cbb0d413bd8940aa23b8da0570e5ac64ee03bbab28628dd94ce7c2dcb0`
+- 必需节拍 SHA-256: `3cab5e5bae518019037576042c091090813e26eb3b101904f93ab0ebe1f8a5d1`
 
 候选叙事：
 
@@ -100,6 +117,7 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 必须保留的 beats：
 
 - 旧城的烽火刚熄，封蜡密信还压在驿丞案上，送信人尚未过河。
+- 北境关的茶棚里，披斗篷的人却已经念出信中那桩秘事，连末尾的暗记都没有错。
 - 按驿路日程，北境关比旧城晚三十日，此刻连第一匹马都还没到。
 
 逐项审批字段：
@@ -117,18 +135,20 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:aa978572-2345-7347-86d4-115ffe7402c4`
 - 场景 family: `knowledge_boundary`
 - 严重度: `P0`
+- 既定事实: `身世：真实身世被宗门封存`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `92140be021b50400c3df34cc1cd8cce118ef08d2ce967389faa4770a97184761`
-- 替代文本 SHA-256: `e3b605a16348c291913a1799b70ce42e8cfe7e88916a38e6df80106e63b7da77`
-- 必需节拍 SHA-256: `8382a50c5b3e71300d371b862312531a8b8cc50212a97560248254885b3abb99`
+- Manifest entry SHA-256: `6883893aa0f71bbf7267e7acf10e8fc250fbbac5f01ae69d780b69578129138b`
+- 替代文本 SHA-256: `f89ef0d437e51e49cb81d068ade9f5ec2b1b6d8cc177d1d168501e76b6ac8e4c`
+- 必需节拍 SHA-256: `01f0c0b06bffc3951ca8539ccc2fe8d2ded9d3a7acdb6fe1e997b5c4b39c58fe`
 
 候选叙事：
 
-> 祠堂的旧匣刚被贴上第二道封条，顾青还站在门外，不知道匣里写着什么。沈砚越过他走到供桌前，当众说出那桩被宗门封存的身世，连换走婴儿的雨夜和守门人的名字都没有漏。顾青怔在原地，直到这时才第一次听见这个说法。
+> 祠堂的旧匣刚被贴上第二道封条，顾青还站在门外，不知道匣里写着什么。沈砚从未打开过那只匣，也没人告诉过他匣中记着什么。沈砚越过他走到供桌前，当众说出那桩被宗门封存的身世，连换走婴儿的雨夜和守门人的名字都没有漏。顾青怔在原地，直到这时才第一次听见这个说法。
 
 必须保留的 beats：
 
 - 祠堂的旧匣刚被贴上第二道封条，顾青还站在门外，不知道匣里写着什么。
+- 沈砚从未打开过那只匣，也没人告诉过他匣中记着什么。
 - 沈砚越过他走到供桌前，当众说出那桩被宗门封存的身世，连换走婴儿的雨夜和守门人的名字都没有漏。
 
 逐项审批字段：
@@ -146,8 +166,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:9e48e7d7-a00c-7238-85f4-ab03bce90dd5`
 - 场景 family: `motivation_drift`
 - 严重度: `P2`
+- 既定事实: `目标：必须保护旧城证人`
 - 题材 / 难度: `仙侠` / `easy`
-- Manifest entry SHA-256: `025e4dbd21e19e2a1cf2e1716a74a0f959f94cb68fa67823f25052b89f3df89d`
+- Manifest entry SHA-256: `e6b163013871f569d11aaeff9ce7bc70899cb91d0f89bbddd907228f1c4e5e4e`
 - 替代文本 SHA-256: `0c7be5d559c8e16bfd6e07a8ad797db14a0bd211c702ec19295b141376b6fdff`
 - 必需节拍 SHA-256: `071a683f4aa62f1b1b01f630d8adfd16a99ccde6e085bfab8997c714d46b7323`
 
@@ -175,19 +196,20 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:a00db5ab-9d1c-78e6-951c-5bba5e108254`
 - 场景 family: `body_continuity`
 - 严重度: `P0`
+- 既定事实: `身体：左臂骨折尚未痊愈`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `eb3df82c5c49b9680118db416d831161f8b994fdb0eaf7f671ec85d9c628b0c2`
-- 替代文本 SHA-256: `a98f85f14b4577c8c1bae22d9579f4b3bff26d8a8b4ffc968c4f8d9e983e74fe`
-- 必需节拍 SHA-256: `a1408ae6af10da2c4e05192e080a746197ea95b98e65087384549a537c6ec8f6`
+- Manifest entry SHA-256: `6502cc707475e0b7c1ea3ad81cda552dff35173713cea32fad7665ee15c5a6bc`
+- 替代文本 SHA-256: `820bb1200c20993409ad46610879d08792931e1dd0fb9c2d66192725cd625193`
+- 必需节拍 SHA-256: `183dca3dd2d724d04cf3212a5b123ec2797da133d196357c55ef74f3aa104561`
 
 候选叙事：
 
-> 沈砚左袖空着，断腕上的布条还渗着血。剑阵催动时，他忽然伸出左手握住剑柄，五指扣得很紧。城头没人替他接骨，也没有药光或替身出现。
+> 沈砚左臂的夹板还没拆，袖口露出未愈的肿胀。剑阵催动时，他忽然以左手握住剑柄，五指扣得很紧。城头没人替他换药，也没有药光或替身出现。
 
 必须保留的 beats：
 
-- 沈砚左袖空着，断腕上的布条还渗着血。
-- 剑阵催动时，他忽然伸出左手握住剑柄，五指扣得很紧。
+- 沈砚左臂的夹板还没拆，袖口露出未愈的肿胀。
+- 剑阵催动时，他忽然以左手握住剑柄，五指扣得很紧。
 
 逐项审批字段：
 
@@ -204,8 +226,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:8e7bd8d2-4a4d-75c8-b958-79dfb460ea37`
 - 场景 family: `branch_divergence`
 - 严重度: `P0`
+- 既定事实: `分支正史：仅 early-divergence 分支存在的连续性事实`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `215fe64d42af5f9c711c13f76e45a6a8dbcb6ab9a18980b97e379ca30c606139`
+- Manifest entry SHA-256: `d05662f8112f1b1fe222dca9057708f03798f711f945d703751f44d1e930c7f9`
 - 替代文本 SHA-256: `76e1da9a7282f6b129132dcd84cf552505151b43fcf97c6c6091478e13e55d22`
 - 必需节拍 SHA-256: `ed3ad37f04483c89a91a0f013a7aa9411c04bb5d340680692cf26160e92e80f5`
 
@@ -233,19 +256,20 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:baf9375a-66d8-7645-9fd5-566e7aee765a`
 - 场景 family: `foreshadow_payoff`
 - 严重度: `P1`
+- 既定事实: `预言：照骨镜会指向真名`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `bae2048baa852bf0fa4c2bb4b9a5f62944f76be00ce2f6bc4d847db93158bb6e`
-- 替代文本 SHA-256: `70e40d523cf8f1f1f5294be52cde141ed6eb731b486491d8fd49242ec5637bbe`
-- 必需节拍 SHA-256: `47fefc7d5903ca474ea0b1328d7fb0cbbafd21dd35f516ccf8a315e5bba12f83`
+- Manifest entry SHA-256: `66eb3dbc1d7df761798772b09c265c8463f4c5fc9e58777b31706ca0030b6feb`
+- 替代文本 SHA-256: `f07af0ff3f4b978531db2dfe6a9f925e485efcba2359a77af8d3bb4fae6af3cc`
+- 必需节拍 SHA-256: `6f3c6ec219f1390c8e086770c45f6de2067d01f6662aff09dc8d59f0f0e8f974`
 
 候选叙事：
 
-> 假死旧信仍压在药柜暗格，约好的回收日子还有半月。茶楼里，说书人却已经把信尾的秘密完整复述，连收信人的小名和藏印的位置都没有漏。顾青抬头时，暗格里的信甚至还没有拆封。
+> 照骨镜仍封在祠堂暗格，旧卷写明冬至祭才会指向真名。茶楼里，说书人却已经把镜中将显现的名字和生母姓名完整说出，连镜背缺字的顺序都没有错。顾青赶回祠堂时，铜镜还蒙着三层符纸。
 
 必须保留的 beats：
 
-- 假死旧信仍压在药柜暗格，约好的回收日子还有半月。
-- 茶楼里，说书人却已经把信尾的秘密完整复述，连收信人的小名和藏印的位置都没有漏。
+- 照骨镜仍封在祠堂暗格，旧卷写明冬至祭才会指向真名。
+- 茶楼里，说书人却已经把镜中将显现的名字和生母姓名完整说出，连镜背缺字的顺序都没有错。
 
 逐项审批字段：
 
@@ -262,8 +286,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:8a5af746-0f64-7482-b101-833244833444`
 - 场景 family: `identity_transition`
 - 严重度: `P0`
+- 既定事实: `身份：灵魂转移至新身体`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `bdb630fb77fbeb91a8d5c036ca2cc34cac29875472e98f245b2b8d2a157a920c`
+- Manifest entry SHA-256: `dc87848e2f9d65756d38f3581293e261e8aeaddc9f44f5c4ea8d9b532c58cd8b`
 - 替代文本 SHA-256: `ed84d5ae161f6ace6bd50da0fc74b84f35bac275c8fc98df71df739c67963cd7`
 - 必需节拍 SHA-256: `0d24bb225786000f9163fa5c0c60a65dac1e24190067ba212ac57885e9f6c0c4`
 
@@ -291,19 +316,20 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:b167737e-b483-752c-bcef-0a892a8e5ed8`
 - 场景 family: `travel_time`
 - 严重度: `P1`
+- 既定事实: `时间：北境关比旧城晚三十日`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `ec274a6fedfc9170c5f300bb7496a8d5a79487a7b39d922cad5711aa5b660cde`
-- 替代文本 SHA-256: `37ad620167b7121c8824917d5fc0e333be3fa4982b2dc5ecd2e4d5cb4c66b539`
-- 必需节拍 SHA-256: `77388297e89fbb2917f5504ca3d6b568b3d15e54c22094b95731254a5f8be1f7`
+- Manifest entry SHA-256: `6f95c8a8add7d366b2154d68589603676094c9209bda53234d0ac80c1f531177`
+- 替代文本 SHA-256: `10a1179bc77d66f60172bda1e3b65c31803b4566657fd6fda4f084017e30f4e3`
+- 必需节拍 SHA-256: `e40ad05429b0639272cd7023f8932bedecaf5f75d58ede4e5a784f80f7bc21e3`
 
 候选叙事：
 
-> 渡口到旧城只有一条山路，往返要十二个小时。顾青午后出发，天还没黑便带着证人回到旧城，鞋底却没有多少泥。下一幕开始时，渡口的船夫仍在等他第一次上船。
+> 北境关的驿路比旧城晚三十日才放行，关牒上写得明白。顾青午后从旧城出发，天还没黑便带着证人从北境关折返，鞋底没有多少泥。守关兵卒说，今天还没有一匹马过关。
 
 必须保留的 beats：
 
-- 渡口到旧城只有一条山路，往返要十二个小时。
-- 顾青午后出发，天还没黑便带着证人回到旧城，鞋底却没有多少泥。
+- 北境关的驿路比旧城晚三十日才放行，关牒上写得明白。
+- 顾青午后从旧城出发，天还没黑便带着证人从北境关折返，鞋底没有多少泥。
 
 逐项审批字段：
 
@@ -320,8 +346,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:c127c949-e5d0-7feb-aa67-ebdaefc60e18`
 - 场景 family: `travel_time`
 - 严重度: `P1`
+- 既定事实: `时间：北境关比旧城晚三十日`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `1c8e9c193e907958db40662732bd38f313a59de649d3fe29c473d2c07da9b2e2`
+- Manifest entry SHA-256: `c6a7dd8892784cf703d32acd4d15bfb78bc9ac145ddb2b61841e023b6a3ac28b`
 - 替代文本 SHA-256: `987d023891348e520fdf487d2e12146083edebc133968e036406275a5843de2b`
 - 必需节拍 SHA-256: `fd4509c0cb1d36479f038599d306a68fc9e06d527bd175d2d90ac2869a407cff`
 
@@ -349,8 +376,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:192f700e-1069-7e2e-a9d7-20c47706eaf5`
 - 场景 family: `inventory_rights`
 - 严重度: `P1`
+- 既定事实: `所有权：忘川书由沈砚保管`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `440647308b669fb4870671cabdf523cd547ad22524ff7ed81a2f8f96b0a6c80c`
+- Manifest entry SHA-256: `86c1e5c72de6a7b35182749ffbb7044c6f10e5688ec9cf08629b6f4b7a16bf45`
 - 替代文本 SHA-256: `53b9ac5c98c869288658c16e7ea0d2aba8fe90f8de2b4143177a73a00e90c3c9`
 - 必需节拍 SHA-256: `b77abf2e580df0cf1cf500b1a86df68126638db91c5e51f986ed4438f108e1fc`
 
@@ -378,8 +406,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:390a62d1-0700-7228-b314-98922fa1f519`
 - 场景 family: `branch_divergence`
 - 严重度: `P0`
+- 既定事实: `分支正史：仅 middle-divergence 分支存在的连续性事实`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `b357059114b54fbaefa0dff92f571df71d976b68acb32c889c307a07275bc2d7`
+- Manifest entry SHA-256: `0e99ab037026b2937105c2c55e48b795c6c98561200cc43cf39f6353c6904974`
 - 替代文本 SHA-256: `90828719e92ccf668252a30f613086cc2f477880e0b2b5ad327c095c2e87d43a`
 - 必需节拍 SHA-256: `89be7fea3a47e734278724b23a318fbb4397bd756ae312f557c49b93be1789cc`
 
@@ -407,19 +436,20 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:0d24c9fd-681f-70f5-b9c2-bbb3587a0a0b`
 - 场景 family: `branch_divergence`
 - 严重度: `P0`
+- 既定事实: `分支正史：仅 late-divergence 分支存在的连续性事实`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `d15f7f544946fc4d4fff47af7cd02b4ce571e032c81f0a4b7f70e0499a1ee320`
-- 替代文本 SHA-256: `c917cb0e759f06b04da5fe50ead95a936d69655f4281bc7a9bee199e40b2b795`
-- 必需节拍 SHA-256: `7a1c8f758a679456823a4704cdab538a9ed47b9ea0657828db600a02508eb33c`
+- Manifest entry SHA-256: `801db91663376d3ec16d2dfbee42ef2af6ef4c9ee41e1ff831152d7db26723b9`
+- 替代文本 SHA-256: `e36a37b7d6a88a69f36fa045016f3d8e168a8119d0f960ad05e4cd01c21929d2`
+- 必需节拍 SHA-256: `bb1036ee23111c221c8e3f14fa65d4026a4f13bdcb2818da5f8a36a9805fd64c`
 
 候选叙事：
 
-> 旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。可那一卷只写到少主人接掌旧宅，祭坛尚未开启，陌生面孔也没有出现。守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。
+> 旧城史官抄录共同祖先的年表时，第二卷第一行本就写着：裴照夺舍归来。可那一卷只写到少主人接掌旧宅，祭坛尚未开启，陌生面孔也没有出现。史官把三份同源抄本并排摊开，发现两册止于旧宅，第三册却从同一页直接接上夺舍归来的记录。
 
 必须保留的 beats：
 
-- 旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。
-- 守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。
+- 旧城史官抄录共同祖先的年表时，第二卷第一行本就写着：裴照夺舍归来。
+- 史官把三份同源抄本并排摊开，发现两册止于旧宅，第三册却从同一页直接接上夺舍归来的记录。
 
 逐项审批字段：
 
@@ -436,8 +466,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:a1818166-ed50-75dd-adf9-b60792d3c06a`
 - 场景 family: `inventory_rights`
 - 严重度: `P1`
+- 既定事实: `所有权：忘川书由沈砚保管`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `2cf05d0a79055f72cab8e8a0e51c6288d82d89bd1112a6fdb2c6a8ee35784d3f`
+- Manifest entry SHA-256: `d6a548a2601deb5fb2959afc0062b93149030c82910369d4591d58585a21294e`
 - 替代文本 SHA-256: `9dd58492034bb95445676eaa139dbcae91979ad68354eb04f2e4f9fe397d6418`
 - 必需节拍 SHA-256: `cbbbc236ac0c6123e277d55ad645ecaeacde30cb01b843d6154a210e3b304daa`
 
@@ -465,8 +496,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:3b758333-3e08-7896-9f8d-ae2ff25e4f79`
 - 场景 family: `identity_transition`
 - 严重度: `P0`
+- 既定事实: `身份：灵魂转移至新身体`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `47a129cc1bc22ca3860e137790de0e7f908d9ec8f0abc9ebe00de31b85a7968e`
+- Manifest entry SHA-256: `78807dc42d7d6981dcd51fc6b1aeff9028025faadfdab477c7abd41e87b585fe`
 - 替代文本 SHA-256: `fabf15b570e2234a9045c355001699cab8ab85a37e54cfc7c46200b9ae3d1748`
 - 必需节拍 SHA-256: `4d3d9f01e5b542b7d56cc83ab63fc5dcee4747804a732953db57bfd021a5848e`
 
@@ -494,8 +526,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:3cc35faf-667e-79d9-ba72-10a67e763de4`
 - 场景 family: `knowledge_boundary`
 - 严重度: `P0`
+- 既定事实: `身世：真实身世被宗门封存`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `731d509c29aafb4135d7a8607808bfbad72cc3ef7cffac8cd1e3bbc754351e61`
+- Manifest entry SHA-256: `a1af0e3c3c7d2f0fde0cc0b2b255a5949d8945080af1f9caf52c0527200aee41`
 - 替代文本 SHA-256: `52d3268716b0b9b11216b73e4c7991a84798ad8b68582d4599b9a6c990785d22`
 - 必需节拍 SHA-256: `d9ad70d166b41f7acd6620a400b85436065a06a961e14f7ed2805e760283d25a`
 
@@ -523,8 +556,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:4893ac54-7adb-79cc-96a9-713d8969c502`
 - 场景 family: `foreshadow_payoff`
 - 严重度: `P1`
+- 既定事实: `预言：照骨镜会指向真名`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `34e9751c57f908c1696a39c26c038551ba5731f3a795e326f3d4ac52d64f9d7c`
+- Manifest entry SHA-256: `f488b55b33d2588beafd75096cd3e108aa90b56008fab4ad0fe8d4a4540cb9c3`
 - 替代文本 SHA-256: `d6ae6842800356cb8a120b7787a132957cbfd5a4a953dafc32bb5d06539794b7`
 - 必需节拍 SHA-256: `61d1968939dd1fe1dcf8d3abbae31281d1f83f051a2c60c6cd3a4f8db9a897e6`
 
@@ -552,8 +586,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:23fbd96e-de64-71bb-816c-f0c9d6a32fd1`
 - 场景 family: `foreshadow_payoff`
 - 严重度: `P1`
+- 既定事实: `预言：照骨镜会指向真名`
 - 题材 / 难度: `仙侠` / `medium`
-- Manifest entry SHA-256: `b178519e373d4c9b9237752e88ebcd13aee8ee6bd57fc97ddc44f1530208ae0e`
+- Manifest entry SHA-256: `5d1c9b58f019b77f503ceeec4a3a6efe695dde83e070f58d4c520f3a106daede`
 - 替代文本 SHA-256: `e5a7df893571462282b2bdc0640b9999bc7fbe2c8646ce27f19242af799eba6d`
 - 必需节拍 SHA-256: `1daa1a15f875509f3c291b27c77600ceb0ac8e3752babd33f7585baff7a451d8`
 
@@ -581,8 +616,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:0188cf39-464e-72c1-ab5b-0518f0341535`
 - 场景 family: `motivation_drift`
 - 严重度: `P2`
+- 既定事实: `目标：必须保护旧城证人`
 - 题材 / 难度: `仙侠` / `easy`
-- Manifest entry SHA-256: `2bc73110224f9e49496b0ecc19b60276e492052c37c181b3c3d798863e8c8554`
+- Manifest entry SHA-256: `2fda65307f3281aa587e99e7e8970ca4b66149405e3678936e39fc0742f606b7`
 - 替代文本 SHA-256: `bc503932d5e728d696819a05a173742e78dc6833a19eab5c241acaeec0d22777`
 - 必需节拍 SHA-256: `28ef1b8eb8ee33709cdc3d52f83ff0819d4acee82b93323e78740e2b6395c016`
 
@@ -610,8 +646,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:32477622-f702-74fa-afdc-6d598a83ff47`
 - 场景 family: `knowledge_boundary`
 - 严重度: `P0`
+- 既定事实: `身世：真实身世被宗门封存`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `358d027813d68652e52bdcc2ba84410bd9b5aafa9e6024fb575a24ce9bc6b5e0`
+- Manifest entry SHA-256: `edb2631e30b8acc4a346dd15f3919275dcf16fdfb33e0500d59732a18f6db7db`
 - 替代文本 SHA-256: `b2b60428685b3be8d3c0a594f97bd35b53ce282efafdb23fb0b848fa6e8968dc`
 - 必需节拍 SHA-256: `28b1b826f5aeea90cb6c4b2e2ba26f1dd22f4ad993d3cea74946bb1c092b5d8f`
 
@@ -639,8 +676,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:58705aef-3273-70b0-9f5b-e50f18d6c623`
 - 场景 family: `identity_transition`
 - 严重度: `P0`
+- 既定事实: `身份：灵魂转移至新身体`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `55323fbba7cb00e926fd09b31b3bf902a39d85f9d00f1e91f45f34941913b36b`
+- Manifest entry SHA-256: `d1a62c1f7412d0ba5cbc94999546767bb3c4af2688fcd1490b3d9a6b39abb556`
 - 替代文本 SHA-256: `3bb77842974e0a2b8f2e9b1df326200bb9dfc10fcbb97fb60c9898c72d297beb`
 - 必需节拍 SHA-256: `8a8b824e80d2ff26c6bbf7cb03102bb5e974bbdf78e4285eaea9ff3455e548f1`
 
@@ -668,8 +706,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:5f8bf2cc-7b2d-7806-be53-571921247644`
 - 场景 family: `body_continuity`
 - 严重度: `P0`
+- 既定事实: `身体：左臂骨折尚未痊愈`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `2ff28bf860113187d9bae5020501206e91369c3a5dd107127541752899890e25`
+- Manifest entry SHA-256: `5992c529d4a7cc2deab770dae40403afe01d184218e9285ef1f94d5c5123db18`
 - 替代文本 SHA-256: `1e3befeb4b7b0c0aaae5fb70d2e068b7cedaacf4b6949568068554ecbd5346d7`
 - 必需节拍 SHA-256: `1b7ec9f0cebb7d2e41bf94018a0ddfe5617f3f4e58596229561a97d5fee5f455`
 
@@ -697,8 +736,9 @@ payload hash 和 comment；只修改 `humanAttestation` 不会改变 payload。
 - Dataset sample: `long-horizon:4f8808b7-2ab9-752c-9261-37dc21d1eca9`
 - 场景 family: `body_continuity`
 - 严重度: `P0`
+- 既定事实: `身体：左臂骨折尚未痊愈`
 - 题材 / 难度: `仙侠` / `hard`
-- Manifest entry SHA-256: `8db6aa4406b4670b1dd14e95d85b22d184407068976a65b8d7837731af9ebaac`
+- Manifest entry SHA-256: `f6dbbc58e1fccfa4eff94af8d3779acd56b277e7f1762e95993f5962c82a110e`
 - 替代文本 SHA-256: `759ca61719c314f73061e7c1edeaf25a23b2b33a2111947f6e9ebe10aab7e493`
 - 必需节拍 SHA-256: `862f647b8b9bd0cf9f70ea6d023cfa95369b101b95cbc8b1b1dd7741f3de657d`
 

@@ -3429,9 +3429,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 1",
-      "text": "祠堂的旧匣刚被贴上第二道封条，顾青还站在门外，不知道匣里写着什么。沈砚越过他走到供桌前，当众说出那桩被宗门封存的身世，连换走婴儿的雨夜和守门人的名字都没有漏。顾青怔在原地，直到这时才第一次听见这个说法。",
+      "text": "祠堂的旧匣刚被贴上第二道封条，顾青还站在门外，不知道匣里写着什么。沈砚从未打开过那只匣，也没人告诉过他匣中记着什么。沈砚越过他走到供桌前，当众说出那桩被宗门封存的身世，连换走婴儿的雨夜和守门人的名字都没有漏。顾青怔在原地，直到这时才第一次听见这个说法。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "38dda64bf8e8f7345848f99663a572c2408b31d75430be0cfba3e9252a7a3767",
+      "sourceHash": "850e200edd559d131938a12e24f3737ff143ecf86d6ff23f8cf3beea2cfbce60",
       "knownIssues": [
         {
           "code": "knowledge_boundary",
@@ -3441,6 +3441,7 @@
       ],
       "requiredBeats": [
         "祠堂的旧匣刚被贴上第二道封条，顾青还站在门外，不知道匣里写着什么。",
+        "沈砚从未打开过那只匣，也没人告诉过他匣中记着什么。",
         "沈砚越过他走到供桌前，当众说出那桩被宗门封存的身世，连换走婴儿的雨夜和守门人的名字都没有漏。"
       ],
       "family": "knowledge_boundary",
@@ -3533,9 +3534,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 5",
-      "text": "沈砚左袖空着，断腕上的布条还渗着血。剑阵催动时，他忽然伸出左手握住剑柄，五指扣得很紧。城头没人替他接骨，也没有药光或替身出现。",
+      "text": "沈砚左臂的夹板还没拆，袖口露出未愈的肿胀。剑阵催动时，他忽然以左手握住剑柄，五指扣得很紧。城头没人替他换药，也没有药光或替身出现。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "02b7ed79c6cbd28a775fff0b487d7a0dc49a9615b3423ba7332c53c3bc1e86a0",
+      "sourceHash": "9d2c1ac8468094e2a5ed41e993eeadf5643426964ac83e6a98d661794fdc21f7",
       "knownIssues": [
         {
           "code": "body_continuity",
@@ -3544,8 +3545,8 @@
         }
       ],
       "requiredBeats": [
-        "沈砚左袖空着，断腕上的布条还渗着血。",
-        "剑阵催动时，他忽然伸出左手握住剑柄，五指扣得很紧。"
+        "沈砚左臂的夹板还没拆，袖口露出未愈的肿胀。",
+        "剑阵催动时，他忽然以左手握住剑柄，五指扣得很紧。"
       ],
       "family": "body_continuity",
       "chapterNumber": 700,
@@ -3767,9 +3768,9 @@
       "genre": "仙侠",
       "difficulty": "medium",
       "title": "长线连续性对抗样本 14",
-      "text": "渡口到旧城只有一条山路，往返要十二个小时。顾青午后出发，天还没黑便带着证人回到旧城，鞋底却没有多少泥。下一幕开始时，渡口的船夫仍在等他第一次上船。",
+      "text": "北境关的驿路比旧城晚三十日才放行，关牒上写得明白。顾青午后从旧城出发，天还没黑便带着证人从北境关折返，鞋底没有多少泥。守关兵卒说，今天还没有一匹马过关。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "418f02f548c1f357c1f67435d546a56afc346a95ef07551da6100c7d50459788",
+      "sourceHash": "bc1cb5d464ae019b8974fb19a01c7469a5c5c720ef59fc68f0c01e3d89faae21",
       "knownIssues": [
         {
           "code": "travel_time",
@@ -3778,8 +3779,8 @@
         }
       ],
       "requiredBeats": [
-        "渡口到旧城只有一条山路，往返要十二个小时。",
-        "顾青午后出发，天还没黑便带着证人回到旧城，鞋底却没有多少泥。"
+        "北境关的驿路比旧城晚三十日才放行，关牒上写得明白。",
+        "顾青午后从旧城出发，天还没黑便带着证人从北境关折返，鞋底没有多少泥。"
       ],
       "family": "travel_time",
       "chapterNumber": 1960,
@@ -3795,7 +3796,7 @@
       "title": "长线连续性对抗样本 15",
       "text": "旧城的烽火刚熄，封蜡密信还压在驿丞案上，送信人尚未过河。北境关的茶棚里，披斗篷的人却已经念出信中那桩秘事，连末尾的暗记都没有错。按驿路日程，北境关比旧城晚三十日，此刻连第一匹马都还没到。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "930bf0ff7ec2d4a3fef2f1c38fa057f148f1e948f6952e254045703249124f54",
+      "sourceHash": "e9d3b58e5e4a475be05a46a53d8927324698daa9c511340129f7829b9108c395",
       "knownIssues": [
         {
           "code": "travel_time",
@@ -3805,6 +3806,7 @@
       ],
       "requiredBeats": [
         "旧城的烽火刚熄，封蜡密信还压在驿丞案上，送信人尚未过河。",
+        "北境关的茶棚里，披斗篷的人却已经念出信中那桩秘事，连末尾的暗记都没有错。",
         "按驿路日程，北境关比旧城晚三十日，此刻连第一匹马都还没到。"
       ],
       "family": "travel_time",
@@ -3871,9 +3873,9 @@
       "genre": "仙侠",
       "difficulty": "medium",
       "title": "长线连续性对抗样本 18",
-      "text": "假死旧信仍压在药柜暗格，约好的回收日子还有半月。茶楼里，说书人却已经把信尾的秘密完整复述，连收信人的小名和藏印的位置都没有漏。顾青抬头时，暗格里的信甚至还没有拆封。",
+      "text": "照骨镜仍封在祠堂暗格，旧卷写明冬至祭才会指向真名。茶楼里，说书人却已经把镜中将显现的名字和生母姓名完整说出，连镜背缺字的顺序都没有错。顾青赶回祠堂时，铜镜还蒙着三层符纸。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "d880afc7182ae46cc09f50aa408374ec714a8be6f48996455ccb0d58a32ecd20",
+      "sourceHash": "4b1ef778046834624279a15f37d00cce8ddb8cb4e818724af704d50a204e3de2",
       "knownIssues": [
         {
           "code": "foreshadow_payoff",
@@ -3882,8 +3884,8 @@
         }
       ],
       "requiredBeats": [
-        "假死旧信仍压在药柜暗格，约好的回收日子还有半月。",
-        "茶楼里，说书人却已经把信尾的秘密完整复述，连收信人的小名和藏印的位置都没有漏。"
+        "照骨镜仍封在祠堂暗格，旧卷写明冬至祭才会指向真名。",
+        "茶楼里，说书人却已经把镜中将显现的名字和生母姓名完整说出，连镜背缺字的顺序都没有错。"
       ],
       "family": "foreshadow_payoff",
       "chapterNumber": 2520,
@@ -4027,9 +4029,9 @@
       "genre": "仙侠",
       "difficulty": "hard",
       "title": "长线连续性对抗样本 24",
-      "text": "旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。可那一卷只写到少主人接掌旧宅，祭坛尚未开启，陌生面孔也没有出现。守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。",
+      "text": "旧城史官抄录共同祖先的年表时，第二卷第一行本就写着：裴照夺舍归来。可那一卷只写到少主人接掌旧宅，祭坛尚未开启，陌生面孔也没有出现。史官把三份同源抄本并排摊开，发现两册止于旧宅，第三册却从同一页直接接上夺舍归来的记录。",
       "sourceVersion": "quality-replacement-v1",
-      "sourceHash": "aa750f1f19a8a3b0a64e1225e8c4759c7cf51d496be0a55d8d90817af80e6d48",
+      "sourceHash": "ebc117681dac9173e519da02a0f5256007bcf30c75b5e8c5a6fa423f3ede5ef1",
       "knownIssues": [
         {
           "code": "branch_divergence",
@@ -4038,8 +4040,8 @@
         }
       ],
       "requiredBeats": [
-        "旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。",
-        "守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。"
+        "旧城史官抄录共同祖先的年表时，第二卷第一行本就写着：裴照夺舍归来。",
+        "史官把三份同源抄本并排摊开，发现两册止于旧宅，第三册却从同一页直接接上夺舍归来的记录。"
       ],
       "family": "branch_divergence",
       "chapterNumber": 3200,
@@ -7132,7 +7134,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "38dda64bf8e8f7345848f99663a572c2408b31d75430be0cfba3e9252a7a3767",
+        "sourceHash": "850e200edd559d131938a12e24f3737ff143ecf86d6ff23f8cf3beea2cfbce60",
         "knownIssues": [
           {
             "code": "knowledge_boundary",
@@ -7142,6 +7144,7 @@
         ],
         "requiredBeats": [
           "祠堂的旧匣刚被贴上第二道封条，顾青还站在门外，不知道匣里写着什么。",
+          "沈砚从未打开过那只匣，也没人告诉过他匣中记着什么。",
           "沈砚越过他走到供桌前，当众说出那桩被宗门封存的身世，连换走婴儿的雨夜和守门人的名字都没有漏。"
         ]
       },
@@ -7208,7 +7211,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "02b7ed79c6cbd28a775fff0b487d7a0dc49a9615b3423ba7332c53c3bc1e86a0",
+        "sourceHash": "9d2c1ac8468094e2a5ed41e993eeadf5643426964ac83e6a98d661794fdc21f7",
         "knownIssues": [
           {
             "code": "body_continuity",
@@ -7217,8 +7220,8 @@
           }
         ],
         "requiredBeats": [
-          "沈砚左袖空着，断腕上的布条还渗着血。",
-          "剑阵催动时，他忽然伸出左手握住剑柄，五指扣得很紧。"
+          "沈砚左臂的夹板还没拆，袖口露出未愈的肿胀。",
+          "剑阵催动时，他忽然以左手握住剑柄，五指扣得很紧。"
         ]
       },
       {
@@ -7379,7 +7382,7 @@
         "genre": "仙侠",
         "difficulty": "medium",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "418f02f548c1f357c1f67435d546a56afc346a95ef07551da6100c7d50459788",
+        "sourceHash": "bc1cb5d464ae019b8974fb19a01c7469a5c5c720ef59fc68f0c01e3d89faae21",
         "knownIssues": [
           {
             "code": "travel_time",
@@ -7388,8 +7391,8 @@
           }
         ],
         "requiredBeats": [
-          "渡口到旧城只有一条山路，往返要十二个小时。",
-          "顾青午后出发，天还没黑便带着证人回到旧城，鞋底却没有多少泥。"
+          "北境关的驿路比旧城晚三十日才放行，关牒上写得明白。",
+          "顾青午后从旧城出发，天还没黑便带着证人从北境关折返，鞋底没有多少泥。"
         ]
       },
       {
@@ -7398,7 +7401,7 @@
         "genre": "仙侠",
         "difficulty": "medium",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "930bf0ff7ec2d4a3fef2f1c38fa057f148f1e948f6952e254045703249124f54",
+        "sourceHash": "e9d3b58e5e4a475be05a46a53d8927324698daa9c511340129f7829b9108c395",
         "knownIssues": [
           {
             "code": "travel_time",
@@ -7408,6 +7411,7 @@
         ],
         "requiredBeats": [
           "旧城的烽火刚熄，封蜡密信还压在驿丞案上，送信人尚未过河。",
+          "北境关的茶棚里，披斗篷的人却已经念出信中那桩秘事，连末尾的暗记都没有错。",
           "按驿路日程，北境关比旧城晚三十日，此刻连第一匹马都还没到。"
         ]
       },
@@ -7455,7 +7459,7 @@
         "genre": "仙侠",
         "difficulty": "medium",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "d880afc7182ae46cc09f50aa408374ec714a8be6f48996455ccb0d58a32ecd20",
+        "sourceHash": "4b1ef778046834624279a15f37d00cce8ddb8cb4e818724af704d50a204e3de2",
         "knownIssues": [
           {
             "code": "foreshadow_payoff",
@@ -7464,8 +7468,8 @@
           }
         ],
         "requiredBeats": [
-          "假死旧信仍压在药柜暗格，约好的回收日子还有半月。",
-          "茶楼里，说书人却已经把信尾的秘密完整复述，连收信人的小名和藏印的位置都没有漏。"
+          "照骨镜仍封在祠堂暗格，旧卷写明冬至祭才会指向真名。",
+          "茶楼里，说书人却已经把镜中将显现的名字和生母姓名完整说出，连镜背缺字的顺序都没有错。"
         ]
       },
       {
@@ -7569,7 +7573,7 @@
         "genre": "仙侠",
         "difficulty": "hard",
         "sourceVersion": "quality-replacement-v1",
-        "sourceHash": "aa750f1f19a8a3b0a64e1225e8c4759c7cf51d496be0a55d8d90817af80e6d48",
+        "sourceHash": "ebc117681dac9173e519da02a0f5256007bcf30c75b5e8c5a6fa423f3ede5ef1",
         "knownIssues": [
           {
             "code": "branch_divergence",
@@ -7578,14 +7582,14 @@
           }
         ],
         "requiredBeats": [
-          "旧城史官抄录共同祖先的年表时，第二卷突然多出一行：裴照夺舍归来。",
-          "守祠人翻遍旧稿，发现这行墨迹新得刺眼，前后页却已经发黄。"
+          "旧城史官抄录共同祖先的年表时，第二卷第一行本就写着：裴照夺舍归来。",
+          "史官把三份同源抄本并排摊开，发现两册止于旧宅，第三册却从同一页直接接上夺舍归来的记录。"
         ]
       }
     ],
     "decisionRequired": [
       "interRaterVarianceThreshold"
     ],
-    "datasetSha256": "b5404a7469887a18dee21a1937d3cec24777d5c79520e5c9e25a51e18c0e5e5d"
+    "datasetSha256": "0bf8a06d3ecf8d9c574a0d43aef9a5dea95555857873b4212add73436acdc6bd"
   }
 }

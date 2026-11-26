@@ -74,6 +74,52 @@ const REVIEWER_PACKET_READINESS_FIELDS = [
   "status",
 ];
 const REVIEWER_GENRES = new Set(["仙侠", "历史", "都市"]);
+const OWNER_DECISION_PROMPTS = [
+  {
+    blindSampleId: "Q026",
+    prompt: "是否将“自小怕黑”补入必需节拍，确保长期恐惧也属于评审契约？",
+  },
+  {
+    blindSampleId: "Q075",
+    prompt: "跨册同步异常是否保留，或改为仅保留两册分歧并更新节拍？",
+  },
+  {
+    blindSampleId: "Q088",
+    prompt: "是否删除“时间戳也落在同一天”这一过度定证句？",
+  },
+  {
+    blindSampleId: "Q093",
+    prompt: "既定事实是忘川书，是否将正文改为忘川书所有权冲突？",
+  },
+  {
+    blindSampleId: "Q096",
+    prompt: "是否将“第三年秋提剑回城”补为必需节拍？",
+  },
+  {
+    blindSampleId: "Q130",
+    prompt: "既定事实是忘川书，是否将正文改为忘川书使用权冲突？",
+  },
+  {
+    blindSampleId: "Q149",
+    prompt: "既定事实是灵魂转移，是否将分身共享记忆改为同一机制？",
+  },
+  {
+    blindSampleId: "Q160",
+    prompt: "既定事实是照骨镜真名，是否将归墟令伏笔改为照骨镜伏笔？",
+  },
+  {
+    blindSampleId: "Q182",
+    prompt: "是否保留预知式知识越界，或恢复平行版本来源并避免 oracle 提示？",
+  },
+  {
+    blindSampleId: "Q186",
+    prompt: "该样本应考事实转移，还是旁人的错误身份主张？",
+  },
+  {
+    blindSampleId: "Q189",
+    prompt: "既定事实是左臂骨折，是否改为骨折未愈却恢复能力的冲突？",
+  },
+];
 const REVIEWER_LEAKAGE_PATTERNS = [
   {
     code: "explicit-confirmed-fact-conflict",
@@ -306,6 +352,7 @@ export async function buildM3_278Artifacts({
         difficulty: datasetSample.difficulty,
         family: datasetSample.family,
         severity: datasetSample.knownIssues[0]?.severity,
+        establishedFact: extractEstablishedFact(datasetSample.text),
         text: candidate.text,
         requiredBeats: [...candidate.requiredBeats],
       };
@@ -380,6 +427,8 @@ export async function buildM3_278Artifacts({
     approvedCount: approvalStatus.approvedCount,
     pendingCount: approvalStatus.pendingCount,
     pendingSampleIds: approvalStatus.pendingSampleIds,
+    ownerDecisionPendingCount: OWNER_DECISION_PROMPTS.length,
+    hardReviewFindingsResolved: 6,
     freezeAllowed: approvalStatus.freezeAllowed,
     humanAttestationComplete: approvalStatus.humanAttestationComplete,
     humanAttestationVerified: approvalStatus.humanAttestationVerified,
@@ -531,6 +580,8 @@ export function evaluateM3_278Approvals({
       entry.originalRequiredBeatsSha256 !== expected.originalRequiredBeatsSha256 ||
       entry.family !== expected.family ||
       entry.severity !== expected.severity ||
+      entry.establishedFact !== expected.establishedFact ||
+      entry.reviewDecisionPrompt !== expected.reviewDecisionPrompt ||
       entry.replacementTextSha256 !== expected.replacementTextSha256 ||
       entry.requiredBeatsSha256 !== expected.requiredBeatsSha256
     ) {
@@ -718,6 +769,9 @@ function createApprovalTemplate({
   const manifestEntryById = new Map(
     replacementManifest.replacements.map((entry) => [entry.blindSampleId, entry]),
   );
+  const decisionPromptById = new Map(
+    OWNER_DECISION_PROMPTS.map((entry) => [entry.blindSampleId, entry.prompt]),
+  );
   return {
     schemaVersion: 1,
     issue: ISSUE,
@@ -756,6 +810,8 @@ function createApprovalTemplate({
         datasetSampleId: candidate.datasetSampleId,
         family: candidate.family,
         severity: candidate.severity,
+        establishedFact: candidate.establishedFact,
+        reviewDecisionPrompt: decisionPromptById.get(candidate.blindSampleId) ?? null,
         originalTextSha256: manifestEntry.originalTextSha256,
         originalRequiredBeatsSha256: manifestEntry.originalRequiredBeatsSha256,
         replacementTextSha256: manifestEntry.replacementTextSha256,
@@ -803,6 +859,8 @@ function createReplacementManifest({
       datasetSampleId: candidate.datasetSampleId,
       family: candidate.family,
       severity: candidate.severity,
+      establishedFact: candidate.establishedFact,
+      establishedFactSha256: sha256Text(candidate.establishedFact),
       originalTextSha256,
       replacementTextSha256: sha256Text(candidate.text),
       originalRequiredBeatsSha256: sha256Json(sourceSample.requiredBeats),
@@ -872,6 +930,7 @@ function createApprovalRequest({ replacementCandidates, approvalTemplate }) {
 - Dataset sample: \`${candidate.datasetSampleId}\`
 - 场景 family: \`${candidate.family}\`
 - 严重度: \`${candidate.severity}\`
+- 既定事实: \`${candidate.establishedFact}\`
 - 题材 / 难度: \`${candidate.genre}\` / \`${candidate.difficulty}\`
 - Manifest entry SHA-256: \`${approval.manifestEntrySha256}\`
 - 替代文本 SHA-256: \`${approval.replacementTextSha256}\`
@@ -917,6 +976,10 @@ Issue: #278
 以及填完 24 项后的 approval payload hash 的外部 GitHub attestation 后，才允许冻结。
 发布检查会通过 GitHub API 核对评论作者关联、Issue 278、评论时间与完整正文；每个
 \`adjudicatorId\` 必须等于评论作者，每个 \`attestationId\` 必须使用该样本的固定审批 token。
+
+## 待负责人裁决
+
+${OWNER_DECISION_PROMPTS.map((entry) => `- ${entry.blindSampleId}: ${entry.prompt}`).join("\n")}
 
 填写完 24 项后先将 \`status\` 改为 \`complete\`，再运行
 \`pnpm quality:clean-packet -- --payload-hash\`，把输出的 approval payload hash 写入
@@ -1048,6 +1111,12 @@ function createCandidatePacket({ key, dataset, source }) {
 
 function readJson(root, relativePath) {
   return JSON.parse(readFileSync(path.join(root, relativePath), "utf8"));
+}
+
+function extractEstablishedFact(text) {
+  const match = text.match(/与已确认事实“([^”]+)”冲突。/u);
+  if (!match?.[1]) throw new Error("M3_278_ESTABLISHED_FACT_MISSING");
+  return match[1];
 }
 
 function sha256Text(value) {

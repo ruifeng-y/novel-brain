@@ -176,6 +176,40 @@ describe("M3-278 clean blind packet", () => {
     );
   });
 
+  it("exposes established facts to the owner and fixes the six hard candidate findings", async () => {
+    const artifacts = await buildM3_278Artifacts({ root });
+    const candidateById = new Map(
+      artifacts.replacementCandidates.candidates.map((candidate) => [
+        candidate.blindSampleId,
+        candidate,
+      ]),
+    );
+    const reviewerSerialized = JSON.stringify(artifacts.candidatePacket.samples);
+
+    expect(
+      artifacts.replacementCandidates.candidates.every(
+        (candidate) => candidate.establishedFact.trim().length > 0,
+      ),
+    ).toBe(true);
+    expect(reviewerSerialized).not.toContain("establishedFact");
+    expect(artifacts.approvalRequest).toContain("- 既定事实:");
+    expect(artifacts.approvalRequest.match(/^- Q\d{3}:/gmu)).toHaveLength(11);
+    expect(artifacts.status).toMatchObject({
+      ownerDecisionPendingCount: 11,
+      hardReviewFindingsResolved: 6,
+    });
+
+    expect(candidateById.get("Q034").requiredBeats).toContain(
+      "北境关的茶棚里，披斗篷的人却已经念出信中那桩秘事，连末尾的暗记都没有错。",
+    );
+    expect(candidateById.get("Q055").text).toContain("沈砚从未打开过那只匣，也没人告诉过他");
+    expect(candidateById.get("Q067").text).toMatch(/夹板|骨折/u);
+    expect(candidateById.get("Q067").text).not.toMatch(/断腕|空袖/u);
+    expect(candidateById.get("Q081").text).toContain("照骨镜");
+    expect(candidateById.get("Q084").text).toContain("北境关");
+    expect(candidateById.get("Q123").text).not.toContain("墨迹");
+  });
+
   it("validates GitHub approval attestations by owner, issue, time and exact payload", () => {
     const attestation = {
       provider: "github_issue_comment",
