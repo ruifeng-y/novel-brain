@@ -68,8 +68,8 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 以下项目继续阻断 V1 quality claim：
 
 - `hook_prose_score = 1.882353 < 4`。
-- 24 个 long-horizon case 的真实 adjudication 仍为 `0/24`。
-- 24 个 long-horizon 样本文本仍暴露缺陷元信息，`cleanBlindReview` 为 `false`。
+- 24/24 替换裁决已完成；#278 的 clean packet 与 #279 的全量重评仍待完成。
+- 旧 24 个 long-horizon 样本文本仍暴露缺陷元信息，旧 packet 的 `cleanBlindReview` 为 `false`，因此不得复用。
 - reviewer identity 目前是自述化名，外部实名核验未提供。
 
 ## #273 后续准备
