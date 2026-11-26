@@ -5,7 +5,6 @@ param(
   [string]$Root,
   [string]$OutputPath,
   [string]$ResponseFile,
-  [string]$GithubVerifierModule = "./scripts/m3-278-clean-packet.mjs",
   [switch]$Force
 )
 
@@ -141,10 +140,9 @@ M3-278-HUMAN-APPROVAL
 
 function Verify-GithubAttestation($Attestation) {
   $env:M3_278_ATTESTATION_JSON = $Attestation | ConvertTo-Json -Compress -Depth 20
-  $env:M3_278_GITHUB_VERIFIER_MODULE = $GithubVerifierModule
   $code = @(
     "import { pathToFileURL } from 'node:url';",
-    "const verifier = await import(pathToFileURL(process.env.M3_278_GITHUB_VERIFIER_MODULE).href);",
+    "const verifier = await import(pathToFileURL('./scripts/m3-278-clean-packet.mjs').href);",
     "const attestation = JSON.parse(process.env.M3_278_ATTESTATION_JSON);",
     "process.stdout.write(verifier.verifyM3_278GithubApprovalAttestation(attestation) ? 'true' : 'false');"
   ) -join "`n"
@@ -171,6 +169,9 @@ if ($ResponseFile) {
 
 if ($Mode -eq "Review" -and $ResponseFile) {
   Stop-Wizard "M3_278_RESPONSE_FILE_NOT_ALLOWED_FOR_REVIEW"
+}
+if ($Mode -eq "Review" -and [Console]::IsInputRedirected) {
+  Stop-Wizard "M3_278_REVIEW_REQUIRES_INTERACTIVE_CONSOLE"
 }
 if ($Mode -eq "Draft" -and -not $ResponseFile) {
   Stop-Wizard "M3_278_DRAFT_REQUIRES_RESPONSE_FILE"

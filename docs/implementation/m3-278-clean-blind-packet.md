@@ -80,7 +80,7 @@ owner 审阅入口：
 #278 发布包含 `M3-278-HUMAN-APPROVAL` 和候选 packet hash 的外部 GitHub comment。当前
 `status.json` 的 pending sample IDs 为全部 24 个 flagged ID。
 
-逐项录入工具（`Review` 只接受交互输入，不接受 `-ResponseFile`）：
+逐项录入工具（`Review` 只接受交互控制台输入，拒绝 `-ResponseFile` 和重定向 stdin）：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/m3-278-approval-wizard.ps1 -Mode Review

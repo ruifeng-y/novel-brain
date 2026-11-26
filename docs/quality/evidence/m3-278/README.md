@@ -63,7 +63,8 @@ pnpm exec vitest run scripts/test/m3-278-clean-blind-packet.test.mjs
 
 The interactive wizard never invents decisions. `Review` displays each candidate and records only
 the owner's typed input. It deliberately rejects `-ResponseFile`, so formal review cannot be
-silently generated from a prepared answer file:
+silently generated from a prepared answer file, and it rejects redirected stdin so the formal gate
+must run in an interactive console:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/m3-278-approval-wizard.ps1 -Mode Review

@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,10 +82,11 @@ describe("M3-278 approval wizard", () => {
 
   it("verifies a published GitHub attestation before completing approvals", () => {
     const temporaryRoot = mkdtempSync(path.join(tmpdir(), "m3-278-wizard-"));
-    const outputPath = path.join(temporaryRoot, "approvals.json");
-    const verifierPath = path.join(temporaryRoot, "fake-verifier.mjs");
+    const isolatedRoot = prepareWizardRoot(temporaryRoot);
+    const outputPath = path.join(isolatedRoot, "docs/quality/evidence/m3-278/approvals.json");
+    const fakeBin = path.join(isolatedRoot, "bin");
     try {
-      expect(runWizard(outputPath, "Draft").status).toBe(0);
+      expect(runWizard(outputPath, "Draft", { rootDir: isolatedRoot }).status).toBe(0);
       const approvals = JSON.parse(readFileSync(outputPath, "utf8"));
       approvals.status = "complete";
       delete approvals.draftReviewComplete;
@@ -85,19 +94,6 @@ describe("M3-278 approval wizard", () => {
       approvals.humanAttestation.approvalPayloadSha256 = payloadHash;
       approvals.humanAttestation.statement = buildStatement(approvals);
       writeFileSync(outputPath, `${JSON.stringify(approvals, null, 2)}\n`, "utf8");
-
-      writeFileSync(
-        verifierPath,
-        `export function verifyM3_278GithubApprovalAttestation(attestation) {
-  return attestation.issue === 278 &&
-    attestation.commentId === "7183183858" &&
-    attestation.author === "ruifeng-y" &&
-    attestation.approvalPayloadSha256 === process.env.EXPECTED_PAYLOAD_HASH &&
-    attestation.statement.includes("M3-278-HUMAN-APPROVAL");
-}
-`,
-        "utf8",
-      );
 
       const responsePath = path.join(temporaryRoot, "attestation-response.txt");
       writeFileSync(
@@ -112,8 +108,11 @@ describe("M3-278 approval wizard", () => {
       );
       const result = runWizard(outputPath, "Attestation", {
         responsePath,
-        verifierModule: verifierPath,
-        env: { EXPECTED_PAYLOAD_HASH: payloadHash },
+        rootDir: isolatedRoot,
+        env: {
+          M3_278_FAKE_GH_BODY: approvals.humanAttestation.statement,
+          PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}`,
+        },
       });
       expect(result.status, result.stderr).toBe(0);
 
@@ -138,6 +137,20 @@ describe("M3-278 approval wizard", () => {
 
       expect(result.status).not.toBe(0);
       expect(result.stderr).toContain("M3_278_RESPONSE_FILE_NOT_ALLOWED_FOR_REVIEW");
+      expect(() => readFileSync(outputPath, "utf8")).toThrow();
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects redirected stdin for formal review", () => {
+    const temporaryRoot = mkdtempSync(path.join(tmpdir(), "m3-278-wizard-"));
+    const outputPath = path.join(temporaryRoot, "approvals.json");
+    try {
+      const result = runWizard(outputPath, "Review", { input: buildWizardInput() });
+
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain("M3_278_REVIEW_REQUIRES_INTERACTIVE_CONSOLE");
       expect(() => readFileSync(outputPath, "utf8")).toThrow();
     } finally {
       rmSync(temporaryRoot, { recursive: true, force: true });
@@ -195,7 +208,7 @@ describe("M3-278 approval wizard", () => {
 function runWizard(
   outputPath,
   mode = "Draft",
-  { response, responsePath, verifierModule, env = {} } = {},
+  { input, response, responsePath, rootDir, env = {} } = {},
 ) {
   let effectiveResponsePath = responsePath;
   if (mode === "Draft" && !effectiveResponsePath) {
@@ -203,7 +216,7 @@ function runWizard(
     writeFileSync(effectiveResponsePath, response ?? buildWizardInput(), "utf8");
   }
   const responseArgs = effectiveResponsePath ? ["-ResponseFile", effectiveResponsePath] : [];
-  const verifierArgs = verifierModule ? ["-GithubVerifierModule", verifierModule] : [];
+  const rootArgs = rootDir ? ["-Root", rootDir] : [];
   return spawnSync(
     "powershell.exe",
     [
@@ -214,18 +227,47 @@ function runWizard(
       scriptPath,
       "-Mode",
       mode,
+      ...rootArgs,
       "-OutputPath",
       outputPath,
       ...responseArgs,
-      ...verifierArgs,
     ],
     {
       cwd: root,
       encoding: "utf8",
       env: { ...process.env, ...env },
+      input,
       timeout: 30_000,
     },
   );
+}
+
+function prepareWizardRoot(temporaryRoot) {
+  const evidenceSource = path.join(root, "docs/quality/evidence/m3-278");
+  const evidenceTarget = path.join(temporaryRoot, "docs/quality/evidence/m3-278");
+  cpSync(evidenceSource, evidenceTarget, { recursive: true });
+
+  const scriptsTarget = path.join(temporaryRoot, "scripts");
+  mkdirSync(scriptsTarget, { recursive: true });
+  for (const filename of ["m3-278-clean-packet.mjs", "cli-entry.mjs"]) {
+    copyFileSync(path.join(root, "scripts", filename), path.join(scriptsTarget, filename));
+  }
+
+  const fakeBin = path.join(temporaryRoot, "bin");
+  mkdirSync(fakeBin, { recursive: true });
+  copyFileSync(process.execPath, path.join(fakeBin, "gh.exe"));
+  writeFileSync(
+    path.join(temporaryRoot, "api"),
+    `process.stdout.write(JSON.stringify({
+  body: process.env.M3_278_FAKE_GH_BODY,
+  issueUrl: "https://api.github.com/repos/ruifeng-y/novel-brain/issues/278",
+  author: "ruifeng-y",
+  authorAssociation: "OWNER",
+  createdAt: "2026-11-26T06:00:20Z"
+}));\n`,
+    "utf8",
+  );
+  return temporaryRoot;
 }
 
 function buildWizardInput({ rejectFirst = false } = {}) {
