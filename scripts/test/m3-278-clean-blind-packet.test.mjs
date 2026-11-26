@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,10 +18,18 @@ import {
   verifyM3_278GithubApprovalAttestation,
   verifyM3_278CandidateDatasetDigest,
   verifyM3_278ReplacementManifest,
+  writeM3_278FrozenArtifacts,
 } from "../m3-278-clean-packet.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const REVIEWER_SAMPLE_FIELD_NAMES = ["blindSampleId", "genre", "requiredBeats", "text"].join(",");
+const FREEZE_TARGET_PATHS = [
+  "docs/quality/quality-benchmark-v2.dataset.json",
+  "docs/quality/quality-benchmark-v2.manifest.json",
+  "docs/quality/evidence/m3-278/reviewer-packet-v3.json",
+  "docs/quality/evidence/m3-278/freeze-manifest.json",
+  "docs/quality/evidence/m3-278/frozen-status.json",
+];
 
 describe("M3-278 clean blind packet", () => {
   it("drafts exactly one replacement for every adjudicated sample and preserves 204 identities", async () => {
@@ -296,12 +306,41 @@ describe("M3-278 clean blind packet", () => {
       approvalsOverride: approvals,
       attestationVerifier: async () => true,
     });
-    const first = buildM3_278FrozenArtifacts(approved);
-    const second = buildM3_278FrozenArtifacts(approved);
+    const staleApproved = structuredClone(approved);
+    staleApproved.artifactFreshness = {
+      status: "stale",
+      stalePaths: ["docs/quality/evidence/m3-278/status.json"],
+    };
+    expect(() => buildM3_278FrozenArtifacts(staleApproved)).toThrow("M3_278_FREEZE_ARTIFACT_STALE");
+
+    const freshApproved = structuredClone(approved);
+    freshApproved.artifactFreshness = { status: "passed", stalePaths: [] };
+    const first = buildM3_278FrozenArtifacts(freshApproved);
+    const second = buildM3_278FrozenArtifacts(freshApproved);
+
+    const temporaryRoot = mkdtempSync(path.join(tmpdir(), "m3-278-freeze-"));
+    try {
+      expect(() => writeM3_278FrozenArtifacts(temporaryRoot, staleApproved, first)).toThrow(
+        "M3_278_FREEZE_ARTIFACT_STALE",
+      );
+      expect(
+        FREEZE_TARGET_PATHS.every(
+          (relativePath) => !existsSync(path.join(temporaryRoot, relativePath)),
+        ),
+      ).toBe(true);
+      writeM3_278FrozenArtifacts(temporaryRoot, freshApproved, first);
+      expect(
+        FREEZE_TARGET_PATHS.every((relativePath) =>
+          existsSync(path.join(temporaryRoot, relativePath)),
+        ),
+      ).toBe(true);
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
 
     expect(first.dataset.manifest).toMatchObject({
       datasetVersion: "quality-benchmark-v2",
-      datasetSha256: approved.candidateDataset.manifest.datasetSha256,
+      datasetSha256: freshApproved.candidateDataset.manifest.datasetSha256,
     });
     expect(first.dataset.chapterSamples.length + first.dataset.adversarialCases.length).toBe(204);
     expect(first.packet).toMatchObject({
@@ -325,14 +364,14 @@ describe("M3-278 clean blind packet", () => {
     expect(first.freezeManifest).toMatchObject({
       status: "frozen",
       source: {
-        candidateDatasetSha256: approved.candidateDataset.manifest.datasetSha256,
-        candidatePacketSha256: approved.candidatePacket.packetSha256,
-        replacementManifestSha256: approved.replacementManifest.manifestSha256,
-        approvalPayloadSha256: approved.approvalStatus.approvalPayloadSha256,
+        candidateDatasetSha256: freshApproved.candidateDataset.manifest.datasetSha256,
+        candidatePacketSha256: freshApproved.candidatePacket.packetSha256,
+        replacementManifestSha256: freshApproved.replacementManifest.manifestSha256,
+        approvalPayloadSha256: freshApproved.approvalStatus.approvalPayloadSha256,
       },
       frozen: {
         datasetVersion: "quality-benchmark-v2",
-        datasetSha256: approved.candidateDataset.manifest.datasetSha256,
+        datasetSha256: freshApproved.candidateDataset.manifest.datasetSha256,
         packetVersion: "quality-benchmark-clean-blind-v3",
         packetSha256: first.packet.packetSha256,
         sampleCount: 204,

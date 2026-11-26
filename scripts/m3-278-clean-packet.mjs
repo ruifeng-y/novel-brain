@@ -543,6 +543,7 @@ export function assertM3_278FreezeArtifactsFresh(artifactFreshness) {
 
 export function buildM3_278FrozenArtifacts(artifacts) {
   assertM3_278FreezeAllowed(artifacts?.approvalStatus);
+  assertM3_278FreezeArtifactsFresh(artifacts?.artifactFreshness);
   const dataset = structuredClone(artifacts.candidateDataset);
   const packetWithoutHash = {
     ...omit(artifacts.candidatePacket, ["packetSha256"]),
@@ -621,7 +622,9 @@ export function buildM3_278FrozenArtifacts(artifacts) {
   };
 }
 
-export function writeM3_278FrozenArtifacts(root, frozenArtifacts) {
+export function writeM3_278FrozenArtifacts(root, artifacts, frozenArtifacts) {
+  assertM3_278FreezeAllowed(artifacts?.approvalStatus);
+  assertM3_278FreezeArtifactsFresh(artifacts?.artifactFreshness);
   const contents = serializeM3_278FrozenArtifacts(frozenArtifacts);
   for (const [key, relativePath] of Object.entries(FREEZE_OUTPUT_FILES)) {
     const absolutePath = path.join(root, relativePath);
@@ -1501,7 +1504,7 @@ async function main() {
       const artifacts = await buildM3_278Artifacts({ root });
       assertM3_278FreezeArtifactsFresh(artifacts.artifactFreshness);
       const frozen = buildM3_278FrozenArtifacts(artifacts);
-      writeM3_278FrozenArtifacts(root, frozen);
+      writeM3_278FrozenArtifacts(root, artifacts, frozen);
       process.stdout.write(
         `${JSON.stringify(
           {
