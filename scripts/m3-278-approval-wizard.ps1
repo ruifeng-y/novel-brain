@@ -235,9 +235,15 @@ if ($Mode -eq "Review" -or $Mode -eq "Draft") {
     $entry.rationale = $rationale
     $entry.impact = $impact
     $entry.adjudicatorId = $owner
-    $entry.adjudicatorKind = "human"
-    $entry.attestationId = "M3-278-APPROVAL-$($entry.blindSampleId)"
-    $entry.decidedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+    if ($Mode -eq "Draft") {
+      $entry.adjudicatorKind = "draft"
+      $entry.attestationId = $null
+      $entry.decidedAt = $null
+    } else {
+      $entry.adjudicatorKind = "human"
+      $entry.attestationId = "M3-278-APPROVAL-$($entry.blindSampleId)"
+      $entry.decidedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+    }
 
     if ($reviewDecision) {
       $entry.reviewDecision = Read-Choice "reviewDecision" @(

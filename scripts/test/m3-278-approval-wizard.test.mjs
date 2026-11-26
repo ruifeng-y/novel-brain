@@ -1,13 +1,5 @@
 import { spawnSync } from "node:child_process";
-import {
-  copyFileSync,
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,12 +29,12 @@ describe("M3-278 approval wizard", () => {
         approvals.approvals.every(
           (entry) =>
             entry.decision === "approve" &&
-            entry.adjudicatorKind === "human" &&
+            entry.adjudicatorKind === "draft" &&
             entry.adjudicatorId === "ruifeng-y" &&
-            entry.attestationId === `M3-278-APPROVAL-${entry.blindSampleId}` &&
+            entry.attestationId === null &&
             entry.rationale.trim() &&
             entry.impact.trim() &&
-            entry.decidedAt,
+            entry.decidedAt === null,
         ),
       ).toBe(true);
       expect(
@@ -90,6 +82,11 @@ describe("M3-278 approval wizard", () => {
       const approvals = JSON.parse(readFileSync(outputPath, "utf8"));
       approvals.status = "complete";
       delete approvals.draftReviewComplete;
+      for (const entry of approvals.approvals) {
+        entry.adjudicatorKind = "human";
+        entry.attestationId = `M3-278-APPROVAL-${entry.blindSampleId}`;
+        entry.decidedAt = "2026-11-26T05:59:30.000Z";
+      }
       const payloadHash = computeM3_278ApprovalPayloadSha256(approvals);
       approvals.humanAttestation.approvalPayloadSha256 = payloadHash;
       approvals.humanAttestation.statement = buildStatement(approvals);
@@ -245,7 +242,14 @@ function runWizard(
 function prepareWizardRoot(temporaryRoot) {
   const evidenceSource = path.join(root, "docs/quality/evidence/m3-278");
   const evidenceTarget = path.join(temporaryRoot, "docs/quality/evidence/m3-278");
-  cpSync(evidenceSource, evidenceTarget, { recursive: true });
+  mkdirSync(evidenceTarget, { recursive: true });
+  for (const filename of [
+    "approvals.template.json",
+    "replacement-candidates.source.json",
+    "review-findings.source.json",
+  ]) {
+    copyFileSync(path.join(evidenceSource, filename), path.join(evidenceTarget, filename));
+  }
 
   const scriptsTarget = path.join(temporaryRoot, "scripts");
   mkdirSync(scriptsTarget, { recursive: true });

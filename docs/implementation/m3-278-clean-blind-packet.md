@@ -88,7 +88,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/m3-278-approval-
 
 工具逐项显示 sample、既定事实、候选文本和 beats，只记录负责人本人输入，不自动决定、不自动
 发布 GitHub comment。需要先整理答案时，只能运行 `-Mode Draft -ResponseFile` 生成
-`status=draft` 的不可冻结草稿；草稿不能被 `Statement`、`Attestation` 或 `--freeze` 使用。
+`status=draft`、`adjudicatorKind=draft` 且无 human attestation 字段的不可冻结草稿；草稿不能
+被 `Statement`、`Attestation` 或 `--freeze` 使用。
 正式 `Review` 只有在 24/24 `approve` 且 11 项负责人裁决均为 `accept_current` 时才完成。
 发布评论后可运行 `-Mode Statement` 查看评论原文，再运行 `-Mode Attestation` 通过 GitHub API
 核验并写入 attestation。

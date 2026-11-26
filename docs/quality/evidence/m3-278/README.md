@@ -75,8 +75,9 @@ statement only after all 24 items are approved and all 11 recorded owner decisio
 current candidate. It does not publish the comment.
 
 `Draft` is the non-interactive preparation path. It accepts a human-prepared response file, writes
-`status=draft`, and never computes a freezable approval payload. A draft cannot be used by
-`Statement`, `Attestation`, or `--freeze`:
+`status=draft`, marks each entry as `adjudicatorKind=draft`, and never computes a freezable approval
+payload or human attestation fields. A draft cannot be used by `Statement`, `Attestation`, or
+`--freeze`:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/m3-278-approval-wizard.ps1 -Mode Draft -ResponseFile .\responses.txt
