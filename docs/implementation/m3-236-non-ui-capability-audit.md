@@ -38,7 +38,7 @@ The two blocked capabilities are:
 | Capability | Gap | Follow-up |
 | --- | --- | --- |
 | EVAL-002 | The variance threshold is approved, but final release-head Production CI has not yet bound the complete evidence set. | #242 |
-| CONT-001 | Deterministic continuity evaluation passes and #239 records human raw scores. #273 proposes a non-approved 204-sample cleanup packet and 24-sample decision request, but real adjudications remain 0/24; `hook_prose_score = 1.882353 < 4` has no completed disposition. The variance threshold is independently approved by #240. | #273 |
+| CONT-001 | Deterministic continuity evaluation passes and #239 records human raw scores. #273 records 24/24 product-owner replace decisions and invalidates old scores for clean review. #278 must rebuild the clean 204-sample packet and #279 must remediate the benchmark prose and rerun full human review; `hook_prose_score = 1.882353 < 4`. | #278 |
 
 `PERF-001`, `AGENT-007` and `QUALITY-009` remain authorized post-V1 deferrals and are not
 part of this audit.
@@ -82,6 +82,6 @@ V1 RELEASE BLOCKED
 The final audit blocker is expected until the current PR has an exact-head
 Production CI run; #242 records the final release CI.
 
-The remaining non-UI blockers are tracked by #242 and #273 plus the failed quality claim
+The remaining non-UI blockers are tracked by #242, #278 and #279 plus the failed quality claim
 under #104. UI capability
 closure was completed by #238; final release evidence and CI remain #242.

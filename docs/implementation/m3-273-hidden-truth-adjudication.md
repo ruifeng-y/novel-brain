@@ -2,13 +2,14 @@
 
 > Issue: #273
 > Capabilities: CONT-001 supporting evidence
-> Status: implementation prepared; **blocked-awaiting-human-adjudication**
+> Status: decision and external attestation complete; **release blocked by #278/#279**
 
 ## 结论
 
-#273 需要真实产品/质量负责人对 24 个 long-horizon 样本、整包处置、旧评分影响和
-`hook_prose_score` 失败作出决定。当前没有可用的真人裁决输入，因此本票不关闭，
-CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
+产品/质量负责人已完成 24/24 真人裁决：替换污染样本、旧评分对 clean review 失效、
+`hook_prose_score` 修复后重跑。外部 GitHub attestation 已发布并由发布门禁验证通过；
+本票的裁决职责已完成。CONT-001 继续为 `implemented`，V1 release gate 由 #278/#279
+继续 blocked。
 
 本轮没有修改冻结 rubric、冻结 dataset、#239 原始问卷、816 条人工原始评分或旧 packet。
 模型没有补写裁决人、身份声明、时间、理由或影响。
@@ -24,13 +25,16 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
   - `reviewerReadiness.status` 固定为 `not-ready`；移除显式注释不等于通过语义盲评。
   - reviewer-facing sample schema 仍仅为 `blindSampleId`、`genre`、`text`、
     `requiredBeats`。
-- 生成 24 项空白裁决模板和 owner-only 决策请求；所有真人字段保持 `null`。
+- 记录 `adjudication.json`：24/24 `replace_sample`、旧评分
+  `invalidated_for_clean_review`、hook/prose `remediate_and_rerun`。
+- #278 负责 24 个替代文本和 clean packet 重建；#279 负责 benchmark 文风修复及完整
+  204 样本双人重评；两者均阻塞 #242。
 - 生成机器状态 `docs/quality/evidence/m3-273/status.json`，当前结果为：
-  - `completedAdjudicationCount: 0`
-  - `pendingAdjudicationCount: 24`
+  - `completedAdjudicationCount: 24`
+  - `pendingAdjudicationCount: 0`
   - no approved clean packet
-  - `hook-prose-disposition-pending`
-  - `human-attestation-pending`
+  - `clean-blind-review-required`
+  - `hook-prose-remeasurement-pending`
   - inter-rater variance threshold 已由 #240 独立批准为 `0.1`。
 - `buildContinuityBlindReviewPacket` 现在会移除显式事实对照注释，并在报告中拒绝仍含
   oracle 注释的 re-hashed packet：`blind-review-oracle-content-leak`。
@@ -42,6 +46,8 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
 - 真人证据必须绑定 #273 上由 owner/member/collaborator 发布的 GitHub comment；发布检查会
   通过 API 核对评论作者关联、时间、正文 marker、proposal hash 和最终 decision payload
   hash，不信任本地自报的 `adjudicatorKind`；裁决内容变化会使旧 comment 失效。
+- 外部 attestation：
+  [#issuecomment-7183183858](https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-7183183858)。
 - 选择 `refreeze_clean_packet` 或 `replace_affected_samples` 后仍需新的 clean human
   blind review；本票不会用算法删除注释代替重新盲评。
 
@@ -49,10 +55,16 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
 
 - 候选包 SHA-256：
   `602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3`
+- Decision payload SHA-256：
+  `70856c509b9b77fe1312e80a15c60e40e4b83f861d70618740d6a12602447d4d`
 - 污染样本身份：
   `docs/quality/evidence/m3-273/oracle-cleanup-evidence.json`
 - 真人待填模板：
   `docs/quality/evidence/m3-273/adjudication.template.json`
+- 已记录真人决定：
+  `docs/quality/evidence/m3-273/adjudication.json`
+- 已由本人发布的 attestation 正文：
+  `docs/quality/evidence/m3-273/attestation-comment.md`
 - 决策请求：
   `docs/quality/evidence/m3-273/decision-request.md`
 - 机器状态：
@@ -60,12 +72,10 @@ CONT-001 继续为 `implemented`，V1 release gate 继续 blocked。
 - 原始人工评分：
   `docs/quality/evidence/m3-239/human-scores.json`
 
-## 仍需真人完成
+## 仍需完成
 
-- 24/24 样本的真实裁决、理由、影响、裁决人、attestation 和时间。
-- #273 的外部 GitHub 真人声明 comment URL、ID、作者和原声明。
-- 明确候选包重冻、样本替换或经产品负责人批准保留，以及旧评分是否失效。
-- `hook_prose_score = 1.882353 < 4` 的修复重跑或完整 waiver。
+- #278 完成 24/24 替代样本逐项人工批准并重建 clean packet。
+- #279 完成 benchmark corpus 修复和完整 204 样本双人重评。
 - #240 已单独批准 inter-rater variance threshold `0.1`；#273 无权修改或替代该决定。
 
 ## 验证
@@ -77,5 +87,5 @@ pnpm test:guardrails
 pnpm release:check
 ```
 
-`pnpm release:check` 仍应失败。当前预期真缺口包括 #273、#271 和最终 #242
-Production CI，不得把机器准备的候选包解释为质量通过。
+`pnpm release:check` 仍应失败。当前预期真缺口包括 #278、#279 和最终 #242 Production CI，
+不得把机器准备的候选包解释为质量通过。

@@ -152,6 +152,17 @@ describe("non-UI capability evidence audit", () => {
     expect(validate(audit)).toContain("capability-audit:gap-issue-missing:IO-001");
   });
 
+  it("validates every bounded follow-up issue declared by a capability", () => {
+    const audit = structuredClone(completeAudit);
+    audit.capabilities["IO-001"].gap.issues = ["#300", "#301"];
+
+    expect(
+      validate(audit, {
+        gapIssueIsValid: (reference) => reference === "#300",
+      }),
+    ).toContain("capability-audit:gap-issue-invalid:IO-001:#301");
+  });
+
   it("rejects mapped capabilities that claim implemented evidence", () => {
     const mappedTraceability = traceability.replace(
       "| IO-001 | 导入 | V1 | implemented",

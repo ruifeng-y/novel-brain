@@ -2,7 +2,7 @@
 
 > Issue: #240
 > Capabilities: EVAL-002
-> Status: decision complete; V1 release remains blocked by #242, #271, #273 and `hook_prose_score`
+> Status: decision complete; V1 release remains blocked by #242, #278, #279 and `hook_prose_score`
 
 ## 决定
 
@@ -28,8 +28,8 @@ Release gate 仅在 `maxVariance > 0.1` 时记录
 5. V1 quality claim 不接受 waiver，也不允许通过调整阈值解除阻断。
 
 批准阈值只解除 `decision-required:interRaterVarianceThreshold`。当前 release 仍因
-`hook_prose_score = 1.882353 < 4`、24 个 oracle-content/adjudication cases 和
-`EVAL-004` 的模型命令身份问题保持 blocked。
+`hook_prose_score = 1.882353 < 4`、#278 的 clean packet 重建、#279 的完整 204 样本
+重评和 #242 release-head CI 保持 blocked。
 
 ## Completion Time Warning
 

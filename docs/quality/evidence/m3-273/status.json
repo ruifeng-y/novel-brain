@@ -4,52 +4,39 @@
   "reviewId": "m3-239-2026-11-25",
   "generatedAt": "2026-11-26",
   "technicalStatus": "passed",
-  "humanAdjudicationCompleted": false,
-  "completedAdjudicationCount": 0,
-  "pendingAdjudicationCount": 24,
-  "pendingSampleIds": [
-    "Q005",
-    "Q026",
-    "Q034",
-    "Q055",
-    "Q056",
-    "Q067",
-    "Q075",
-    "Q081",
-    "Q083",
-    "Q084",
-    "Q088",
-    "Q093",
-    "Q096",
-    "Q123",
-    "Q130",
-    "Q149",
-    "Q158",
-    "Q160",
-    "Q162",
-    "Q168",
-    "Q182",
-    "Q186",
-    "Q189",
-    "Q196"
-  ],
-  "decisionPayloadSha256": "f5f514e1675c6ccc8f3597b9901e62b4fed16fe02e1be8f2afdacbd709e03e6a",
+  "humanAdjudicationCompleted": true,
+  "completedAdjudicationCount": 24,
+  "pendingAdjudicationCount": 0,
+  "pendingSampleIds": [],
+  "decisionPayloadSha256": "70856c509b9b77fe1312e80a15c60e40e4b83f861d70618740d6a12602447d4d",
   "proposalPacketSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3",
   "cleanPacketProposed": true,
   "reviewerReady": false,
   "cleanPacketApproved": false,
-  "oracleContentDisposition": null,
+  "oracleContentDisposition": {
+    "decision": "replace_affected_samples",
+    "oldScoresImpact": "invalidated_for_clean_review"
+  },
   "hookProseDispositionComplete": false,
   "hookProseDisposition": null,
-  "packetDispositionComplete": false,
-  "humanAttestation": null,
+  "packetDispositionComplete": true,
+  "humanAttestation": {
+    "provider": "github_issue_comment",
+    "issue": 273,
+    "requiredMarker": "M3-273-HUMAN-ATTESTATION",
+    "proposalSha256": "602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3",
+    "decisionPayloadSha256": "70856c509b9b77fe1312e80a15c60e40e4b83f861d70618740d6a12602447d4d",
+    "commentUrl": "https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-7183183858",
+    "commentId": "7183183858",
+    "author": "ruifeng-y",
+    "attestedAt": "2026-11-26T05:06:18Z",
+    "statement": "M3-273-HUMAN-ATTESTATION\n\n本人 `ruifeng-y` 作为 NovelBrain product/quality owner，确认已完成 #273 的真人裁决：\n\n- Proposal SHA-256: `602bf4a2f11181d0d92b05ea7a908863f7181f14d37fe6fe525faafa752b7db3`\n- Decision payload SHA-256: `70856c509b9b77fe1312e80a15c60e40e4b83f861d70618740d6a12602447d4d`\n- Packet decision: `replace_affected_samples`\n- Old scores: `invalidated_for_clean_review`，原文件保留但不作为 clean-review 证据\n- Hook/prose: `remediate_and_rerun`\n- 24 个污染样本: `replace_sample`\n- Follow-up: #278 重建 clean 204 样本包；#279 修复 benchmark corpus 并完成全量人工重评\n- #240 已批准的 `interRaterVarianceThreshold = 0.1` 保持不变"
+  },
   "qualityGate": {
     "status": "blocked",
     "blockers": [
-      "adjudication-pending:24",
-      "hook-prose-disposition-pending",
-      "human-attestation-pending",
-      "oracle-content-disposition-pending:24"
+      "clean-blind-review-required",
+      "hook-prose-remeasurement-pending"
     ]
   },
   "separateDecisions": [
@@ -63,6 +50,6 @@
       "releaseGateRequiresIndependentApproval": true
     }
   ],
-  "decisionFileStatus": "missing",
+  "decisionFileStatus": "present",
   "decisionFilePath": "docs/quality/evidence/m3-273/adjudication.json"
 }

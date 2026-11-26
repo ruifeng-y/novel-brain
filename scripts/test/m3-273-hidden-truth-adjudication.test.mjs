@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +15,40 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("M3-273 hidden-truth adjudication", () => {
+  it("persists the product-owner decision and its published external attestation", () => {
+    const adjudication = JSON.parse(
+      readFileSync(path.join(root, "docs/quality/evidence/m3-273/adjudication.json"), "utf8"),
+    );
+
+    expect(adjudication.status).toBe("complete");
+    expect(adjudication.packetDecision).toMatchObject({
+      decision: "replace_affected_samples",
+      oldScoresImpact: "invalidated_for_clean_review",
+      adjudicatorId: "ruifeng-y",
+      adjudicatorKind: "human",
+    });
+    expect(adjudication.adjudications).toHaveLength(24);
+    expect(
+      adjudication.adjudications.every(
+        (entry) =>
+          entry.decision === "replace_sample" &&
+          entry.adjudicatorId === "ruifeng-y" &&
+          entry.adjudicatorKind === "human",
+      ),
+    ).toBe(true);
+    expect(adjudication.hookProseDisposition).toMatchObject({
+      decision: "remediate_and_rerun",
+      owner: "ruifeng-y",
+      followUpIssue: "#279",
+    });
+    expect(adjudication.humanAttestation).toMatchObject({
+      commentUrl: "https://github.com/ruifeng-y/novel-brain/issues/273#issuecomment-7183183858",
+      commentId: "7183183858",
+      author: "ruifeng-y",
+      attestedAt: "2026-11-26T05:06:18Z",
+    });
+  });
+
   it("proposes a clean packet without deleting or silently approving the 24 contaminated samples", async () => {
     const artifacts = await buildM3_273Artifacts({ root });
 
@@ -308,8 +343,9 @@ describe("M3-273 hidden-truth adjudication", () => {
         blockers: [],
       },
     });
-    expect(artifacts.decisionRequest).toContain("`adjudicatorKind`");
-    expect(artifacts.decisionRequest).toContain("Required beats:");
+    expect(artifacts.decisionRequest).toContain("# M3-273 人类裁决记录");
+    expect(artifacts.decisionRequest).toContain("Decision payload SHA-256");
+    expect(artifacts.decisionRequest).not.toContain("待负责人填写");
   });
 });
 

@@ -2,7 +2,7 @@
 
 > Issue: #138
 > Capability: CONT-001
-> Status: implementation complete; automated full and maximum fixture evidence recorded; #239 records human raw scores as complete-with-warnings, while #273's clean-packet proposal, 24-sample human adjudication, quality-threshold and variance decisions remain blocked.
+> Status: implementation complete; automated full and maximum fixture evidence recorded; #239 records human raw scores as complete-with-warnings. #273 records 24/24 replacement decisions; #278/#279 own clean-packet rebuild and full rerun.
 
 ## 实现范围
 
@@ -59,9 +59,10 @@ pnpm continuity report --fixture artifacts/quality/continuity/full/fixture.json 
 
 ## 验证边界
 
-- Human blind-review sample count 与 inter-rater agreement threshold 仍是 decision-required；实现不自行发明通过阈值。
-- #239 已在 `docs/quality/evidence/m3-239/` 归档原始评分为 `complete-with-warnings`；两名评审人共同标记 24 个缺陷元信息样本待裁决，`hook_prose_score` 也低于 4/5，因此 narrative-quality claim 仍为 blocked。
-- #273 已生成保留全部 204 个样本身份的候选清洗包和 24 项真人决策模板；候选包仍为 `proposed-not-approved`，裁决计数为 0/24。blind packet 构建与 report gate 都会拒绝显式 oracle 注释。
+- Human blind-review sample count 已由 #239 冻结；inter-rater agreement threshold 已由 #240 独立批准为 `0.1`。实现不得自行发明或修改阈值。
+- #239 已在 `docs/quality/evidence/m3-239/` 归档原始评分为 `complete-with-warnings`；两名评审人共同标记 24 个缺陷元信息样本。#273 已记录 24/24 替换决定，`hook_prose_score` 仍低于 4/5，narrative-quality claim 继续 blocked。
+- #273 已记录 24/24 `replace_sample` 真人决定，旧评分对 clean review 失效；候选包仍为 `proposed-not-approved`。blind packet 构建与 report gate 都会拒绝显式 oracle 注释。
+- #278 负责 24 个替代文本与 clean packet 重建；#279 负责 180 个文风样本修复及完整 204 样本双人重评。
 - Narrative outline adherence、hook/prose score 和 continuity-conflict rate 必须由有来源的证据提交，不能用生成包自证。
 - 真实人工盲评已由 #239 归档；approved decisions 和 #139 固定质量 registry 消费仍保持独立，不在本票伪造完成。
 - 容量与恢复由 #137 独立负责；通过本 benchmark 不代表容量达标。

@@ -1,7 +1,7 @@
 # V1 固定质量基准 Registry 与回归门禁
 
 > Owner: M3 #103 / #139
-> Status: #239 raw-score capture is `complete-with-warnings`; #240 approves the variance threshold at `0.1`. #273 has prepared a non-approved cleanup proposal and a 24-sample human decision request, while clean blind review and quality claims remain blocked by pending adjudication and the observed hook/prose score.
+> Status: #239 raw-score capture is `complete-with-warnings`; #240 approves the variance threshold at `0.1`. #273 records 24/24 product-owner replace decisions, invalidates old scores for clean review and records external attestation; #278 rebuilds the clean packet and #279 reruns the full human review. The hook/prose gate remains pending.
 
 ## Dataset
 
@@ -61,9 +61,11 @@ The recorded result does not pass the V1 quality gate:
 - The observed max inter-rater variance is `0`. #240 approves the trusted review-policy
   threshold `0.1` in `docs/quality/evidence/m3-240/review-policy.json`; the observed result
   passes because `0 <= 0.1`.
-- Both reviewers flagged the same 24 long-horizon cases for adjudication because the frozen text contains defect metadata rather than narrative prose. The raw-score evidence is complete, but clean blind review and adjudication are not.
+- Both reviewers flagged the same 24 long-horizon cases because the frozen text contains defect metadata rather than narrative prose. #273 records all 24 replacement decisions; a clean blind review is still required.
 - The packet schema excludes oracle fields, but the same 24 sample texts expose continuity-conflict metadata. A future clean blind review must remove that leakage or record an explicit product-owner resolution.
-- #273 removes the explicit oracle annotation in a proposed 204-sample packet without deleting any sample. The proposal is not frozen and cannot be sent to reviewers until a real product/quality owner records the packet disposition, old-score impact and 24 sample adjudications.
-- The #273 status ledger remains blocked with 0/24 adjudications. `hook_prose_score` has no approved remediation or waiver yet. The inter-rater variance threshold is approved as `0.1` under #240; observed `maxVariance = 0` passes it.
+- #273 removes the explicit oracle annotation in a proposed 204-sample packet without deleting any sample. The product/quality owner recorded replacement, old-score impact and 24/24 sample adjudications; the proposal remains `proposed-not-approved` because it is not a semantic clean-packet replacement.
+- #273 records 24/24 `replace_sample` adjudications, `oldScoresImpact = invalidated_for_clean_review`, `hook_prose_disposition = remediate_and_rerun` and an owner-authored external GitHub attestation.
+- #278 owns replacement approval and clean-packet rebuild. #279 owns benchmark prose remediation and the complete 204-sample two-reviewer rerun. #242 is blocked until both finish.
+- The inter-rater variance threshold is approved as `0.1` under #240; observed `maxVariance = 0` passes it.
 
-The V1 quality claim remains blocked until the human adjudication and packet disposition are recorded and the hook/prose quality failure is addressed. The threshold decision is complete and does not change the frozen rubric.
+The V1 quality claim remains blocked until #278 rebuilds the replacement packet and #279 completes the hook/prose remediation and full rerun. The threshold decision is complete and does not change the frozen rubric.

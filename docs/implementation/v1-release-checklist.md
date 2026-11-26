@@ -9,7 +9,7 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 ## 1. Release scope decisions
 
 - `PERF-001` / `#137` is explicitly deferred from the V1 capacity claim. V1 must not claim that 10,000,000-character capacity has been certified.
-- `CONT-001` deterministic long-horizon implementation is complete and #239 records the human raw scores as `complete-with-warnings`. #273 provides a non-approved cleanup proposal and a blank 24-sample human decision request. The V1 claim remains blocked because 0/24 adjudications are recorded and `hook_prose_score = 1.882353 < 4` has no approved disposition. The inter-rater variance threshold is approved as `0.1` by `product-owner` on 2026-11-26.
+- `CONT-001` deterministic long-horizon implementation is complete and #239 records the human raw scores as `complete-with-warnings`. #273 records 24/24 product-owner replacement decisions, invalidates old scores for clean review and has an owner-authored external attestation. #278 owns replacement approval/clean-packet rebuild; #279 owns corpus remediation and full 204-sample rerun. The V1 claim remains blocked by those follow-ups. The inter-rater variance threshold is approved as `0.1`.
 - Real DeepSeek smoke passed manually in the protected `provider-smoke` GitHub environment. Ordinary CI still has no real-provider dependency.
 
 ## 2. Evidence ledger
@@ -28,7 +28,7 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 | Backup, restore and retention | `docs/implementation/m3-04b-backup-restore.md`; backup/restore drill evidence | pass |
 | Quality registry and deterministic regression | `docs/implementation/m3-06a-quality-benchmark-registry.md`; frozen dataset/rubric and P0 gate tests | pass |
 | Real-provider smoke | `.github/workflows/provider-smoke.yml`; [protected manual run 45557765302](https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302); `docs/implementation/evidence/m3-07e-01-provider-smoke-success-2026-11-25.json` | pass / DeepSeek official HTTPS API, `finishReason: stop`, 1 network call |
-| Human blind review and variance threshold | `docs/implementation/m3-239-human-blind-review.md`, `docs/implementation/m3-240-variance-threshold.md`, `docs/implementation/m3-273-hidden-truth-adjudication.md`, `docs/quality/evidence/m3-240/review-policy.json`, `docs/quality/evidence/m3-239/validation.json`, `docs/quality/evidence/m3-239/human-scores.json`, `docs/quality/evidence/m3-273/status.json`, `docs/quality/evidence/m3-273/decision-request.md` | record complete-with-warnings; threshold `0.1` approved with observed `maxVariance = 0`; #273 candidate packet is `proposed-not-approved`; 0/24 adjudications and hook/prose disposition pending |
+| Human blind review and variance threshold | `docs/implementation/m3-239-human-blind-review.md`, `docs/implementation/m3-240-variance-threshold.md`, `docs/implementation/m3-273-hidden-truth-adjudication.md`, `docs/quality/evidence/m3-240/review-policy.json`, `docs/quality/evidence/m3-239/validation.json`, `docs/quality/evidence/m3-239/human-scores.json`, `docs/quality/evidence/m3-273/adjudication.json`, `docs/quality/evidence/m3-273/status.json` | record complete-with-warnings; threshold `0.1` approved; #273 records 24/24 replace decisions and external attestation; #278 and #279 remain pending |
 | 10M capacity | `#137` / `PERF-001` | explicitly deferred; excluded from V1 claims |
 | Final #104 Production CI | `Production CI/check`, `Production CI/playwright`, `Deployment Smoke/compose-smoke` | blocked until the final release PR run is green |
 
@@ -57,9 +57,8 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 
 ## 4. Remaining blockers
 
-1. Complete the remaining non-UI capability gaps: final release-head verification (#242) and continuity adjudication/remediation (#273), including the failed human prose-quality gate.
-2. Obtain the product/quality owner decision on the #273 204-sample cleanup proposal, record the old-score impact and complete real adjudications for all 24 samples.
-3. Resolve the recorded quality failure: `hook_prose_score = 1.882353` is below the `4/5` release threshold through remediation/rerun or a complete owner waiver.
-4. Run the final #104 Production CI and update the `final-production-ci` evidence gate with the green run URL.
+1. Complete #278: 24/24 human-approved replacement samples and clean 204-sample packet rebuild.
+2. Complete #279: benchmark corpus remediation and complete 204-sample two-reviewer rerun.
+3. Complete final release-head verification (#242) and update `final-production-ci` with the green run URL.
 
 Until then the release decision is **BLOCKED**, and no V1 quality or capacity claim may be made.
