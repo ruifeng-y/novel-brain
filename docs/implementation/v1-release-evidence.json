@@ -115,7 +115,9 @@
         "docs/quality/evidence/m3-278/review-disposition.md",
         "docs/quality/evidence/m3-278/review-findings.source.json",
         "docs/quality/evidence/m3-278/approval-request.review-notes.md",
-        "docs/quality/evidence/m3-278/approvals.template.json"
+        "docs/quality/evidence/m3-278/approvals.template.json",
+        "scripts/m3-278-approval-wizard.ps1",
+        "scripts/test/m3-278-approval-wizard.test.mjs"
       ]
     }
   ]

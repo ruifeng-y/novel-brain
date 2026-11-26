@@ -80,6 +80,16 @@ owner 审阅入口：
 #278 发布包含 `M3-278-HUMAN-APPROVAL` 和候选 packet hash 的外部 GitHub comment。当前
 `status.json` 的 pending sample IDs 为全部 24 个 flagged ID。
 
+逐项录入工具：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/m3-278-approval-wizard.ps1 -Mode Review
+```
+
+工具逐项显示 sample、既定事实、候选文本和 beats，只记录负责人本人输入，不自动决定、不自动
+发布 GitHub comment。发布评论后可运行 `-Mode Statement` 查看评论原文，再运行
+`-Mode Attestation` 通过 GitHub API 核验并写入 attestation。
+
 ## 冻结入口
 
 24/24 人工批准和外部 GitHub attestation 通过后，依次运行：
