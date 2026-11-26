@@ -59,8 +59,8 @@ pnpm continuity report --fixture artifacts/quality/continuity/full/fixture.json 
 
 ## 验证边界
 
-- Human blind-review sample count 与 inter-rater agreement threshold 仍是 decision-required；实现不自行发明通过阈值。
-- #239 已在 `docs/quality/evidence/m3-239/` 归档原始评分为 `complete-with-warnings`；两名评审人共同标记 24 个缺陷元信息样本待裁决，`hook_prose_score` 也低于 4/5，因此 narrative-quality claim 仍为 blocked。
+- Human blind-review sample count 已由 #239 冻结；inter-rater agreement threshold 已由 #240 独立批准为 `0.1`。实现不得自行发明或修改阈值。
+- #239 已在 `docs/quality/evidence/m3-239/` 归档原始评分为 `complete-with-warnings`；两名评审人共同标记 24 个缺陷元信息样本。#273 已记录 24/24 替换决定，`hook_prose_score` 仍低于 4/5，narrative-quality claim 继续 blocked。
 - #273 已记录 24/24 `replace_sample` 真人决定，旧评分对 clean review 失效；候选包仍为 `proposed-not-approved`。blind packet 构建与 report gate 都会拒绝显式 oracle 注释。
 - #278 负责 24 个替代文本与 clean packet 重建；#279 负责 180 个文风样本修复及完整 204 样本双人重评。
 - Narrative outline adherence、hook/prose score 和 continuity-conflict rate 必须由有来源的证据提交，不能用生成包自证。
