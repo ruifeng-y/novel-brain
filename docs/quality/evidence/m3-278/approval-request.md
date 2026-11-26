@@ -8,8 +8,8 @@ Issue: #278
 
 - Candidate dataset: `c8079604dfc8774d1aa0fbfa67c816f145cd4ae3705d75da30b5a27634ead4bd`
 - Candidate reviewer packet: `9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a`
-- Replacement manifest: `f80cceb39ee6eb40e6d99177c0c1f2e229ce15dfb0f95f0820d2457a5a40fb33`
-- Review findings: `7e4af8b8c85e85aa98e6c418059b00008712f371f4941c50bedfdc528f9f7418`
+- Replacement manifest: `f8a8f0315c32fa5e751faa70fc2723916730cde9193456b838401a7ccb29e5a3`
+- Review findings: `fbe42af16a0dea511f5af414f8afe338b3c05b3dc77f947cf718b451515c00dc`
 - Required approvals: 24/24
 - Old scores: `invalidated_for_clean_review`
 - Variance threshold: #240 已批准为 `0.1`，本票不得改写

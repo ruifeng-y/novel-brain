@@ -46,6 +46,7 @@ const PATHS = {
   reviewPolicy: "docs/quality/evidence/m3-240/review-policy.json",
   replacementCandidates: `${EVIDENCE_DIR}/replacement-candidates.source.json`,
   reviewFindings: `${EVIDENCE_DIR}/review-findings.source.json`,
+  reviewNotes: `${EVIDENCE_DIR}/approval-request.review-notes.md`,
 };
 const REVIEWER_SAMPLE_FIELDS = ["blindSampleId", "genre", "requiredBeats", "text"];
 const REVIEWER_PACKET_FIELDS = [
@@ -336,13 +337,16 @@ export async function buildM3_278Artifacts({
   );
   const hardFindingIds = source.reviewFindings.hardFindings.map((entry) => entry.blindSampleId);
   const ownerDecisionIds = source.reviewFindings.ownerDecisions.map((entry) => entry.blindSampleId);
+  const noBlockingIds = source.reviewFindings.noBlockingFindings ?? [];
+  const reviewedIds = [...hardFindingIds, ...ownerDecisionIds, ...noBlockingIds];
   if (
-    hardFindingIds.length !== 6 ||
-    new Set(hardFindingIds).size !== 6 ||
-    ownerDecisionIds.length !== 11 ||
-    new Set(ownerDecisionIds).size !== 11 ||
-    [...hardFindingIds, ...ownerDecisionIds].some((id) => !replacementIdSet.has(id)) ||
-    !/^[a-f0-9]{64}$/u.test(source.reviewFindings.sourceSha256 ?? "")
+    hardFindingIds.length === 0 ||
+    ownerDecisionIds.length === 0 ||
+    noBlockingIds.length === 0 ||
+    new Set(reviewedIds).size !== reviewedIds.length ||
+    reviewedIds.length !== replacementIdSet.size ||
+    !sameStringSet(reviewedIds, [...replacementIdSet]) ||
+    source.fileSha256.reviewNotes !== source.reviewFindings.sourceSha256
   ) {
     throw new Error("M3_278_REVIEW_FINDINGS_INVALID");
   }

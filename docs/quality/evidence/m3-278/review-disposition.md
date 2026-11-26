@@ -30,4 +30,7 @@ Q026、Q075、Q088、Q093、Q096、Q130、Q149、Q160、Q182、Q186、Q189。
 每项现在包含 `establishedFact`，并绑定到 `replacement-manifest.json` 与
 `approvals.template.json`。该字段只进入 owner 材料，不进入 reviewer packet。
 
+`review-findings.source.json` 另记录 7 项无阻塞样本，三类集合合计精确覆盖 24 个候选：
+Q005、Q056、Q083、Q158、Q162、Q168、Q196。
+
 当前仍为 `0/24` 人工批准、`freezeAllowed=false`，没有冻结 packet，也没有发布 attestation。

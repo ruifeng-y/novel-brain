@@ -58,7 +58,7 @@ scenario family 与 severity，但 reviewer-facing sample 只暴露 `blindSample
 - Candidate reviewer packet:
   `9569e6dd661ec2765b08fc3381f4b8406a37b0a4f66f4224c7cfa68b1aec8a6a`
 - Replacement/change manifest:
-  `f80cceb39ee6eb40e6d99177c0c1f2e229ce15dfb0f95f0820d2457a5a40fb33`
+  `f8a8f0315c32fa5e751faa70fc2723916730cde9193456b838401a7ccb29e5a3`
 - Frozen rubric: `247a1fcc0c0ce58bca7faa8a93a8b0d0e39c4095fc2f1c5748767b53d6fc1b3b`
 - #240 variance policy: `0.1`
 

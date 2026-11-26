@@ -14,7 +14,7 @@
     "sourceAdjudicationSha256": "01f872aba2bb984a940ad7860f14030dae0388bb6ab677f4cdcf0334c9265c9c",
     "sourceAdjudicationStatusSha256": "3c37919d7d88daa24b4392e0ea607b530ebdfbc56d587f24ed54150616c6ab43",
     "candidateSourceSha256": "e4df612d563da3dc5f993cfb65e45a6bf228818965aa73fc680d10243613be04",
-    "reviewFindingsSha256": "7e4af8b8c85e85aa98e6c418059b00008712f371f4941c50bedfdc528f9f7418",
+    "reviewFindingsSha256": "fbe42af16a0dea511f5af414f8afe338b3c05b3dc77f947cf718b451515c00dc",
     "reviewSourceSha256": "7f5260fb816dc231507578da8f03ecfef90314558369c04410921ed6bde81e83",
     "reviewPolicy": {
       "path": "docs/quality/evidence/m3-240/review-policy.json",
@@ -495,5 +495,5 @@
       }
     }
   ],
-  "manifestSha256": "f80cceb39ee6eb40e6d99177c0c1f2e229ce15dfb0f95f0820d2457a5a40fb33"
+  "manifestSha256": "f8a8f0315c32fa5e751faa70fc2723916730cde9193456b838401a7ccb29e5a3"
 }

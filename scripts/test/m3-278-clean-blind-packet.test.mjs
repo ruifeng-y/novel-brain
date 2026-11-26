@@ -207,18 +207,23 @@ describe("M3-278 clean blind packet", () => {
         (candidate) => candidate.establishedFact.trim().length > 0,
       ),
     ).toBe(true);
+    const hardFindingCount = artifacts.source.reviewFindings.hardFindings.length;
+    const ownerDecisionCount = artifacts.source.reviewFindings.ownerDecisions.length;
+    const noBlockingCount = artifacts.source.reviewFindings.noBlockingFindings.length;
     expect(reviewerSerialized).not.toContain("establishedFact");
     expect(artifacts.approvalRequest).toContain("- 既定事实:");
-    expect(artifacts.approvalRequest.match(/^- Q\d{3}:/gmu)).toHaveLength(11);
+    expect(artifacts.approvalRequest.match(/^- Q\d{3}:/gmu)).toHaveLength(ownerDecisionCount);
     expect(artifacts.status).toMatchObject({
-      ownerDecisionPendingCount: 11,
-      hardReviewFindingsResolved: 6,
+      ownerDecisionPendingCount: ownerDecisionCount,
+      hardReviewFindingsResolved: hardFindingCount,
     });
     expect(artifacts.approvalTemplate.reviewFindingsSha256).toBe(
       artifacts.source.fileSha256.reviewFindings,
     );
-    expect(artifacts.source.reviewFindings.hardFindings).toHaveLength(6);
-    expect(artifacts.source.reviewFindings.ownerDecisions).toHaveLength(11);
+    expect(artifacts.source.fileSha256.reviewNotes).toBe(
+      artifacts.source.reviewFindings.sourceSha256,
+    );
+    expect(hardFindingCount + ownerDecisionCount + noBlockingCount).toBe(24);
 
     expect(candidateById.get("Q034").requiredBeats).toContain(
       "北境关的茶棚里，披斗篷的人却已经念出信中那桩秘事，连末尾的暗记都没有错。",
