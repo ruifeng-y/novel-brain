@@ -47,6 +47,17 @@ const PATHS = {
   replacementCandidates: `${EVIDENCE_DIR}/replacement-candidates.source.json`,
 };
 const REVIEWER_SAMPLE_FIELDS = ["blindSampleId", "genre", "requiredBeats", "text"];
+const REVIEWER_PACKET_FIELDS = [
+  "issue",
+  "packetSha256",
+  "packetVersion",
+  "reviewerReadiness",
+  "samples",
+  "schemaVersion",
+  "source",
+  "status",
+];
+const REVIEWER_GENRES = new Set(["仙侠", "历史", "都市"]);
 const REVIEWER_LEAKAGE_PATTERNS = [
   {
     code: "explicit-confirmed-fact-conflict",
@@ -98,7 +109,7 @@ export function scanM3_278ReviewerLeakage(sample) {
   for (const field of unexpectedFields) {
     findings.push({ code: "unexpected-reviewer-field", field, match: field });
   }
-  for (const field of ["text", "requiredBeats"]) {
+  for (const field of REVIEWER_SAMPLE_FIELDS) {
     const values = Array.isArray(sample?.[field]) ? sample[field] : [sample?.[field] ?? ""];
     values.forEach((value, index) => {
       for (const { code, pattern } of REVIEWER_LEAKAGE_PATTERNS) {
@@ -117,7 +128,14 @@ export function scanM3_278ReviewerLeakage(sample) {
 }
 
 export function assertM3_278ReviewerPacketClean(packet) {
-  if (!packet || !Array.isArray(packet.samples) || packet.samples.length !== 204) {
+  if (
+    !packet ||
+    Array.isArray(packet) ||
+    typeof packet !== "object" ||
+    Object.keys(packet).sort().join(",") !== REVIEWER_PACKET_FIELDS.join(",") ||
+    !Array.isArray(packet.samples) ||
+    packet.samples.length !== 204
+  ) {
     throw new Error("M3_278_REVIEWER_PACKET_INVALID");
   }
   if (
@@ -128,7 +146,8 @@ export function assertM3_278ReviewerPacketClean(packet) {
         Array.isArray(sample) ||
         Object.keys(sample).sort().join(",") !== REVIEWER_SAMPLE_FIELDS.join(",") ||
         !hasText(sample.blindSampleId) ||
-        !hasText(sample.genre) ||
+        !/^Q\d{3}$/u.test(sample.blindSampleId) ||
+        !REVIEWER_GENRES.has(sample.genre) ||
         !hasText(sample.text) ||
         !Array.isArray(sample.requiredBeats) ||
         sample.requiredBeats.length === 0 ||
@@ -1110,14 +1129,14 @@ export function verifyM3_278GithubApprovalAttestation(
       `repos/${EXPECTED_GITHUB_REPOSITORY}/issues/comments/${attestation.commentId}`,
       "{body: .body, issueUrl: .issue_url, author: .user.login, authorAssociation: .author_association, createdAt: .created_at}",
     );
-    const attestedAt = Date.parse(attestation.attestedAt);
-    const createdAt = Date.parse(comment.createdAt);
+    const attestedAt = parseStrictIsoTimestamp(attestation.attestedAt);
+    const createdAt = parseStrictIsoTimestamp(comment.createdAt);
     return (
       comment.author === EXPECTED_PRODUCT_QUALITY_OWNER &&
       comment.authorAssociation === "OWNER" &&
       comment.issueUrl?.endsWith(`/repos/${EXPECTED_GITHUB_REPOSITORY}/issues/${ISSUE}`) &&
-      Number.isFinite(attestedAt) &&
-      Number.isFinite(createdAt) &&
+      attestedAt !== null &&
+      createdAt !== null &&
       Math.abs(attestedAt - createdAt) <= 60_000 &&
       comment.body?.trim() === attestation.statement?.trim() &&
       comment.body?.includes(attestation.approvalPayloadSha256)

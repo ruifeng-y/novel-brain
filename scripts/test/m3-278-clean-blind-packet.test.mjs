@@ -91,14 +91,14 @@ describe("M3-278 clean blind packet", () => {
     ]) {
       expect(serialized).not.toContain(marker);
     }
-    const leakedPacket = {
+    const leakedPacket = createReviewerPacketForTest({
       samples: Array.from({ length: 204 }, (_, index) => ({
         blindSampleId: `Q${String(index + 1).padStart(3, "0")}`,
         genre: "仙侠",
         text: "干净叙事。",
         requiredBeats: ["干净叙事。"],
       })),
-    };
+    });
     leakedPacket.samples[0].text = "这段文本带有与已确认事实“测试”冲突。";
     expect(() => assertM3_278ReviewerPacketClean(leakedPacket)).toThrow(
       "M3_278_REVIEWER_PACKET_LEAKAGE",
@@ -116,6 +116,22 @@ describe("M3-278 clean blind packet", () => {
     missingBeats.samples[0].text = "干净叙事。";
     delete missingBeats.samples[0].requiredBeats;
     expect(() => assertM3_278ReviewerPacketClean(missingBeats)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    const leakedGenre = createReviewerPacketForTest({
+      samples: structuredClone(leakedPacket.samples),
+    });
+    leakedGenre.samples[0].text = "干净叙事。";
+    leakedGenre.samples[0].genre = "P0";
+    expect(() => assertM3_278ReviewerPacketClean(leakedGenre)).toThrow(
+      "M3_278_REVIEWER_PACKET_INVALID",
+    );
+    const hiddenTopLevel = createReviewerPacketForTest({
+      samples: structuredClone(leakedPacket.samples),
+    });
+    hiddenTopLevel.samples[0].text = "干净叙事。";
+    hiddenTopLevel.hiddenFacts = ["oracle"];
+    expect(() => assertM3_278ReviewerPacketClean(hiddenTopLevel)).toThrow(
       "M3_278_REVIEWER_PACKET_INVALID",
     );
   });
@@ -167,6 +183,19 @@ describe("M3-278 clean blind packet", () => {
       verifyM3_278GithubApprovalAttestation(attestation, {
         githubApi: () => ({ ...comment, createdAt: "2026-11-26T06:02:00Z" }),
       }),
+    ).toBe(false);
+    expect(
+      verifyM3_278GithubApprovalAttestation(attestation, {
+        githubApi: () => ({ ...comment, createdAt: "1" }),
+      }),
+    ).toBe(false);
+    expect(
+      verifyM3_278GithubApprovalAttestation(
+        { ...attestation, attestedAt: "1" },
+        {
+          githubApi: () => comment,
+        },
+      ),
     ).toBe(false);
     expect(
       verifyM3_278GithubApprovalAttestation(attestation, {
@@ -377,6 +406,19 @@ describe("M3-278 clean blind packet", () => {
     expect(first.approvalRequest).toContain("`adjudicatorKind`: 必须为 `human`");
   });
 });
+
+function createReviewerPacketForTest({ samples }) {
+  return {
+    schemaVersion: 1,
+    packetVersion: "test",
+    status: "candidate-not-approved",
+    issue: 278,
+    source: {},
+    reviewerReadiness: {},
+    samples,
+    packetSha256: "a".repeat(64),
+  };
+}
 
 function hashCanonical(value) {
   return createHash("sha256")
