@@ -26,6 +26,7 @@ type DatabaseClient = PoolClient;
 
 interface LoadedRow {
   job_id: string;
+  job_status: string;
   user_id: string;
   work_id: string;
   branch_id: string;
@@ -108,7 +109,8 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
   async loadJob(payload: GenerateBlueprintJob): Promise<LoadedBlueprintJob | undefined> {
     return this.withTenant(payload.actorId, async (client) => {
       const result = await client.query<LoadedRow>(
-        `SELECT j.id AS job_id, j.user_id, j.work_id, j.branch_id, j.model_config_id,
+        `SELECT j.id AS job_id, j.status AS job_status, j.user_id, j.work_id,
+                j.branch_id, j.model_config_id,
                 j.idempotency_key, j.budget, j.checkpoint, j.cost AS job_cost,
                 wb.id AS blueprint_id, wb.status AS blueprint_status, wb.progress,
                 wb.story_bible_draft, wb.core_settings_draft, wb.outline_draft,
@@ -143,6 +145,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       return {
         job: {
           id: row.job_id,
+          status: row.job_status,
           userId: row.user_id,
           workId: row.work_id,
           branchId: row.branch_id,

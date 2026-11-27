@@ -34,6 +34,7 @@ import type { ByokAiGatewayFactory, StoredModelConfig } from "../generation/mode
 export interface LoadedBlueprintJob {
   job: {
     id: string;
+    status: string;
     userId: string;
     workId: string;
     branchId: string;
@@ -166,6 +167,12 @@ export class BlueprintJobProcessor {
   private async processLocked(payload: GenerateBlueprintJob): Promise<void> {
     const loaded = await this.repository.loadJob(payload);
     if (!loaded) {
+      return;
+    }
+    if (
+      ["waiting_review", "completed", "cancelled"].includes(loaded.job.status) ||
+      ["waiting_review", "confirmed", "cancelled"].includes(loaded.blueprint.status)
+    ) {
       return;
     }
     if (!loaded.modelConfig || !loaded.job.modelConfigId) {
@@ -609,10 +616,12 @@ function toFailure(error: unknown): BlueprintFailure {
       retryable: error.retryable,
     };
   }
+  const schemaFailure =
+    error instanceof SyntaxError || (error instanceof Error && error.name === "ZodError");
   return {
-    code: error instanceof SyntaxError ? "MODEL_RESPONSE_INVALID" : "INTERNAL_ERROR",
+    code: schemaFailure ? "MODEL_RESPONSE_INVALID" : "INTERNAL_ERROR",
     message: "故事蓝图生成失败，检查点已保留",
-    failureClass: error instanceof SyntaxError ? "schema" : "unknown",
+    failureClass: schemaFailure ? "schema" : "unknown",
     retryable: true,
   };
 }

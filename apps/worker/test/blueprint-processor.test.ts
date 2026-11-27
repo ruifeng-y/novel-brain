@@ -134,6 +134,35 @@ describe("BlueprintJobProcessor", () => {
       failureClass: "schema",
     });
   });
+
+  it("classifies schema-invalid JSON as a model response failure", async () => {
+    const store = new InMemoryBlueprintStore();
+    const provider = new SequencedBlueprintProvider("blueprint_story_bible", "schema_invalid");
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(store.status).toBe("failed");
+    expect(store.failure).toMatchObject({
+      code: "MODEL_RESPONSE_INVALID",
+      failureClass: "schema",
+    });
+  });
+
+  it("does not rerun a job already waiting for review", async () => {
+    const loaded = loadedJob();
+    const store = new InMemoryBlueprintStore({
+      ...loaded,
+      job: { ...loaded.job, status: "waiting_review" },
+      blueprint: { ...loaded.blueprint, status: "waiting_review" },
+    });
+    const provider = new SequencedBlueprintProvider();
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(provider.operations).toEqual([]);
+    expect(store.commits).toEqual([]);
+    expect(store.notifications).toEqual([]);
+  });
 });
 
 class SequencedBlueprintProvider implements AiGateway {
@@ -141,7 +170,7 @@ class SequencedBlueprintProvider implements AiGateway {
 
   constructor(
     private readonly failOperation?: GenerationRequest["operation"],
-    private readonly failure: "rate_limit" | "invalid_json" = "rate_limit",
+    private readonly failure: "rate_limit" | "invalid_json" | "schema_invalid" = "rate_limit",
   ) {}
 
   async generateText(input: GenerationRequest): Promise<GenerationResult> {
@@ -155,6 +184,14 @@ class SequencedBlueprintProvider implements AiGateway {
     if (input.operation === this.failOperation && this.failure === "invalid_json") {
       return {
         text: "not-json",
+        model: "fake-blueprint",
+        finishReason: "stop",
+        usage: { inputTokens: 100, outputTokens: 20 },
+      };
+    }
+    if (input.operation === this.failOperation && this.failure === "schema_invalid") {
+      return {
+        text: "{}",
         model: "fake-blueprint",
         finishReason: "stop",
         usage: { inputTokens: 100, outputTokens: 20 },
@@ -264,6 +301,7 @@ function loadedJob(): LoadedBlueprintJob {
   return {
     job: {
       id: "01900000-0000-7000-8000-000000000001",
+      status: "queued",
       userId: "01900000-0000-7000-8000-000000000002",
       workId: "01900000-0000-7000-8000-000000000003",
       branchId: "01900000-0000-7000-8000-000000000004",
