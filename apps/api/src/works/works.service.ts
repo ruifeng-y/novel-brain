@@ -26,6 +26,7 @@ import sharp from "sharp";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+import { BlueprintService } from "../blueprints/blueprint.service";
 import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -54,6 +55,7 @@ export class WorksService {
   constructor(
     private readonly repository: WorksRepository,
     private readonly readiness: ReadinessService,
+    private readonly blueprints: BlueprintService,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
@@ -67,6 +69,12 @@ export class WorksService {
     if (idempotencyKey) {
       const existing = await this.repository.findByIdempotencyKey(userId, idempotencyKey);
       if (existing) {
+        const branch = (await this.repository.findBranches(userId, existing.id)).find(
+          (candidate) => candidate.name === "main",
+        );
+        if (branch) {
+          await this.blueprints.retryQueuedDelivery(userId, existing.id, branch.id);
+        }
         return this.toOverview(userId, existing);
       }
     }
@@ -79,10 +87,29 @@ export class WorksService {
       throw new ApiError(400, "VALIDATION_INVALID", "题材模板不可用");
     }
 
+    const workId = uuidv7();
+    const branchId = uuidv7();
+    const nodeId = uuidv7();
+    const blueprint =
+      input.mode === "idea"
+        ? await this.blueprints.prepareForIdea({
+            userId,
+            workId,
+            branchId,
+            title: input.title,
+            idea: input.idea,
+            genre: input.genre,
+            scaleTarget: input.scaleTarget,
+            chapterLengthTarget: input.chapterLengthTarget,
+            templatePackId: templatePack.id,
+            ...(input.blueprintBudget ? { budgetOverride: input.blueprintBudget } : {}),
+          })
+        : undefined;
+
     const created = await this.repository.create({
-      id: uuidv7(),
-      branchId: uuidv7(),
-      nodeId: uuidv7(),
+      id: workId,
+      branchId,
+      nodeId,
       userId,
       title: input.title,
       penName: input.penName ?? displayName,
@@ -93,9 +120,15 @@ export class WorksService {
       idea: input.mode === "idea" ? input.idea : null,
       templatePackId: templatePack.id,
       settings: { genrePack: genrePackSettings(templatePack) },
+      ...(blueprint ? { blueprint } : {}),
       idempotencyKey: idempotencyKey ?? null,
       audit,
     });
+    if (blueprint && created.wasCreated) {
+      await this.blueprints.enqueueSafely(blueprint.jobPayload);
+    } else if (!created.wasCreated) {
+      await this.blueprints.retryQueuedDelivery(userId, created.work.id, created.branch.id);
+    }
     return this.toOverview(userId, created.work, created.branch, templatePack);
   }
 

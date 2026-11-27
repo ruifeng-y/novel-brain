@@ -532,6 +532,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/blueprint-estimates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BlueprintController_estimate"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/blueprint": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BlueprintController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/blueprint/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BlueprintController_retry"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
     parameters: {
       query?: never;
@@ -4945,6 +4993,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -5312,6 +5361,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -6669,6 +6719,477 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  BlueprintController_estimate: {
+    parameters: {
+      query?: {
+        genre?: "xianxia" | "history" | "urban";
+        scaleTarget?: "short" | "medium" | "long" | "epic";
+        chapterLengthTarget?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Estimated blueprint budget */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              ruleVersion: "blueprint-estimate-v1";
+              planned: {
+                volumes: number;
+                chapters: number;
+                scenes: number;
+              };
+              estimatedTokens: number;
+              estimatedCostCny: number;
+              defaultBudget: {
+                maxTokens: number;
+                maxCostCny: number;
+              };
+              assumptions: string[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BlueprintController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work blueprint */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              jobId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "running"
+                | "waiting_model_config"
+                | "budget_paused"
+                | "waiting_review"
+                | "failed"
+                | "confirmed"
+                | "cancelled";
+              version: number;
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "story_bible"
+                | "core_settings"
+                | "outline"
+                | "validate"
+                | "await_review";
+              estimate: {
+                /** @enum {string} */
+                ruleVersion: "blueprint-estimate-v1";
+                planned: {
+                  volumes: number;
+                  chapters: number;
+                  scenes: number;
+                };
+                estimatedTokens: number;
+                estimatedCostCny: number;
+                defaultBudget: {
+                  maxTokens: number;
+                  maxCostCny: number;
+                };
+                assumptions: string[];
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              draftHash: string | null;
+              storyBibleDraft: {
+                cards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                  content: string;
+                  complete: boolean;
+                  /** @default [] */
+                  worldRules: {
+                    id: string;
+                    name: string;
+                    constraint: string;
+                    scope: string;
+                    /** @default [] */
+                    exceptions: string[];
+                  }[];
+                }[];
+              } | null;
+              coreSettingsDraft: {
+                candidateId: string;
+                /** @enum {string} */
+                type:
+                  | "world_rule"
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event";
+                name: string;
+                /** @default [] */
+                aliases: string[];
+                summary: string;
+                description: string;
+                /** @default [] */
+                tags: string[];
+                data: {
+                  [key: string]: unknown;
+                };
+                required: boolean;
+                /** @enum {string} */
+                source: "blueprint";
+              }[];
+              outlineDraft: {
+                nodes: {
+                  id: string;
+                  parentId: string | null;
+                  /** @enum {string} */
+                  level: "book" | "volume" | "act" | "chapter" | "scene";
+                  sortOrder: number;
+                  title: string;
+                  summary: string;
+                  /**
+                   * @default planned
+                   * @enum {string}
+                   */
+                  status: "planned" | "active" | "done";
+                  chapterNumber: number | null;
+                  brief: {
+                    goal: string;
+                    pov: string;
+                    location: string;
+                    sceneBeats: string[];
+                    requiredFacts: string[];
+                  } | null;
+                  tension: number | null;
+                }[];
+                volumeContracts: {
+                  nodeId: string;
+                  objective: string;
+                  conflict: string;
+                  turningPoints: string[];
+                  exitConditions: string[];
+                  plotLines: {
+                    name: string;
+                    /** @enum {string} */
+                    status: "planned" | "active" | "resolved" | "dropped";
+                    note: string;
+                  }[];
+                }[];
+                sceneCards: {
+                  nodeId: string;
+                  title: string;
+                  povLabel: string;
+                  locationLabel: string;
+                  storyTime: string;
+                  beats: string[];
+                  informationReleases: string[];
+                  tension: number | null;
+                }[];
+              } | null;
+              missingFields: {
+                key: string;
+                label: string;
+                required: boolean;
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2";
+                message: string;
+              }[];
+              conflicts: {
+                id: string;
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2";
+                title: string;
+                detail: string;
+                affectedKeys: string[];
+                /** @enum {string} */
+                status: "open" | "resolved";
+              }[];
+              acknowledgements: {
+                fieldKey: string;
+                /** @enum {string} */
+                decision: "not_applicable";
+                reason: string;
+              }[];
+              allowedActions: ("edit" | "retry" | "resume_budget" | "cancel" | "confirm")[];
+              /** Format: date-time */
+              confirmedAt: string | null;
+              confirmedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BlueprintController_retry: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Blueprint delivery retried */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              jobId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "running"
+                | "waiting_model_config"
+                | "budget_paused"
+                | "waiting_review"
+                | "failed"
+                | "confirmed"
+                | "cancelled";
+              version: number;
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "story_bible"
+                | "core_settings"
+                | "outline"
+                | "validate"
+                | "await_review";
+              estimate: {
+                /** @enum {string} */
+                ruleVersion: "blueprint-estimate-v1";
+                planned: {
+                  volumes: number;
+                  chapters: number;
+                  scenes: number;
+                };
+                estimatedTokens: number;
+                estimatedCostCny: number;
+                defaultBudget: {
+                  maxTokens: number;
+                  maxCostCny: number;
+                };
+                assumptions: string[];
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              draftHash: string | null;
+              storyBibleDraft: {
+                cards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                  content: string;
+                  complete: boolean;
+                  /** @default [] */
+                  worldRules: {
+                    id: string;
+                    name: string;
+                    constraint: string;
+                    scope: string;
+                    /** @default [] */
+                    exceptions: string[];
+                  }[];
+                }[];
+              } | null;
+              coreSettingsDraft: {
+                candidateId: string;
+                /** @enum {string} */
+                type:
+                  | "world_rule"
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event";
+                name: string;
+                /** @default [] */
+                aliases: string[];
+                summary: string;
+                description: string;
+                /** @default [] */
+                tags: string[];
+                data: {
+                  [key: string]: unknown;
+                };
+                required: boolean;
+                /** @enum {string} */
+                source: "blueprint";
+              }[];
+              outlineDraft: {
+                nodes: {
+                  id: string;
+                  parentId: string | null;
+                  /** @enum {string} */
+                  level: "book" | "volume" | "act" | "chapter" | "scene";
+                  sortOrder: number;
+                  title: string;
+                  summary: string;
+                  /**
+                   * @default planned
+                   * @enum {string}
+                   */
+                  status: "planned" | "active" | "done";
+                  chapterNumber: number | null;
+                  brief: {
+                    goal: string;
+                    pov: string;
+                    location: string;
+                    sceneBeats: string[];
+                    requiredFacts: string[];
+                  } | null;
+                  tension: number | null;
+                }[];
+                volumeContracts: {
+                  nodeId: string;
+                  objective: string;
+                  conflict: string;
+                  turningPoints: string[];
+                  exitConditions: string[];
+                  plotLines: {
+                    name: string;
+                    /** @enum {string} */
+                    status: "planned" | "active" | "resolved" | "dropped";
+                    note: string;
+                  }[];
+                }[];
+                sceneCards: {
+                  nodeId: string;
+                  title: string;
+                  povLabel: string;
+                  locationLabel: string;
+                  storyTime: string;
+                  beats: string[];
+                  informationReleases: string[];
+                  tension: number | null;
+                }[];
+              } | null;
+              missingFields: {
+                key: string;
+                label: string;
+                required: boolean;
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2";
+                message: string;
+              }[];
+              conflicts: {
+                id: string;
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2";
+                title: string;
+                detail: string;
+                affectedKeys: string[];
+                /** @enum {string} */
+                status: "open" | "resolved";
+              }[];
+              acknowledgements: {
+                fieldKey: string;
+                /** @enum {string} */
+                decision: "not_applicable";
+                reason: string;
+              }[];
+              allowedActions: ("edit" | "retry" | "resume_budget" | "cancel" | "confirm")[];
+              /** Format: date-time */
+              confirmedAt: string | null;
+              confirmedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };
@@ -11309,6 +11830,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11902,6 +12424,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12320,6 +12843,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -12739,6 +13263,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -13158,6 +13683,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -13590,6 +14116,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14131,6 +14658,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14590,6 +15118,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14904,6 +15433,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -15128,6 +15658,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -15500,6 +16031,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -15935,6 +16467,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16375,6 +16908,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -16815,6 +17349,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -18058,6 +18593,10 @@ export interface operations {
               /** @enum {string} */
               mode: "idea";
               idea: string;
+              blueprintBudget?: {
+                maxTokens: number;
+                maxCostCny: number;
+              };
               title: string;
               penName?: string;
               /**
@@ -34886,6 +35425,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -35133,6 +35673,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -35356,6 +35897,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -45672,6 +46214,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -46477,6 +47020,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47059,6 +47603,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -47641,6 +48186,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -48223,6 +48769,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -48818,6 +49365,7 @@ export interface operations {
                     | "WORK_EXPORT_REQUIRED"
                     | "WORK_COVER_INVALID"
                     | "WORK_COVER_NOT_FOUND"
+                    | "BLUEPRINT_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -49202,6 +49750,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -49608,6 +50157,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -49932,6 +50482,7 @@ export interface operations {
                   | "WORK_EXPORT_REQUIRED"
                   | "WORK_COVER_INVALID"
                   | "WORK_COVER_NOT_FOUND"
+                  | "BLUEPRINT_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;

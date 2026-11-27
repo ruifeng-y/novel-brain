@@ -4,6 +4,7 @@ import {
   STORY_BIBLE_CARD_KEYS,
   STORY_BIBLE_CARD_TITLES,
   blueprintBudgetUpdateRequestSchema,
+  blueprintEstimateQuerySchema,
   blueprintCheckpointSchema,
   blueprintConfirmRequestSchema,
   blueprintConflictSchema,
@@ -11,6 +12,7 @@ import {
   blueprintMissingFieldSchema,
   blueprintStoryBibleDraftSchema,
   generateBlueprintJobSchema,
+  workCreateRequestSchema,
   workBlueprintSchema,
 } from "../src";
 
@@ -244,6 +246,40 @@ describe("blueprint contracts", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("accepts a budget override only on the idea creation branch", () => {
+    const idea = workCreateRequestSchema.parse({
+      mode: "idea",
+      title: "忘川书",
+      idea: "一个被宗门抛弃的杂役，意外得到一本会吞噬记忆的古书。",
+      blueprintBudget: { maxTokens: 120000, maxCostCny: 0.5 },
+    });
+
+    expect(idea.mode).toBe("idea");
+    expect(idea.mode === "idea" ? idea.blueprintBudget : undefined).toEqual({
+      maxTokens: 120000,
+      maxCostCny: 0.5,
+    });
+  });
+
+  it("parses blueprint estimate query defaults and numeric strings", () => {
+    expect(blueprintEstimateQuerySchema.parse({})).toEqual({
+      genre: "xianxia",
+      scaleTarget: "long",
+      chapterLengthTarget: 3000,
+    });
+    expect(
+      blueprintEstimateQuerySchema.parse({
+        genre: "urban",
+        scaleTarget: "short",
+        chapterLengthTarget: "4500",
+      }),
+    ).toEqual({
+      genre: "urban",
+      scaleTarget: "short",
+      chapterLengthTarget: 4500,
+    });
+  });
 });
 
 function makeCards(worldRuleCount = 3) {
@@ -270,6 +306,7 @@ function makeBlueprint(overrides: Record<string, unknown> = {}) {
     id: "01900000-0000-7000-8000-000000000001",
     workId: "01900000-0000-7000-8000-000000000002",
     branchId: "01900000-0000-7000-8000-000000000003",
+    jobId: "01900000-0000-7000-8000-000000000006",
     status: "confirmed",
     version: 1,
     progress: 100,

@@ -165,6 +165,7 @@ export const ERROR_CODES = [
   "WORK_EXPORT_REQUIRED",
   "WORK_COVER_INVALID",
   "WORK_COVER_NOT_FOUND",
+  "BLUEPRINT_NOT_FOUND",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -842,6 +843,23 @@ export const workCoverDisplayUrlSchema = z.union([
   z.string().regex(/^\/api\/v1\/works\/[0-9a-f-]+\/cover$/u, "Invalid stored cover URL"),
 ]);
 
+export const blueprintBudgetSchema = z
+  .object({
+    maxTokens: z.number().int().min(20_000).max(600_000),
+    maxCostCny: z.number().min(0.1).max(10),
+  })
+  .strict();
+export type BlueprintBudget = z.infer<typeof blueprintBudgetSchema>;
+
+export const blueprintEstimateQuerySchema = z
+  .object({
+    genre: workGenreSchema.default("xianxia"),
+    scaleTarget: workScaleTargetSchema.default("long"),
+    chapterLengthTarget: z.coerce.number().int().min(1000).max(10000).default(3000),
+  })
+  .strict();
+export type BlueprintEstimateQuery = z.infer<typeof blueprintEstimateQuerySchema>;
+
 const workBaseInputShape = {
   title: z.string().trim().min(1).max(120),
   penName: z.string().trim().min(1).max(50).optional(),
@@ -854,6 +872,7 @@ export const workCreateRequestSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("idea"),
     idea: z.string().trim().min(10).max(5000),
+    blueprintBudget: blueprintBudgetSchema.optional(),
     ...workBaseInputShape,
   }),
   z.object({
@@ -5878,14 +5897,6 @@ export const blueprintStatusSchema = z.enum([
 ]);
 export type BlueprintStatus = z.infer<typeof blueprintStatusSchema>;
 
-export const blueprintBudgetSchema = z
-  .object({
-    maxTokens: z.number().int().min(20_000).max(600_000),
-    maxCostCny: z.number().min(0.1).max(10),
-  })
-  .strict();
-export type BlueprintBudget = z.infer<typeof blueprintBudgetSchema>;
-
 export const blueprintEstimateSchema = z
   .object({
     ruleVersion: z.literal("blueprint-estimate-v1"),
@@ -6108,6 +6119,7 @@ export const workBlueprintSchema = z
     id: uuidV7Schema,
     workId: uuidV7Schema,
     branchId: uuidV7Schema,
+    jobId: uuidV7Schema,
     status: blueprintStatusSchema,
     version: z.number().int().positive(),
     progress: z.number().int().min(0).max(100),
