@@ -10,6 +10,7 @@ import type {
   BlueprintEstimate,
   BlueprintMissingField,
   BlueprintOutlineDraft,
+  BlueprintStoryBibleDraft,
   ModerationAppealStatus,
   ModerationCase,
   ModerationCaseStatus,
@@ -23,7 +24,6 @@ import type {
   PublishPlatformPreset,
   PublishReaderPreview,
   PublishReadinessStatus,
-  StoryBibleCard,
   WorkExportManifest,
   WorkExportRequest,
   WorkExportSourceDescriptor,
@@ -2484,6 +2484,9 @@ export const jobs = pgTable(
     uniqueIndex("jobs_export_work_idempotency_unique")
       .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
       .where(sql`${table.type} = 'export_work'`),
+    uniqueIndex("jobs_generate_blueprint_idempotency_unique")
+      .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
+      .where(sql`${table.type} = 'generate_blueprint'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
     index("jobs_parent_created_idx").on(table.parentJobId, table.createdAt),
@@ -2493,7 +2496,7 @@ export const jobs = pgTable(
     ),
     check(
       "jobs_required_scope_check",
-      sql`(${table.type} in ('agent_workflow', 'batch_plan', 'export_work')) or (${table.type} = 'generate_blueprint' and ${table.chapterId} is null and ${table.modelConfigId} is not null) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+      sql`(${table.type} in ('agent_workflow', 'batch_plan', 'export_work')) or (${table.type} = 'generate_blueprint' and ${table.chapterId} is null) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
     ),
     check(
       "jobs_job_type_check",
@@ -2538,7 +2541,7 @@ export const workBlueprints = pgTable(
     inputHash: text("input_hash").notNull(),
     estimate: jsonb("estimate").$type<BlueprintEstimate>().notNull(),
     draftHash: text("draft_hash"),
-    storyBibleDraft: jsonb("story_bible_draft").$type<StoryBibleCard[] | null>(),
+    storyBibleDraft: jsonb("story_bible_draft").$type<BlueprintStoryBibleDraft | null>(),
     coreSettingsDraft: jsonb("core_settings_draft")
       .$type<BlueprintCoreSettingDraft[]>()
       .notNull()

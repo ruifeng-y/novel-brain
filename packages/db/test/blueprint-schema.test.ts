@@ -1,10 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
-import { workBlueprints } from "../src/schema";
+import { jobs, workBlueprints } from "../src/schema";
 
 describe("workBlueprints schema", () => {
   it("keeps one blueprint aggregate per work branch and tenant", () => {
@@ -40,16 +40,17 @@ describe("workBlueprints schema", () => {
 
   it("enables tenant RLS in the generated migration", () => {
     const migrationDirectory = join(process.cwd(), "packages/db/migrations");
-    const latestMigration = readdirSync(migrationDirectory)
-      .filter((entry) => entry.endsWith(".sql"))
-      .sort()
-      .at(-1);
-    if (!latestMigration) {
-      throw new Error("Expected a migration file");
-    }
-    const migration = readFileSync(join(migrationDirectory, latestMigration), "utf8");
+    const migration = readFileSync(join(migrationDirectory, "0079_certain_gwen_stacy.sql"), "utf8");
 
     expect(migration).toContain('ALTER TABLE "work_blueprints" ENABLE ROW LEVEL SECURITY');
     expect(migration).toContain('CREATE POLICY "work_blueprints_tenant_policy"');
+  });
+
+  it("persists blueprint idempotency per work branch", () => {
+    const config = getTableConfig(jobs);
+
+    expect(config.indexes.map((index) => index.config.name)).toContain(
+      "jobs_generate_blueprint_idempotency_unique",
+    );
   });
 });

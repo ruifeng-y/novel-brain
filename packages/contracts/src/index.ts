@@ -5881,7 +5881,7 @@ export type BlueprintStatus = z.infer<typeof blueprintStatusSchema>;
 export const blueprintBudgetSchema = z
   .object({
     maxTokens: z.number().int().min(20_000).max(400_000),
-    maxCostCny: z.number().positive().max(10),
+    maxCostCny: z.number().min(0.1).max(10),
   })
   .strict();
 export type BlueprintBudget = z.infer<typeof blueprintBudgetSchema>;
@@ -6015,9 +6015,9 @@ export const blueprintOutlineDraftSchema = z
   .strict();
 export type BlueprintOutlineDraft = z.infer<typeof blueprintOutlineDraftSchema>;
 
-export const blueprintDraftSchema = z
+export const blueprintStoryBibleDraftSchema = z
   .object({
-    storyBible: z
+    cards: z
       .array(storyBibleCardSchema)
       .length(9)
       .superRefine((cards, context) => {
@@ -6034,6 +6034,13 @@ export const blueprintDraftSchema = z
           }
         }
       }),
+  })
+  .strict();
+export type BlueprintStoryBibleDraft = z.infer<typeof blueprintStoryBibleDraftSchema>;
+
+export const blueprintDraftSchema = z
+  .object({
+    storyBible: blueprintStoryBibleDraftSchema,
     coreSettings: z.array(blueprintCoreSettingDraftSchema).max(200),
     outline: blueprintOutlineDraftSchema,
   })
@@ -6060,7 +6067,7 @@ export const generateBlueprintJobSchema = z
     workId: uuidV7Schema,
     branchId: uuidV7Schema,
     actorId: uuidV7Schema,
-    modelConfigId: uuidV7Schema,
+    modelConfigId: uuidV7Schema.nullable(),
     idempotencyKey: z.string().min(1).max(200),
     budget: blueprintBudgetSchema,
     checkpoint: blueprintCheckpointSchema,
@@ -6084,7 +6091,7 @@ export const workBlueprintSchema = z
     estimate: blueprintEstimateSchema,
     cost: blueprintCostSchema,
     draftHash: blueprintHashSchema.nullable(),
-    storyBibleDraft: z.array(storyBibleCardSchema).length(9).nullable(),
+    storyBibleDraft: blueprintStoryBibleDraftSchema.nullable(),
     coreSettingsDraft: z.array(blueprintCoreSettingDraftSchema).max(200),
     outlineDraft: blueprintOutlineDraftSchema.nullable(),
     missingFields: z.array(blueprintMissingFieldSchema).max(500),
@@ -6128,7 +6135,8 @@ export type BlueprintConfirmRequest = z.infer<typeof blueprintConfirmRequestSche
 export const blueprintBudgetUpdateRequestSchema = z
   .object({
     expectedVersion: z.number().int().positive(),
-    budget: blueprintBudgetSchema,
+    maxTokens: blueprintBudgetSchema.shape.maxTokens,
+    maxCostCny: blueprintBudgetSchema.shape.maxCostCny,
   })
   .strict();
 export type BlueprintBudgetUpdateRequest = z.infer<typeof blueprintBudgetUpdateRequestSchema>;

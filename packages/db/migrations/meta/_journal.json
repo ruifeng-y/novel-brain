@@ -561,6 +561,13 @@
       "when": 1795770770161,
       "tag": "0079_certain_gwen_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1795771719565,
+      "tag": "0080_next_jackpot",
+      "breakpoints": true
     }
   ]
 }

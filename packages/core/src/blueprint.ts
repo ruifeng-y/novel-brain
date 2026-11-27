@@ -1,26 +1,12 @@
+import type { BlueprintEstimate } from "@novel-brain/contracts";
+
 export type BlueprintScaleTarget = "short" | "medium" | "long" | "epic";
 
 export interface BlueprintEstimateInput {
   genre: "xianxia" | "history" | "urban";
   scaleTarget: BlueprintScaleTarget;
   chapterLengthTarget: number;
-  modelRatePerTokenCny: number;
-}
-
-export interface BlueprintEstimate {
-  ruleVersion: "blueprint-estimate-v1";
-  planned: {
-    volumes: number;
-    chapters: number;
-    scenes: number;
-  };
-  estimatedTokens: number;
-  estimatedCostCny: number;
-  defaultBudget: {
-    maxTokens: number;
-    maxCostCny: number;
-  };
-  assumptions: string[];
+  modelRatePerTokenCny?: number;
 }
 
 const SCALE = {
@@ -30,6 +16,8 @@ const SCALE = {
   epic: { volumes: 8, chapters: 96, scenes: 192, baseTokens: 300_000 },
 } as const;
 
+const FALLBACK_MODEL_RATE_PER_TOKEN_CNY = 0.000002;
+
 export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstimate {
   const scale = SCALE[input.scaleTarget];
   const chapterLengthFactor = Math.max(
@@ -37,7 +25,8 @@ export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstim
     Math.min(1.5, 1 + (input.chapterLengthTarget - 3000) / 10_000),
   );
   const estimatedTokens = Math.round(scale.baseTokens * chapterLengthFactor);
-  const estimatedCostCny = roundMoney(estimatedTokens * input.modelRatePerTokenCny);
+  const modelRatePerTokenCny = input.modelRatePerTokenCny ?? FALLBACK_MODEL_RATE_PER_TOKEN_CNY;
+  const estimatedCostCny = roundMoney(estimatedTokens * modelRatePerTokenCny);
   return {
     ruleVersion: "blueprint-estimate-v1",
     planned: {
@@ -49,13 +38,17 @@ export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstim
     estimatedCostCny,
     defaultBudget: {
       maxTokens: Math.ceil((estimatedTokens * 1.2) / 1000) * 1000,
-      maxCostCny: Math.max(0.2, Math.ceil(estimatedCostCny * 1.5 * 10) / 10),
+      maxCostCny: roundUpToFiveJiao(estimatedCostCny * 1.5),
     },
     assumptions: [
       `按${input.genre}题材和${input.scaleTarget}规模估算`,
       `章节字数目标 ${input.chapterLengthTarget}`,
     ],
   };
+}
+
+function roundUpToFiveJiao(value: number): number {
+  return Math.max(0.5, Math.ceil(value / 0.5) * 0.5);
 }
 
 function roundMoney(value: number): number {

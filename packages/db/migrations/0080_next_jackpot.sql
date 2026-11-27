@@ -1,0 +1,3 @@
+ALTER TABLE "jobs" DROP CONSTRAINT "jobs_required_scope_check";--> statement-breakpoint
+CREATE UNIQUE INDEX "jobs_generate_blueprint_idempotency_unique" ON "jobs" USING btree ("user_id","work_id","branch_id","idempotency_key") WHERE "jobs"."type" = 'generate_blueprint';--> statement-breakpoint
+ALTER TABLE "jobs" ADD CONSTRAINT "jobs_required_scope_check" CHECK (("jobs"."type" in ('agent_workflow', 'batch_plan', 'export_work')) or ("jobs"."type" = 'generate_blueprint' and "jobs"."chapter_id" is null) or ("jobs"."type" in ('generate_chapter', 'write_action') and "jobs"."chapter_id" is not null and "jobs"."model_config_id" is not null));
