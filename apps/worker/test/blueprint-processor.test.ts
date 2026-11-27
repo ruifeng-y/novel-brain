@@ -61,6 +61,31 @@ describe("BlueprintJobProcessor", () => {
     expect(provider.requests[1]?.prompt).toContain('"genre":"仙侠"');
   });
 
+  it("reserves enough output tokens for a complete initial outline", async () => {
+    const store = new InMemoryBlueprintStore();
+    const provider = new SequencedBlueprintProvider();
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(provider.requests.map((request) => request.maxTokens)).toEqual([8_000, 12_000, 64_000]);
+  });
+
+  it("fails before calling a provider when the projected prompt exceeds its context window", async () => {
+    const loaded = loadedJob();
+    loaded.modelConfig = { ...loaded.modelConfig!, contextWindowTokens: 100 };
+    const store = new InMemoryBlueprintStore(loaded);
+    const provider = new SequencedBlueprintProvider();
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(provider.operations).toEqual([]);
+    expect(store.status).toBe("failed");
+    expect(store.failure).toMatchObject({
+      code: "MODEL_CONTEXT_EXCEEDED",
+      retryable: true,
+    });
+  });
+
   it("waits for model configuration without calling the provider", async () => {
     const store = new InMemoryBlueprintStore({
       ...loadedJob(),
@@ -237,14 +262,46 @@ describe("BlueprintJobProcessor", () => {
     const cards = { cards: storyBibleCards() };
     const settings = coreSettings().filter((candidate) => candidate.type !== "world_rule");
     const outline = outlineDraft();
+    const extraVolumes = [0, 1].flatMap((volumeIndex) => {
+      const volumeId = `01900000-0000-7000-8000-${String(310 + volumeIndex).padStart(12, "0")}`;
+      return [
+        {
+          id: volumeId,
+          parentId: outline.nodes[0]!.id,
+          level: "volume" as const,
+          sortOrder: volumeIndex + 1,
+          title: `额外卷 ${volumeIndex + 1}`,
+          summary: "额外卷大纲",
+          status: "planned" as const,
+          chapterNumber: null,
+          brief: null,
+          tension: 35,
+        },
+        ...Array.from({ length: 3 }, (_, actIndex) => ({
+          id: `01900000-0000-7000-8000-${String(320 + volumeIndex * 10 + actIndex).padStart(12, "0")}`,
+          parentId: volumeId,
+          level: "act" as const,
+          sortOrder: actIndex,
+          title: `额外卷 ${volumeIndex + 1} 第 ${actIndex + 1} 幕`,
+          summary: "额外幕大纲",
+          status: "planned" as const,
+          chapterNumber: null,
+          brief: null,
+          tension: 40,
+        })),
+      ];
+    });
     const validation = validateBlueprintCandidates({
       storyBible: cards,
       coreSettings: settings,
       outline: {
         ...outline,
-        nodes: outline.nodes.map((node) =>
-          node.level === "chapter" ? { ...node, hook: null, foreshadow: null } : node,
-        ),
+        nodes: [
+          ...outline.nodes.map((node) =>
+            node.level === "chapter" ? { ...node, hook: null, foreshadow: null } : node,
+          ),
+          ...extraVolumes,
+        ],
       },
       generationGuidance: {
         protagonistArchetypes: [],
@@ -263,7 +320,8 @@ describe("BlueprintJobProcessor", () => {
     expect(validation.conflicts.map((conflict) => conflict.detail)).toEqual(
       expect.arrayContaining([
         "核心设定至少需要三条世界规则",
-        "当前规模需要 3 卷，实际为 1 卷",
+        "当前规模需要 36 章，实际为 12 章",
+        "每卷必须包含 12 章",
         "前十二个章节点必须包含章末钩子",
       ]),
     );

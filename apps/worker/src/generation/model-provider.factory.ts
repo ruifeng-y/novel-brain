@@ -14,6 +14,7 @@ export interface StoredModelConfig {
   model: string;
   encryptedKey: string;
   ratePerTokenCny?: number | undefined;
+  contextWindowTokens?: number | undefined;
 }
 
 export type WorkerAiProviderMode = "fake" | "byok";

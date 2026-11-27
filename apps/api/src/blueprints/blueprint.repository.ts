@@ -43,7 +43,7 @@ export class BlueprintRepository implements OnModuleDestroy {
         .from(modelConfigs)
         .where(and(eq(modelConfigs.userId, userId), isNull(modelConfigs.deletedAt)))
         .orderBy(desc(modelConfigs.isDefault), desc(modelConfigs.updatedAt));
-      return rows.find((row) => row.purposes.includes("planning"))?.id ?? rows[0]?.id ?? null;
+      return rows.find((row) => row.purposes.includes("planning"))?.id ?? null;
     });
   }
 

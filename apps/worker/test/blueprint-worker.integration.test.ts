@@ -89,8 +89,9 @@ describe("blueprint worker persistence", () => {
       step_key: string;
       status: string;
       checkpoint_revision: number;
+      cost: { totalTokens: number };
     }>(
-      `SELECT step_key, status, checkpoint_revision
+      `SELECT step_key, status, checkpoint_revision, cost
          FROM job_step_attempts
         WHERE job_id = $1
         ORDER BY step_key`,
@@ -99,6 +100,11 @@ describe("blueprint worker persistence", () => {
     expect(attempts.rows).toHaveLength(6);
     expect(attempts.rows.every((attempt) => attempt.status === "succeeded")).toBe(true);
     expect(attempts.rows.every((attempt) => attempt.checkpoint_revision > 0)).toBe(true);
+    expect(
+      attempts.rows
+        .filter((attempt) => ["story_bible", "core_settings", "outline"].includes(attempt.step_key))
+        .every((attempt) => attempt.cost.totalTokens > 0),
+    ).toBe(true);
 
     const reservations = await pool.query<{
       idempotency_key: string;
@@ -218,11 +224,16 @@ describe("blueprint worker persistence", () => {
     process.env.BLUEPRINT_MODEL_RATES_JSON = JSON.stringify({
       "deepseek-chat": 0.000003,
     });
+    process.env.BLUEPRINT_MODEL_CONTEXT_WINDOWS_JSON = JSON.stringify({
+      "deepseek-chat": 64_000,
+    });
     try {
       const loaded = await repository.loadJob(seeded.payload);
       expect(loaded?.modelConfig?.ratePerTokenCny).toBe(0.000003);
+      expect(loaded?.modelConfig?.contextWindowTokens).toBe(64_000);
     } finally {
       delete process.env.BLUEPRINT_MODEL_RATES_JSON;
+      delete process.env.BLUEPRINT_MODEL_CONTEXT_WINDOWS_JSON;
     }
   });
 
@@ -258,6 +269,108 @@ describe("blueprint worker persistence", () => {
       [seeded.blueprintId],
     );
     expect(blueprint.rows[0]?.status).toBe("waiting_review");
+  });
+
+  it("reuses a provider result after a real checkpoint commit failure without double charging", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    const failingRepository = new FailOnceBlueprintRepository();
+    const provider = new CountingFakeGateway();
+    try {
+      await new BlueprintJobProcessor(failingRepository, provider).process(seeded.payload);
+      const failed = await pool.query<{ status: string; cost: { totalTokens: number } }>(
+        `SELECT status, cost FROM jobs WHERE id = $1`,
+        [seeded.jobId],
+      );
+      expect(failed.rows[0]?.status).toBe("failed");
+      expect(failed.rows[0]?.cost.totalTokens).toBeGreaterThan(0);
+
+      await pool.query(`UPDATE jobs SET status = 'queued' WHERE id = $1`, [seeded.jobId]);
+      await pool.query(`UPDATE work_blueprints SET status = 'queued' WHERE id = $1`, [
+        seeded.blueprintId,
+      ]);
+      await new BlueprintJobProcessor(failingRepository, provider).process(seeded.payload);
+      expect(provider.generatedCalls).toBe(3);
+
+      const completed = await pool.query<{
+        status: string;
+        cost: { totalTokens: number };
+        story_cost: { totalTokens: number };
+      }>(
+        `SELECT j.status, j.cost, js.cost AS story_cost
+           FROM jobs AS j
+           INNER JOIN job_steps AS js
+             ON js.job_id = j.id AND js.step_key = 'story_bible'
+          WHERE j.id = $1`,
+        [seeded.jobId],
+      );
+      expect(completed.rows[0]?.status).toBe("waiting_review");
+      expect(completed.rows[0]?.cost.totalTokens).toBe(provider.generatedTokens);
+    } finally {
+      await failingRepository.onModuleDestroy();
+    }
+  });
+
+  it("keeps a job cancelled when cancellation happens during a provider call", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    const cancellingRepository = new CancelDuringProviderRepository(pool);
+    const provider = new CountingFakeGateway();
+    try {
+      await new BlueprintJobProcessor(cancellingRepository, provider).process(seeded.payload);
+
+      expect(provider.generatedCalls).toBe(1);
+      const statuses = await pool.query<{ job_status: string; blueprint_status: string }>(
+        `SELECT j.status AS job_status, wb.status AS blueprint_status
+           FROM jobs AS j
+           INNER JOIN work_blueprints AS wb ON wb.job_id = j.id
+          WHERE j.id = $1`,
+        [seeded.jobId],
+      );
+      expect(statuses.rows[0]).toEqual({
+        job_status: "cancelled",
+        blueprint_status: "cancelled",
+      });
+      const storyStep = await pool.query<{ status: string }>(
+        `SELECT status FROM job_steps
+          WHERE job_id = $1 AND step_key = 'story_bible'`,
+        [seeded.jobId],
+      );
+      expect(storyStep.rows[0]?.status).toBe("succeeded");
+    } finally {
+      await cancellingRepository.onModuleDestroy();
+    }
+  });
+
+  it("does not publish ready after cancellation lands before completion is persisted", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    const cancellingRepository = new CancelBeforeReadyRepository(pool);
+    const provider = new CountingFakeGateway();
+    try {
+      await new BlueprintJobProcessor(cancellingRepository, provider).process(seeded.payload);
+
+      const statuses = await pool.query<{ job_status: string; blueprint_status: string }>(
+        `SELECT j.status AS job_status, wb.status AS blueprint_status
+           FROM jobs AS j
+           INNER JOIN work_blueprints AS wb ON wb.job_id = j.id
+          WHERE j.id = $1`,
+        [seeded.jobId],
+      );
+      expect(statuses.rows[0]).toEqual({
+        job_status: "cancelled",
+        blueprint_status: "cancelled",
+      });
+      const ready = await pool.query<{ count: number }>(
+        `SELECT count(*)::int AS count
+           FROM notifications
+          WHERE user_id = $1 AND type = 'blueprint_ready'`,
+        [seeded.userId],
+      );
+      expect(ready.rows[0]?.count).toBe(0);
+    } finally {
+      await cancellingRepository.onModuleDestroy();
+    }
   });
 
   it("pauses at the budget gate before calling the provider", async () => {
@@ -403,10 +516,70 @@ class RateLimitedGateway extends FailIfCalledGateway {
 
 class CountingFakeGateway extends FakeAiProvider {
   generatedCalls = 0;
+  generatedTokens = 0;
 
   override async generateText(input: GenerationRequest) {
     this.generatedCalls += 1;
-    return super.generateText(input);
+    const result = await super.generateText(input);
+    this.generatedTokens += result.usage.inputTokens + result.usage.outputTokens;
+    return result;
+  }
+}
+
+class FailOnceBlueprintRepository extends WorkerBlueprintRepository {
+  private shouldFail = true;
+
+  override async commitStep(
+    commit: Parameters<WorkerBlueprintRepository["commitStep"]>[0],
+  ): ReturnType<WorkerBlueprintRepository["commitStep"]> {
+    if (commit.step === "story_bible" && this.shouldFail) {
+      this.shouldFail = false;
+      throw new Error("simulated checkpoint transaction failure");
+    }
+    return super.commitStep(commit);
+  }
+}
+
+class CancelDuringProviderRepository extends WorkerBlueprintRepository {
+  constructor(private readonly testPool: ReturnType<typeof createDatabasePool>) {
+    super();
+  }
+
+  override async recordProviderResult(
+    ...args: Parameters<WorkerBlueprintRepository["recordProviderResult"]>
+  ): Promise<void> {
+    await super.recordProviderResult(...args);
+    if (args[1] === "story_bible") {
+      await this.testPool.query(`UPDATE jobs SET status = 'cancelled' WHERE id = $1`, [
+        args[0].jobId,
+      ]);
+      await this.testPool.query(
+        `UPDATE work_blueprints SET status = 'cancelled' WHERE job_id = $1`,
+        [args[0].jobId],
+      );
+    }
+  }
+}
+
+class CancelBeforeReadyRepository extends WorkerBlueprintRepository {
+  constructor(private readonly testPool: ReturnType<typeof createDatabasePool>) {
+    super();
+  }
+
+  override async commitStep(
+    commit: Parameters<WorkerBlueprintRepository["commitStep"]>[0],
+  ): ReturnType<WorkerBlueprintRepository["commitStep"]> {
+    const checkpoint = await super.commitStep(commit);
+    if (commit.step === "await_review") {
+      await this.testPool.query(`UPDATE jobs SET status = 'cancelled' WHERE id = $1`, [
+        commit.payload.jobId,
+      ]);
+      await this.testPool.query(
+        `UPDATE work_blueprints SET status = 'cancelled' WHERE job_id = $1`,
+        [commit.payload.jobId],
+      );
+    }
+    return checkpoint;
   }
 }
 

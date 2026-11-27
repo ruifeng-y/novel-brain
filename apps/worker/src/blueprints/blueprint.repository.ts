@@ -21,6 +21,7 @@ import {
   type BlueprintStepCommit,
   type LoadedBlueprintJob,
 } from "./blueprint.processor";
+import { addBlueprintCost } from "./blueprint.cost";
 
 type DatabaseClient = PoolClient;
 
@@ -139,7 +140,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
              SELECT js.step_key, js.output
                FROM job_steps AS js
               WHERE js.job_id = j.id
-                AND js.status = 'running'
+                AND js.status IN ('running', 'failed')
                 AND js.output ? 'providerResult'
               ORDER BY js.started_at DESC
               LIMIT 1
@@ -160,6 +161,8 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
         row.pending_provider_result,
         row.pending_step_key,
       );
+      const modelRatePerTokenCny = row.model ? configuredModelRate(row.model) : undefined;
+      const contextWindowTokens = row.model ? configuredContextWindowTokens(row.model) : undefined;
       return {
         job: {
           id: row.job_id,
@@ -206,8 +209,11 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
                 baseUrl: row.base_url,
                 model: row.model,
                 encryptedKey: row.encrypted_key,
-                ...(configuredModelRate(row.model) !== undefined
-                  ? { ratePerTokenCny: configuredModelRate(row.model) }
+                ...(modelRatePerTokenCny !== undefined
+                  ? { ratePerTokenCny: modelRatePerTokenCny }
+                  : {}),
+                ...(contextWindowTokens !== undefined
+                  ? { contextWindowTokens: contextWindowTokens }
                   : {}),
               }
             : null,
@@ -338,8 +344,9 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       await client.query(
         `INSERT INTO job_step_attempts
            (id, job_id, work_id, branch_id, user_id, step_key, attempt, status,
-            input_hash, output_refs, checkpoint_revision, started_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'running', $8, '[]'::jsonb, $9, now())`,
+            input_hash, output_refs, cost, checkpoint_revision, started_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'running', $8, '[]'::jsonb,
+                 '{}'::jsonb, $9, now())`,
         [
           uuidv7(),
           payload.jobId,
@@ -401,15 +408,16 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       await client.query(
         `UPDATE job_steps
             SET status = 'running',
-                output = jsonb_set(COALESCE(output, '{}'::jsonb),
-                                   '{providerResult}', $3::jsonb, true),
+                output = COALESCE(output, '{}'::jsonb) ||
+                         jsonb_build_object('providerResult', $3::jsonb,
+                                            'costRecorded', true),
                 cost = $4::jsonb
           WHERE job_id = $1 AND step_key = $2`,
-        [payload.jobId, step, JSON.stringify({ providerResult: result }), JSON.stringify(cost)],
+        [payload.jobId, step, JSON.stringify(result), JSON.stringify(cost)],
       );
       await client.query(
         `UPDATE job_step_attempts
-            SET output_refs = $4::jsonb
+            SET output_refs = $4::jsonb, cost = $5::jsonb
           WHERE job_id = $1 AND step_key = $2 AND attempt = $3`,
         [
           payload.jobId,
@@ -421,6 +429,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
               id: result.providerRequestId ?? blueprintReservationKey(step, attempt),
             },
           ]),
+          JSON.stringify(cost),
         ],
       );
       await client.query(
@@ -429,6 +438,45 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
                 settled_at = now()
           WHERE job_id = $1 AND idempotency_key = $2`,
         [payload.jobId, blueprintReservationKey(step, attempt), cost.totalTokens, cost.costCny],
+      );
+      await client.query(
+        `UPDATE jobs
+            SET cost = jsonb_build_object(
+                  'inputTokens', COALESCE((cost->>'inputTokens')::int, 0) + $2,
+                  'outputTokens', COALESCE((cost->>'outputTokens')::int, 0) + $3,
+                  'totalTokens', COALESCE((cost->>'totalTokens')::int, 0) + $4,
+                  'costCny', COALESCE((cost->>'costCny')::double precision, 0) + $5
+                ),
+                updated_at = now()
+          WHERE id = $1 AND user_id = $6`,
+        [
+          payload.jobId,
+          cost.inputTokens,
+          cost.outputTokens,
+          cost.totalTokens,
+          cost.costCny,
+          payload.actorId,
+        ],
+      );
+      await client.query(
+        `UPDATE work_blueprints
+            SET cost = jsonb_build_object(
+                  'inputTokens', COALESCE((cost->>'inputTokens')::int, 0) + $4,
+                  'outputTokens', COALESCE((cost->>'outputTokens')::int, 0) + $5,
+                  'totalTokens', COALESCE((cost->>'totalTokens')::int, 0) + $6,
+                  'costCny', COALESCE((cost->>'costCny')::double precision, 0) + $7
+                ),
+                updated_at = now()
+          WHERE work_id = $1 AND branch_id = $2 AND user_id = $3`,
+        [
+          payload.workId,
+          payload.branchId,
+          payload.actorId,
+          cost.inputTokens,
+          cost.outputTokens,
+          cost.totalTokens,
+          cost.costCny,
+        ],
       );
       await appendJobEvent(client, payload, "blueprint.provider.completed", {
         step,
@@ -459,15 +507,20 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       }
       const revision = row.checkpoint_version + 1;
       const currentCheckpoint = blueprintCheckpointSchema.parse(row.checkpoint);
-      const cost = addCost(row.cost, commit.result.cost);
-      const stepState = await client.query<{ attempt: number }>(
-        `SELECT attempt
+      const stepState = await client.query<{
+        attempt: number;
+        output: Record<string, unknown>;
+        cost: BlueprintCost;
+      }>(
+        `SELECT attempt, output, cost
            FROM job_steps
           WHERE job_id = $1 AND step_key = $2
           FOR UPDATE`,
         [commit.payload.jobId, commit.step],
       );
       const attempt = stepState.rows[0]?.attempt ?? 1;
+      const providerCostRecorded = stepState.rows[0]?.output.costRecorded === true;
+      const cost = providerCostRecorded ? row.cost : addBlueprintCost(row.cost, commit.result.cost);
       const checkpoint: BlueprintCheckpoint = {
         schemaVersion: 1,
         revision,
@@ -504,12 +557,12 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       await client.query(
         `INSERT INTO job_step_attempts
            (id, job_id, work_id, branch_id, user_id, step_key, attempt, status,
-            input_hash, output_refs, checkpoint_revision, started_at, finished_at)
+            input_hash, output_refs, cost, checkpoint_revision, started_at, finished_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, 'succeeded', $8, '[]'::jsonb,
-                 $9, now(), now())
+                 $9::jsonb, $10, now(), now())
          ON CONFLICT (job_id, step_key, attempt)
          DO UPDATE SET status = 'succeeded', checkpoint_revision = EXCLUDED.checkpoint_revision,
-                       finished_at = now()`,
+                       cost = EXCLUDED.cost, finished_at = now()`,
         [
           uuidv7(),
           commit.payload.jobId,
@@ -519,6 +572,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           commit.step,
           attempt,
           checkpoint.inputHash,
+          JSON.stringify(commit.result.cost),
           revision,
         ],
       );
@@ -542,7 +596,8 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       );
       await client.query(
         `UPDATE jobs
-            SET status = 'running', progress = $3, current_step = $4,
+            SET status = CASE WHEN status = 'cancelled' THEN 'cancelled' ELSE 'running' END,
+                progress = $3, current_step = $4,
                 checkpoint = $5::jsonb, checkpoint_version = $6, cost = $7::jsonb,
                 updated_at = now()
           WHERE id = $1 AND user_id = $2`,
@@ -597,6 +652,22 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
     checkpoint: BlueprintCheckpoint,
   ): Promise<void> {
     await this.withTenantTransaction(payload.actorId, async (client) => {
+      const current = await client.query<{ job_status: string; blueprint_status: string }>(
+        `SELECT j.status AS job_status, wb.status AS blueprint_status
+           FROM jobs AS j
+           INNER JOIN work_blueprints AS wb
+             ON wb.job_id = j.id
+            AND wb.user_id = j.user_id
+            AND wb.work_id = j.work_id
+            AND wb.branch_id = j.branch_id
+          WHERE j.id = $1 AND j.user_id = $2
+          FOR UPDATE OF j, wb`,
+        [payload.jobId, payload.actorId],
+      );
+      const row = current.rows[0];
+      if (row?.job_status !== "running" || row.blueprint_status !== "running") {
+        return;
+      }
       await client.query(
         `UPDATE jobs
             SET status = 'waiting_review', progress = 100, current_step = 'await_review',
@@ -636,6 +707,22 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
     loaded: LoadedBlueprintJob,
   ): Promise<void> {
     await this.withTenantTransaction(payload.actorId, async (client) => {
+      const current = await client.query<{ job_status: string; blueprint_status: string }>(
+        `SELECT j.status AS job_status, wb.status AS blueprint_status
+           FROM jobs AS j
+           INNER JOIN work_blueprints AS wb
+             ON wb.job_id = j.id
+            AND wb.user_id = j.user_id
+            AND wb.work_id = j.work_id
+            AND wb.branch_id = j.branch_id
+          WHERE j.id = $1 AND j.user_id = $2
+          FOR UPDATE OF j, wb`,
+        [payload.jobId, payload.actorId],
+      );
+      const row = current.rows[0];
+      if (row?.job_status === "cancelled" || row?.blueprint_status === "cancelled") {
+        return;
+      }
       await client.query(
         `UPDATE jobs
             SET status = 'paused', current_step = $3,
@@ -673,6 +760,22 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
     projectedCostCny: number,
   ): Promise<void> {
     await this.withTenantTransaction(payload.actorId, async (client) => {
+      const current = await client.query<{ job_status: string; blueprint_status: string }>(
+        `SELECT j.status AS job_status, wb.status AS blueprint_status
+           FROM jobs AS j
+           INNER JOIN work_blueprints AS wb
+             ON wb.job_id = j.id
+            AND wb.user_id = j.user_id
+            AND wb.work_id = j.work_id
+            AND wb.branch_id = j.branch_id
+          WHERE j.id = $1 AND j.user_id = $2
+          FOR UPDATE OF j, wb`,
+        [payload.jobId, payload.actorId],
+      );
+      const row = current.rows[0];
+      if (row?.job_status === "cancelled" || row?.blueprint_status === "cancelled") {
+        return;
+      }
       await client.query(
         `UPDATE jobs
             SET status = 'paused', current_step = $3,
@@ -709,8 +812,8 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
     failure: BlueprintFailure,
   ): Promise<void> {
     await this.withTenantTransaction(payload.actorId, async (client) => {
-      const current = await client.query<{ cost: BlueprintCost }>(
-        `SELECT cost
+      const current = await client.query<{ cost: BlueprintCost; status: string }>(
+        `SELECT cost, status
            FROM jobs
           WHERE id = $1 AND user_id = $2
           FOR UPDATE`,
@@ -720,15 +823,23 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       if (!existingCost) {
         throw new Error("Blueprint job disappeared during failure recording");
       }
-      const currentCost = failure.cost ? addCost(existingCost, failure.cost) : existingCost;
-      const stepState = await client.query<{ attempt: number }>(
-        `SELECT attempt
+      const cancelled = current.rows[0]?.status === "cancelled";
+      const stepState = await client.query<{
+        attempt: number;
+        output: Record<string, unknown>;
+      }>(
+        `SELECT attempt, output
            FROM job_steps
           WHERE job_id = $1 AND step_key = $2
           FOR UPDATE`,
         [payload.jobId, step],
       );
       const attempt = stepState.rows[0]?.attempt;
+      const failureCostRecorded = stepState.rows[0]?.output.costRecorded === true;
+      const currentCost =
+        failure.cost && !failureCostRecorded
+          ? addBlueprintCost(existingCost, failure.cost)
+          : existingCost;
       if (attempt) {
         await client.query(
           `UPDATE job_steps
@@ -740,9 +851,18 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
         await client.query(
           `UPDATE job_step_attempts
               SET status = 'failed', error_code = $4, error_message = $5,
-                  checkpoint_revision = $6, finished_at = now()
+                  cost = COALESCE($6::jsonb, cost), checkpoint_revision = $7,
+                  finished_at = now()
             WHERE job_id = $1 AND step_key = $2 AND attempt = $3`,
-          [payload.jobId, step, attempt, failure.code, failure.message, checkpoint.revision],
+          [
+            payload.jobId,
+            step,
+            attempt,
+            failure.code,
+            failure.message,
+            failure.cost ? JSON.stringify(failure.cost) : null,
+            checkpoint.revision,
+          ],
         );
         if (failure.cost) {
           await client.query(
@@ -762,14 +882,15 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           await client.query(
             `UPDATE cost_reservations
                 SET status = 'released', failure_class = $3
-              WHERE job_id = $1 AND idempotency_key = $2`,
+              WHERE job_id = $1 AND idempotency_key = $2 AND status = 'reserved'`,
             [payload.jobId, blueprintReservationKey(step, attempt), failure.failureClass],
           );
         }
       }
       await client.query(
         `UPDATE jobs
-            SET status = 'failed', current_step = $3, error_code = $4,
+            SET status = CASE WHEN status = 'cancelled' THEN 'cancelled' ELSE 'failed' END,
+                current_step = $3, error_code = $4,
                 error_message = $5, cost = $6::jsonb,
                 finished_at = now(), updated_at = now()
           WHERE id = $1 AND user_id = $2`,
@@ -784,7 +905,8 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       );
       await client.query(
         `UPDATE work_blueprints
-            SET status = 'failed', current_step = $3, cost = $4::jsonb,
+            SET status = CASE WHEN status = 'cancelled' THEN 'cancelled' ELSE 'failed' END,
+                current_step = $3, cost = $4::jsonb,
                 updated_at = now()
           WHERE id = $1 AND user_id = $2`,
         [loaded.blueprint.id, payload.actorId, step, JSON.stringify(currentCost)],
@@ -798,17 +920,19 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
         retryable: failure.retryable,
         ...(failure.cost ? { totalTokens: failure.cost.totalTokens } : {}),
       });
-      await recordNotification(client, {
-        userId: payload.actorId,
-        workId: payload.workId,
-        branchId: payload.branchId,
-        type: "blueprint_failed",
-        targetId: payload.jobId,
-        title: "故事蓝图生成失败",
-        message: failure.message,
-        href: `/workspace/${payload.workId}/blueprint`,
-        dedupeKey: `blueprint:${payload.jobId}:failed:${checkpoint.revision}:${failure.code}`,
-      });
+      if (!cancelled) {
+        await recordNotification(client, {
+          userId: payload.actorId,
+          workId: payload.workId,
+          branchId: payload.branchId,
+          type: "blueprint_failed",
+          targetId: payload.jobId,
+          title: "故事蓝图生成失败",
+          message: failure.message,
+          href: `/workspace/${payload.workId}/blueprint`,
+          dedupeKey: `blueprint:${payload.jobId}:failed:${checkpoint.revision}:${failure.code}`,
+        });
+      }
     });
   }
 
@@ -956,15 +1080,6 @@ function parsePendingProviderResult(
   };
 }
 
-function addCost(left: BlueprintCost, right: BlueprintCost): BlueprintCost {
-  return {
-    inputTokens: left.inputTokens + right.inputTokens,
-    outputTokens: left.outputTokens + right.outputTokens,
-    totalTokens: left.totalTokens + right.totalTokens,
-    costCny: left.costCny + right.costCny,
-  };
-}
-
 function configuredModelRate(model: string): number | undefined {
   const modelRates = parseConfiguredModelRates();
   const modelRate = modelRates[model];
@@ -975,8 +1090,25 @@ function configuredModelRate(model: string): number | undefined {
   return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
+function configuredContextWindowTokens(model: string): number | undefined {
+  const modelContextWindows = parseConfiguredModelContextWindows();
+  const modelContextWindow = modelContextWindows[model];
+  if (modelContextWindow !== undefined) {
+    return modelContextWindow;
+  }
+  const value = Number(process.env.BLUEPRINT_MODEL_CONTEXT_WINDOW_TOKENS ?? "");
+  return Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
 function parseConfiguredModelRates(): Record<string, number> {
-  const raw = process.env.BLUEPRINT_MODEL_RATES_JSON;
+  return parseConfiguredModelNumbers(process.env.BLUEPRINT_MODEL_RATES_JSON);
+}
+
+function parseConfiguredModelContextWindows(): Record<string, number> {
+  return parseConfiguredModelNumbers(process.env.BLUEPRINT_MODEL_CONTEXT_WINDOWS_JSON);
+}
+
+function parseConfiguredModelNumbers(raw: string | undefined): Record<string, number> {
   if (!raw) {
     return {};
   }

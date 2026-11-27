@@ -3241,6 +3241,7 @@ export const jobStepAttempts = pgTable(
       .$type<Array<{ type: string; id: string }>>()
       .notNull()
       .default([]),
+    cost: jsonb("cost").$type<Record<string, unknown>>().notNull().default({}),
     checkpointRevision: integer("checkpoint_revision").notNull().default(0),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),

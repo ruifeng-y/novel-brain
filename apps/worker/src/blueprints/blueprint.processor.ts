@@ -26,12 +26,13 @@ import {
   type AiGateway,
   type GenerationResult,
 } from "@novel-brain/ai";
-import { planProviderCallBudget, PROVIDER_CALL_MAX_OUTPUT_TOKENS } from "@novel-brain/core";
+import { BLUEPRINT_SCALE_PLAN, planProviderCallBudget } from "@novel-brain/core";
 import { calculateModelCallCost } from "@novel-brain/db";
 import { uuidv7 } from "uuidv7";
 
 import { AI_GATEWAY } from "../generation/generation.tokens";
 import type { ByokAiGatewayFactory, StoredModelConfig } from "../generation/model-provider.factory";
+import { addBlueprintCost } from "./blueprint.cost";
 
 export interface LoadedBlueprintJob {
   job: {
@@ -163,15 +164,12 @@ const STEP_PROGRESS: Record<BlueprintJobStep, number> = {
   await_review: 100,
 };
 
-const SCALE_PLAN: Record<
-  string,
-  { volumes: number; chapters: number; scenes: number; actsPerVolume: number }
-> = {
-  short: { volumes: 1, chapters: 12, scenes: 24, actsPerVolume: 3 },
-  medium: { volumes: 3, chapters: 36, scenes: 72, actsPerVolume: 3 },
-  long: { volumes: 5, chapters: 60, scenes: 120, actsPerVolume: 3 },
-  epic: { volumes: 8, chapters: 96, scenes: 192, actsPerVolume: 3 },
-};
+const PROVIDER_OUTPUT_TOKENS = {
+  blueprint_story_bible: 8_000,
+  blueprint_core_settings: 12_000,
+  blueprint_outline: 64_000,
+} as const;
+const BLUEPRINT_ACTS_PER_VOLUME = 3;
 
 class BlueprintStepCostError extends Error {
   constructor(
@@ -180,6 +178,18 @@ class BlueprintStepCostError extends Error {
   ) {
     super(cause instanceof Error ? cause.message : "Blueprint provider output is invalid");
     this.name = "BlueprintStepCostError";
+  }
+}
+
+class BlueprintContextWindowError extends Error {
+  constructor(
+    readonly projectedTokens: number,
+    readonly contextWindowTokens: number,
+  ) {
+    super(
+      `Blueprint call requires ${projectedTokens} tokens but the model context window is ${contextWindowTokens}`,
+    );
+    this.name = "BlueprintContextWindowError";
   }
 }
 
@@ -311,7 +321,7 @@ export class BlueprintJobProcessor {
         storyBible = result.storyBible ?? storyBible;
         coreSettings = result.coreSettings ?? coreSettings;
         outline = result.outline ?? outline;
-        usedCost = addCost(usedCost, result.cost);
+        usedCost = addBlueprintCost(usedCost, result.cost);
         const nextStep =
           BLUEPRINT_JOB_STEPS[BLUEPRINT_JOB_STEPS.indexOf(step) + 1] ?? "await_review";
         checkpoint = await this.repository.commitStep({
@@ -522,8 +532,17 @@ export class BlueprintJobProcessor {
     const plan = planProviderCallBudget({
       system,
       prompt,
-      maxOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
+      maxOutputTokens: providerOutputTokens(input.step),
     });
+    if (
+      input.loaded.modelConfig?.contextWindowTokens &&
+      plan.reservedTokens > input.loaded.modelConfig.contextWindowTokens
+    ) {
+      throw new BlueprintContextWindowError(
+        plan.reservedTokens,
+        input.loaded.modelConfig.contextWindowTokens,
+      );
+    }
     return {
       tokens: plan.reservedTokens,
       costCny: calculateModelCallCost(plan.reservedTokens, input.modelRatePerTokenCny),
@@ -543,7 +562,7 @@ export class BlueprintJobProcessor {
       operation,
       prompt,
       system: blueprintSystemPrompt(),
-      maxTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
+      maxTokens: PROVIDER_OUTPUT_TOKENS[operation],
       responseFormat: "json",
     });
   }
@@ -723,7 +742,7 @@ export function validateBlueprintCandidates(input: {
   const chapters = nodes.filter((node) => node.level === "chapter");
   const volumes = nodes.filter((node) => node.level === "volume");
   const sceneNodes = nodes.filter((node) => node.level === "scene");
-  const plan = SCALE_PLAN[input.scaleTarget];
+  const plan = BLUEPRINT_SCALE_PLAN[input.scaleTarget as keyof typeof BLUEPRINT_SCALE_PLAN];
   if (plan) {
     if (volumes.length !== plan.volumes) {
       conflicts.push(
@@ -742,10 +761,19 @@ export function validateBlueprintCandidates(input: {
     }
     for (const volume of volumes) {
       const acts = nodes.filter((node) => node.level === "act" && node.parentId === volume.id);
-      if (acts.length !== plan.actsPerVolume) {
+      if (acts.length !== BLUEPRINT_ACTS_PER_VOLUME) {
         conflicts.push(
-          structureConflict(`卷 ${volume.title} 必须恰好包含 ${plan.actsPerVolume} 幕`),
+          structureConflict(
+            `卷 ${volume.title} 必须恰好包含 ${BLUEPRINT_ACTS_PER_VOLUME} 幕`,
+          ),
         );
+      }
+      const volumeChapters = chapters.filter(
+        (chapter) => byId.get(chapter.parentId ?? "")?.parentId === volume.id,
+      );
+      const chaptersPerVolume = plan.chapters / plan.volumes;
+      if (volumeChapters.length !== chaptersPerVolume) {
+        conflicts.push(structureConflict(`每卷必须包含 ${chaptersPerVolume} 章`));
       }
     }
   }
@@ -851,6 +879,13 @@ function providerStep(step: BlueprintJobStep): boolean {
   return step === "story_bible" || step === "core_settings" || step === "outline";
 }
 
+function providerOutputTokens(step: BlueprintJobStep): number {
+  if (step === "story_bible") return PROVIDER_OUTPUT_TOKENS.blueprint_story_bible;
+  if (step === "core_settings") return PROVIDER_OUTPUT_TOKENS.blueprint_core_settings;
+  if (step === "outline") return PROVIDER_OUTPUT_TOKENS.blueprint_outline;
+  return 0;
+}
+
 function costOf(result: GenerationResult, modelRatePerTokenCny: number): BlueprintCost {
   const inputTokens = result.usage.inputTokens;
   const outputTokens = result.usage.outputTokens;
@@ -867,16 +902,15 @@ function zeroCost(): BlueprintCost {
   return { inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 };
 }
 
-function addCost(left: BlueprintCost, right: BlueprintCost): BlueprintCost {
-  return {
-    inputTokens: left.inputTokens + right.inputTokens,
-    outputTokens: left.outputTokens + right.outputTokens,
-    totalTokens: left.totalTokens + right.totalTokens,
-    costCny: left.costCny + right.costCny,
-  };
-}
-
 function toFailure(error: unknown, modelRatePerTokenCny: number): BlueprintFailure {
+  if (error instanceof BlueprintContextWindowError) {
+    return {
+      code: "MODEL_CONTEXT_EXCEEDED",
+      message: "故事蓝图的输入与输出预算超过当前模型上下文窗口，请更换模型后重试",
+      failureClass: "schema",
+      retryable: true,
+    };
+  }
   if (error instanceof BlueprintStepCostError) {
     return {
       code: "MODEL_RESPONSE_INVALID",

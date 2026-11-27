@@ -12,7 +12,9 @@ export interface BlueprintEstimateInput {
   modelRatePerTokenCny?: number;
 }
 
-const SCALE = {
+// Initial blueprint candidates are intentionally bounded by ADR 0029 and the
+// blueprint bootstrap spec, not the eventual full-book V1 capacity target.
+export const BLUEPRINT_SCALE_PLAN = {
   short: { volumes: 1, chapters: 12, scenes: 24, baseTokens: 40_000 },
   medium: { volumes: 3, chapters: 36, scenes: 72, baseTokens: 100_000 },
   long: { volumes: 5, chapters: 60, scenes: 120, baseTokens: 180_000 },
@@ -37,7 +39,7 @@ export function canTransitionBlueprintStatus(from: BlueprintStatus, to: Blueprin
 }
 
 export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstimate {
-  const scale = SCALE[input.scaleTarget];
+  const scale = BLUEPRINT_SCALE_PLAN[input.scaleTarget];
   const chapterLengthFactor = Math.max(
     0.8,
     Math.min(1.5, 1 + (input.chapterLengthTarget - 3000) / 10_000),

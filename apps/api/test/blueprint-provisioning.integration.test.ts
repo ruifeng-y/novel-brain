@@ -12,6 +12,7 @@ import {
 import { Queue } from "bullmq";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
+import { uuidv7 } from "uuidv7";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../src/app.module";
@@ -386,6 +387,30 @@ describe("blueprint provisioning API", () => {
     );
 
     expect(result.rows[0]?.budget).toEqual({ maxTokens: 216000, maxCostCny: 1 });
+    expect(result.rows[0]?.model_config_id).toBeNull();
+  });
+
+  it("does not fall back to a writing-only model for blueprint planning", async () => {
+    const owner = await createAuthenticatedAgent("blueprint-planning-model@example.com");
+    await databasePool.query(
+      `INSERT INTO model_configs
+         (id, user_id, provider, label, base_url, model, purposes, encrypted_key,
+          key_masked, is_default)
+       SELECT $2, id, 'deepseek', '写作模型',
+              'https://api.deepseek.com', 'deepseek-chat',
+              '["writing"]'::jsonb, 'encrypted', 'sk-****', true
+         FROM users WHERE email = $1`,
+      ["blueprint-planning-model@example.com", uuidv7()],
+    );
+
+    const work = await createIdeaWork(owner, "blueprint-writing-only", null);
+    const result = await databasePool.query<{ model_config_id: string | null }>(
+      `SELECT model_config_id
+         FROM jobs
+        WHERE work_id = $1 AND branch_id = $2 AND type = 'generate_blueprint'`,
+      [work.id, work.mainBranch.id],
+    );
+
     expect(result.rows[0]?.model_config_id).toBeNull();
   });
 

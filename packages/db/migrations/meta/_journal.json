@@ -575,6 +575,13 @@
       "when": 1795780554096,
       "tag": "0081_nostalgic_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795784335391,
+      "tag": "0082_fresh_kate_bishop",
+      "breakpoints": true
     }
   ]
 }
