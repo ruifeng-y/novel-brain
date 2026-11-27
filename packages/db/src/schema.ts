@@ -3404,7 +3404,7 @@ export const notifications = pgTable(
     index("notifications_user_unread_idx").on(table.userId, table.readAt, table.createdAt),
     check(
       "notifications_type_check",
-      sql`${table.type} in ('job_completed', 'job_failed', 'review_required', 'merge_completed', 'merge_conflict')`,
+      sql`${table.type} in ('job_completed', 'job_failed', 'blueprint_ready', 'blueprint_failed', 'blueprint_waiting_model_config', 'blueprint_budget_paused', 'review_required', 'merge_completed', 'merge_conflict')`,
     ),
     check(
       "notifications_target_type_check",

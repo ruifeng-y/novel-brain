@@ -98,7 +98,7 @@ describe("blueprint worker persistence", () => {
     );
     expect(notification.rows).toHaveLength(1);
     expect(notification.rows[0]).toMatchObject({
-      type: "review_required",
+      type: "blueprint_ready",
       payload: {
         title: "故事蓝图已生成",
         href: `/workspace/${seeded.workId}/blueprint`,
@@ -141,7 +141,7 @@ describe("blueprint worker persistence", () => {
     await expectNotification(
       pool,
       seeded.userId,
-      "job_failed",
+      "blueprint_waiting_model_config",
       `blueprint:${seeded.jobId}:waiting_model_config`,
     );
   });
@@ -171,7 +171,7 @@ describe("blueprint worker persistence", () => {
     await expectNotification(
       pool,
       seeded.userId,
-      "job_failed",
+      "blueprint_budget_paused",
       `blueprint:${seeded.jobId}:budget:1`,
     );
   });
@@ -200,7 +200,7 @@ describe("blueprint worker persistence", () => {
     await expectNotification(
       pool,
       seeded.userId,
-      "job_failed",
+      "blueprint_failed",
       `blueprint:${seeded.jobId}:failed:1:MODEL_RATE_LIMITED`,
     );
   });

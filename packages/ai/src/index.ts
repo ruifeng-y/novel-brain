@@ -932,6 +932,8 @@ function fakeBlueprintOutlineJson(): string {
         sceneBeats: ["主角作出选择。"],
         requiredFacts: ["起点存在"],
       },
+      hook: `虚构章末钩子 ${index + 1}`,
+      foreshadow: index === 0 ? "虚构全书伏笔" : null,
       tension: 50,
     };
   });

@@ -15,6 +15,8 @@ import { AiProviderError } from "@novel-brain/ai";
 import {
   BlueprintJobProcessor,
   BlueprintJobStore,
+  validateBlueprintCandidates,
+  type BlueprintFailure,
   type BlueprintStepCommit,
   type BlueprintStepResult,
   type LoadedBlueprintJob,
@@ -41,6 +43,11 @@ describe("BlueprintJobProcessor", () => {
     expect(store.outline?.sceneCards).toHaveLength(24);
     expect(store.chapterVersionCount).toBe(0);
     expect(store.notifications).toEqual(["ready"]);
+    expect(store.commits[1]?.result.output).toMatchObject({
+      model: "deepseek-chat",
+      promptVersion: "blueprint.story_bible.v1",
+      pricingVersion: "m0-cost-per-token-v1",
+    });
   });
 
   it("waits for model configuration without calling the provider", async () => {
@@ -132,6 +139,7 @@ describe("BlueprintJobProcessor", () => {
     expect(store.failure).toMatchObject({
       code: "MODEL_RESPONSE_INVALID",
       failureClass: "schema",
+      cost: { inputTokens: 100, outputTokens: 20, totalTokens: 120 },
     });
   });
 
@@ -162,6 +170,42 @@ describe("BlueprintJobProcessor", () => {
     expect(provider.operations).toEqual([]);
     expect(store.commits).toEqual([]);
     expect(store.notifications).toEqual([]);
+  });
+
+  it("fails validation closed for missing core counts, scale mismatch and missing hooks", () => {
+    const cards = { cards: storyBibleCards() };
+    const settings = coreSettings().filter((candidate) => candidate.type !== "world_rule");
+    const outline = outlineDraft();
+    const validation = validateBlueprintCandidates({
+      storyBible: cards,
+      coreSettings: settings,
+      outline: {
+        ...outline,
+        nodes: outline.nodes.map((node) =>
+          node.level === "chapter" ? { ...node, hook: null, foreshadow: null } : node,
+        ),
+      },
+      generationGuidance: {
+        protagonistArchetypes: [],
+        conflictSeeds: [],
+        worldRuleSeeds: [],
+        forbiddenElements: [],
+      },
+      genrePackFields: { genre: "仙侠", world: "修真世界" },
+      genre: "xianxia",
+      scaleTarget: "medium",
+    });
+
+    expect(validation.missingFields.some((field) => field.key === "core_setting:world_rule")).toBe(
+      true,
+    );
+    expect(validation.conflicts.map((conflict) => conflict.detail)).toEqual(
+      expect.arrayContaining([
+        "核心设定至少需要三条世界规则",
+        "当前规模需要 3 卷，实际为 1 卷",
+        "前十二个章节点必须包含章末钩子",
+      ]),
+    );
   });
 });
 
@@ -234,7 +278,7 @@ class InMemoryBlueprintStore extends BlueprintJobStore {
   outline: Awaited<ReturnType<BlueprintJobProcessor["parseOutline"]>> | null = null;
   chapterVersionCount = 0;
   notifications: string[] = [];
-  failure: { code: string; failureClass: string; retryable: boolean } | null = null;
+  failure: BlueprintFailure | null = null;
 
   constructor(loaded = loadedJob()) {
     super();
@@ -449,6 +493,8 @@ function outlineDraft(): BlueprintStepResult["outline"] {
         sceneBeats: ["主角作出选择。"],
         requiredFacts: ["山门存在"],
       },
+      hook: `第 ${index + 1} 章章末钩子`,
+      foreshadow: index === 0 ? "全书伏笔" : null,
       tension: 50,
     };
   });

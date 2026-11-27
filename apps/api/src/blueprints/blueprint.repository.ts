@@ -89,10 +89,33 @@ export class BlueprintRepository implements OnModuleDestroy {
     userId: string,
     workId: string,
     branchId: string,
+    allowRecovery = false,
   ): Promise<GenerateBlueprintJob | null> {
     const lookup = await this.find(userId, workId, branchId);
-    if (lookup.kind !== "ok" || lookup.blueprint.status !== "queued") {
+    if (lookup.kind !== "ok") {
       return null;
+    }
+    const recoverable = ["queued", "failed", "budget_paused", "waiting_model_config"];
+    if (
+      !recoverable.includes(lookup.blueprint.status) ||
+      (!allowRecovery && lookup.blueprint.status !== "queued")
+    ) {
+      return null;
+    }
+    if (lookup.blueprint.status !== "queued") {
+      await this.withTenant(userId, async (transaction) => {
+        await transaction.execute(
+          sql`UPDATE jobs
+                 SET status = 'queued', error_code = NULL, error_message = NULL,
+                     finished_at = NULL, updated_at = now()
+               WHERE id = ${lookup.job.id} AND user_id = ${userId}`,
+        );
+        await transaction.execute(
+          sql`UPDATE work_blueprints
+                 SET status = 'queued', updated_at = now()
+               WHERE id = ${lookup.blueprint.id} AND user_id = ${userId}`,
+        );
+      });
     }
     return {
       jobId: lookup.job.id,

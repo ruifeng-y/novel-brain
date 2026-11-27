@@ -221,8 +221,9 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       const current = await client.query<{
         cost: BlueprintCost;
         checkpoint_version: number;
+        checkpoint: unknown;
       }>(
-        `SELECT cost, checkpoint_version
+        `SELECT cost, checkpoint_version, checkpoint
            FROM jobs
           WHERE id = $1 AND user_id = $2
           FOR UPDATE`,
@@ -233,12 +234,13 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
         throw new Error("Blueprint job disappeared during step commit");
       }
       const revision = row.checkpoint_version + 1;
+      const currentCheckpoint = blueprintCheckpointSchema.parse(row.checkpoint);
       const cost = addCost(row.cost, commit.result.cost);
       const checkpoint: BlueprintCheckpoint = {
         schemaVersion: 1,
         revision,
         step: commit.nextStep,
-        inputHash: commit.payload.checkpoint.inputHash,
+        inputHash: currentCheckpoint.inputHash,
         payload: commit.result.checkpointPayload,
       };
       await client.query(
@@ -352,7 +354,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
         userId: payload.actorId,
         workId: payload.workId,
         branchId: payload.branchId,
-        type: "review_required",
+        type: "blueprint_ready",
         targetId: payload.jobId,
         title: "故事蓝图已生成",
         message: "故事圣经、核心设定和初始大纲已准备好，请逐项审阅。",
@@ -369,23 +371,23 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
     await this.withTenantTransaction(payload.actorId, async (client) => {
       await client.query(
         `UPDATE jobs
-            SET status = 'paused', current_step = 'prepare',
+            SET status = 'paused', current_step = $3,
                 error_code = 'MODEL_PROVIDER_ERROR',
                 error_message = '缺少可用的故事蓝图模型配置', updated_at = now()
           WHERE id = $1 AND user_id = $2`,
-        [payload.jobId, payload.actorId],
+        [payload.jobId, payload.actorId, loaded.job.checkpoint.step],
       );
       await client.query(
         `UPDATE work_blueprints
-            SET status = 'waiting_model_config', current_step = 'prepare', updated_at = now()
+            SET status = 'waiting_model_config', current_step = $3, updated_at = now()
           WHERE id = $1 AND user_id = $2`,
-        [loaded.blueprint.id, payload.actorId],
+        [loaded.blueprint.id, payload.actorId, loaded.job.checkpoint.step],
       );
       await recordNotification(client, {
         userId: payload.actorId,
         workId: payload.workId,
         branchId: payload.branchId,
-        type: "job_failed",
+        type: "blueprint_waiting_model_config",
         targetId: payload.jobId,
         title: "故事蓝图正在等待模型配置",
         message: "配置可用的规划模型后，可从当前检查点继续。",
@@ -422,7 +424,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
         userId: payload.actorId,
         workId: payload.workId,
         branchId: payload.branchId,
-        type: "job_failed",
+        type: "blueprint_budget_paused",
         targetId: payload.jobId,
         title: "故事蓝图已暂停",
         message: `预计还需要 ${projectedTokens} token / ${projectedCostCny.toFixed(4)} 元，请调整预算后继续。`,
@@ -440,24 +442,39 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
     failure: BlueprintFailure,
   ): Promise<void> {
     await this.withTenantTransaction(payload.actorId, async (client) => {
+      const currentCost = failure.cost ? addCost(loaded.job.cost, failure.cost) : undefined;
       await client.query(
         `UPDATE jobs
             SET status = 'failed', current_step = $3, error_code = $4,
-                error_message = $5, finished_at = now(), updated_at = now()
+                error_message = $5, cost = COALESCE($6::jsonb, cost),
+                finished_at = now(), updated_at = now()
           WHERE id = $1 AND user_id = $2`,
-        [payload.jobId, payload.actorId, step, failure.code, failure.message],
+        [
+          payload.jobId,
+          payload.actorId,
+          step,
+          failure.code,
+          failure.message,
+          currentCost ? JSON.stringify(currentCost) : null,
+        ],
       );
       await client.query(
         `UPDATE work_blueprints
-            SET status = 'failed', current_step = $3, updated_at = now()
+            SET status = 'failed', current_step = $3,
+                cost = COALESCE($4::jsonb, cost), updated_at = now()
           WHERE id = $1 AND user_id = $2`,
-        [loaded.blueprint.id, payload.actorId, step],
+        [
+          loaded.blueprint.id,
+          payload.actorId,
+          step,
+          currentCost ? JSON.stringify(currentCost) : null,
+        ],
       );
       await recordNotification(client, {
         userId: payload.actorId,
         workId: payload.workId,
         branchId: payload.branchId,
-        type: "job_failed",
+        type: "blueprint_failed",
         targetId: payload.jobId,
         title: "故事蓝图生成失败",
         message: failure.message,
@@ -504,7 +521,11 @@ async function recordNotification(
     userId: string;
     workId: string;
     branchId: string;
-    type: "review_required" | "job_failed";
+    type:
+      | "blueprint_ready"
+      | "blueprint_failed"
+      | "blueprint_waiting_model_config"
+      | "blueprint_budget_paused";
     targetId: string;
     title: string;
     message: string;

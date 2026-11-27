@@ -1,0 +1,2 @@
+ALTER TABLE "notifications" DROP CONSTRAINT "notifications_type_check";--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_type_check" CHECK ("notifications"."type" in ('job_completed', 'job_failed', 'blueprint_ready', 'blueprint_failed', 'blueprint_waiting_model_config', 'blueprint_budget_paused', 'review_required', 'merge_completed', 'merge_conflict'));

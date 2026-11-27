@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { Inject, Injectable } from "@nestjs/common";
 import {
   BLUEPRINT_JOB_STEPS,
@@ -94,6 +96,7 @@ export interface BlueprintFailure {
   message: string;
   failureClass: string;
   retryable: boolean;
+  cost?: BlueprintCost;
 }
 
 export abstract class BlueprintJobStore {
@@ -140,6 +143,26 @@ const STEP_PROGRESS: Record<BlueprintJobStep, number> = {
   validate: 95,
   await_review: 100,
 };
+
+const SCALE_PLAN: Record<
+  string,
+  { volumes: number; chapters: number; scenes: number; actsPerVolume: number }
+> = {
+  short: { volumes: 1, chapters: 12, scenes: 24, actsPerVolume: 3 },
+  medium: { volumes: 3, chapters: 36, scenes: 72, actsPerVolume: 3 },
+  long: { volumes: 5, chapters: 60, scenes: 120, actsPerVolume: 3 },
+  epic: { volumes: 8, chapters: 96, scenes: 192, actsPerVolume: 3 },
+};
+
+class BlueprintStepCostError extends Error {
+  constructor(
+    readonly cause: unknown,
+    readonly cost: BlueprintCost,
+  ) {
+    super(cause instanceof Error ? cause.message : "Blueprint provider output is invalid");
+    this.name = "BlueprintStepCostError";
+  }
+}
 
 @Injectable()
 export class BlueprintJobProcessor {
@@ -273,10 +296,17 @@ export class BlueprintJobProcessor {
           "blueprint_story_bible",
           storyBiblePrompt(input.loaded),
         );
-        const storyBible = this.parseStoryBible(result.text);
+        let storyBible: BlueprintStoryBibleDraft;
+        try {
+          storyBible = this.parseStoryBible(result.text);
+        } catch (error) {
+          throw new BlueprintStepCostError(error, costOf(result));
+        }
         return {
           storyBible,
-          output: { cardCount: storyBible.cards.length },
+          output: providerAuditOutput(input.loaded, "blueprint.story_bible.v1", result.text, {
+            cardCount: storyBible.cards.length,
+          }),
           cost: costOf(result),
           checkpointPayload: { storyBibleReady: true },
         };
@@ -288,10 +318,17 @@ export class BlueprintJobProcessor {
           "blueprint_core_settings",
           coreSettingsPrompt(input.loaded, input.storyBible),
         );
-        const coreSettings = this.parseCoreSettings(result.text);
+        let coreSettings: BlueprintCoreSettingDraft[];
+        try {
+          coreSettings = this.parseCoreSettings(result.text);
+        } catch (error) {
+          throw new BlueprintStepCostError(error, costOf(result));
+        }
         return {
           coreSettings,
-          output: { settingCount: coreSettings.length },
+          output: providerAuditOutput(input.loaded, "blueprint.core_settings.v1", result.text, {
+            settingCount: coreSettings.length,
+          }),
           cost: costOf(result),
           checkpointPayload: { coreSettingsReady: true },
         };
@@ -306,13 +343,18 @@ export class BlueprintJobProcessor {
           "blueprint_outline",
           outlinePrompt(input.loaded, input.storyBible, input.coreSettings),
         );
-        const outline = this.parseOutline(result.text);
+        let outline: BlueprintOutlineDraft;
+        try {
+          outline = this.parseOutline(result.text);
+        } catch (error) {
+          throw new BlueprintStepCostError(error, costOf(result));
+        }
         return {
           outline,
-          output: {
+          output: providerAuditOutput(input.loaded, "blueprint.outline.v1", result.text, {
             nodeCount: outline.nodes.length,
             sceneCardCount: outline.sceneCards.length,
-          },
+          }),
           cost: costOf(result),
           checkpointPayload: { outlineReady: true },
         };
@@ -327,7 +369,9 @@ export class BlueprintJobProcessor {
           coreSettings: input.coreSettings,
           outline: input.outline,
           generationGuidance: input.loaded.genrePack?.generationGuidance ?? {},
+          genrePackFields: input.loaded.genrePack?.fields ?? {},
           genre: input.loaded.work.genre,
+          scaleTarget: input.loaded.work.scaleTarget,
         });
         return {
           missingFields: validation.missingFields,
@@ -440,12 +484,29 @@ function blueprintSystemPrompt(): string {
   return "你是 NovelBrain 的故事蓝图规划代理。只返回严格 JSON，不输出解释、Markdown 或代码围栏。";
 }
 
-function validateBlueprintCandidates(input: {
+function providerAuditOutput(
+  loaded: LoadedBlueprintJob,
+  promptVersion: string,
+  prompt: string,
+  output: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...output,
+    model: loaded.modelConfig?.model ?? null,
+    promptVersion,
+    pricingVersion: "m0-cost-per-token-v1",
+    sourceHash: createHash("sha256").update(prompt).digest("hex"),
+  };
+}
+
+export function validateBlueprintCandidates(input: {
   storyBible: BlueprintStoryBibleDraft;
   coreSettings: BlueprintCoreSettingDraft[];
   outline: BlueprintOutlineDraft;
   generationGuidance: Record<string, unknown>;
+  genrePackFields: Record<string, unknown>;
   genre: string;
+  scaleTarget: string;
 }): { missingFields: BlueprintMissingField[]; conflicts: BlueprintConflict[] } {
   const missingFields: BlueprintMissingField[] = [];
   const conflicts: BlueprintConflict[] = [];
@@ -460,6 +521,10 @@ function validateBlueprintCandidates(input: {
     ...(input.genre === "xianxia" ? (["golden_finger"] as const) : []),
   ];
   const types = new Set(input.coreSettings.map((setting) => setting.type));
+  const typeCounts = new Map<string, number>();
+  for (const setting of input.coreSettings) {
+    typeCounts.set(setting.type, (typeCounts.get(setting.type) ?? 0) + 1);
+  }
   for (const type of requiredTypes) {
     if (!types.has(type)) {
       missingFields.push(
@@ -469,6 +534,32 @@ function validateBlueprintCandidates(input: {
           required: true,
           severity: "P0",
           message: `核心设定缺少 ${type}`,
+        }),
+      );
+    }
+  }
+  if ((typeCounts.get("world_rule") ?? 0) < 3) {
+    conflicts.push(structureConflict("核心设定至少需要三条世界规则"));
+  }
+  const itemCount = typeCounts.get("item") ?? 0;
+  if (itemCount < 1 || itemCount > 3) {
+    conflicts.push(structureConflict("核心设定需要一到三条与核心冲突相关的物品或功法"));
+  }
+  const corpus = JSON.stringify({
+    storyBible: input.storyBible,
+    coreSettings: input.coreSettings,
+    outline: input.outline,
+  });
+  for (const [key, value] of Object.entries(input.genrePackFields)) {
+    const valueText = typeof value === "string" ? value : JSON.stringify(value);
+    if (!corpus.includes(key) && valueText && !corpus.includes(valueText)) {
+      missingFields.push(
+        blueprintMissingFieldSchema.parse({
+          key: `genre_pack:${key}`,
+          label: key,
+          required: true,
+          severity: "P0",
+          message: `题材包必填字段 ${key} 未在蓝图中体现`,
         }),
       );
     }
@@ -522,6 +613,34 @@ function validateBlueprintCandidates(input: {
     }
   }
   const chapters = nodes.filter((node) => node.level === "chapter");
+  const volumes = nodes.filter((node) => node.level === "volume");
+  const sceneNodes = nodes.filter((node) => node.level === "scene");
+  const plan = SCALE_PLAN[input.scaleTarget];
+  if (plan) {
+    if (volumes.length !== plan.volumes) {
+      conflicts.push(
+        structureConflict(`当前规模需要 ${plan.volumes} 卷，实际为 ${volumes.length} 卷`),
+      );
+    }
+    if (chapters.length !== plan.chapters) {
+      conflicts.push(
+        structureConflict(`当前规模需要 ${plan.chapters} 章，实际为 ${chapters.length} 章`),
+      );
+    }
+    if (sceneNodes.length !== plan.scenes) {
+      conflicts.push(
+        structureConflict(`当前规模需要 ${plan.scenes} 个场景，实际为 ${sceneNodes.length} 个`),
+      );
+    }
+    for (const volume of volumes) {
+      const acts = nodes.filter((node) => node.level === "act" && node.parentId === volume.id);
+      if (acts.length !== plan.actsPerVolume) {
+        conflicts.push(
+          structureConflict(`卷 ${volume.title} 必须恰好包含 ${plan.actsPerVolume} 幕`),
+        );
+      }
+    }
+  }
   const chapterNumbers = chapters
     .map((node) => node.chapterNumber)
     .sort((a, b) => (a ?? 0) - (b ?? 0));
@@ -531,7 +650,15 @@ function validateBlueprintCandidates(input: {
   if (chapters.some((chapter) => !chapter.brief)) {
     conflicts.push(structureConflict("每个章节点必须有完整章纲"));
   }
-  const sceneNodes = nodes.filter((node) => node.level === "scene");
+  const openingChapters = chapters
+    .filter((chapter) => (chapter.chapterNumber ?? 0) <= 12)
+    .sort((left, right) => (left.chapterNumber ?? 0) - (right.chapterNumber ?? 0));
+  if (openingChapters.some((chapter) => !chapter.hook)) {
+    conflicts.push(structureConflict("前十二个章节点必须包含章末钩子"));
+  }
+  if (!openingChapters.some((chapter) => Boolean(chapter.foreshadow))) {
+    conflicts.push(structureConflict("前十二章至少需要一个可追踪伏笔"));
+  }
   if (
     chapters.some(
       (chapter) => sceneNodes.filter((scene) => scene.parentId === chapter.id).length < 2,
@@ -602,8 +729,28 @@ function addCost(left: BlueprintCost, right: BlueprintCost): BlueprintCost {
 }
 
 function toFailure(error: unknown): BlueprintFailure {
+  if (error instanceof BlueprintStepCostError) {
+    return {
+      code: "MODEL_RESPONSE_INVALID",
+      message: "模型返回内容无法按蓝图结构解析，检查点已保留",
+      failureClass: "schema",
+      retryable: true,
+      cost: error.cost,
+    };
+  }
   if (error instanceof AiProviderError) {
     const failureClass = classifyAiFailure(error);
+    const cost = error.usage
+      ? {
+          inputTokens: error.usage.inputTokens,
+          outputTokens: error.usage.outputTokens,
+          totalTokens: error.usage.inputTokens + error.usage.outputTokens,
+          costCny: calculateModelCallCost(
+            error.usage.inputTokens + error.usage.outputTokens,
+            M0_COST_PER_TOKEN_CNY,
+          ),
+        }
+      : undefined;
     return {
       code:
         failureClass === "timeout"
@@ -614,6 +761,7 @@ function toFailure(error: unknown): BlueprintFailure {
       message: "故事蓝图生成失败，检查点已保留",
       failureClass,
       retryable: error.retryable,
+      ...(cost ? { cost } : {}),
     };
   }
   const schemaFailure =

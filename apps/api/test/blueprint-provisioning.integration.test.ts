@@ -263,6 +263,60 @@ describe("blueprint provisioning API", () => {
     }
   });
 
+  it("requeues a failed blueprint from its persisted checkpoint", async () => {
+    const owner = await createAuthenticatedAgent("blueprint-failed-retry@example.com");
+    const work = await createIdeaWork(owner, "blueprint-failed-retry");
+    const blueprintPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/blueprint`;
+    const before = await owner.get(blueprintPath).expect(200);
+    await databasePool.query(
+      `UPDATE jobs
+          SET status = 'failed', checkpoint_version = 2,
+              checkpoint = $3::jsonb, error_code = 'MODEL_RATE_LIMITED',
+              error_message = '限流'
+        WHERE id = $1 AND user_id = (SELECT user_id FROM works WHERE id = $2)`,
+      [
+        before.body.data.jobId,
+        work.id,
+        JSON.stringify({
+          schemaVersion: 1,
+          revision: 2,
+          step: "core_settings",
+          inputHash: "a".repeat(64),
+          payload: { storyBibleReady: true },
+        }),
+      ],
+    );
+    await databasePool.query(
+      `UPDATE work_blueprints
+          SET status = 'failed', current_step = 'core_settings', progress = 35
+        WHERE work_id = $1 AND branch_id = $2`,
+      [work.id, work.mainBranch.id],
+    );
+
+    const csrfToken = await csrf(owner);
+    const retried = await owner
+      .post(`${blueprintPath}/retry`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(202);
+    expect(retried.body.data).toMatchObject({
+      status: "queued",
+      currentStep: "core_settings",
+    });
+
+    const persisted = await databasePool.query<{ job_status: string; blueprint_status: string }>(
+      `SELECT j.status AS job_status, wb.status AS blueprint_status
+         FROM jobs AS j
+         INNER JOIN work_blueprints AS wb ON wb.job_id = j.id
+        WHERE j.id = $1`,
+      [before.body.data.jobId],
+    );
+    expect(persisted.rows[0]).toEqual({
+      job_status: "queued",
+      blueprint_status: "queued",
+    });
+  });
+
   it("uses the estimated default budget when no override is supplied", async () => {
     const owner = await createAuthenticatedAgent("blueprint-default-budget@example.com");
     const work = await createIdeaWork(owner, "blueprint-default-budget", null);

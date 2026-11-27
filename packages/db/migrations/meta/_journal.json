@@ -568,6 +568,13 @@
       "when": 1795771719565,
       "tag": "0080_next_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1795780554096,
+      "tag": "0081_nostalgic_morlun",
+      "breakpoints": true
     }
   ]
 }
