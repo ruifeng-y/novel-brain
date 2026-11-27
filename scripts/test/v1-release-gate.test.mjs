@@ -370,6 +370,108 @@ describe("V1 release gate", () => {
     expect(result.blockers).toContain("deferral:EVAL-003:authorization-invalid");
   });
 
+  it("accepts the approved CONT-001 deferral as outside the V1 claim", () => {
+    const traceability = [
+      "| ID | Capability | Scope | Status | Primary issue | Supporting | Design | Evidence | Milestone |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      traceRow("UI-001", "V1", "verified", "#104"),
+      traceRow("PERF-001", "后续", "deferred", "—"),
+      traceRow("CONT-001", "后续", "deferred", "—"),
+    ].join("\n");
+    const deferrals = passingDeferrals();
+    deferrals.deferrals.push({
+      id: "CONT-001",
+      scope: "后续",
+      status: "deferred",
+      approvedBy: "product-owner",
+      approvedAt: "2026-11-27",
+      rationale: "V1 does not claim the clean long-horizon quality rerun.",
+      evidence: ["docs/planning/v1-capability-manifest.md"],
+    });
+
+    const result = evaluate({ traceability, deferrals });
+
+    expect(result.blockers).not.toContain("deferral:CONT-001:authorization-invalid");
+    expect(result.blockers).not.toContain("capability-audit:missing:CONT-001");
+  });
+
+  it("allows only the authorized CONT-001 human-review gate deferral", () => {
+    const traceability = [
+      "| ID | Capability | Scope | Status | Primary issue | Supporting | Design | Evidence | Milestone |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      traceRow("UI-001", "V1", "verified", "#104"),
+      traceRow("PERF-001", "后续", "deferred", "—"),
+      traceRow("CONT-001", "后续", "deferred", "—"),
+    ].join("\n");
+    const evidence = passingEvidence();
+    const gate = evidence.gates.find((entry) => entry.id === "human-blind-review");
+    gate.status = "deferred";
+    gate.rationale = "CONT-001 is outside the V1 claim.";
+    gate.evidence = ["docs/planning/v1-deferrals.json"];
+
+    const unauthorized = evaluate({ evidence, traceability });
+    expect(unauthorized.blockers).toContain("human-blind-review:deferred-not-authorized");
+
+    const deferrals = passingDeferrals();
+    deferrals.deferrals.push({
+      id: "CONT-001",
+      scope: "后续",
+      status: "deferred",
+      approvedBy: "product-owner",
+      approvedAt: "2026-11-27",
+      rationale: "V1 does not claim the clean long-horizon quality rerun.",
+      evidence: ["docs/planning/v1-capability-manifest.md"],
+    });
+    const authorized = evaluate({ evidence, traceability, deferrals });
+    expect(authorized.blockers).not.toContain("human-blind-review:deferred-not-authorized");
+
+    const invalidDeferrals = structuredClone(deferrals);
+    invalidDeferrals.deferrals.find((deferral) => deferral.id === "CONT-001").approvedAt = "";
+    const invalid = evaluate({ evidence, traceability, deferrals: invalidDeferrals });
+    expect(invalid.blockers).toContain("deferral:CONT-001:invalid");
+  });
+
+  it("keeps the CONT-001 deferral aligned across the committed ledgers", () => {
+    const deferrals = JSON.parse(
+      readFileSync(new URL("../../docs/planning/v1-deferrals.json", import.meta.url), "utf8"),
+    );
+    const traceability = readFileSync(
+      new URL("../../docs/planning/v1-capability-traceability.md", import.meta.url),
+      "utf8",
+    );
+    const capabilityEvidence = JSON.parse(
+      readFileSync(
+        new URL(
+          "../../docs/implementation/m3-236-non-ui-capability-evidence.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    const releaseEvidence = JSON.parse(
+      readFileSync(
+        new URL("../../docs/implementation/v1-release-evidence.json", import.meta.url),
+        "utf8",
+      ),
+    );
+
+    expect(deferrals.deferrals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "CONT-001",
+          scope: "后续",
+          status: "deferred",
+          approvedBy: "product-owner",
+        }),
+      ]),
+    );
+    expect(traceability).toMatch(/^\| CONT-001 \|.*\| 后续 \| deferred \| — \|/mu);
+    expect(capabilityEvidence.capabilities).not.toHaveProperty("CONT-001");
+    expect(releaseEvidence.gates.find((gate) => gate.id === "human-blind-review")?.status).toBe(
+      "deferred",
+    );
+  });
+
   it("rejects GitHub Actions evidence that is not a successful completed run", () => {
     const evidence = passingEvidence();
     const reference = "https://github.com/ruifeng-y/novel-brain/actions/runs/123";

@@ -38,7 +38,8 @@ const GITHUB_ACTIONS_RUN_URL = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/action
 const GITHUB_ISSUE_REFERENCE = /^#(\d+)$/u;
 const EXPECTED_GITHUB_REPOSITORY = "ruifeng-y/novel-brain";
 const BOUNDED_GAP_LABELS = new Set(["ready-for-agent", "ready-for-human"]);
-const AUTHORIZED_DEFERRAL_IDS = new Set(["PERF-001", "AGENT-007", "QUALITY-009"]);
+const AUTHORIZED_DEFERRAL_IDS = new Set(["PERF-001", "AGENT-007", "QUALITY-009", "CONT-001"]);
+const AUTHORIZED_GATE_DEFERRALS = new Map([["human-blind-review", ["CONT-001"]]]);
 const DEVIATION_DOCUMENTS = [
   "docs/ui/prototype-contract.md",
   "docs/ui/v1-ui-parity-matrix.md",
@@ -96,11 +97,16 @@ function validateReleaseLedger(evidence) {
 
 function validateGates(
   evidence,
-  { evidenceExists = () => false, githubRunIsSuccessful = () => false, expectedCommit },
+  { evidenceExists = () => false, githubRunIsSuccessful = () => false, expectedCommit, deferrals },
 ) {
   const blockers = [];
   const gates = Array.isArray(evidence.gates) ? evidence.gates : [];
   const gatesById = new Map(gates.map((gate) => [gate.id, gate]));
+  const registeredDeferralIds = new Set(
+    (Array.isArray(deferrals?.deferrals) ? deferrals.deferrals : []).map(
+      (deferral) => deferral?.id,
+    ),
+  );
   for (const gateId of REQUIRED_GATES) {
     if (!gatesById.has(gateId)) {
       blockers.push(`${gateId}:missing`);
@@ -137,7 +143,15 @@ function validateGates(
       blockers.push(`${gate.id}:${gate.status}`);
     }
     if (gate.status === "deferred") {
-      blockers.push(`${gate.id}:deferred-not-authorized`);
+      const requiredDeferrals = AUTHORIZED_GATE_DEFERRALS.get(gate.id) ?? [];
+      if (
+        !gate.owner?.trim() ||
+        !gate.rationale?.trim() ||
+        requiredDeferrals.length === 0 ||
+        !requiredDeferrals.every((id) => registeredDeferralIds.has(id))
+      ) {
+        blockers.push(`${gate.id}:deferred-not-authorized`);
+      }
     }
   }
   return blockers;
@@ -546,6 +560,7 @@ export function evaluateV1Release({
       evidenceExists,
       githubRunIsSuccessful,
       expectedCommit,
+      deferrals,
     }),
     ...validateTraceability(traceability, deferrals, {
       evidenceExists,

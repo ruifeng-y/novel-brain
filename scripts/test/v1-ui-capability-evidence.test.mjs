@@ -188,6 +188,7 @@ describe("M3-238 UI capability closeout", () => {
 
   it("leaves only release-level blockers after UI and traceability verification", () => {
     const audit = readRootJson("docs/implementation/m3-238-ui-capability-evidence.json");
+    const humanReviewStatus = readRootJson("docs/quality/evidence/m3-273/status.json");
     const result = evaluateV1Release({
       evidence: readRootJson("docs/implementation/v1-release-evidence.json"),
       traceability: readRoot("docs/planning/v1-capability-traceability.md"),
@@ -200,6 +201,10 @@ describe("M3-238 UI capability closeout", () => {
       deviationApprovals: readRootJson("docs/ui/v1-ui-deviations.json"),
       actionContract: readRootJson("docs/ui/v1-action-contract.json"),
       actionEvidence: readRootJson("docs/implementation/v1-action-evidence.json"),
+      humanReviewStatus,
+      recordedHumanReviewStatus: humanReviewStatus,
+      humanReviewArtifactsFresh: true,
+      humanAttestationIsValid: () => true,
       evidenceExists: () => true,
       githubRunIsSuccessful: () => true,
       auditCiRunIsValid: () => true,
@@ -213,8 +218,9 @@ describe("M3-238 UI capability closeout", () => {
     expect(result.blockers.filter((blocker) => /UI-\d{3}|ui-parity/u.test(blocker))).toEqual([]);
     expect(result.blockers).toEqual(
       expect.arrayContaining([
-        "capability-verification:2:EVAL-002:implemented,CONT-001:implemented",
+        "capability-verification:1:EVAL-002:implemented",
         "release-evidence:status-blocked",
+        "final-production-ci:blocked",
       ]),
     );
   });

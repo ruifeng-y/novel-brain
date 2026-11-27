@@ -1,7 +1,7 @@
 # V1 固定质量基准 Registry 与回归门禁
 
 > Owner: M3 #103 / #139
-> Status: #239 raw-score capture is `complete-with-warnings`; #240 approves the variance threshold at `0.1`. #273 records 24/24 product-owner replace decisions, invalidates old scores for clean review and records external attestation; #278 rebuilds the clean packet and #279 reruns the full human review. The hook/prose gate remains pending.
+> Status: #239 raw-score capture is `complete-with-warnings`; #240 approves the variance threshold at `0.1`. #273 records 24/24 product-owner replace decisions, invalidates old scores for clean review and records external attestation. CONT-001 is explicitly deferred from V1; #278 was closed `NOT_PLANNED` and #279 is not a V1 deliverable.
 
 ## Dataset
 
@@ -54,18 +54,21 @@ The rubric intentionally contains `reviewPolicy: null`; an inter-rater variance 
 
 File-backed registry and CLI evidence prove benchmark implementation and gate mechanics. Issue #239 records two signed reviewer attestations, 816 raw `human_blind` scores, the evaluator gate hash and the actual reviewer-packet file/canonical hashes under `docs/quality/evidence/m3-239/` as `complete-with-warnings`.
 
-The recorded result does not pass the V1 quality gate:
+The recorded result does not pass the historical quality gate; CONT-001 is now deferred from V1:
 
 - `outline_adherence = 1.000000`, meeting the `>= 0.9` threshold.
 - `hook_prose_score = 1.882353`, below the `>= 4` threshold.
 - The observed max inter-rater variance is `0`. #240 approves the trusted review-policy
   threshold `0.1` in `docs/quality/evidence/m3-240/review-policy.json`; the observed result
   passes because `0 <= 0.1`.
-- Both reviewers flagged the same 24 long-horizon cases because the frozen text contains defect metadata rather than narrative prose. #273 records all 24 replacement decisions; a clean blind review is still required.
+- Both reviewers flagged the same 24 long-horizon cases because the frozen text contains defect metadata rather than narrative prose. #273 records all 24 replacement decisions; a clean blind review is not part of V1 after the CONT-001 deferral.
 - The packet schema excludes oracle fields, but the same 24 sample texts expose continuity-conflict metadata. A future clean blind review must remove that leakage or record an explicit product-owner resolution.
 - #273 removes the explicit oracle annotation in a proposed 204-sample packet without deleting any sample. The product/quality owner recorded replacement, old-score impact and 24/24 sample adjudications; the proposal remains `proposed-not-approved` because it is not a semantic clean-packet replacement.
 - #273 records 24/24 `replace_sample` adjudications, `oldScoresImpact = invalidated_for_clean_review`, `hook_prose_disposition = remediate_and_rerun` and an owner-authored external GitHub attestation.
-- #278 owns replacement approval and clean-packet rebuild. #279 owns benchmark prose remediation and the complete 204-sample two-reviewer rerun. #242 is blocked until both finish.
+- #278 was closed `NOT_PLANNED` without a frozen clean packet or `24/24` human replacement approval. #279 is not a V1 deliverable.
 - The inter-rater variance threshold is approved as `0.1` under #240; observed `maxVariance = 0` passes it.
 
-The V1 quality claim remains blocked until #278 rebuilds the replacement packet and #279 completes the hook/prose remediation and full rerun. The threshold decision is complete and does not change the frozen rubric.
+V1 does not claim a clean 204-sample long-horizon quality result. The historical hook/prose failure,
+unfrozen packet and missing human approvals remain visible. A future restart requires a new
+decision, a new bounded issue and a complete human rerun; the threshold decision remains complete
+and does not change the frozen rubric.

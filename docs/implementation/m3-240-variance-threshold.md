@@ -2,7 +2,7 @@
 
 > Issue: #240
 > Capabilities: EVAL-002
-> Status: decision complete; V1 release remains blocked by #242, #278, #279 and `hook_prose_score`
+> Status: decision complete; V1 release remains blocked by #242 and the EVAL-002 release-head evidence gap. CONT-001 and its clean rerun are deferred.
 
 ## 决定
 
@@ -28,8 +28,8 @@ Release gate 仅在 `maxVariance > 0.1` 时记录
 5. V1 quality claim 不接受 waiver，也不允许通过调整阈值解除阻断。
 
 批准阈值只解除 `decision-required:interRaterVarianceThreshold`。当前 release 仍因
-`hook_prose_score = 1.882353 < 4`、#278 的 clean packet 重建、#279 的完整 204 样本
-重评和 #242 release-head CI 保持 blocked。
+#242 release-head CI 和 EVAL-002 的最终证据绑定保持 blocked。`hook_prose_score = 1.882353 < 4`
+保留为 CONT-001 的历史证据；该能力已延期，不构成 V1 clean quality claim。
 
 ## Completion Time Warning
 

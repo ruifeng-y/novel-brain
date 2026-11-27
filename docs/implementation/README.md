@@ -114,7 +114,7 @@ The same command is enforced by `.github/workflows/readiness-validation.yml` for
 
 The dependency graph is normative together with each issue's Dependencies section. GitHub native dependency edges are not assumed to exist. A milestone is not implementation-ready merely because child tickets exist: blockers must close, shared contracts must be integrated and tests/evidence must pass.
 
-The capability ledger contains **119 IDs**: the 117 original manifest entries plus PERF-001 (10M capacity/recovery) and CONT-001 (long-horizon continuity). AGENT-007 vector retrieval and QUALITY-009 real-reader feedback remain explicitly post-V1/deferred.
+The capability ledger contains **119 IDs**: the 117 original manifest entries plus PERF-001 (10M capacity/recovery) and CONT-001 (long-horizon continuity). AGENT-007, QUALITY-009, PERF-001 and CONT-001 are explicitly post-V1/deferred.
 
 ## 7. UI parity and prototype evidence
 
@@ -134,7 +134,7 @@ The prototype suite is not a substitute for production Web/API/Worker or product
 ## 8. Scale and quality gates
 
 - #137 / `docs/performance/v1-10m-capacity-benchmark.md`: explicitly deferred outside V1; resuming the claim requires a deterministic 10,000,000-character fixture, mixed workload, p50/p95/p99 measurements, storage/index growth, job recovery and backup/restore.
-- #138 / `docs/quality/v1-long-horizon-continuity-benchmark.md`: 3,000–4,000 chapter / 30–40 volume continuity ground truth, character knowledge boundaries, state invariants, plot/foreshadow checks and human blind review.
+- #138 / `docs/quality/v1-long-horizon-continuity-benchmark.md`: 3,000–4,000 chapter / 30–40 volume continuity ground truth. CONT-001 is explicitly deferred outside V1; no clean 204-sample human-review claim exists, and resuming it requires a new decision and complete rerun.
 - #139 / `docs/quality/v1-quality-benchmark-registry.md`: frozen three-genre dataset, ADR 0022 release rubric, raw scorer evidence, P0 regression gate and CLI exit status.
 
 Existing p95/streaming/SSE/RPO/RTO targets are taken from the technical baseline. Numeric p99, concurrent-user, storage-headroom and selected reviewer-agreement thresholds remain decision-required until formally approved; do not invent pass values.

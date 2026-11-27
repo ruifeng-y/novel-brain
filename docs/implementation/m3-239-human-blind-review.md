@@ -2,7 +2,7 @@
 
 > Issue: #239
 > Capabilities: CONT-001, EVAL-002 supporting evidence
-> Status: complete-with-warnings; 816 raw human scores are recorded, while V1 quality remains blocked
+> Status: complete-with-warnings; 816 raw human scores are recorded. CONT-001 is explicitly deferred from V1, so this remains historical evidence rather than a clean V1 quality claim.
 
 ## 实施结果
 
@@ -65,10 +65,10 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 当前判定依据是用户明确确认两份评分由真实评审人完成，并且两份问卷分别签署、attestation id
 不同、816 条记录可逐项复算；该风险保留为 warning，不升级为“质量已通过”。
 
-以下项目继续阻断 V1 quality claim：
+以下项目仍作为历史质量风险保留：
 
 - `hook_prose_score = 1.882353 < 4`。
-- 24/24 替换裁决已完成；#278 的 clean packet 与 #279 的全量重评仍待完成。
+- 24/24 替换裁决已完成；#278 的 clean packet 未完成且已关闭为 `NOT_PLANNED`，#279 不属于 V1。
 - 旧 24 个 long-horizon 样本文本仍暴露缺陷元信息，旧 packet 的 `cleanBlindReview` 为 `false`，因此不得复用。
 - reviewer identity 目前是自述化名，外部实名核验未提供。
 
@@ -77,12 +77,12 @@ packet hash 均已归档，因此本票可关闭为 `complete-with-warnings`。
 #273 已在 `docs/quality/evidence/m3-273/adjudication.json` 记录 24/24 产品负责人
 `replace_sample` 决定，并将旧评分对 clean review 的影响记为
 `invalidated_for_clean_review`。`hook_prose_score` 选择 `remediate_and_rerun`。
-#278 负责 24 个替代文本与 clean packet；#279 负责完整 204 样本重评。外部 GitHub
-attestation 已由 `ruifeng-y` 本人发布并记录。
+#278 已关闭为 `NOT_PLANNED`；#279 不再是 V1 交付项。外部 GitHub attestation 已由
+`ruifeng-y` 本人发布并记录。
 
 旧 #239 文件保持原样；其结果段中的 0/24 和 `threshold: null` 是当时的历史快照。
 
 #240 已独立批准 `interRaterVarianceThreshold = 0.1`；该历史快照中的 `null` 不改变，
 下游必须消费 `docs/quality/evidence/m3-240/review-policy.json`。
 
-#239 关闭不改变 #104 的 blocked 状态，也不授权任何质量、阈值或容量声明。
+#239 关闭不改变 #104 的 blocked 状态，也不授权任何 clean 长线质量、阈值或容量声明。
