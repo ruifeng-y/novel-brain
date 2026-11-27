@@ -3449,6 +3449,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -4286,6 +4288,8 @@
                                   "WORK_COVER_INVALID",
                                   "WORK_COVER_NOT_FOUND",
                                   "BLUEPRINT_NOT_FOUND",
+                                  "BLUEPRINT_P0_CONFLICT",
+                                  "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -9203,6 +9207,23 @@
                             "await_review"
                           ]
                         },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "maxTokens": {
+                              "type": "integer",
+                              "minimum": 20000,
+                              "maximum": 600000
+                            },
+                            "maxCostCny": {
+                              "type": "number",
+                              "minimum": 0.1,
+                              "maximum": 10
+                            }
+                          },
+                          "required": ["maxTokens", "maxCostCny"],
+                          "additionalProperties": false
+                        },
                         "estimate": {
                           "type": "object",
                           "properties": {
@@ -9920,6 +9941,7 @@
                         "version",
                         "progress",
                         "currentStep",
+                        "budget",
                         "estimate",
                         "cost",
                         "draftHash",
@@ -10041,6 +10063,23 @@
                             "await_review"
                           ]
                         },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "maxTokens": {
+                              "type": "integer",
+                              "minimum": 20000,
+                              "maximum": 600000
+                            },
+                            "maxCostCny": {
+                              "type": "number",
+                              "minimum": 0.1,
+                              "maximum": 10
+                            }
+                          },
+                          "required": ["maxTokens", "maxCostCny"],
+                          "additionalProperties": false
+                        },
                         "estimate": {
                           "type": "object",
                           "properties": {
@@ -10758,6 +10797,3632 @@
                         "version",
                         "progress",
                         "currentStep",
+                        "budget",
+                        "estimate",
+                        "cost",
+                        "draftHash",
+                        "storyBibleDraft",
+                        "coreSettingsDraft",
+                        "outlineDraft",
+                        "missingFields",
+                        "conflicts",
+                        "acknowledgements",
+                        "allowedActions",
+                        "confirmedAt",
+                        "confirmedBy",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["blueprints"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/blueprint/draft": {
+      "patch": {
+        "operationId": "BlueprintController_patchDraft",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "operations": {
+                    "minItems": 1,
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "enum": ["add"]
+                            },
+                            "path": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500,
+                              "pattern": "^\\/(storyBible|coreSettings|outline|acknowledgements)(\\/[^/]+)*$"
+                            },
+                            "value": {}
+                          },
+                          "required": ["op", "path", "value"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "enum": ["replace"]
+                            },
+                            "path": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500,
+                              "pattern": "^\\/(storyBible|coreSettings|outline|acknowledgements)(\\/[^/]+)*$"
+                            },
+                            "value": {}
+                          },
+                          "required": ["op", "path", "value"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "enum": ["remove"]
+                            },
+                            "path": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500,
+                              "pattern": "^\\/(storyBible|coreSettings|outline|acknowledgements)(\\/[^/]+)*$"
+                            }
+                          },
+                          "required": ["op", "path"],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": ["expectedVersion", "operations"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated work blueprint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "jobId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting_model_config",
+                            "budget_paused",
+                            "waiting_review",
+                            "failed",
+                            "confirmed",
+                            "cancelled"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "currentStep": {
+                          "type": "string",
+                          "enum": [
+                            "prepare",
+                            "story_bible",
+                            "core_settings",
+                            "outline",
+                            "validate",
+                            "await_review"
+                          ]
+                        },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "maxTokens": {
+                              "type": "integer",
+                              "minimum": 20000,
+                              "maximum": 600000
+                            },
+                            "maxCostCny": {
+                              "type": "number",
+                              "minimum": 0.1,
+                              "maximum": 10
+                            }
+                          },
+                          "required": ["maxTokens", "maxCostCny"],
+                          "additionalProperties": false
+                        },
+                        "estimate": {
+                          "type": "object",
+                          "properties": {
+                            "ruleVersion": {
+                              "type": "string",
+                              "enum": ["blueprint-estimate-v1"]
+                            },
+                            "planned": {
+                              "type": "object",
+                              "properties": {
+                                "volumes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "chapters": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "scenes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["volumes", "chapters", "scenes"],
+                              "additionalProperties": false
+                            },
+                            "estimatedTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "estimatedCostCny": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "defaultBudget": {
+                              "type": "object",
+                              "properties": {
+                                "maxTokens": {
+                                  "type": "integer",
+                                  "minimum": 20000,
+                                  "maximum": 600000
+                                },
+                                "maxCostCny": {
+                                  "type": "number",
+                                  "minimum": 0.1,
+                                  "maximum": 10
+                                }
+                              },
+                              "required": ["maxTokens", "maxCostCny"],
+                              "additionalProperties": false
+                            },
+                            "assumptions": {
+                              "minItems": 1,
+                              "maxItems": 10,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            }
+                          },
+                          "required": [
+                            "ruleVersion",
+                            "planned",
+                            "estimatedTokens",
+                            "estimatedCostCny",
+                            "defaultBudget",
+                            "assumptions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "cost": {
+                          "type": "object",
+                          "properties": {
+                            "inputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "outputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "totalTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "costCny": {
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": ["inputTokens", "outputTokens", "totalTokens", "costCny"],
+                          "additionalProperties": false
+                        },
+                        "draftHash": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "storyBibleDraft": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "cards": {
+                              "minItems": 9,
+                              "maxItems": 9,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "content": {
+                                    "type": "string",
+                                    "maxLength": 20000
+                                  },
+                                  "complete": {
+                                    "type": "boolean"
+                                  },
+                                  "worldRules": {
+                                    "default": [],
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 120
+                                        },
+                                        "constraint": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 2000
+                                        },
+                                        "scope": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        },
+                                        "exceptions": {
+                                          "default": [],
+                                          "maxItems": 20,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 500
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "name",
+                                        "constraint",
+                                        "scope",
+                                        "exceptions"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": ["key", "title", "content", "complete", "worldRules"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["cards"],
+                          "additionalProperties": false
+                        },
+                        "coreSettingsDraft": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "candidateId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "world_rule",
+                                  "character",
+                                  "faction",
+                                  "map",
+                                  "power_system",
+                                  "golden_finger",
+                                  "item",
+                                  "timeline_event"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "aliases": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 20000
+                              },
+                              "tags": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                }
+                              },
+                              "data": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": ["blueprint"]
+                              }
+                            },
+                            "required": [
+                              "candidateId",
+                              "type",
+                              "name",
+                              "aliases",
+                              "summary",
+                              "description",
+                              "tags",
+                              "data",
+                              "required",
+                              "source"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "outlineDraft": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "nodes": {
+                              "minItems": 1,
+                              "maxItems": 1000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "parentId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "level": {
+                                    "type": "string",
+                                    "enum": ["book", "volume", "act", "chapter", "scene"]
+                                  },
+                                  "sortOrder": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100000
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "maxLength": 2000
+                                  },
+                                  "status": {
+                                    "default": "planned",
+                                    "type": "string",
+                                    "enum": ["planned", "active", "done"]
+                                  },
+                                  "chapterNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 10000
+                                  },
+                                  "brief": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "goal": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 5000
+                                      },
+                                      "pov": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "location": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sceneBeats": {
+                                        "minItems": 1,
+                                        "maxItems": 50,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "requiredFacts": {
+                                        "minItems": 1,
+                                        "maxItems": 50,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "goal",
+                                      "pov",
+                                      "location",
+                                      "sceneBeats",
+                                      "requiredFacts"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "hook": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "foreshadow": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "tension": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "parentId",
+                                  "level",
+                                  "sortOrder",
+                                  "title",
+                                  "summary",
+                                  "status",
+                                  "chapterNumber",
+                                  "brief",
+                                  "hook",
+                                  "foreshadow",
+                                  "tension"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "volumeContracts": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "objective": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "conflict": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "turningPoints": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "exitConditions": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "plotLines": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "status": {
+                                          "type": "string",
+                                          "enum": ["planned", "active", "resolved", "dropped"]
+                                        },
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        }
+                                      },
+                                      "required": ["name", "status", "note"],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "objective",
+                                  "conflict",
+                                  "turningPoints",
+                                  "exitConditions",
+                                  "plotLines"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "sceneCards": {
+                              "maxItems": 2000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "povLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "locationLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "storyTime": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "beats": {
+                                    "minItems": 1,
+                                    "maxItems": 50,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 1000
+                                    }
+                                  },
+                                  "informationReleases": {
+                                    "maxItems": 50,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "tension": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "title",
+                                  "povLabel",
+                                  "locationLabel",
+                                  "storyTime",
+                                  "beats",
+                                  "informationReleases",
+                                  "tension"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["nodes", "volumeContracts", "sceneCards"],
+                          "additionalProperties": false
+                        },
+                        "missingFields": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2"]
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "required": ["key", "label", "required", "severity", "message"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "conflicts": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2"]
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "detail": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "affectedKeys": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["open", "resolved"]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "severity",
+                              "title",
+                              "detail",
+                              "affectedKeys",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "acknowledgements": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fieldKey": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "decision": {
+                                "type": "string",
+                                "enum": ["not_applicable"]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": ["fieldKey", "decision", "reason"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "allowedActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["edit", "retry", "resume_budget", "cancel", "confirm"]
+                          }
+                        },
+                        "confirmedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "confirmedBy": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "jobId",
+                        "status",
+                        "version",
+                        "progress",
+                        "currentStep",
+                        "budget",
+                        "estimate",
+                        "cost",
+                        "draftHash",
+                        "storyBibleDraft",
+                        "coreSettingsDraft",
+                        "outlineDraft",
+                        "missingFields",
+                        "conflicts",
+                        "acknowledgements",
+                        "allowedActions",
+                        "confirmedAt",
+                        "confirmedBy",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["blueprints"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/blueprint/budget": {
+      "post": {
+        "operationId": "BlueprintController_updateBudget",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "maxTokens": {
+                    "type": "integer",
+                    "minimum": 20000,
+                    "maximum": 600000
+                  },
+                  "maxCostCny": {
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 10
+                  }
+                },
+                "required": ["expectedVersion", "maxTokens", "maxCostCny"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Work blueprint resumed with a higher budget",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "jobId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting_model_config",
+                            "budget_paused",
+                            "waiting_review",
+                            "failed",
+                            "confirmed",
+                            "cancelled"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "currentStep": {
+                          "type": "string",
+                          "enum": [
+                            "prepare",
+                            "story_bible",
+                            "core_settings",
+                            "outline",
+                            "validate",
+                            "await_review"
+                          ]
+                        },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "maxTokens": {
+                              "type": "integer",
+                              "minimum": 20000,
+                              "maximum": 600000
+                            },
+                            "maxCostCny": {
+                              "type": "number",
+                              "minimum": 0.1,
+                              "maximum": 10
+                            }
+                          },
+                          "required": ["maxTokens", "maxCostCny"],
+                          "additionalProperties": false
+                        },
+                        "estimate": {
+                          "type": "object",
+                          "properties": {
+                            "ruleVersion": {
+                              "type": "string",
+                              "enum": ["blueprint-estimate-v1"]
+                            },
+                            "planned": {
+                              "type": "object",
+                              "properties": {
+                                "volumes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "chapters": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "scenes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["volumes", "chapters", "scenes"],
+                              "additionalProperties": false
+                            },
+                            "estimatedTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "estimatedCostCny": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "defaultBudget": {
+                              "type": "object",
+                              "properties": {
+                                "maxTokens": {
+                                  "type": "integer",
+                                  "minimum": 20000,
+                                  "maximum": 600000
+                                },
+                                "maxCostCny": {
+                                  "type": "number",
+                                  "minimum": 0.1,
+                                  "maximum": 10
+                                }
+                              },
+                              "required": ["maxTokens", "maxCostCny"],
+                              "additionalProperties": false
+                            },
+                            "assumptions": {
+                              "minItems": 1,
+                              "maxItems": 10,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            }
+                          },
+                          "required": [
+                            "ruleVersion",
+                            "planned",
+                            "estimatedTokens",
+                            "estimatedCostCny",
+                            "defaultBudget",
+                            "assumptions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "cost": {
+                          "type": "object",
+                          "properties": {
+                            "inputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "outputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "totalTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "costCny": {
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": ["inputTokens", "outputTokens", "totalTokens", "costCny"],
+                          "additionalProperties": false
+                        },
+                        "draftHash": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "storyBibleDraft": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "cards": {
+                              "minItems": 9,
+                              "maxItems": 9,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "content": {
+                                    "type": "string",
+                                    "maxLength": 20000
+                                  },
+                                  "complete": {
+                                    "type": "boolean"
+                                  },
+                                  "worldRules": {
+                                    "default": [],
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 120
+                                        },
+                                        "constraint": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 2000
+                                        },
+                                        "scope": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        },
+                                        "exceptions": {
+                                          "default": [],
+                                          "maxItems": 20,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 500
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "name",
+                                        "constraint",
+                                        "scope",
+                                        "exceptions"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": ["key", "title", "content", "complete", "worldRules"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["cards"],
+                          "additionalProperties": false
+                        },
+                        "coreSettingsDraft": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "candidateId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "world_rule",
+                                  "character",
+                                  "faction",
+                                  "map",
+                                  "power_system",
+                                  "golden_finger",
+                                  "item",
+                                  "timeline_event"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "aliases": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 20000
+                              },
+                              "tags": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                }
+                              },
+                              "data": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": ["blueprint"]
+                              }
+                            },
+                            "required": [
+                              "candidateId",
+                              "type",
+                              "name",
+                              "aliases",
+                              "summary",
+                              "description",
+                              "tags",
+                              "data",
+                              "required",
+                              "source"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "outlineDraft": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "nodes": {
+                              "minItems": 1,
+                              "maxItems": 1000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "parentId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "level": {
+                                    "type": "string",
+                                    "enum": ["book", "volume", "act", "chapter", "scene"]
+                                  },
+                                  "sortOrder": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100000
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "maxLength": 2000
+                                  },
+                                  "status": {
+                                    "default": "planned",
+                                    "type": "string",
+                                    "enum": ["planned", "active", "done"]
+                                  },
+                                  "chapterNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 10000
+                                  },
+                                  "brief": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "goal": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 5000
+                                      },
+                                      "pov": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "location": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sceneBeats": {
+                                        "minItems": 1,
+                                        "maxItems": 50,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "requiredFacts": {
+                                        "minItems": 1,
+                                        "maxItems": 50,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "goal",
+                                      "pov",
+                                      "location",
+                                      "sceneBeats",
+                                      "requiredFacts"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "hook": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "foreshadow": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "tension": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "parentId",
+                                  "level",
+                                  "sortOrder",
+                                  "title",
+                                  "summary",
+                                  "status",
+                                  "chapterNumber",
+                                  "brief",
+                                  "hook",
+                                  "foreshadow",
+                                  "tension"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "volumeContracts": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "objective": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "conflict": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "turningPoints": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "exitConditions": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "plotLines": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "status": {
+                                          "type": "string",
+                                          "enum": ["planned", "active", "resolved", "dropped"]
+                                        },
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        }
+                                      },
+                                      "required": ["name", "status", "note"],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "objective",
+                                  "conflict",
+                                  "turningPoints",
+                                  "exitConditions",
+                                  "plotLines"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "sceneCards": {
+                              "maxItems": 2000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "povLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "locationLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "storyTime": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "beats": {
+                                    "minItems": 1,
+                                    "maxItems": 50,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 1000
+                                    }
+                                  },
+                                  "informationReleases": {
+                                    "maxItems": 50,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "tension": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "title",
+                                  "povLabel",
+                                  "locationLabel",
+                                  "storyTime",
+                                  "beats",
+                                  "informationReleases",
+                                  "tension"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["nodes", "volumeContracts", "sceneCards"],
+                          "additionalProperties": false
+                        },
+                        "missingFields": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2"]
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "required": ["key", "label", "required", "severity", "message"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "conflicts": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2"]
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "detail": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "affectedKeys": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["open", "resolved"]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "severity",
+                              "title",
+                              "detail",
+                              "affectedKeys",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "acknowledgements": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fieldKey": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "decision": {
+                                "type": "string",
+                                "enum": ["not_applicable"]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": ["fieldKey", "decision", "reason"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "allowedActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["edit", "retry", "resume_budget", "cancel", "confirm"]
+                          }
+                        },
+                        "confirmedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "confirmedBy": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "jobId",
+                        "status",
+                        "version",
+                        "progress",
+                        "currentStep",
+                        "budget",
+                        "estimate",
+                        "cost",
+                        "draftHash",
+                        "storyBibleDraft",
+                        "coreSettingsDraft",
+                        "outlineDraft",
+                        "missingFields",
+                        "conflicts",
+                        "acknowledgements",
+                        "allowedActions",
+                        "confirmedAt",
+                        "confirmedBy",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["blueprints"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/blueprint/cancel": {
+      "post": {
+        "operationId": "BlueprintController_cancel",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["expectedVersion"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cancelled work blueprint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "jobId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting_model_config",
+                            "budget_paused",
+                            "waiting_review",
+                            "failed",
+                            "confirmed",
+                            "cancelled"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "currentStep": {
+                          "type": "string",
+                          "enum": [
+                            "prepare",
+                            "story_bible",
+                            "core_settings",
+                            "outline",
+                            "validate",
+                            "await_review"
+                          ]
+                        },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "maxTokens": {
+                              "type": "integer",
+                              "minimum": 20000,
+                              "maximum": 600000
+                            },
+                            "maxCostCny": {
+                              "type": "number",
+                              "minimum": 0.1,
+                              "maximum": 10
+                            }
+                          },
+                          "required": ["maxTokens", "maxCostCny"],
+                          "additionalProperties": false
+                        },
+                        "estimate": {
+                          "type": "object",
+                          "properties": {
+                            "ruleVersion": {
+                              "type": "string",
+                              "enum": ["blueprint-estimate-v1"]
+                            },
+                            "planned": {
+                              "type": "object",
+                              "properties": {
+                                "volumes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "chapters": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "scenes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["volumes", "chapters", "scenes"],
+                              "additionalProperties": false
+                            },
+                            "estimatedTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "estimatedCostCny": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "defaultBudget": {
+                              "type": "object",
+                              "properties": {
+                                "maxTokens": {
+                                  "type": "integer",
+                                  "minimum": 20000,
+                                  "maximum": 600000
+                                },
+                                "maxCostCny": {
+                                  "type": "number",
+                                  "minimum": 0.1,
+                                  "maximum": 10
+                                }
+                              },
+                              "required": ["maxTokens", "maxCostCny"],
+                              "additionalProperties": false
+                            },
+                            "assumptions": {
+                              "minItems": 1,
+                              "maxItems": 10,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            }
+                          },
+                          "required": [
+                            "ruleVersion",
+                            "planned",
+                            "estimatedTokens",
+                            "estimatedCostCny",
+                            "defaultBudget",
+                            "assumptions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "cost": {
+                          "type": "object",
+                          "properties": {
+                            "inputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "outputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "totalTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "costCny": {
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": ["inputTokens", "outputTokens", "totalTokens", "costCny"],
+                          "additionalProperties": false
+                        },
+                        "draftHash": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "storyBibleDraft": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "cards": {
+                              "minItems": 9,
+                              "maxItems": 9,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "content": {
+                                    "type": "string",
+                                    "maxLength": 20000
+                                  },
+                                  "complete": {
+                                    "type": "boolean"
+                                  },
+                                  "worldRules": {
+                                    "default": [],
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 120
+                                        },
+                                        "constraint": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 2000
+                                        },
+                                        "scope": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        },
+                                        "exceptions": {
+                                          "default": [],
+                                          "maxItems": 20,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 500
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "name",
+                                        "constraint",
+                                        "scope",
+                                        "exceptions"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": ["key", "title", "content", "complete", "worldRules"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["cards"],
+                          "additionalProperties": false
+                        },
+                        "coreSettingsDraft": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "candidateId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "world_rule",
+                                  "character",
+                                  "faction",
+                                  "map",
+                                  "power_system",
+                                  "golden_finger",
+                                  "item",
+                                  "timeline_event"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "aliases": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 20000
+                              },
+                              "tags": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                }
+                              },
+                              "data": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": ["blueprint"]
+                              }
+                            },
+                            "required": [
+                              "candidateId",
+                              "type",
+                              "name",
+                              "aliases",
+                              "summary",
+                              "description",
+                              "tags",
+                              "data",
+                              "required",
+                              "source"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "outlineDraft": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "nodes": {
+                              "minItems": 1,
+                              "maxItems": 1000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "parentId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "level": {
+                                    "type": "string",
+                                    "enum": ["book", "volume", "act", "chapter", "scene"]
+                                  },
+                                  "sortOrder": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100000
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "maxLength": 2000
+                                  },
+                                  "status": {
+                                    "default": "planned",
+                                    "type": "string",
+                                    "enum": ["planned", "active", "done"]
+                                  },
+                                  "chapterNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 10000
+                                  },
+                                  "brief": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "goal": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 5000
+                                      },
+                                      "pov": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "location": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sceneBeats": {
+                                        "minItems": 1,
+                                        "maxItems": 50,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "requiredFacts": {
+                                        "minItems": 1,
+                                        "maxItems": 50,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "goal",
+                                      "pov",
+                                      "location",
+                                      "sceneBeats",
+                                      "requiredFacts"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "hook": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "foreshadow": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "tension": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "parentId",
+                                  "level",
+                                  "sortOrder",
+                                  "title",
+                                  "summary",
+                                  "status",
+                                  "chapterNumber",
+                                  "brief",
+                                  "hook",
+                                  "foreshadow",
+                                  "tension"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "volumeContracts": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "objective": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "conflict": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "turningPoints": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "exitConditions": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "plotLines": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "status": {
+                                          "type": "string",
+                                          "enum": ["planned", "active", "resolved", "dropped"]
+                                        },
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        }
+                                      },
+                                      "required": ["name", "status", "note"],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "objective",
+                                  "conflict",
+                                  "turningPoints",
+                                  "exitConditions",
+                                  "plotLines"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "sceneCards": {
+                              "maxItems": 2000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "povLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "locationLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "storyTime": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "beats": {
+                                    "minItems": 1,
+                                    "maxItems": 50,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 1000
+                                    }
+                                  },
+                                  "informationReleases": {
+                                    "maxItems": 50,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "tension": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "title",
+                                  "povLabel",
+                                  "locationLabel",
+                                  "storyTime",
+                                  "beats",
+                                  "informationReleases",
+                                  "tension"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["nodes", "volumeContracts", "sceneCards"],
+                          "additionalProperties": false
+                        },
+                        "missingFields": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2"]
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "required": ["key", "label", "required", "severity", "message"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "conflicts": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2"]
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "detail": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "affectedKeys": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["open", "resolved"]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "severity",
+                              "title",
+                              "detail",
+                              "affectedKeys",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "acknowledgements": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fieldKey": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "decision": {
+                                "type": "string",
+                                "enum": ["not_applicable"]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": ["fieldKey", "decision", "reason"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "allowedActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["edit", "retry", "resume_budget", "cancel", "confirm"]
+                          }
+                        },
+                        "confirmedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "confirmedBy": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "jobId",
+                        "status",
+                        "version",
+                        "progress",
+                        "currentStep",
+                        "budget",
+                        "estimate",
+                        "cost",
+                        "draftHash",
+                        "storyBibleDraft",
+                        "coreSettingsDraft",
+                        "outlineDraft",
+                        "missingFields",
+                        "conflicts",
+                        "acknowledgements",
+                        "allowedActions",
+                        "confirmedAt",
+                        "confirmedBy",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["blueprints"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/blueprint/confirm": {
+      "post": {
+        "operationId": "BlueprintController_confirm",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "draftHash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "acknowledgements": {
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "fieldKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "decision": {
+                          "type": "string",
+                          "enum": ["not_applicable"]
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": ["fieldKey", "decision", "reason"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "confirmed": {
+                    "type": "boolean",
+                    "enum": [true]
+                  }
+                },
+                "required": ["expectedVersion", "draftHash", "acknowledgements", "confirmed"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Confirmed work blueprint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "jobId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "waiting_model_config",
+                            "budget_paused",
+                            "waiting_review",
+                            "failed",
+                            "confirmed",
+                            "cancelled"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "currentStep": {
+                          "type": "string",
+                          "enum": [
+                            "prepare",
+                            "story_bible",
+                            "core_settings",
+                            "outline",
+                            "validate",
+                            "await_review"
+                          ]
+                        },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "maxTokens": {
+                              "type": "integer",
+                              "minimum": 20000,
+                              "maximum": 600000
+                            },
+                            "maxCostCny": {
+                              "type": "number",
+                              "minimum": 0.1,
+                              "maximum": 10
+                            }
+                          },
+                          "required": ["maxTokens", "maxCostCny"],
+                          "additionalProperties": false
+                        },
+                        "estimate": {
+                          "type": "object",
+                          "properties": {
+                            "ruleVersion": {
+                              "type": "string",
+                              "enum": ["blueprint-estimate-v1"]
+                            },
+                            "planned": {
+                              "type": "object",
+                              "properties": {
+                                "volumes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "chapters": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "scenes": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["volumes", "chapters", "scenes"],
+                              "additionalProperties": false
+                            },
+                            "estimatedTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "estimatedCostCny": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "defaultBudget": {
+                              "type": "object",
+                              "properties": {
+                                "maxTokens": {
+                                  "type": "integer",
+                                  "minimum": 20000,
+                                  "maximum": 600000
+                                },
+                                "maxCostCny": {
+                                  "type": "number",
+                                  "minimum": 0.1,
+                                  "maximum": 10
+                                }
+                              },
+                              "required": ["maxTokens", "maxCostCny"],
+                              "additionalProperties": false
+                            },
+                            "assumptions": {
+                              "minItems": 1,
+                              "maxItems": 10,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            }
+                          },
+                          "required": [
+                            "ruleVersion",
+                            "planned",
+                            "estimatedTokens",
+                            "estimatedCostCny",
+                            "defaultBudget",
+                            "assumptions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "cost": {
+                          "type": "object",
+                          "properties": {
+                            "inputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "outputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "totalTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "costCny": {
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": ["inputTokens", "outputTokens", "totalTokens", "costCny"],
+                          "additionalProperties": false
+                        },
+                        "draftHash": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "storyBibleDraft": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "cards": {
+                              "minItems": 9,
+                              "maxItems": 9,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "content": {
+                                    "type": "string",
+                                    "maxLength": 20000
+                                  },
+                                  "complete": {
+                                    "type": "boolean"
+                                  },
+                                  "worldRules": {
+                                    "default": [],
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 120
+                                        },
+                                        "constraint": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 2000
+                                        },
+                                        "scope": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        },
+                                        "exceptions": {
+                                          "default": [],
+                                          "maxItems": 20,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 500
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "name",
+                                        "constraint",
+                                        "scope",
+                                        "exceptions"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": ["key", "title", "content", "complete", "worldRules"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["cards"],
+                          "additionalProperties": false
+                        },
+                        "coreSettingsDraft": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "candidateId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "world_rule",
+                                  "character",
+                                  "faction",
+                                  "map",
+                                  "power_system",
+                                  "golden_finger",
+                                  "item",
+                                  "timeline_event"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "aliases": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 20000
+                              },
+                              "tags": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                }
+                              },
+                              "data": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": ["blueprint"]
+                              }
+                            },
+                            "required": [
+                              "candidateId",
+                              "type",
+                              "name",
+                              "aliases",
+                              "summary",
+                              "description",
+                              "tags",
+                              "data",
+                              "required",
+                              "source"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "outlineDraft": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "nodes": {
+                              "minItems": 1,
+                              "maxItems": 1000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "parentId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "level": {
+                                    "type": "string",
+                                    "enum": ["book", "volume", "act", "chapter", "scene"]
+                                  },
+                                  "sortOrder": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100000
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "maxLength": 2000
+                                  },
+                                  "status": {
+                                    "default": "planned",
+                                    "type": "string",
+                                    "enum": ["planned", "active", "done"]
+                                  },
+                                  "chapterNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 10000
+                                  },
+                                  "brief": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "goal": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 5000
+                                      },
+                                      "pov": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "location": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sceneBeats": {
+                                        "minItems": 1,
+                                        "maxItems": 50,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "requiredFacts": {
+                                        "minItems": 1,
+                                        "maxItems": 50,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "goal",
+                                      "pov",
+                                      "location",
+                                      "sceneBeats",
+                                      "requiredFacts"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "hook": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "foreshadow": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "tension": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "parentId",
+                                  "level",
+                                  "sortOrder",
+                                  "title",
+                                  "summary",
+                                  "status",
+                                  "chapterNumber",
+                                  "brief",
+                                  "hook",
+                                  "foreshadow",
+                                  "tension"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "volumeContracts": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "objective": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "conflict": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "turningPoints": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "exitConditions": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "plotLines": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "status": {
+                                          "type": "string",
+                                          "enum": ["planned", "active", "resolved", "dropped"]
+                                        },
+                                        "note": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        }
+                                      },
+                                      "required": ["name", "status", "note"],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "objective",
+                                  "conflict",
+                                  "turningPoints",
+                                  "exitConditions",
+                                  "plotLines"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "sceneCards": {
+                              "maxItems": 2000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "nodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "povLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "locationLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "storyTime": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "beats": {
+                                    "minItems": 1,
+                                    "maxItems": 50,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 1000
+                                    }
+                                  },
+                                  "informationReleases": {
+                                    "maxItems": 50,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "tension": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "nodeId",
+                                  "title",
+                                  "povLabel",
+                                  "locationLabel",
+                                  "storyTime",
+                                  "beats",
+                                  "informationReleases",
+                                  "tension"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["nodes", "volumeContracts", "sceneCards"],
+                          "additionalProperties": false
+                        },
+                        "missingFields": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2"]
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "required": ["key", "label", "required", "severity", "message"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "conflicts": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2"]
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "detail": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "affectedKeys": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["open", "resolved"]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "severity",
+                              "title",
+                              "detail",
+                              "affectedKeys",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "acknowledgements": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fieldKey": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "decision": {
+                                "type": "string",
+                                "enum": ["not_applicable"]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": ["fieldKey", "decision", "reason"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "allowedActions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["edit", "retry", "resume_budget", "cancel", "confirm"]
+                          }
+                        },
+                        "confirmedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "confirmedBy": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "jobId",
+                        "status",
+                        "version",
+                        "progress",
+                        "currentStep",
+                        "budget",
                         "estimate",
                         "cost",
                         "draftHash",
@@ -24126,6 +27791,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -25692,6 +29359,8 @@
                                   "WORK_COVER_INVALID",
                                   "WORK_COVER_NOT_FOUND",
                                   "BLUEPRINT_NOT_FOUND",
+                                  "BLUEPRINT_P0_CONFLICT",
+                                  "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -26677,6 +30346,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -27654,6 +31325,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -28631,6 +32304,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -29657,6 +33332,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -31161,6 +34838,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -32411,6 +36090,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -33058,6 +36739,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -33373,6 +37056,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -34284,6 +37969,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -35444,6 +39131,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -36620,6 +40309,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -37804,6 +41495,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -98145,6 +101838,8 @@
                                       "WORK_COVER_INVALID",
                                       "WORK_COVER_NOT_FOUND",
                                       "BLUEPRINT_NOT_FOUND",
+                                      "BLUEPRINT_P0_CONFLICT",
+                                      "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -98551,6 +102246,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -98892,6 +102589,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -129859,6 +133558,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -131453,6 +135154,8 @@
                                   "WORK_COVER_INVALID",
                                   "WORK_COVER_NOT_FOUND",
                                   "BLUEPRINT_NOT_FOUND",
+                                  "BLUEPRINT_P0_CONFLICT",
+                                  "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -133035,6 +136738,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -134609,6 +138314,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -136183,6 +139890,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -137816,6 +141525,8 @@
                                     "WORK_COVER_INVALID",
                                     "WORK_COVER_NOT_FOUND",
                                     "BLUEPRINT_NOT_FOUND",
+                                    "BLUEPRINT_P0_CONFLICT",
+                                    "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -138854,6 +142565,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -139577,6 +143290,8 @@
                                   "WORK_COVER_INVALID",
                                   "WORK_COVER_NOT_FOUND",
                                   "BLUEPRINT_NOT_FOUND",
+                                  "BLUEPRINT_P0_CONFLICT",
+                                  "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -140289,6 +144004,8 @@
                                 "WORK_COVER_INVALID",
                                 "WORK_COVER_NOT_FOUND",
                                 "BLUEPRINT_NOT_FOUND",
+                                "BLUEPRINT_P0_CONFLICT",
+                                "BLUEPRINT_REQUIRED_FIELD_MISSING",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]

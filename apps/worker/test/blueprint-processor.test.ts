@@ -366,6 +366,31 @@ describe("BlueprintJobProcessor", () => {
     });
     expect(present.missingFields.map((field) => field.key)).not.toContain("genre_pack:genre");
 
+    const optionalReminder = validateBlueprintCandidates({
+      storyBible: { cards: storyBibleCards() },
+      coreSettings: coreSettings()!.map((setting, index) =>
+        index === 0 ? { ...setting, data: { genre: "仙侠" } } : setting,
+      ),
+      outline: outlineDraft()!,
+      generationGuidance: {
+        protagonistArchetypes: [],
+        conflictSeeds: [],
+        worldRuleSeeds: [],
+        forbiddenElements: [],
+      },
+      genrePackFields: { genre: "仙侠" },
+      optionalGenrePackFields: { optionalTimeline: "可选时间线" },
+      genre: "xianxia",
+      scaleTarget: "short",
+    });
+    expect(optionalReminder.missingFields).toContainEqual(
+      expect.objectContaining({
+        key: "genre_pack:optionalTimeline",
+        required: false,
+        severity: "P1",
+      }),
+    );
+
     const reorderedObject = validateBlueprintCandidates({
       storyBible: { cards: storyBibleCards() },
       coreSettings: coreSettings()!.map((setting, index) =>

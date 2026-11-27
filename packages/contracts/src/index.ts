@@ -166,6 +166,8 @@ export const ERROR_CODES = [
   "WORK_COVER_INVALID",
   "WORK_COVER_NOT_FOUND",
   "BLUEPRINT_NOT_FOUND",
+  "BLUEPRINT_P0_CONFLICT",
+  "BLUEPRINT_REQUIRED_FIELD_MISSING",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -6126,6 +6128,7 @@ export const workBlueprintSchema = z
     version: z.number().int().positive(),
     progress: z.number().int().min(0).max(100),
     currentStep: blueprintJobStepSchema,
+    budget: blueprintBudgetSchema,
     estimate: blueprintEstimateSchema,
     cost: blueprintCostSchema,
     draftHash: blueprintHashSchema.nullable(),
@@ -6270,6 +6273,48 @@ export const blueprintConfirmRequestSchema = z
   .strict();
 export type BlueprintConfirmRequest = z.infer<typeof blueprintConfirmRequestSchema>;
 
+export const blueprintDraftPatchPathSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .regex(
+    /^\/(storyBible|coreSettings|outline|acknowledgements)(\/[^/]+)*$/u,
+    "Blueprint patch paths must target the draft or acknowledgements",
+  );
+
+export const blueprintDraftPatchOperationSchema = z.discriminatedUnion("op", [
+  z
+    .object({
+      op: z.literal("add"),
+      path: blueprintDraftPatchPathSchema,
+      value: z.unknown(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("replace"),
+      path: blueprintDraftPatchPathSchema,
+      value: z.unknown(),
+    })
+    .strict(),
+  z
+    .object({
+      op: z.literal("remove"),
+      path: blueprintDraftPatchPathSchema,
+    })
+    .strict(),
+]);
+export type BlueprintDraftPatchOperation = z.infer<typeof blueprintDraftPatchOperationSchema>;
+
+export const blueprintDraftPatchRequestSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    operations: z.array(blueprintDraftPatchOperationSchema).min(1).max(200),
+  })
+  .strict();
+export type BlueprintDraftPatchRequest = z.infer<typeof blueprintDraftPatchRequestSchema>;
+
 export const blueprintBudgetUpdateRequestSchema = z
   .object({
     expectedVersion: z.number().int().positive(),
@@ -6278,6 +6323,13 @@ export const blueprintBudgetUpdateRequestSchema = z
   })
   .strict();
 export type BlueprintBudgetUpdateRequest = z.infer<typeof blueprintBudgetUpdateRequestSchema>;
+
+export const blueprintCancelRequestSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+  })
+  .strict();
+export type BlueprintCancelRequest = z.infer<typeof blueprintCancelRequestSchema>;
 
 export const blueprintEstimateResponseSchema = apiEnvelopeSchema(blueprintEstimateSchema);
 export const workBlueprintResponseSchema = apiEnvelopeSchema(workBlueprintSchema);

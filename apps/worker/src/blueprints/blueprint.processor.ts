@@ -3,9 +3,7 @@ import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import {
   BLUEPRINT_JOB_STEPS,
-  blueprintConflictSchema,
   blueprintCoreSettingDraftSchema,
-  blueprintMissingFieldSchema,
   blueprintOutlineDraftSchema,
   blueprintStoryBibleDraftSchema,
   type BlueprintCheckpoint,
@@ -17,7 +15,6 @@ import {
   type BlueprintOutlineDraft,
   type BlueprintStoryBibleDraft,
   type GenerateBlueprintJob,
-  genrePackGenerationGuidanceSchema,
 } from "@novel-brain/contracts";
 import {
   AiProviderError,
@@ -26,13 +23,14 @@ import {
   type AiGateway,
   type GenerationResult,
 } from "@novel-brain/ai";
-import { BLUEPRINT_SCALE_PLAN, planProviderCallBudget } from "@novel-brain/core";
+import { planProviderCallBudget, validateBlueprintCandidates } from "@novel-brain/core";
 import { calculateModelCallCost } from "@novel-brain/db";
-import { uuidv7 } from "uuidv7";
 
 import { AI_GATEWAY } from "../generation/generation.tokens";
 import type { ByokAiGatewayFactory, StoredModelConfig } from "../generation/model-provider.factory";
 import { addBlueprintCost } from "./blueprint.cost";
+
+export { validateBlueprintCandidates } from "@novel-brain/core";
 
 export interface LoadedBlueprintJob {
   job: {
@@ -173,8 +171,6 @@ const PROVIDER_OUTPUT_TOKENS = {
   blueprint_core_settings: 12_000,
   blueprint_outline: 64_000,
 } as const;
-const BLUEPRINT_ACTS_PER_VOLUME = 3;
-
 class BlueprintStepCostError extends Error {
   constructor(
     readonly cause: unknown,
@@ -483,12 +479,14 @@ export class BlueprintJobProcessor {
         if (!input.coreSettings || !input.outline) {
           throw new Error("Blueprint candidate checkpoint is missing");
         }
+        const genrePackFields = genrePackValidationFields(input.loaded.genrePack);
         const validation = validateBlueprintCandidates({
           storyBible: input.storyBible,
           coreSettings: input.coreSettings,
           outline: input.outline,
           generationGuidance: input.loaded.genrePack?.generationGuidance ?? {},
-          genrePackFields: requiredGenrePackFields(input.loaded.genrePack),
+          genrePackFields: genrePackFields.required,
+          optionalGenrePackFields: genrePackFields.optional,
           genre: input.loaded.work.genre,
           scaleTarget: input.loaded.work.scaleTarget,
         });
@@ -598,7 +596,7 @@ function coreSettingsPrompt(
   return [
     `基于以下故事圣经生成核心设定候选：${JSON.stringify(storyBible)}`,
     `题材：${loaded.work.genre}`,
-    `题材必填字段：${JSON.stringify(requiredGenrePackFields(loaded.genrePack))}`,
+    `题材必填字段：${JSON.stringify(genrePackValidationFields(loaded.genrePack).required)}`,
     `题材指南：${JSON.stringify(loaded.genrePack?.generationGuidance ?? {})}`,
     "每个必填题材字段必须以精确 key/value 写入至少一个核心设定的 data 中。",
     "输出严格 JSON 数组，字段符合核心设定候选结构。",
@@ -639,259 +637,6 @@ function providerAuditOutput(
   };
 }
 
-export function validateBlueprintCandidates(input: {
-  storyBible: BlueprintStoryBibleDraft;
-  coreSettings: BlueprintCoreSettingDraft[];
-  outline: BlueprintOutlineDraft;
-  generationGuidance: Record<string, unknown>;
-  genrePackFields: Record<string, unknown>;
-  genre: string;
-  scaleTarget: string;
-}): { missingFields: BlueprintMissingField[]; conflicts: BlueprintConflict[] } {
-  const missingFields: BlueprintMissingField[] = [];
-  const conflicts: BlueprintConflict[] = [];
-  const requiredTypes: BlueprintCoreSettingDraft["type"][] = [
-    "world_rule",
-    "character",
-    "faction",
-    "map",
-    "power_system",
-    "item",
-    "timeline_event",
-    ...(input.genre === "xianxia" ? (["golden_finger"] as const) : []),
-  ];
-  const types = new Set(input.coreSettings.map((setting) => setting.type));
-  const typeCounts = new Map<string, number>();
-  for (const setting of input.coreSettings) {
-    typeCounts.set(setting.type, (typeCounts.get(setting.type) ?? 0) + 1);
-  }
-  for (const type of requiredTypes) {
-    if (!types.has(type)) {
-      missingFields.push(
-        blueprintMissingFieldSchema.parse({
-          key: `core_setting:${type}`,
-          label: type,
-          required: true,
-          severity: "P0",
-          message: `核心设定缺少 ${type}`,
-        }),
-      );
-    }
-  }
-  if ((typeCounts.get("world_rule") ?? 0) < 3) {
-    conflicts.push(structureConflict("核心设定至少需要三条世界规则"));
-  }
-  const worldRuleNames = input.coreSettings
-    .filter((setting) => setting.type === "world_rule")
-    .map((setting) => setting.name.trim());
-  if (new Set(worldRuleNames).size !== worldRuleNames.length) {
-    conflicts.push(structureConflict("世界规则名称必须唯一"));
-  }
-  const itemCount = typeCounts.get("item") ?? 0;
-  if (itemCount < 1 || itemCount > 3) {
-    conflicts.push(structureConflict("核心设定需要一到三条与核心冲突相关的物品或功法"));
-  }
-  for (const [key, value] of Object.entries(input.genrePackFields)) {
-    if (!hasStructuredFieldValue(input.coreSettings, key, value)) {
-      missingFields.push(
-        blueprintMissingFieldSchema.parse({
-          key: `genre_pack:${key}`,
-          label: key,
-          required: true,
-          severity: "P0",
-          message: `题材包必填字段 ${key} 未在蓝图中体现`,
-        }),
-      );
-    }
-  }
-  const guidance = genrePackGenerationGuidanceSchema.safeParse(input.generationGuidance);
-  if (guidance.success) {
-    const corpus = JSON.stringify({
-      storyBible: input.storyBible,
-      coreSettings: input.coreSettings,
-      outline: input.outline,
-    });
-    for (const forbidden of guidance.data.forbiddenElements) {
-      if (corpus.includes(forbidden)) {
-        conflicts.push(
-          blueprintConflictSchema.parse({
-            id: uuidv7(),
-            severity: "P0",
-            title: "题材禁用元素",
-            detail: `蓝图包含题材禁用元素：${forbidden}`,
-            affectedKeys: ["forbidden_element"],
-            status: "open",
-          }),
-        );
-      }
-    }
-  }
-
-  const nodes = input.outline.nodes;
-  const byId = new Map(nodes.map((node) => [node.id, node]));
-  const roots = nodes.filter((node) => node.level === "book");
-  if (roots.length !== 1 || roots[0]?.parentId !== null) {
-    conflicts.push(structureConflict("大纲必须恰好有一个全书根节点"));
-  }
-  for (const node of nodes) {
-    const expectedParent =
-      node.level === "book"
-        ? null
-        : node.level === "volume"
-          ? "book"
-          : node.level === "act"
-            ? "volume"
-            : node.level === "chapter"
-              ? "act"
-              : "chapter";
-    const parent = node.parentId ? byId.get(node.parentId) : null;
-    if (
-      (expectedParent === null && node.parentId !== null) ||
-      (expectedParent !== null && parent?.level !== expectedParent)
-    ) {
-      conflicts.push(structureConflict(`大纲节点 ${node.title} 的上级层级无效`));
-    }
-  }
-  const chapters = nodes.filter((node) => node.level === "chapter");
-  const volumes = nodes.filter((node) => node.level === "volume");
-  const sceneNodes = nodes.filter((node) => node.level === "scene");
-  const plan = BLUEPRINT_SCALE_PLAN[input.scaleTarget as keyof typeof BLUEPRINT_SCALE_PLAN];
-  if (plan) {
-    if (volumes.length !== plan.volumes) {
-      conflicts.push(
-        structureConflict(`当前规模需要 ${plan.volumes} 卷，实际为 ${volumes.length} 卷`),
-      );
-    }
-    if (chapters.length !== plan.chapters) {
-      conflicts.push(
-        structureConflict(`当前规模需要 ${plan.chapters} 章，实际为 ${chapters.length} 章`),
-      );
-    }
-    if (sceneNodes.length !== plan.scenes) {
-      conflicts.push(
-        structureConflict(`当前规模需要 ${plan.scenes} 个场景，实际为 ${sceneNodes.length} 个`),
-      );
-    }
-    for (const volume of volumes) {
-      const acts = nodes.filter((node) => node.level === "act" && node.parentId === volume.id);
-      if (acts.length !== BLUEPRINT_ACTS_PER_VOLUME) {
-        conflicts.push(
-          structureConflict(`卷 ${volume.title} 必须恰好包含 ${BLUEPRINT_ACTS_PER_VOLUME} 幕`),
-        );
-      }
-      const volumeChapters = chapters.filter(
-        (chapter) => byId.get(chapter.parentId ?? "")?.parentId === volume.id,
-      );
-      const chaptersPerVolume = plan.chapters / plan.volumes;
-      if (volumeChapters.length !== chaptersPerVolume) {
-        conflicts.push(structureConflict(`每卷必须包含 ${chaptersPerVolume} 章`));
-      }
-    }
-  }
-  const chapterNumbers = chapters
-    .map((node) => node.chapterNumber)
-    .sort((a, b) => (a ?? 0) - (b ?? 0));
-  if (chapterNumbers.some((number, index) => number !== index + 1)) {
-    conflicts.push(structureConflict("章号必须从 1 开始连续递增"));
-  }
-  if (chapters.some((chapter) => !chapter.brief)) {
-    conflicts.push(structureConflict("每个章节点必须有完整章纲"));
-  }
-  const openingChapters = chapters
-    .filter((chapter) => (chapter.chapterNumber ?? 0) <= 12)
-    .sort((left, right) => (left.chapterNumber ?? 0) - (right.chapterNumber ?? 0));
-  if (!openingChapters.some((chapter) => Boolean(chapter.hook))) {
-    conflicts.push(structureConflict("前十二个章节点至少需要一个章末钩子"));
-  }
-  if (!openingChapters.some((chapter) => Boolean(chapter.foreshadow))) {
-    conflicts.push(structureConflict("前十二章至少需要一个可追踪伏笔"));
-  }
-  if (
-    chapters.some(
-      (chapter) => sceneNodes.filter((scene) => scene.parentId === chapter.id).length < 2,
-    )
-  ) {
-    conflicts.push(structureConflict("每章至少需要两个场景"));
-  }
-  const volumeIds = new Set(input.outline.volumeContracts.map((contract) => contract.nodeId));
-  if (nodes.filter((node) => node.level === "volume").some((volume) => !volumeIds.has(volume.id))) {
-    conflicts.push(structureConflict("每个卷节点必须有卷契约"));
-  }
-  const sceneCardIds = new Set(input.outline.sceneCards.map((card) => card.nodeId));
-  if (sceneNodes.some((scene) => !sceneCardIds.has(scene.id))) {
-    conflicts.push(structureConflict("每个场景节点必须有场景卡"));
-  }
-  if (nodes.some((node) => node.status !== "planned")) {
-    conflicts.push(structureConflict("初始大纲节点必须全部处于 planned 状态"));
-  }
-  return { missingFields, conflicts };
-}
-
-function hasStructuredFieldValue(
-  coreSettings: BlueprintCoreSettingDraft[],
-  key: string,
-  expectedValue: unknown,
-): boolean {
-  return coreSettings.some((setting) => containsKeyValue(setting.data, key, expectedValue));
-}
-
-function containsKeyValue(value: unknown, key: string, expectedValue: unknown): boolean {
-  if (Array.isArray(value)) {
-    return value.some((entry) => containsKeyValue(entry, key, expectedValue));
-  }
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const record = value as Record<string, unknown>;
-  if (
-    Object.prototype.hasOwnProperty.call(record, key) &&
-    structuredValueMatches(record[key], expectedValue)
-  ) {
-    return true;
-  }
-  return Object.values(record).some((entry) => containsKeyValue(entry, key, expectedValue));
-}
-
-function structuredValueMatches(actualValue: unknown, expectedValue: unknown): boolean {
-  if (Array.isArray(expectedValue)) {
-    return (
-      Array.isArray(actualValue) &&
-      expectedValue.every((expected) =>
-        actualValue.some((actual) => structuredValueMatches(actual, expected)),
-      )
-    );
-  }
-  if (expectedValue && typeof expectedValue === "object") {
-    if (!actualValue || typeof actualValue !== "object" || Array.isArray(actualValue)) {
-      return false;
-    }
-    const expectedRecord = expectedValue as Record<string, unknown>;
-    const actualRecord = actualValue as Record<string, unknown>;
-    const expectedKeys = Object.keys(expectedRecord).sort();
-    const actualKeys = Object.keys(actualRecord).sort();
-    return (
-      expectedKeys.length === actualKeys.length &&
-      expectedKeys.every(
-        (key, index) =>
-          key === actualKeys[index] &&
-          structuredValueMatches(actualRecord[key], expectedRecord[key]),
-      )
-    );
-  }
-  return actualValue === expectedValue;
-}
-
-function structureConflict(message: string): BlueprintConflict {
-  return blueprintConflictSchema.parse({
-    id: uuidv7(),
-    severity: "P0",
-    title: "大纲结构冲突",
-    detail: message,
-    affectedKeys: ["outline"],
-    status: "open",
-  });
-}
-
 function requireStoryBible(
   storyBible: BlueprintStoryBibleDraft | undefined,
 ): asserts storyBible is BlueprintStoryBibleDraft {
@@ -904,21 +649,29 @@ function providerStep(step: BlueprintJobStep): boolean {
   return step === "story_bible" || step === "core_settings" || step === "outline";
 }
 
-function requiredGenrePackFields(
-  genrePack: LoadedBlueprintJob["genrePack"],
-): Record<string, unknown> {
+function genrePackValidationFields(genrePack: LoadedBlueprintJob["genrePack"]): {
+  required: Record<string, unknown>;
+  optional: Record<string, unknown>;
+} {
   if (!genrePack) {
-    return {};
+    return { required: {}, optional: {} };
   }
   const definitions =
     genrePack.fieldSchema.length > 0
       ? genrePack.fieldSchema
       : Object.keys(genrePack.fields).map((key) => ({ key, required: true }));
-  return Object.fromEntries(
-    definitions
-      .filter((definition) => definition.required)
-      .map((definition) => [definition.key, genrePack.fields[definition.key]]),
-  );
+  return {
+    required: Object.fromEntries(
+      definitions
+        .filter((definition) => definition.required)
+        .map((definition) => [definition.key, genrePack.fields[definition.key]]),
+    ),
+    optional: Object.fromEntries(
+      definitions
+        .filter((definition) => !definition.required)
+        .map((definition) => [definition.key, genrePack.fields[definition.key]]),
+    ),
+  };
 }
 
 function providerOutputTokens(step: BlueprintJobStep): number {

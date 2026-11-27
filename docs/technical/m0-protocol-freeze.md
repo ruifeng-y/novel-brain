@@ -121,6 +121,8 @@ M0 关键错误：
 - `IMPORT_CONFLICT_UNRESOLVED`
 - `WORK_IDEMPOTENCY_CONFLICT`
 - `BLUEPRINT_NOT_FOUND`
+- `BLUEPRINT_P0_CONFLICT`
+- `BLUEPRINT_REQUIRED_FIELD_MISSING`
 - `VERSION_CONFLICT`
 - `FORBIDDEN_TENANT_ACCESS`
 - `ACCOUNT_EXPORT_EXPIRED`
@@ -182,6 +184,10 @@ M0 关键错误：
 | GET | `/api/v1/works/:workId/branches` | M0 返回 main 分支 |
 | GET | `/api/v1/blueprint-estimates` | 估算故事蓝图 token、费用和默认预算 |
 | GET | `/api/v1/works/:workId/branches/:branchId/blueprint` | 读取故事蓝图任务和候选状态 |
+| PATCH | `/api/v1/works/:workId/branches/:branchId/blueprint/draft` | 以期望版本编辑故事蓝图候选并重算 draft hash |
+| POST | `/api/v1/works/:workId/branches/:branchId/blueprint/budget` | 提高暂停任务的预算并从检查点恢复 |
+| POST | `/api/v1/works/:workId/branches/:branchId/blueprint/cancel` | 取消未确认任务并保留候选与检查点 |
+| POST | `/api/v1/works/:workId/branches/:branchId/blueprint/confirm` | 原子确认并投影故事蓝图 |
 | POST | `/api/v1/works/:workId/branches/:branchId/blueprint/retry` | 从持久化排队状态重试任务投递，返回 `202` 和 `jobId` |
 | POST | `/api/v1/works/:workId/import` | 设定导入或旧稿导入 |
 | POST | `/api/v1/imports` | 从粘贴文本或小型 TXT/Markdown/DOCX 文件识别设定候选，不创建作品 |

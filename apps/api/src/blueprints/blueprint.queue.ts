@@ -45,6 +45,17 @@ export class BlueprintJobQueue implements OnModuleDestroy {
     });
   }
 
+  async cancel(jobId: string): Promise<void> {
+    const existing = await this.queue.getJob(jobId);
+    if (!existing) {
+      return;
+    }
+    const state = await existing.getState();
+    if (state !== "active") {
+      await existing.remove();
+    }
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.queue.close();
     if (this.connection.status === "ready") {
