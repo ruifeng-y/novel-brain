@@ -6911,6 +6911,10 @@ export interface operations {
                     sceneBeats: string[];
                     requiredFacts: string[];
                   } | null;
+                  /** @default null */
+                  hook: string | null;
+                  /** @default null */
+                  foreshadow: string | null;
                   tension: number | null;
                 }[];
                 volumeContracts: {
@@ -7123,6 +7127,10 @@ export interface operations {
                     sceneBeats: string[];
                     requiredFacts: string[];
                   } | null;
+                  /** @default null */
+                  hook: string | null;
+                  /** @default null */
+                  foreshadow: string | null;
                   tension: number | null;
                 }[];
                 volumeContracts: {
@@ -21310,6 +21318,10 @@ export interface operations {
               type:
                 | "job_completed"
                 | "job_failed"
+                | "blueprint_ready"
+                | "blueprint_failed"
+                | "blueprint_waiting_model_config"
+                | "blueprint_budget_paused"
                 | "review_required"
                 | "merge_completed"
                 | "merge_conflict";
@@ -21365,6 +21377,10 @@ export interface operations {
               type:
                 | "job_completed"
                 | "job_failed"
+                | "blueprint_ready"
+                | "blueprint_failed"
+                | "blueprint_waiting_model_config"
+                | "blueprint_budget_paused"
                 | "review_required"
                 | "merge_completed"
                 | "merge_conflict";
