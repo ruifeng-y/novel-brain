@@ -317,6 +317,61 @@ describe("blueprint provisioning API", () => {
     });
   });
 
+  it("refreshes the planning model when recovering a waiting blueprint", async () => {
+    const owner = await createAuthenticatedAgent("blueprint-model-recovery@example.com");
+    const work = await createIdeaWork(owner, "blueprint-model-recovery", null);
+    const created = await databasePool.query<{ job_id: string; user_id: string }>(
+      `SELECT wb.job_id, wb.user_id
+         FROM work_blueprints AS wb
+        WHERE wb.work_id = $1 AND wb.branch_id = $2`,
+      [work.id, work.mainBranch.id],
+    );
+    const jobId = created.rows[0]!.job_id;
+    const userId = created.rows[0]!.user_id;
+    const modelConfigId = (
+      await databasePool.query<{ id: string }>(
+        `INSERT INTO model_configs
+           (id, user_id, provider, label, base_url, model, purposes, encrypted_key,
+            key_masked, is_default)
+         VALUES (gen_random_uuid(), $1, 'deepseek', '规划模型',
+                 'https://api.deepseek.com', 'deepseek-chat',
+                 '["planning"]'::jsonb, 'encrypted', 'sk-****', true)
+         RETURNING id`,
+        [userId],
+      )
+    ).rows[0]!.id;
+    await databasePool.query(
+      `UPDATE jobs
+          SET status = 'paused', model_config_id = NULL,
+              error_code = 'MODEL_PROVIDER_ERROR'
+        WHERE id = $1`,
+      [jobId],
+    );
+    await databasePool.query(
+      `UPDATE work_blueprints
+          SET status = 'waiting_model_config'
+        WHERE work_id = $1 AND branch_id = $2`,
+      [work.id, work.mainBranch.id],
+    );
+
+    const csrfToken = await csrf(owner);
+    await owner
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/blueprint/retry`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(202);
+
+    const queue = new Queue<GenerateBlueprintJob>(WORKER_QUEUE_NAME, {
+      connection: redis,
+    });
+    try {
+      const queued = await waitForQueueJob(queue, jobId);
+      expect(queued.data.modelConfigId).toBe(modelConfigId);
+    } finally {
+      await queue.close();
+    }
+  });
+
   it("uses the estimated default budget when no override is supplied", async () => {
     const owner = await createAuthenticatedAgent("blueprint-default-budget@example.com");
     const work = await createIdeaWork(owner, "blueprint-default-budget", null);

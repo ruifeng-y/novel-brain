@@ -10,6 +10,35 @@ const endpointValidator = vi.fn(async (input: { baseUrl: string }) => ({
 }));
 
 describe("DeepSeek provider", () => {
+  it("requests JSON object mode for structured blueprint output", async () => {
+    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        response_format: { type: "json_object" },
+      });
+      return new Response(
+        JSON.stringify({
+          model: "deepseek-chat",
+          choices: [{ message: { content: "{}" }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 1, completion_tokens: 1 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    const provider = new DeepSeekProvider({
+      apiKey: "sk-test-secret",
+      fetchImpl,
+      endpointValidator,
+    });
+
+    await provider.generateText({
+      prompt: "输出故事蓝图。",
+      operation: "blueprint_story_bible",
+      responseFormat: "json",
+    });
+
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
   it("parses a real-provider generation response and usage", async () => {
     const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       expect(init?.headers).toMatchObject({

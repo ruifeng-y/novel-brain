@@ -50,6 +50,17 @@ describe("BlueprintJobProcessor", () => {
     });
   });
 
+  it("passes genre-pack UI hints and structured field requirements to generation", async () => {
+    const store = new InMemoryBlueprintStore();
+    const provider = new SequencedBlueprintProvider();
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(provider.requests[0]?.prompt).toContain('"worldLabel":"修真世界"');
+    expect(provider.requests[1]?.prompt).toContain("每个必填题材字段必须以精确 key/value");
+    expect(provider.requests[1]?.prompt).toContain('"genre":"仙侠"');
+  });
+
   it("waits for model configuration without calling the provider", async () => {
     const store = new InMemoryBlueprintStore({
       ...loadedJob(),
@@ -63,6 +74,56 @@ describe("BlueprintJobProcessor", () => {
     expect(provider.operations).toEqual([]);
     expect(store.status).toBe("waiting_model_config");
     expect(store.notifications).toEqual(["waiting_model_config"]);
+  });
+
+  it("records provider setup failures as a recoverable failed state", async () => {
+    const store = new InMemoryBlueprintStore();
+    const provider = {
+      create() {
+        throw new Error("model key could not be decrypted");
+      },
+    };
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(store.status).toBe("failed");
+    expect(store.failure).toMatchObject({
+      code: "INTERNAL_ERROR",
+      failureClass: "unknown",
+      retryable: true,
+    });
+    expect(store.notifications).toEqual(["failed"]);
+  });
+
+  it("stops before the next step when a checkpointed job is cancelled", async () => {
+    const store = new InMemoryBlueprintStore();
+    store.cancelAfterStep = "story_bible";
+    const provider = new SequencedBlueprintProvider();
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(provider.operations).toEqual(["blueprint_story_bible"]);
+    expect(store.commits.map((commit) => commit.step)).toEqual(["prepare", "story_bible"]);
+    expect(store.status).toBe("cancelled");
+  });
+
+  it("reuses a persisted provider result after checkpoint commit failure", async () => {
+    const store = new InMemoryBlueprintStore();
+    store.failCommitForStep = "story_bible";
+    const provider = new SequencedBlueprintProvider();
+    const processor = new BlueprintJobProcessor(store, provider);
+
+    await processor.process(blueprintPayload());
+    expect(store.status).toBe("failed");
+
+    await processor.process(blueprintPayload());
+
+    expect(provider.operations).toEqual([
+      "blueprint_story_bible",
+      "blueprint_core_settings",
+      "blueprint_outline",
+    ]);
+    expect(store.status).toBe("waiting_review");
   });
 
   it("pauses before a provider call that would exceed the budget", async () => {
@@ -207,10 +268,51 @@ describe("BlueprintJobProcessor", () => {
       ]),
     );
   });
+
+  it("requires genre-pack fields at exact structured keys instead of matching prose", () => {
+    const missing = validateBlueprintCandidates({
+      storyBible: {
+        cards: storyBibleCards().map((card, index) =>
+          index === 0 ? { ...card, content: "正文提到 genre，但没有题材值" } : card,
+        ),
+      },
+      coreSettings: coreSettings()!,
+      outline: outlineDraft()!,
+      generationGuidance: {
+        protagonistArchetypes: [],
+        conflictSeeds: [],
+        worldRuleSeeds: [],
+        forbiddenElements: [],
+      },
+      genrePackFields: { genre: "仙侠" },
+      genre: "xianxia",
+      scaleTarget: "short",
+    });
+    expect(missing.missingFields.map((field) => field.key)).toContain("genre_pack:genre");
+
+    const present = validateBlueprintCandidates({
+      storyBible: { cards: storyBibleCards() },
+      coreSettings: coreSettings()!.map((setting, index) =>
+        index === 0 ? { ...setting, data: { genre: "仙侠" } } : setting,
+      ),
+      outline: outlineDraft()!,
+      generationGuidance: {
+        protagonistArchetypes: [],
+        conflictSeeds: [],
+        worldRuleSeeds: [],
+        forbiddenElements: [],
+      },
+      genrePackFields: { genre: "仙侠" },
+      genre: "xianxia",
+      scaleTarget: "short",
+    });
+    expect(present.missingFields.map((field) => field.key)).not.toContain("genre_pack:genre");
+  });
 });
 
 class SequencedBlueprintProvider implements AiGateway {
   operations: GenerationRequest["operation"][] = [];
+  requests: GenerationRequest[] = [];
 
   constructor(
     private readonly failOperation?: GenerationRequest["operation"],
@@ -219,6 +321,7 @@ class SequencedBlueprintProvider implements AiGateway {
 
   async generateText(input: GenerationRequest): Promise<GenerationResult> {
     this.operations.push(input.operation);
+    this.requests.push(input);
     if (input.operation === this.failOperation && this.failure === "rate_limit") {
       throw new AiProviderError("provider is rate limited", {
         failureClass: "rate_limit",
@@ -279,6 +382,9 @@ class InMemoryBlueprintStore extends BlueprintJobStore {
   chapterVersionCount = 0;
   notifications: string[] = [];
   failure: BlueprintFailure | null = null;
+  cancelAfterStep: BlueprintStepCommit["step"] | null = null;
+  failCommitForStep: BlueprintStepCommit["step"] | null = null;
+  private commitFailureConsumed = false;
 
   constructor(loaded = loadedJob()) {
     super();
@@ -294,12 +400,33 @@ class InMemoryBlueprintStore extends BlueprintJobStore {
     return this.loaded;
   }
 
-  async begin(): Promise<BlueprintCheckpoint> {
+  async begin(): Promise<BlueprintCheckpoint | undefined> {
     this.status = "running";
     return this.checkpoint;
   }
 
+  async isRunnable(): Promise<boolean> {
+    return this.status === "running";
+  }
+
+  async reserveProviderCall(): Promise<boolean> {
+    return this.status === "running";
+  }
+
+  async recordProviderResult(
+    _payload: GenerateBlueprintJob,
+    step: Parameters<BlueprintJobStore["recordProviderResult"]>[1],
+    _checkpoint: BlueprintCheckpoint,
+    result: GenerationResult,
+  ): Promise<void> {
+    this.loaded.pendingProviderResult = { step, result };
+  }
+
   async commitStep(commit: BlueprintStepCommit): Promise<BlueprintCheckpoint> {
+    if (this.failCommitForStep === commit.step && !this.commitFailureConsumed) {
+      this.commitFailureConsumed = true;
+      throw new Error("checkpoint transaction failed");
+    }
     this.commits.push(commit);
     this.checkpoint = {
       ...this.checkpoint,
@@ -310,6 +437,7 @@ class InMemoryBlueprintStore extends BlueprintJobStore {
     if (commit.result.storyBible !== undefined) this.storyBible = commit.result.storyBible;
     if (commit.result.coreSettings !== undefined) this.coreSettings = commit.result.coreSettings;
     if (commit.result.outline !== undefined) this.outline = commit.result.outline;
+    if (this.cancelAfterStep === commit.step) this.status = "cancelled";
     return this.checkpoint;
   }
 

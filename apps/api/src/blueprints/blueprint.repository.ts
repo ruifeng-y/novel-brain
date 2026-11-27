@@ -102,11 +102,16 @@ export class BlueprintRepository implements OnModuleDestroy {
     ) {
       return null;
     }
+    const modelConfigId =
+      lookup.blueprint.status === "waiting_model_config"
+        ? ((await this.preferredModelConfigId(userId)) ?? lookup.job.modelConfigId)
+        : lookup.job.modelConfigId;
     if (lookup.blueprint.status !== "queued") {
       await this.withTenant(userId, async (transaction) => {
         await transaction.execute(
           sql`UPDATE jobs
-                 SET status = 'queued', error_code = NULL, error_message = NULL,
+                 SET status = 'queued', model_config_id = ${modelConfigId},
+                     error_code = NULL, error_message = NULL,
                      finished_at = NULL, updated_at = now()
                WHERE id = ${lookup.job.id} AND user_id = ${userId}`,
         );
@@ -123,7 +128,7 @@ export class BlueprintRepository implements OnModuleDestroy {
       workId: lookup.job.workId,
       branchId: lookup.job.branchId,
       actorId: lookup.job.userId,
-      modelConfigId: lookup.job.modelConfigId,
+      modelConfigId,
       idempotencyKey: lookup.job.idempotencyKey,
       budget: lookup.job.budget as GenerateBlueprintJob["budget"],
       checkpoint: lookup.job.checkpoint as GenerateBlueprintJob["checkpoint"],

@@ -34,6 +34,7 @@ export interface GenerationRequest {
   model?: string;
   maxTokens?: number;
   operation?: GenerationOperation;
+  responseFormat?: "json";
 }
 
 export const WRITING_ACTION_OPERATIONS = [
@@ -196,6 +197,9 @@ export class DeepSeekProvider implements AiGateway {
       ],
       max_tokens: input.maxTokens ?? 2_000,
       stream: false,
+      ...(input.responseFormat === "json"
+        ? { response_format: { type: "json_object" as const } }
+        : {}),
     });
     const response = this.fetchImpl
       ? await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
@@ -903,7 +907,7 @@ function fakeCoreSettingsJson(): string {
       summary: `虚构核心设定 ${index + 1} 摘要`,
       description: `虚构核心设定 ${index + 1} 描述`,
       tags: [],
-      data: {},
+      data: index === 0 ? { genre: "仙侠", world: "修真世界" } : {},
       required: true,
       source: "blueprint",
     })),

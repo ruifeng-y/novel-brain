@@ -70,6 +70,10 @@ export interface LoadedBlueprintJob {
     generationGuidance: Record<string, unknown>;
   } | null;
   modelConfig: StoredModelConfig | null;
+  pendingProviderResult?: {
+    step: BlueprintJobStep;
+    result: GenerationResult;
+  };
 }
 
 export interface BlueprintStepResult {
@@ -105,7 +109,22 @@ export abstract class BlueprintJobStore {
   abstract begin(
     payload: GenerateBlueprintJob,
     loaded: LoadedBlueprintJob,
-  ): Promise<BlueprintCheckpoint>;
+  ): Promise<BlueprintCheckpoint | undefined>;
+  abstract isRunnable(payload: GenerateBlueprintJob): Promise<boolean>;
+  abstract reserveProviderCall(
+    payload: GenerateBlueprintJob,
+    step: BlueprintJobStep,
+    checkpoint: BlueprintCheckpoint,
+    projectedTokens: number,
+    projectedCostCny: number,
+  ): Promise<boolean>;
+  abstract recordProviderResult(
+    payload: GenerateBlueprintJob,
+    step: BlueprintJobStep,
+    checkpoint: BlueprintCheckpoint,
+    result: GenerationResult,
+    cost: BlueprintCost,
+  ): Promise<void>;
   abstract commitStep(commit: BlueprintStepCommit): Promise<BlueprintCheckpoint>;
   abstract completeReady(
     payload: GenerateBlueprintJob,
@@ -204,6 +223,9 @@ export class BlueprintJobProcessor {
     }
 
     let checkpoint = await this.repository.begin(payload, loaded);
+    if (!checkpoint) {
+      return;
+    }
     let storyBible = loaded.blueprint.storyBible ?? undefined;
     let coreSettings =
       loaded.blueprint.coreSettings.length > 0 ? loaded.blueprint.coreSettings : undefined;
@@ -211,34 +233,67 @@ export class BlueprintJobProcessor {
     let usedCost = loaded.job.cost;
     const modelRatePerTokenCny = loaded.modelConfig.ratePerTokenCny ?? M0_COST_PER_TOKEN_CNY;
     const startIndex = BLUEPRINT_JOB_STEPS.indexOf(checkpoint.step);
-    const provider =
-      "generateText" in this.providerResolver
-        ? this.providerResolver
-        : this.providerResolver.create(loaded.modelConfig);
+    let pendingProviderResult = loaded.pendingProviderResult;
+    let provider: AiGateway;
+    try {
+      provider =
+        "generateText" in this.providerResolver
+          ? this.providerResolver
+          : this.providerResolver.create(loaded.modelConfig);
+    } catch (error) {
+      await this.repository.fail(
+        payload,
+        loaded,
+        checkpoint.step,
+        checkpoint,
+        toFailure(error, modelRatePerTokenCny),
+      );
+      return;
+    }
 
     for (const step of BLUEPRINT_JOB_STEPS.slice(startIndex)) {
+      if (!(await this.repository.isRunnable(payload))) {
+        return;
+      }
       try {
-        const budget = this.projectBudget({
-          loaded,
-          step,
-          modelRatePerTokenCny,
-          ...(storyBible ? { storyBible } : {}),
-          ...(coreSettings ? { coreSettings } : {}),
-          ...(outline ? { outline } : {}),
-        });
-        if (
-          usedCost.totalTokens + budget.tokens > loaded.job.budget.maxTokens ||
-          usedCost.costCny + budget.costCny > loaded.job.budget.maxCostCny
-        ) {
-          await this.repository.pauseBudget(
-            payload,
+        const cachedProviderResult =
+          pendingProviderResult?.step === step ? pendingProviderResult.result : undefined;
+        let budget = { tokens: 0, costCny: 0 };
+        if (!cachedProviderResult) {
+          budget = this.projectBudget({
             loaded,
             step,
-            checkpoint,
-            budget.tokens,
-            budget.costCny,
-          );
-          return;
+            modelRatePerTokenCny,
+            ...(storyBible ? { storyBible } : {}),
+            ...(coreSettings ? { coreSettings } : {}),
+            ...(outline ? { outline } : {}),
+          });
+          if (
+            usedCost.totalTokens + budget.tokens > loaded.job.budget.maxTokens ||
+            usedCost.costCny + budget.costCny > loaded.job.budget.maxCostCny
+          ) {
+            await this.repository.pauseBudget(
+              payload,
+              loaded,
+              step,
+              checkpoint,
+              budget.tokens,
+              budget.costCny,
+            );
+            return;
+          }
+          if (providerStep(step)) {
+            const reserved = await this.repository.reserveProviderCall(
+              payload,
+              step,
+              checkpoint,
+              budget.tokens,
+              budget.costCny,
+            );
+            if (!reserved) {
+              return;
+            }
+          }
         }
 
         const result = await this.executeStep({
@@ -248,6 +303,7 @@ export class BlueprintJobProcessor {
           step,
           provider,
           modelRatePerTokenCny,
+          ...(cachedProviderResult ? { cachedProviderResult } : {}),
           ...(storyBible ? { storyBible } : {}),
           ...(coreSettings ? { coreSettings } : {}),
           ...(outline ? { outline } : {}),
@@ -265,6 +321,9 @@ export class BlueprintJobProcessor {
           progress: STEP_PROGRESS[step],
           result,
         });
+        if (cachedProviderResult) {
+          pendingProviderResult = undefined;
+        }
       } catch (error) {
         await this.repository.fail(
           payload,
@@ -286,6 +345,7 @@ export class BlueprintJobProcessor {
     step: BlueprintJobStep;
     provider: AiGateway;
     modelRatePerTokenCny: number;
+    cachedProviderResult?: GenerationResult;
     storyBible?: BlueprintStoryBibleDraft;
     coreSettings?: BlueprintCoreSettingDraft[];
     outline?: BlueprintOutlineDraft;
@@ -305,19 +365,30 @@ export class BlueprintJobProcessor {
           input.provider,
           "blueprint_story_bible",
           storyBiblePrompt(input.loaded),
+          input.cachedProviderResult,
         );
+        const cost = costOf(result, input.modelRatePerTokenCny);
+        if (!input.cachedProviderResult) {
+          await this.repository.recordProviderResult(
+            input.payload,
+            input.step,
+            input.checkpoint,
+            result,
+            cost,
+          );
+        }
         let storyBible: BlueprintStoryBibleDraft;
         try {
           storyBible = this.parseStoryBible(result.text);
         } catch (error) {
-          throw new BlueprintStepCostError(error, costOf(result, input.modelRatePerTokenCny));
+          throw new BlueprintStepCostError(error, cost);
         }
         return {
           storyBible,
           output: providerAuditOutput(input.loaded, "blueprint.story_bible.v1", result.text, {
             cardCount: storyBible.cards.length,
           }),
-          cost: costOf(result, input.modelRatePerTokenCny),
+          cost,
           checkpointPayload: { storyBibleReady: true },
         };
       }
@@ -327,19 +398,30 @@ export class BlueprintJobProcessor {
           input.provider,
           "blueprint_core_settings",
           coreSettingsPrompt(input.loaded, input.storyBible),
+          input.cachedProviderResult,
         );
+        const cost = costOf(result, input.modelRatePerTokenCny);
+        if (!input.cachedProviderResult) {
+          await this.repository.recordProviderResult(
+            input.payload,
+            input.step,
+            input.checkpoint,
+            result,
+            cost,
+          );
+        }
         let coreSettings: BlueprintCoreSettingDraft[];
         try {
           coreSettings = this.parseCoreSettings(result.text);
         } catch (error) {
-          throw new BlueprintStepCostError(error, costOf(result, input.modelRatePerTokenCny));
+          throw new BlueprintStepCostError(error, cost);
         }
         return {
           coreSettings,
           output: providerAuditOutput(input.loaded, "blueprint.core_settings.v1", result.text, {
             settingCount: coreSettings.length,
           }),
-          cost: costOf(result, input.modelRatePerTokenCny),
+          cost,
           checkpointPayload: { coreSettingsReady: true },
         };
       }
@@ -352,12 +434,23 @@ export class BlueprintJobProcessor {
           input.provider,
           "blueprint_outline",
           outlinePrompt(input.loaded, input.storyBible, input.coreSettings),
+          input.cachedProviderResult,
         );
+        const cost = costOf(result, input.modelRatePerTokenCny);
+        if (!input.cachedProviderResult) {
+          await this.repository.recordProviderResult(
+            input.payload,
+            input.step,
+            input.checkpoint,
+            result,
+            cost,
+          );
+        }
         let outline: BlueprintOutlineDraft;
         try {
           outline = this.parseOutline(result.text);
         } catch (error) {
-          throw new BlueprintStepCostError(error, costOf(result, input.modelRatePerTokenCny));
+          throw new BlueprintStepCostError(error, cost);
         }
         return {
           outline,
@@ -365,7 +458,7 @@ export class BlueprintJobProcessor {
             nodeCount: outline.nodes.length,
             sceneCardCount: outline.sceneCards.length,
           }),
-          cost: costOf(result, input.modelRatePerTokenCny),
+          cost,
           checkpointPayload: { outlineReady: true },
         };
       }
@@ -441,12 +534,17 @@ export class BlueprintJobProcessor {
     provider: AiGateway,
     operation: "blueprint_story_bible" | "blueprint_core_settings" | "blueprint_outline",
     prompt: string,
+    cachedResult?: GenerationResult,
   ): Promise<GenerationResult> {
+    if (cachedResult) {
+      return cachedResult;
+    }
     return provider.generateText({
       operation,
       prompt,
       system: blueprintSystemPrompt(),
       maxTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
+      responseFormat: "json",
     });
   }
 }
@@ -461,6 +559,7 @@ function storyBiblePrompt(loaded: LoadedBlueprintJob): string {
     `故事灵感：${loaded.work.idea ?? ""}`,
     `题材字段：${JSON.stringify(loaded.genrePack?.fields ?? {})}`,
     `题材规则：${JSON.stringify(loaded.genrePack?.rules ?? [])}`,
+    `题材界面提示：${JSON.stringify(loaded.genrePack?.uiHints ?? {})}`,
     `生成指南：${JSON.stringify(loaded.genrePack?.generationGuidance ?? {})}`,
     "输出严格 JSON 对象，包含九张固定 key 的故事圣经卡片。",
   ].join("\n");
@@ -473,7 +572,9 @@ function coreSettingsPrompt(
   return [
     `基于以下故事圣经生成核心设定候选：${JSON.stringify(storyBible)}`,
     `题材：${loaded.work.genre}`,
+    `题材必填字段：${JSON.stringify(loaded.genrePack?.fields ?? {})}`,
     `题材指南：${JSON.stringify(loaded.genrePack?.generationGuidance ?? {})}`,
+    "每个必填题材字段必须以精确 key/value 写入至少一个核心设定的 data 中。",
     "输出严格 JSON 数组，字段符合核心设定候选结构。",
   ].join("\n");
 }
@@ -558,14 +659,8 @@ export function validateBlueprintCandidates(input: {
   if (itemCount < 1 || itemCount > 3) {
     conflicts.push(structureConflict("核心设定需要一到三条与核心冲突相关的物品或功法"));
   }
-  const corpus = JSON.stringify({
-    storyBible: input.storyBible,
-    coreSettings: input.coreSettings,
-    outline: input.outline,
-  });
   for (const [key, value] of Object.entries(input.genrePackFields)) {
-    const valueText = typeof value === "string" ? value : JSON.stringify(value);
-    if (!corpus.includes(key) && valueText && !corpus.includes(valueText)) {
+    if (!hasStructuredFieldValue(input.coreSettings, key, value)) {
       missingFields.push(
         blueprintMissingFieldSchema.parse({
           key: `genre_pack:${key}`,
@@ -691,6 +786,46 @@ export function validateBlueprintCandidates(input: {
     conflicts.push(structureConflict("初始大纲节点必须全部处于 planned 状态"));
   }
   return { missingFields, conflicts };
+}
+
+function hasStructuredFieldValue(
+  coreSettings: BlueprintCoreSettingDraft[],
+  key: string,
+  expectedValue: unknown,
+): boolean {
+  return coreSettings.some((setting) => containsKeyValue(setting.data, key, expectedValue));
+}
+
+function containsKeyValue(value: unknown, key: string, expectedValue: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((entry) => containsKeyValue(entry, key, expectedValue));
+  }
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  if (
+    Object.prototype.hasOwnProperty.call(record, key) &&
+    structuredValueMatches(record[key], expectedValue)
+  ) {
+    return true;
+  }
+  return Object.values(record).some((entry) => containsKeyValue(entry, key, expectedValue));
+}
+
+function structuredValueMatches(actualValue: unknown, expectedValue: unknown): boolean {
+  if (Array.isArray(expectedValue)) {
+    return (
+      Array.isArray(actualValue) &&
+      expectedValue.every((expected) =>
+        actualValue.some((actual) => structuredValueMatches(actual, expected)),
+      )
+    );
+  }
+  if (expectedValue && typeof expectedValue === "object") {
+    return JSON.stringify(actualValue) === JSON.stringify(expectedValue);
+  }
+  return actualValue === expectedValue;
 }
 
 function structureConflict(message: string): BlueprintConflict {

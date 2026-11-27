@@ -1,16 +1,16 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
+  BLUEPRINT_JOB_STEPS,
   blueprintCheckpointSchema,
   type BlueprintCheckpoint,
-  type BlueprintConflict,
   type BlueprintCoreSettingDraft,
   type BlueprintCost,
   type BlueprintJobStep,
-  type BlueprintMissingField,
   type BlueprintOutlineDraft,
   type BlueprintStoryBibleDraft,
   type GenerateBlueprintJob,
 } from "@novel-brain/contracts";
+import type { GenerationResult } from "@novel-brain/ai";
 import { createDatabasePool } from "@novel-brain/db";
 import type { Pool, PoolClient } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -56,6 +56,8 @@ interface LoadedRow {
   base_url: string | null;
   model: string | null;
   encrypted_key: string | null;
+  pending_step_key: string | null;
+  pending_provider_result: unknown | null;
 }
 
 @Injectable()
@@ -117,7 +119,9 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
                 w.title, w.pen_name, w.idea, w.genre, w.scale_target,
                 w.chapter_length_target, w.template_pack_id,
                 gp.fields, gp.rules, gp.ui_hints, gp.generation_guidance,
-                mc.provider, mc.base_url, mc.model, mc.encrypted_key
+                mc.provider, mc.base_url, mc.model, mc.encrypted_key,
+                pending_step.step_key AS pending_step_key,
+                pending_step.output->'providerResult' AS pending_provider_result
            FROM jobs AS j
            INNER JOIN work_blueprints AS wb
              ON wb.job_id = j.id
@@ -131,6 +135,15 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
              ON mc.id = j.model_config_id
             AND mc.user_id = j.user_id
             AND mc.deleted_at IS NULL
+           LEFT JOIN LATERAL (
+             SELECT js.step_key, js.output
+               FROM job_steps AS js
+              WHERE js.job_id = j.id
+                AND js.status = 'running'
+                AND js.output ? 'providerResult'
+              ORDER BY js.started_at DESC
+              LIMIT 1
+           ) AS pending_step ON true
           WHERE j.id = $1
             AND j.user_id = $2
             AND j.type = 'generate_blueprint'
@@ -142,6 +155,11 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       if (!row) {
         return undefined;
       }
+      const checkpoint = blueprintCheckpointSchema.parse(row.checkpoint);
+      const pendingProviderResult = parsePendingProviderResult(
+        row.pending_provider_result,
+        row.pending_step_key,
+      );
       return {
         job: {
           id: row.job_id,
@@ -152,7 +170,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           modelConfigId: row.model_config_id,
           idempotencyKey: row.idempotency_key,
           budget: row.budget,
-          checkpoint: blueprintCheckpointSchema.parse(row.checkpoint),
+          checkpoint,
           cost: row.job_cost,
         },
         blueprint: {
@@ -188,11 +206,12 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
                 baseUrl: row.base_url,
                 model: row.model,
                 encryptedKey: row.encrypted_key,
-                ...(configuredModelRate() !== undefined
-                  ? { ratePerTokenCny: configuredModelRate() }
+                ...(configuredModelRate(row.model) !== undefined
+                  ? { ratePerTokenCny: configuredModelRate(row.model) }
                   : {}),
               }
             : null,
+        ...(pendingProviderResult ? { pendingProviderResult } : {}),
       };
     });
   }
@@ -200,8 +219,32 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
   async begin(
     payload: GenerateBlueprintJob,
     loaded: LoadedBlueprintJob,
-  ): Promise<BlueprintCheckpoint> {
+  ): Promise<BlueprintCheckpoint | undefined> {
     return this.withTenantTransaction(payload.actorId, async (client) => {
+      const current = await client.query<{
+        job_status: string;
+        blueprint_status: string;
+        checkpoint: unknown;
+      }>(
+        `SELECT j.status AS job_status, wb.status AS blueprint_status, j.checkpoint
+           FROM jobs AS j
+           INNER JOIN work_blueprints AS wb
+             ON wb.job_id = j.id
+            AND wb.user_id = j.user_id
+            AND wb.work_id = j.work_id
+            AND wb.branch_id = j.branch_id
+          WHERE j.id = $1 AND j.user_id = $2
+          FOR UPDATE OF j, wb`,
+        [payload.jobId, payload.actorId],
+      );
+      const row = current.rows[0];
+      if (
+        !row ||
+        !["queued", "running"].includes(row.job_status) ||
+        !["queued", "running"].includes(row.blueprint_status)
+      ) {
+        return undefined;
+      }
       await client.query(
         `UPDATE jobs
             SET status = 'running', started_at = COALESCE(started_at, now()),
@@ -215,7 +258,185 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           WHERE id = $1 AND user_id = $2`,
         [loaded.blueprint.id, payload.actorId],
       );
-      return loaded.job.checkpoint;
+      return blueprintCheckpointSchema.parse(row.checkpoint);
+    });
+  }
+
+  async isRunnable(payload: GenerateBlueprintJob): Promise<boolean> {
+    return this.withTenant(payload.actorId, async (client) => {
+      const result = await client.query<{ runnable: boolean }>(
+        `SELECT (j.status = 'running' AND wb.status = 'running') AS runnable
+           FROM jobs AS j
+           INNER JOIN work_blueprints AS wb
+             ON wb.job_id = j.id
+            AND wb.user_id = j.user_id
+            AND wb.work_id = j.work_id
+            AND wb.branch_id = j.branch_id
+          WHERE j.id = $1 AND j.user_id = $2`,
+        [payload.jobId, payload.actorId],
+      );
+      return result.rows[0]?.runnable === true;
+    });
+  }
+
+  async reserveProviderCall(
+    payload: GenerateBlueprintJob,
+    step: BlueprintJobStep,
+    checkpoint: BlueprintCheckpoint,
+    projectedTokens: number,
+    projectedCostCny: number,
+  ): Promise<boolean> {
+    return this.withTenantTransaction(payload.actorId, async (client) => {
+      const current = await client.query<{ job_status: string; blueprint_status: string }>(
+        `SELECT j.status AS job_status, wb.status AS blueprint_status
+           FROM jobs AS j
+           INNER JOIN work_blueprints AS wb
+             ON wb.job_id = j.id
+            AND wb.user_id = j.user_id
+            AND wb.work_id = j.work_id
+            AND wb.branch_id = j.branch_id
+          WHERE j.id = $1 AND j.user_id = $2
+          FOR UPDATE OF j, wb`,
+        [payload.jobId, payload.actorId],
+      );
+      const row = current.rows[0];
+      if (row?.job_status !== "running" || row.blueprint_status !== "running") {
+        return false;
+      }
+      await client.query(
+        `UPDATE cost_reservations
+            SET status = 'released', failure_class = 'unknown'
+          WHERE job_id = $1 AND status = 'reserved'`,
+        [payload.jobId],
+      );
+      const stepResult = await client.query<{ attempt: number }>(
+        `INSERT INTO job_steps
+           (id, job_id, work_id, branch_id, user_id, step_key, status, attempt,
+            input_hash, output, cost, started_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'running', 1, $7, '{}'::jsonb,
+                 '{}'::jsonb, now())
+         ON CONFLICT (job_id, step_key)
+         DO UPDATE SET status = 'running', attempt = job_steps.attempt + 1,
+                       input_hash = EXCLUDED.input_hash, output = '{}'::jsonb,
+                       cost = '{}'::jsonb, error_code = NULL, error_message = NULL,
+                       started_at = now(), finished_at = NULL
+         RETURNING attempt`,
+        [
+          uuidv7(),
+          payload.jobId,
+          payload.workId,
+          payload.branchId,
+          payload.actorId,
+          step,
+          checkpoint.inputHash,
+        ],
+      );
+      const attempt = stepResult.rows[0]?.attempt;
+      if (!attempt) {
+        throw new Error("Blueprint step reservation returned no attempt");
+      }
+      await client.query(
+        `INSERT INTO job_step_attempts
+           (id, job_id, work_id, branch_id, user_id, step_key, attempt, status,
+            input_hash, output_refs, checkpoint_revision, started_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'running', $8, '[]'::jsonb, $9, now())`,
+        [
+          uuidv7(),
+          payload.jobId,
+          payload.workId,
+          payload.branchId,
+          payload.actorId,
+          step,
+          attempt,
+          checkpoint.inputHash,
+          checkpoint.revision,
+        ],
+      );
+      await client.query(
+        `INSERT INTO cost_reservations
+           (id, user_id, work_id, branch_id, job_id, idempotency_key, status,
+            reserved_tokens, reserved_cost_cny)
+         VALUES ($1, $2, $3, $4, $5, $6, 'reserved', $7, $8)`,
+        [
+          uuidv7(),
+          payload.actorId,
+          payload.workId,
+          payload.branchId,
+          payload.jobId,
+          blueprintReservationKey(step, attempt),
+          projectedTokens,
+          projectedCostCny,
+        ],
+      );
+      await appendJobEvent(client, payload, "blueprint.step.started", {
+        step,
+        attempt,
+        checkpointRevision: checkpoint.revision,
+        projectedTokens,
+        projectedCostCny,
+      });
+      return true;
+    });
+  }
+
+  async recordProviderResult(
+    payload: GenerateBlueprintJob,
+    step: BlueprintJobStep,
+    checkpoint: BlueprintCheckpoint,
+    result: GenerationResult,
+    cost: BlueprintCost,
+  ): Promise<void> {
+    await this.withTenantTransaction(payload.actorId, async (client) => {
+      const current = await client.query<{ attempt: number }>(
+        `SELECT attempt
+           FROM job_steps
+          WHERE job_id = $1 AND step_key = $2
+          FOR UPDATE`,
+        [payload.jobId, step],
+      );
+      const attempt = current.rows[0]?.attempt;
+      if (!attempt) {
+        throw new Error("Blueprint provider result has no reserved step attempt");
+      }
+      await client.query(
+        `UPDATE job_steps
+            SET status = 'running',
+                output = jsonb_set(COALESCE(output, '{}'::jsonb),
+                                   '{providerResult}', $3::jsonb, true),
+                cost = $4::jsonb
+          WHERE job_id = $1 AND step_key = $2`,
+        [payload.jobId, step, JSON.stringify({ providerResult: result }), JSON.stringify(cost)],
+      );
+      await client.query(
+        `UPDATE job_step_attempts
+            SET output_refs = $4::jsonb
+          WHERE job_id = $1 AND step_key = $2 AND attempt = $3`,
+        [
+          payload.jobId,
+          step,
+          attempt,
+          JSON.stringify([
+            {
+              type: "provider_request",
+              id: result.providerRequestId ?? blueprintReservationKey(step, attempt),
+            },
+          ]),
+        ],
+      );
+      await client.query(
+        `UPDATE cost_reservations
+            SET status = 'settled', settled_tokens = $3, settled_cost_cny = $4,
+                settled_at = now()
+          WHERE job_id = $1 AND idempotency_key = $2`,
+        [payload.jobId, blueprintReservationKey(step, attempt), cost.totalTokens, cost.costCny],
+      );
+      await appendJobEvent(client, payload, "blueprint.provider.completed", {
+        step,
+        attempt,
+        checkpointRevision: checkpoint.revision,
+        inputTokens: cost.inputTokens,
+        outputTokens: cost.outputTokens,
+      });
     });
   }
 
@@ -239,6 +460,14 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
       const revision = row.checkpoint_version + 1;
       const currentCheckpoint = blueprintCheckpointSchema.parse(row.checkpoint);
       const cost = addCost(row.cost, commit.result.cost);
+      const stepState = await client.query<{ attempt: number }>(
+        `SELECT attempt
+           FROM job_steps
+          WHERE job_id = $1 AND step_key = $2
+          FOR UPDATE`,
+        [commit.payload.jobId, commit.step],
+      );
+      const attempt = stepState.rows[0]?.attempt ?? 1;
       const checkpoint: BlueprintCheckpoint = {
         schemaVersion: 1,
         revision,
@@ -253,8 +482,8 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
          VALUES ($1, $2, $3, $4, $5, $6, 'succeeded', 1, $7::jsonb, $8::jsonb,
                  now(), now())
          ON CONFLICT (job_id, step_key)
-         DO UPDATE SET status = 'succeeded', attempt = job_steps.attempt + 1,
-                       output = EXCLUDED.output, cost = EXCLUDED.cost, finished_at = now()`,
+         DO UPDATE SET status = 'succeeded', output = EXCLUDED.output,
+                       cost = EXCLUDED.cost, finished_at = now()`,
         [
           uuidv7(),
           commit.payload.jobId,
@@ -267,10 +496,37 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
         ],
       );
       await client.query(
+        `UPDATE job_steps
+            SET attempt = $3
+          WHERE job_id = $1 AND step_key = $2`,
+        [commit.payload.jobId, commit.step, attempt],
+      );
+      await client.query(
+        `INSERT INTO job_step_attempts
+           (id, job_id, work_id, branch_id, user_id, step_key, attempt, status,
+            input_hash, output_refs, checkpoint_revision, started_at, finished_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'succeeded', $8, '[]'::jsonb,
+                 $9, now(), now())
+         ON CONFLICT (job_id, step_key, attempt)
+         DO UPDATE SET status = 'succeeded', checkpoint_revision = EXCLUDED.checkpoint_revision,
+                       finished_at = now()`,
+        [
+          uuidv7(),
+          commit.payload.jobId,
+          commit.payload.workId,
+          commit.payload.branchId,
+          commit.payload.actorId,
+          commit.step,
+          attempt,
+          checkpoint.inputHash,
+          revision,
+        ],
+      );
+      await client.query(
         `INSERT INTO job_checkpoints
            (id, job_id, work_id, branch_id, user_id, step_key, schema_version,
             revision, attempt, input_hash, payload)
-         VALUES ($1, $2, $3, $4, $5, $6, 1, $7, 1, $8, $9::jsonb)`,
+         VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8, $9, $10::jsonb)`,
         [
           uuidv7(),
           commit.payload.jobId,
@@ -279,6 +535,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           commit.payload.actorId,
           commit.step,
           revision,
+          attempt,
           checkpoint.inputHash,
           JSON.stringify(checkpoint),
         ],
@@ -323,6 +580,13 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           commit.result.conflicts ? JSON.stringify(commit.result.conflicts) : null,
         ],
       );
+      await appendJobEvent(client, commit.payload, "blueprint.step.succeeded", {
+        step: commit.step,
+        attempt,
+        checkpointRevision: revision,
+        inputTokens: commit.result.cost.inputTokens,
+        outputTokens: commit.result.cost.outputTokens,
+      });
       return checkpoint;
     });
   }
@@ -445,11 +709,68 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
     failure: BlueprintFailure,
   ): Promise<void> {
     await this.withTenantTransaction(payload.actorId, async (client) => {
-      const currentCost = failure.cost ? addCost(loaded.job.cost, failure.cost) : undefined;
+      const current = await client.query<{ cost: BlueprintCost }>(
+        `SELECT cost
+           FROM jobs
+          WHERE id = $1 AND user_id = $2
+          FOR UPDATE`,
+        [payload.jobId, payload.actorId],
+      );
+      const existingCost = current.rows[0]?.cost;
+      if (!existingCost) {
+        throw new Error("Blueprint job disappeared during failure recording");
+      }
+      const currentCost = failure.cost ? addCost(existingCost, failure.cost) : existingCost;
+      const stepState = await client.query<{ attempt: number }>(
+        `SELECT attempt
+           FROM job_steps
+          WHERE job_id = $1 AND step_key = $2
+          FOR UPDATE`,
+        [payload.jobId, step],
+      );
+      const attempt = stepState.rows[0]?.attempt;
+      if (attempt) {
+        await client.query(
+          `UPDATE job_steps
+              SET status = 'failed', error_code = $3, error_message = $4,
+                  finished_at = now()
+            WHERE job_id = $1 AND step_key = $2`,
+          [payload.jobId, step, failure.code, failure.message],
+        );
+        await client.query(
+          `UPDATE job_step_attempts
+              SET status = 'failed', error_code = $4, error_message = $5,
+                  checkpoint_revision = $6, finished_at = now()
+            WHERE job_id = $1 AND step_key = $2 AND attempt = $3`,
+          [payload.jobId, step, attempt, failure.code, failure.message, checkpoint.revision],
+        );
+        if (failure.cost) {
+          await client.query(
+            `UPDATE cost_reservations
+                SET status = 'settled', settled_tokens = $3, settled_cost_cny = $4,
+                    failure_class = $5, settled_at = now()
+              WHERE job_id = $1 AND idempotency_key = $2`,
+            [
+              payload.jobId,
+              blueprintReservationKey(step, attempt),
+              failure.cost.totalTokens,
+              failure.cost.costCny,
+              failure.failureClass,
+            ],
+          );
+        } else {
+          await client.query(
+            `UPDATE cost_reservations
+                SET status = 'released', failure_class = $3
+              WHERE job_id = $1 AND idempotency_key = $2`,
+            [payload.jobId, blueprintReservationKey(step, attempt), failure.failureClass],
+          );
+        }
+      }
       await client.query(
         `UPDATE jobs
             SET status = 'failed', current_step = $3, error_code = $4,
-                error_message = $5, cost = COALESCE($6::jsonb, cost),
+                error_message = $5, cost = $6::jsonb,
                 finished_at = now(), updated_at = now()
           WHERE id = $1 AND user_id = $2`,
         [
@@ -458,21 +779,25 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           step,
           failure.code,
           failure.message,
-          currentCost ? JSON.stringify(currentCost) : null,
+          JSON.stringify(currentCost),
         ],
       );
       await client.query(
         `UPDATE work_blueprints
-            SET status = 'failed', current_step = $3,
-                cost = COALESCE($4::jsonb, cost), updated_at = now()
+            SET status = 'failed', current_step = $3, cost = $4::jsonb,
+                updated_at = now()
           WHERE id = $1 AND user_id = $2`,
-        [
-          loaded.blueprint.id,
-          payload.actorId,
-          step,
-          currentCost ? JSON.stringify(currentCost) : null,
-        ],
+        [loaded.blueprint.id, payload.actorId, step, JSON.stringify(currentCost)],
       );
+      await appendJobEvent(client, payload, "blueprint.step.failed", {
+        step,
+        ...(attempt ? { attempt } : {}),
+        checkpointRevision: checkpoint.revision,
+        errorCode: failure.code,
+        failureClass: failure.failureClass,
+        retryable: failure.retryable,
+        ...(failure.cost ? { totalTokens: failure.cost.totalTokens } : {}),
+      });
       await recordNotification(client, {
         userId: payload.actorId,
         workId: payload.workId,
@@ -555,6 +880,82 @@ async function recordNotification(
   );
 }
 
+async function appendJobEvent(
+  client: DatabaseClient,
+  payload: GenerateBlueprintJob,
+  eventType: string,
+  eventPayload: Record<string, unknown>,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO job_events
+       (id, job_id, work_id, branch_id, user_id, sequence, event_type, payload)
+     VALUES (
+       $1, $2, $3, $4, $5,
+       (SELECT COALESCE(MAX(sequence), 0) + 1 FROM job_events WHERE job_id = $2),
+       $6, $7::jsonb
+     )`,
+    [
+      uuidv7(),
+      payload.jobId,
+      payload.workId,
+      payload.branchId,
+      payload.actorId,
+      eventType,
+      JSON.stringify(eventPayload),
+    ],
+  );
+}
+
+function blueprintReservationKey(step: BlueprintJobStep, attempt: number): string {
+  return `blueprint:${step}:attempt:${attempt}`;
+}
+
+function parsePendingProviderResult(
+  value: unknown,
+  stepKey: string | null,
+): { step: BlueprintJobStep; result: GenerationResult } | undefined {
+  if (
+    !stepKey ||
+    !BLUEPRINT_JOB_STEPS.includes(stepKey as BlueprintJobStep) ||
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const usage = record.usage;
+  if (
+    typeof record.text !== "string" ||
+    typeof record.model !== "string" ||
+    record.finishReason !== "stop" ||
+    !usage ||
+    typeof usage !== "object" ||
+    Array.isArray(usage)
+  ) {
+    return undefined;
+  }
+  const usageRecord = usage as Record<string, unknown>;
+  if (typeof usageRecord.inputTokens !== "number" || typeof usageRecord.outputTokens !== "number") {
+    return undefined;
+  }
+  return {
+    step: stepKey as BlueprintJobStep,
+    result: {
+      text: record.text,
+      model: record.model,
+      finishReason: "stop",
+      usage: {
+        inputTokens: usageRecord.inputTokens,
+        outputTokens: usageRecord.outputTokens,
+      },
+      ...(typeof record.providerRequestId === "string"
+        ? { providerRequestId: record.providerRequestId }
+        : {}),
+    },
+  };
+}
+
 function addCost(left: BlueprintCost, right: BlueprintCost): BlueprintCost {
   return {
     inputTokens: left.inputTokens + right.inputTokens,
@@ -564,7 +965,32 @@ function addCost(left: BlueprintCost, right: BlueprintCost): BlueprintCost {
   };
 }
 
-function configuredModelRate(): number | undefined {
+function configuredModelRate(model: string): number | undefined {
+  const modelRates = parseConfiguredModelRates();
+  const modelRate = modelRates[model];
+  if (modelRate !== undefined) {
+    return modelRate;
+  }
   const value = Number(process.env.BLUEPRINT_MODEL_RATE_PER_TOKEN_CNY ?? "");
   return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function parseConfiguredModelRates(): Record<string, number> {
+  const raw = process.env.BLUEPRINT_MODEL_RATES_JSON;
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(parsed).flatMap(([model, value]) =>
+        typeof value === "number" && Number.isFinite(value) && value > 0 ? [[model, value]] : [],
+      ),
+    );
+  } catch {
+    return {};
+  }
 }

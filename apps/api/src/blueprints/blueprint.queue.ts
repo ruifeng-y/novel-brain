@@ -32,6 +32,7 @@ export class BlueprintJobQueue implements OnModuleDestroy {
       } else if (
         ["active", "delayed", "prioritized", "waiting", "waiting-children"].includes(state)
       ) {
+        await existing.updateData(payload);
         return;
       }
     }

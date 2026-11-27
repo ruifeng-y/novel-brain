@@ -85,6 +85,46 @@ describe("blueprint worker persistence", () => {
     );
     expect(checkpoints.rows.map((checkpoint) => checkpoint.revision)).toEqual([1, 2, 3, 4, 5, 6]);
 
+    const attempts = await pool.query<{
+      step_key: string;
+      status: string;
+      checkpoint_revision: number;
+    }>(
+      `SELECT step_key, status, checkpoint_revision
+         FROM job_step_attempts
+        WHERE job_id = $1
+        ORDER BY step_key`,
+      [seeded.jobId],
+    );
+    expect(attempts.rows).toHaveLength(6);
+    expect(attempts.rows.every((attempt) => attempt.status === "succeeded")).toBe(true);
+    expect(attempts.rows.every((attempt) => attempt.checkpoint_revision > 0)).toBe(true);
+
+    const reservations = await pool.query<{
+      idempotency_key: string;
+      status: string;
+      settled_tokens: number;
+      settled_cost_cny: number;
+    }>(
+      `SELECT idempotency_key, status, settled_tokens, settled_cost_cny
+         FROM cost_reservations
+        WHERE job_id = $1
+        ORDER BY idempotency_key`,
+      [seeded.jobId],
+    );
+    expect(reservations.rows).toHaveLength(3);
+    expect(reservations.rows.every((reservation) => reservation.status === "settled")).toBe(true);
+    expect(reservations.rows.every((reservation) => reservation.settled_tokens > 0)).toBe(true);
+    expect(reservations.rows.every((reservation) => reservation.settled_cost_cny > 0)).toBe(true);
+
+    const events = await pool.query<{ event_type: string }>(
+      `SELECT event_type FROM job_events WHERE job_id = $1 ORDER BY sequence`,
+      [seeded.jobId],
+    );
+    expect(
+      events.rows.filter((event) => event.event_type === "blueprint.step.succeeded"),
+    ).toHaveLength(6);
+
     const notification = await pool.query<{
       type: string;
       payload: { title: string; message: string; href: string };
@@ -146,6 +186,80 @@ describe("blueprint worker persistence", () => {
     );
   });
 
+  it("does not resurrect a job cancelled after the worker loaded it", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    const loaded = await repository.loadJob(seeded.payload);
+    expect(loaded).toBeDefined();
+    await pool.query(`UPDATE jobs SET status = 'cancelled' WHERE id = $1`, [seeded.jobId]);
+    await pool.query(`UPDATE work_blueprints SET status = 'cancelled' WHERE id = $1`, [
+      seeded.blueprintId,
+    ]);
+
+    const checkpoint = await repository.begin(seeded.payload, loaded!);
+
+    expect(checkpoint).toBeUndefined();
+    const statuses = await pool.query<{ job_status: string; blueprint_status: string }>(
+      `SELECT j.status AS job_status, wb.status AS blueprint_status
+         FROM jobs AS j
+         INNER JOIN work_blueprints AS wb ON wb.job_id = j.id
+        WHERE j.id = $1`,
+      [seeded.jobId],
+    );
+    expect(statuses.rows[0]).toEqual({
+      job_status: "cancelled",
+      blueprint_status: "cancelled",
+    });
+  });
+
+  it("loads the configured price for the selected model", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    process.env.BLUEPRINT_MODEL_RATES_JSON = JSON.stringify({
+      "deepseek-chat": 0.000003,
+    });
+    try {
+      const loaded = await repository.loadJob(seeded.payload);
+      expect(loaded?.modelConfig?.ratePerTokenCny).toBe(0.000003);
+    } finally {
+      delete process.env.BLUEPRINT_MODEL_RATES_JSON;
+    }
+  });
+
+  it("resumes from a persisted provider result before advancing the checkpoint", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    const storyBibleResult = await new FakeAiProvider().generateText({
+      operation: "blueprint_story_bible",
+      prompt: "seed cached story bible result",
+    });
+    await pool.query(
+      `INSERT INTO job_steps
+         (id, job_id, work_id, branch_id, user_id, step_key, status, attempt,
+          input_hash, output, started_at)
+       VALUES ($1, $2, $3, $4, $5, 'story_bible', 'running', 1, $6, $7::jsonb, now())`,
+      [
+        uuidv7(),
+        seeded.jobId,
+        seeded.workId,
+        seeded.payload.branchId,
+        seeded.userId,
+        "a".repeat(64),
+        JSON.stringify({ providerResult: storyBibleResult }),
+      ],
+    );
+    const provider = new CountingFakeGateway();
+
+    await new BlueprintJobProcessor(repository, provider).process(seeded.payload);
+
+    expect(provider.generatedCalls).toBe(2);
+    const blueprint = await pool.query<{ status: string }>(
+      `SELECT status FROM work_blueprints WHERE id = $1`,
+      [seeded.blueprintId],
+    );
+    expect(blueprint.rows[0]?.status).toBe("waiting_review");
+  });
+
   it("pauses at the budget gate before calling the provider", async () => {
     await pool.query("TRUNCATE TABLE users CASCADE");
     const seeded = await seedQueuedBlueprint(pool);
@@ -197,11 +311,69 @@ describe("blueprint worker persistence", () => {
       error_code: "MODEL_RATE_LIMITED",
       checkpoint_version: 1,
     });
+    const attempt = await pool.query<{ status: string; error_code: string }>(
+      `SELECT status, error_code
+         FROM job_step_attempts
+        WHERE job_id = $1 AND step_key = 'story_bible'`,
+      [seeded.jobId],
+    );
+    expect(attempt.rows[0]).toMatchObject({
+      status: "failed",
+      error_code: "MODEL_RATE_LIMITED",
+    });
+    const reservation = await pool.query<{ status: string; failure_class: string }>(
+      `SELECT status, failure_class
+         FROM cost_reservations
+        WHERE job_id = $1`,
+      [seeded.jobId],
+    );
+    expect(reservation.rows[0]).toMatchObject({
+      status: "released",
+      failure_class: "rate_limit",
+    });
+    const failedEvent = await pool.query<{ count: number }>(
+      `SELECT count(*)::int AS count
+         FROM job_events
+        WHERE job_id = $1 AND event_type = 'blueprint.step.failed'`,
+      [seeded.jobId],
+    );
+    expect(failedEvent.rows[0]?.count).toBe(1);
     await expectNotification(
       pool,
       seeded.userId,
       "blueprint_failed",
       `blueprint:${seeded.jobId}:failed:1:MODEL_RATE_LIMITED`,
+    );
+  });
+
+  it("preserves committed step costs when a later provider call fails", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    const provider = new SecondStepRateLimitedGateway();
+
+    await new BlueprintJobProcessor(repository, provider).process(seeded.payload);
+
+    const result = await pool.query<{
+      job_cost: { inputTokens: number; outputTokens: number; totalTokens: number };
+      step_cost: { inputTokens: number; outputTokens: number; totalTokens: number };
+    }>(
+      `SELECT j.cost AS job_cost, js.cost AS step_cost
+         FROM jobs AS j
+         INNER JOIN job_steps AS js
+           ON js.job_id = j.id AND js.step_key = 'story_bible'
+        WHERE j.id = $1`,
+      [seeded.jobId],
+    );
+
+    expect(result.rows[0]?.step_cost.totalTokens).toBeGreaterThan(0);
+    expect(result.rows[0]?.job_cost.inputTokens).toBe(
+      (result.rows[0]?.step_cost.inputTokens ?? 0) + 100,
+    );
+    expect(result.rows[0]?.job_cost.outputTokens).toBe(
+      (result.rows[0]?.step_cost.outputTokens ?? 0) + 20,
+    );
+    expect(result.rows[0]?.job_cost.totalTokens).toBe(
+      (result.rows[0]?.step_cost.totalTokens ?? 0) + 120,
     );
   });
 });
@@ -220,12 +392,40 @@ class FailIfCalledGateway implements AiGateway {
 }
 
 class RateLimitedGateway extends FailIfCalledGateway {
-  override async generateText(_input: GenerationRequest): Promise<never> {
+  override async generateText(): Promise<never> {
     this.calls += 1;
     throw new AiProviderError("rate limited", {
       failureClass: "rate_limit",
       retryable: true,
     });
+  }
+}
+
+class CountingFakeGateway extends FakeAiProvider {
+  generatedCalls = 0;
+
+  override async generateText(input: GenerationRequest) {
+    this.generatedCalls += 1;
+    return super.generateText(input);
+  }
+}
+
+class SecondStepRateLimitedGateway implements AiGateway {
+  private readonly successfulProvider = new FakeAiProvider();
+
+  async generateText(input: GenerationRequest) {
+    if (input.operation === "blueprint_core_settings") {
+      throw new AiProviderError("second blueprint call was rate limited", {
+        failureClass: "rate_limit",
+        retryable: true,
+        usage: { inputTokens: 100, outputTokens: 20 },
+      });
+    }
+    return this.successfulProvider.generateText(input);
+  }
+
+  streamText(input: GenerationRequest) {
+    return this.successfulProvider.streamText(input);
   }
 }
 
