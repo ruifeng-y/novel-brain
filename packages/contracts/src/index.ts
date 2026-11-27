@@ -5854,6 +5854,288 @@ export const exportWorkJobSchema = z
   .strict();
 export type ExportWorkJob = z.infer<typeof exportWorkJobSchema>;
 
+export const BLUEPRINT_JOB_STEPS = [
+  "prepare",
+  "story_bible",
+  "core_settings",
+  "outline",
+  "validate",
+  "await_review",
+] as const;
+
+export const blueprintJobStepSchema = z.enum(BLUEPRINT_JOB_STEPS);
+export type BlueprintJobStep = z.infer<typeof blueprintJobStepSchema>;
+
+export const blueprintStatusSchema = z.enum([
+  "queued",
+  "running",
+  "waiting_model_config",
+  "budget_paused",
+  "waiting_review",
+  "failed",
+  "confirmed",
+  "cancelled",
+]);
+export type BlueprintStatus = z.infer<typeof blueprintStatusSchema>;
+
+export const blueprintBudgetSchema = z
+  .object({
+    maxTokens: z.number().int().min(20_000).max(400_000),
+    maxCostCny: z.number().positive().max(10),
+  })
+  .strict();
+export type BlueprintBudget = z.infer<typeof blueprintBudgetSchema>;
+
+export const blueprintEstimateSchema = z
+  .object({
+    ruleVersion: z.literal("blueprint-estimate-v1"),
+    planned: z
+      .object({
+        volumes: z.number().int().positive(),
+        chapters: z.number().int().positive(),
+        scenes: z.number().int().positive(),
+      })
+      .strict(),
+    estimatedTokens: z.number().int().positive(),
+    estimatedCostCny: z.number().nonnegative(),
+    defaultBudget: blueprintBudgetSchema,
+    assumptions: z.array(z.string().trim().min(1).max(500)).min(1).max(10),
+  })
+  .strict();
+export type BlueprintEstimate = z.infer<typeof blueprintEstimateSchema>;
+
+export const blueprintCostSchema = z
+  .object({
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    totalTokens: z.number().int().nonnegative(),
+    costCny: z.number().nonnegative(),
+  })
+  .strict();
+export type BlueprintCost = z.infer<typeof blueprintCostSchema>;
+
+const blueprintHashSchema = z.string().regex(/^[0-9a-f]{64}$/u);
+
+export const blueprintMissingFieldSchema = z
+  .object({
+    key: z.string().trim().min(1).max(200),
+    label: z.string().trim().min(1).max(200),
+    required: z.boolean(),
+    severity: z.enum(["P0", "P1", "P2"]),
+    message: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type BlueprintMissingField = z.infer<typeof blueprintMissingFieldSchema>;
+
+export const blueprintConflictSchema = z
+  .object({
+    id: uuidV7Schema,
+    severity: z.enum(["P0", "P1", "P2"]),
+    title: z.string().trim().min(1).max(200),
+    detail: z.string().trim().min(1).max(2_000),
+    affectedKeys: z.array(z.string().trim().min(1).max(200)).max(50),
+    status: z.enum(["open", "resolved"]),
+  })
+  .strict();
+export type BlueprintConflict = z.infer<typeof blueprintConflictSchema>;
+
+export const blueprintAcknowledgementSchema = z
+  .object({
+    fieldKey: z.string().trim().min(1).max(200),
+    decision: z.literal("not_applicable"),
+    reason: z.string().trim().min(2).max(500),
+  })
+  .strict();
+export type BlueprintAcknowledgement = z.infer<typeof blueprintAcknowledgementSchema>;
+
+export const blueprintCoreSettingDraftSchema = z
+  .object({
+    candidateId: uuidV7Schema,
+    type: settingEntityTypeSchema,
+    name: z.string().trim().min(1).max(200),
+    aliases: z.array(z.string().trim().min(1).max(200)).max(20).default([]),
+    summary: z.string().trim().min(1).max(2_000),
+    description: z.string().trim().min(1).max(20_000),
+    tags: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+    data: z.record(z.string(), z.unknown()),
+    required: z.boolean(),
+    source: z.literal("blueprint"),
+  })
+  .strict();
+export type BlueprintCoreSettingDraft = z.infer<typeof blueprintCoreSettingDraftSchema>;
+
+export const blueprintOutlineNodeDraftSchema = z
+  .object({
+    id: uuidV7Schema,
+    parentId: uuidV7Schema.nullable(),
+    level: outlineLevelSchema,
+    sortOrder: z.number().int().min(0).max(100_000),
+    title: z.string().trim().min(1).max(200),
+    summary: z.string().trim().max(2_000),
+    status: outlineNodeStatusSchema.default("planned"),
+    chapterNumber: z.number().int().positive().max(10_000).nullable(),
+    brief: chapterBriefSchema.nullable(),
+    tension: z.number().int().min(0).max(100).nullable(),
+  })
+  .strict();
+export type BlueprintOutlineNodeDraft = z.infer<typeof blueprintOutlineNodeDraftSchema>;
+
+export const blueprintVolumeContractDraftSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    objective: z.string().trim().min(1).max(2_000),
+    conflict: z.string().trim().min(1).max(2_000),
+    turningPoints: z.array(z.string().trim().min(1).max(500)).max(30),
+    exitConditions: z.array(z.string().trim().min(1).max(500)).max(30),
+    plotLines: z.array(volumePlotLineSchema).max(30),
+  })
+  .strict();
+export type BlueprintVolumeContractDraft = z.infer<typeof blueprintVolumeContractDraftSchema>;
+
+export const blueprintSceneCardDraftSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    title: z.string().trim().min(1).max(200),
+    povLabel: z.string().trim().min(1).max(200),
+    locationLabel: z.string().trim().min(1).max(200),
+    storyTime: z.string().trim().min(1).max(200),
+    beats: z.array(z.string().trim().min(1).max(1_000)).min(1).max(50),
+    informationReleases: z.array(z.string().trim().min(1).max(500)).max(50),
+    tension: z.number().int().min(0).max(100).nullable(),
+  })
+  .strict();
+export type BlueprintSceneCardDraft = z.infer<typeof blueprintSceneCardDraftSchema>;
+
+export const blueprintOutlineDraftSchema = z
+  .object({
+    nodes: z.array(blueprintOutlineNodeDraftSchema).min(1).max(1_000),
+    volumeContracts: z.array(blueprintVolumeContractDraftSchema).max(100),
+    sceneCards: z.array(blueprintSceneCardDraftSchema).max(2_000),
+  })
+  .strict();
+export type BlueprintOutlineDraft = z.infer<typeof blueprintOutlineDraftSchema>;
+
+export const blueprintDraftSchema = z
+  .object({
+    storyBible: z
+      .array(storyBibleCardSchema)
+      .length(9)
+      .superRefine((cards, context) => {
+        const keys = cards.map((card) => card.key);
+        if (new Set(keys).size !== keys.length) {
+          context.addIssue({
+            code: "custom",
+            message: "Blueprint story bible keys must be unique",
+          });
+        }
+        for (const key of STORY_BIBLE_CARD_KEYS) {
+          if (!keys.includes(key)) {
+            context.addIssue({ code: "custom", message: `Story bible card ${key} is required` });
+          }
+        }
+      }),
+    coreSettings: z.array(blueprintCoreSettingDraftSchema).max(200),
+    outline: blueprintOutlineDraftSchema,
+  })
+  .strict();
+export type BlueprintDraft = z.infer<typeof blueprintDraftSchema>;
+
+export const blueprintCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(1).default(1),
+    revision: z.number().int().nonnegative().default(0),
+    step: blueprintJobStepSchema,
+    inputHash: blueprintHashSchema.nullable().default(null),
+    payload: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type BlueprintCheckpoint = z.infer<typeof blueprintCheckpointSchema>;
+
+export const GENERATE_BLUEPRINT_JOB = "generate_blueprint";
+
+export const generateBlueprintJobSchema = z
+  .object({
+    jobId: uuidV7Schema,
+    jobType: z.literal(GENERATE_BLUEPRINT_JOB),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    modelConfigId: uuidV7Schema,
+    idempotencyKey: z.string().min(1).max(200),
+    budget: blueprintBudgetSchema,
+    checkpoint: blueprintCheckpointSchema,
+  })
+  .strict();
+export type GenerateBlueprintJob = z.infer<typeof generateBlueprintJobSchema>;
+
+export const BLUEPRINT_ACTIONS = ["edit", "retry", "resume_budget", "cancel", "confirm"] as const;
+export const blueprintActionSchema = z.enum(BLUEPRINT_ACTIONS);
+export type BlueprintAction = z.infer<typeof blueprintActionSchema>;
+
+export const workBlueprintSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    status: blueprintStatusSchema,
+    version: z.number().int().positive(),
+    progress: z.number().int().min(0).max(100),
+    currentStep: blueprintJobStepSchema,
+    estimate: blueprintEstimateSchema,
+    cost: blueprintCostSchema,
+    draftHash: blueprintHashSchema.nullable(),
+    storyBibleDraft: z.array(storyBibleCardSchema).length(9).nullable(),
+    coreSettingsDraft: z.array(blueprintCoreSettingDraftSchema).max(200),
+    outlineDraft: blueprintOutlineDraftSchema.nullable(),
+    missingFields: z.array(blueprintMissingFieldSchema).max(500),
+    conflicts: z.array(blueprintConflictSchema).max(200),
+    acknowledgements: z.array(blueprintAcknowledgementSchema).max(500),
+    allowedActions: z.array(blueprintActionSchema),
+    confirmedAt: z.string().datetime().nullable(),
+    confirmedBy: uuidV7Schema.nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((blueprint, context) => {
+    if (
+      blueprint.status === "confirmed" &&
+      (!blueprint.confirmedAt ||
+        !blueprint.confirmedBy ||
+        !blueprint.draftHash ||
+        !blueprint.storyBibleDraft ||
+        !blueprint.outlineDraft)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Confirmed blueprints require confirmation metadata and complete drafts",
+        path: ["status"],
+      });
+    }
+  });
+export type WorkBlueprint = z.infer<typeof workBlueprintSchema>;
+
+export const blueprintConfirmRequestSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    draftHash: blueprintHashSchema,
+    acknowledgements: z.array(blueprintAcknowledgementSchema).max(500),
+    confirmed: z.literal(true),
+  })
+  .strict();
+export type BlueprintConfirmRequest = z.infer<typeof blueprintConfirmRequestSchema>;
+
+export const blueprintBudgetUpdateRequestSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    budget: blueprintBudgetSchema,
+  })
+  .strict();
+export type BlueprintBudgetUpdateRequest = z.infer<typeof blueprintBudgetUpdateRequestSchema>;
+
+export const blueprintEstimateResponseSchema = apiEnvelopeSchema(blueprintEstimateSchema);
+export const workBlueprintResponseSchema = apiEnvelopeSchema(workBlueprintSchema);
+
 export const WORKER_QUEUE_NAME = "novel-brain-jobs";
 export const PROCESS_IMPORT_JOB = "process_import";
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
@@ -6835,6 +7117,7 @@ export const workerJobSchema = z.discriminatedUnion("jobType", [
   importProcessJobSchema,
   generateChapterJobSchema,
   generateGoldenThreeJobSchema,
+  generateBlueprintJobSchema,
   summaryRebuildJobSchema,
   writeActionJobSchema,
   exportWorkJobSchema,

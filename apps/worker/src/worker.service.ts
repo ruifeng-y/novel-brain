@@ -257,9 +257,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         outcome = await this.manuscriptImportProcessor.process(payload);
       } else if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
         await this.goldenThreeProcessor.process(payload);
-      } else {
+      } else if (payload.jobType === GENERATE_CHAPTER_JOB) {
         await this.processor.process(payload);
         await this.batchPlanProcessor.onChildFinished(payload);
+      } else {
+        throw new Error(`Unsupported worker job type: ${payload.jobType}`);
       }
       if (!outcome) {
         outcome = await this.completedJobOutcome(payload);

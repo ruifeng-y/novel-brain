@@ -3,6 +3,13 @@ import type {
   AccountDeletionFailure,
   AccountDeletionStoreResult,
   AccountExportInventoryEntry,
+  BlueprintAcknowledgement,
+  BlueprintConflict,
+  BlueprintCoreSettingDraft,
+  BlueprintCost,
+  BlueprintEstimate,
+  BlueprintMissingField,
+  BlueprintOutlineDraft,
   ModerationAppealStatus,
   ModerationCase,
   ModerationCaseStatus,
@@ -16,6 +23,7 @@ import type {
   PublishPlatformPreset,
   PublishReaderPreview,
   PublishReadinessStatus,
+  StoryBibleCard,
   WorkExportManifest,
   WorkExportRequest,
   WorkExportSourceDescriptor,
@@ -439,7 +447,7 @@ export const versionNodes = pgTable(
     index("version_nodes_user_work_idx").on(table.userId, table.workId),
     check(
       "version_nodes_node_type_check",
-      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'writing_action_output', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
+      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'writing_action_output', 'snapshot', 'change_apply', 'branch_merge', 'rollback', 'blueprint_version')`,
     ),
   ],
 );
@@ -2481,11 +2489,11 @@ export const jobs = pgTable(
     index("jobs_parent_created_idx").on(table.parentJobId, table.createdAt),
     check(
       "jobs_type_check",
-      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan', 'export_work')`,
+      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan', 'export_work', 'generate_blueprint')`,
     ),
     check(
       "jobs_required_scope_check",
-      sql`(${table.type} in ('agent_workflow', 'batch_plan', 'export_work')) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+      sql`(${table.type} in ('agent_workflow', 'batch_plan', 'export_work')) or (${table.type} = 'generate_blueprint' and ${table.chapterId} is null and ${table.modelConfigId} is not null) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
     ),
     check(
       "jobs_job_type_check",
@@ -2504,6 +2512,79 @@ export const jobs = pgTable(
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
     ),
     check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
+  ],
+);
+
+export const workBlueprints = pgTable(
+  "work_blueprints",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    version: integer("version").notNull().default(1),
+    progress: integer("progress").notNull().default(0),
+    currentStep: text("current_step").notNull().default("prepare"),
+    inputHash: text("input_hash").notNull(),
+    estimate: jsonb("estimate").$type<BlueprintEstimate>().notNull(),
+    draftHash: text("draft_hash"),
+    storyBibleDraft: jsonb("story_bible_draft").$type<StoryBibleCard[] | null>(),
+    coreSettingsDraft: jsonb("core_settings_draft")
+      .$type<BlueprintCoreSettingDraft[]>()
+      .notNull()
+      .default([]),
+    outlineDraft: jsonb("outline_draft").$type<BlueprintOutlineDraft | null>(),
+    missingFields: jsonb("missing_fields").$type<BlueprintMissingField[]>().notNull().default([]),
+    conflicts: jsonb("conflicts").$type<BlueprintConflict[]>().notNull().default([]),
+    acknowledgements: jsonb("acknowledgements")
+      .$type<BlueprintAcknowledgement[]>()
+      .notNull()
+      .default([]),
+    cost: jsonb("cost")
+      .$type<BlueprintCost>()
+      .notNull()
+      .default({ inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 }),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    confirmedBy: uuid("confirmed_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("work_blueprints_work_branch_unique").on(table.workId, table.branchId),
+    uniqueIndex("work_blueprints_job_unique").on(table.jobId),
+    index("work_blueprints_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
+    check(
+      "work_blueprints_status_check",
+      sql`${table.status} in ('queued', 'running', 'waiting_model_config', 'budget_paused', 'waiting_review', 'failed', 'confirmed', 'cancelled')`,
+    ),
+    check(
+      "work_blueprints_step_check",
+      sql`${table.currentStep} in ('prepare', 'story_bible', 'core_settings', 'outline', 'validate', 'await_review')`,
+    ),
+    check("work_blueprints_version_check", sql`${table.version} > 0`),
+    check(
+      "work_blueprints_progress_check",
+      sql`${table.progress} >= 0 and ${table.progress} <= 100`,
+    ),
+    check("work_blueprints_input_hash_check", sql`${table.inputHash} ~ '^[a-f0-9]{64}$'`),
+    check(
+      "work_blueprints_draft_hash_check",
+      sql`${table.draftHash} is null or ${table.draftHash} ~ '^[a-f0-9]{64}$'`,
+    ),
+    check(
+      "work_blueprints_confirmed_check",
+      sql`${table.status} <> 'confirmed' or (${table.confirmedAt} is not null and ${table.confirmedBy} is not null and ${table.draftHash} is not null and ${table.storyBibleDraft} is not null and ${table.outlineDraft} is not null)`,
+    ),
   ],
 );
 
