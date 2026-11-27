@@ -467,6 +467,7 @@ manifest `schemaVersion` 为 2 时固定 `aiDisclosureMetadata`：`required` 来
 - 列表按 `createdAt DESC, id DESC` 游标分页；`meta.unreadCount` 是当前用户全部未读数，不是当前页未读数。
 - `POST /notifications/read-all` 返回 `{ updated }`，表示本次实际从“未读”变为“已读”的数量。
 - 批量计划和独立单章生成事件通知都在同一数据库事务内写入，去重键包含任务、事件类型和事件序号；重试后的新事件可以产生新通知，批量子任务不重复通知。
+- 故事蓝图通知按任务、事件类型和 checkpoint revision 去重；同一检查点重放不重复通知，推进到新检查点后可再次通知。
 
 ### ChangeRequest / MergeItem
 

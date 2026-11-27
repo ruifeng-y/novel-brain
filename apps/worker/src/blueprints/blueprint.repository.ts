@@ -943,7 +943,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           title: "故事蓝图生成失败",
           message: failure.message,
           href: `/workspace/${payload.workId}/blueprint`,
-        dedupeKey: `blueprint:${payload.jobId}:failed:${checkpoint.revision}`,
+          dedupeKey: `blueprint:${payload.jobId}:failed:${checkpoint.revision}`,
         });
       }
     });
