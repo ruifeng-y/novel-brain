@@ -721,6 +721,22 @@ describe("V1 release gate", () => {
     ).toBe(false);
   });
 
+  it("triggers Deployment Smoke for release evidence changes", () => {
+    const workflow = readFileSync(
+      new URL("../../.github/workflows/deployment-smoke.yml", import.meta.url),
+      "utf8",
+    );
+
+    for (const path of [
+      "docs/implementation/v1-release-evidence.json",
+      "docs/implementation/v1-release-checklist.md",
+      "scripts/validate-v1-release.mjs",
+      "scripts/v1-capability-evidence.mjs",
+    ]) {
+      expect(workflow).toContain(`- "${path}"`);
+    }
+  });
+
   it("accepts only open, bounded follow-up issues for capability gaps", () => {
     const reference = "#261";
     const issue = {
