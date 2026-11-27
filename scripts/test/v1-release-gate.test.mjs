@@ -721,19 +721,58 @@ describe("V1 release gate", () => {
     ).toBe(false);
   });
 
-  it("triggers Deployment Smoke for release evidence changes", () => {
-    const workflow = readFileSync(
-      new URL("../../.github/workflows/deployment-smoke.yml", import.meta.url),
-      "utf8",
-    );
+  it("triggers Deployment Smoke and Readiness for release evidence changes", () => {
+    const pullRequestPaths = (workflow) => {
+      const lines = workflow.split(/\r?\n/u);
+      const start = lines.findIndex((line) => line.trim() === "pull_request:");
+      if (start < 0) return [];
 
-    for (const path of [
-      "docs/implementation/v1-release-evidence.json",
-      "docs/implementation/v1-release-checklist.md",
-      "scripts/validate-v1-release.mjs",
-      "scripts/v1-capability-evidence.mjs",
-    ]) {
-      expect(workflow).toContain(`- "${path}"`);
+      const paths = [];
+      let inPaths = false;
+      for (const line of lines.slice(start + 1)) {
+        if (/^  \S/u.test(line)) break;
+        if (/^    paths:/u.test(line)) {
+          inPaths = true;
+          continue;
+        }
+        if (inPaths) {
+          const match = /^      - "([^"]+)"$/u.exec(line);
+          if (match) paths.push(match[1]);
+          else if (!/^      /u.test(line)) break;
+        }
+      }
+      return paths;
+    };
+
+    const workflows = [
+      {
+        path: ".github/workflows/deployment-smoke.yml",
+        required: [
+          "docs/implementation/v1-release-evidence.json",
+          "docs/implementation/v1-release-checklist.md",
+          "scripts/validate-v1-release.mjs",
+          "scripts/v1-capability-evidence.mjs",
+        ],
+      },
+      {
+        path: ".github/workflows/readiness-validation.yml",
+        required: [
+          "docs/implementation/v1-release-evidence.json",
+          "docs/implementation/v1-release-checklist.md",
+          "docs/implementation/m3-238-ui-capability-evidence.json",
+          "scripts/validate-v1-release.mjs",
+          "scripts/v1-capability-evidence.mjs",
+        ],
+      },
+    ];
+
+    for (const workflow of workflows) {
+      const paths = pullRequestPaths(
+        readFileSync(new URL(`../../${workflow.path}`, import.meta.url), "utf8"),
+      );
+      for (const required of workflow.required) {
+        expect(paths).toContain(required);
+      }
     }
   });
 
