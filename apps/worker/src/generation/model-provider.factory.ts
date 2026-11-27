@@ -13,6 +13,7 @@ export interface StoredModelConfig {
   baseUrl: string;
   model: string;
   encryptedKey: string;
+  ratePerTokenCny?: number | undefined;
 }
 
 export type WorkerAiProviderMode = "fake" | "byok";

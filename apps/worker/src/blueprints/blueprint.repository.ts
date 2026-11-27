@@ -188,6 +188,9 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
                 baseUrl: row.base_url,
                 model: row.model,
                 encryptedKey: row.encrypted_key,
+                ...(configuredModelRate() !== undefined
+                  ? { ratePerTokenCny: configuredModelRate() }
+                  : {}),
               }
             : null,
       };
@@ -559,4 +562,9 @@ function addCost(left: BlueprintCost, right: BlueprintCost): BlueprintCost {
     totalTokens: left.totalTokens + right.totalTokens,
     costCny: left.costCny + right.costCny,
   };
+}
+
+function configuredModelRate(): number | undefined {
+  const value = Number(process.env.BLUEPRINT_MODEL_RATE_PER_TOKEN_CNY ?? "");
+  return Number.isFinite(value) && value > 0 ? value : undefined;
 }

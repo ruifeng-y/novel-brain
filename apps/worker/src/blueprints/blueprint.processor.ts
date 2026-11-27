@@ -209,6 +209,7 @@ export class BlueprintJobProcessor {
       loaded.blueprint.coreSettings.length > 0 ? loaded.blueprint.coreSettings : undefined;
     let outline = loaded.blueprint.outline ?? undefined;
     let usedCost = loaded.job.cost;
+    const modelRatePerTokenCny = loaded.modelConfig.ratePerTokenCny ?? M0_COST_PER_TOKEN_CNY;
     const startIndex = BLUEPRINT_JOB_STEPS.indexOf(checkpoint.step);
     const provider =
       "generateText" in this.providerResolver
@@ -220,6 +221,7 @@ export class BlueprintJobProcessor {
         const budget = this.projectBudget({
           loaded,
           step,
+          modelRatePerTokenCny,
           ...(storyBible ? { storyBible } : {}),
           ...(coreSettings ? { coreSettings } : {}),
           ...(outline ? { outline } : {}),
@@ -245,6 +247,7 @@ export class BlueprintJobProcessor {
           checkpoint,
           step,
           provider,
+          modelRatePerTokenCny,
           ...(storyBible ? { storyBible } : {}),
           ...(coreSettings ? { coreSettings } : {}),
           ...(outline ? { outline } : {}),
@@ -263,7 +266,13 @@ export class BlueprintJobProcessor {
           result,
         });
       } catch (error) {
-        await this.repository.fail(payload, loaded, step, checkpoint, toFailure(error));
+        await this.repository.fail(
+          payload,
+          loaded,
+          step,
+          checkpoint,
+          toFailure(error, modelRatePerTokenCny),
+        );
         return;
       }
     }
@@ -276,6 +285,7 @@ export class BlueprintJobProcessor {
     checkpoint: BlueprintCheckpoint;
     step: BlueprintJobStep;
     provider: AiGateway;
+    modelRatePerTokenCny: number;
     storyBible?: BlueprintStoryBibleDraft;
     coreSettings?: BlueprintCoreSettingDraft[];
     outline?: BlueprintOutlineDraft;
@@ -300,14 +310,14 @@ export class BlueprintJobProcessor {
         try {
           storyBible = this.parseStoryBible(result.text);
         } catch (error) {
-          throw new BlueprintStepCostError(error, costOf(result));
+          throw new BlueprintStepCostError(error, costOf(result, input.modelRatePerTokenCny));
         }
         return {
           storyBible,
           output: providerAuditOutput(input.loaded, "blueprint.story_bible.v1", result.text, {
             cardCount: storyBible.cards.length,
           }),
-          cost: costOf(result),
+          cost: costOf(result, input.modelRatePerTokenCny),
           checkpointPayload: { storyBibleReady: true },
         };
       }
@@ -322,14 +332,14 @@ export class BlueprintJobProcessor {
         try {
           coreSettings = this.parseCoreSettings(result.text);
         } catch (error) {
-          throw new BlueprintStepCostError(error, costOf(result));
+          throw new BlueprintStepCostError(error, costOf(result, input.modelRatePerTokenCny));
         }
         return {
           coreSettings,
           output: providerAuditOutput(input.loaded, "blueprint.core_settings.v1", result.text, {
             settingCount: coreSettings.length,
           }),
-          cost: costOf(result),
+          cost: costOf(result, input.modelRatePerTokenCny),
           checkpointPayload: { coreSettingsReady: true },
         };
       }
@@ -347,7 +357,7 @@ export class BlueprintJobProcessor {
         try {
           outline = this.parseOutline(result.text);
         } catch (error) {
-          throw new BlueprintStepCostError(error, costOf(result));
+          throw new BlueprintStepCostError(error, costOf(result, input.modelRatePerTokenCny));
         }
         return {
           outline,
@@ -355,7 +365,7 @@ export class BlueprintJobProcessor {
             nodeCount: outline.nodes.length,
             sceneCardCount: outline.sceneCards.length,
           }),
-          cost: costOf(result),
+          cost: costOf(result, input.modelRatePerTokenCny),
           checkpointPayload: { outlineReady: true },
         };
       }
@@ -399,6 +409,7 @@ export class BlueprintJobProcessor {
   private projectBudget(input: {
     loaded: LoadedBlueprintJob;
     step: BlueprintJobStep;
+    modelRatePerTokenCny: number;
     storyBible?: BlueprintStoryBibleDraft;
     coreSettings?: BlueprintCoreSettingDraft[];
     outline?: BlueprintOutlineDraft;
@@ -422,7 +433,7 @@ export class BlueprintJobProcessor {
     });
     return {
       tokens: plan.reservedTokens,
-      costCny: calculateModelCallCost(plan.reservedTokens, M0_COST_PER_TOKEN_CNY),
+      costCny: calculateModelCallCost(plan.reservedTokens, input.modelRatePerTokenCny),
     };
   }
 
@@ -494,7 +505,9 @@ function providerAuditOutput(
     ...output,
     model: loaded.modelConfig?.model ?? null,
     promptVersion,
-    pricingVersion: "m0-cost-per-token-v1",
+    pricingVersion: loaded.modelConfig?.ratePerTokenCny
+      ? "configured-rate-v1"
+      : "m0-cost-per-token-v1",
     sourceHash: createHash("sha256").update(prompt).digest("hex"),
   };
 }
@@ -703,7 +716,7 @@ function providerStep(step: BlueprintJobStep): boolean {
   return step === "story_bible" || step === "core_settings" || step === "outline";
 }
 
-function costOf(result: GenerationResult): BlueprintCost {
+function costOf(result: GenerationResult, modelRatePerTokenCny: number): BlueprintCost {
   const inputTokens = result.usage.inputTokens;
   const outputTokens = result.usage.outputTokens;
   const totalTokens = inputTokens + outputTokens;
@@ -711,7 +724,7 @@ function costOf(result: GenerationResult): BlueprintCost {
     inputTokens,
     outputTokens,
     totalTokens,
-    costCny: calculateModelCallCost(totalTokens, M0_COST_PER_TOKEN_CNY),
+    costCny: calculateModelCallCost(totalTokens, modelRatePerTokenCny),
   };
 }
 
@@ -728,7 +741,7 @@ function addCost(left: BlueprintCost, right: BlueprintCost): BlueprintCost {
   };
 }
 
-function toFailure(error: unknown): BlueprintFailure {
+function toFailure(error: unknown, modelRatePerTokenCny: number): BlueprintFailure {
   if (error instanceof BlueprintStepCostError) {
     return {
       code: "MODEL_RESPONSE_INVALID",
@@ -747,7 +760,7 @@ function toFailure(error: unknown): BlueprintFailure {
           totalTokens: error.usage.inputTokens + error.usage.outputTokens,
           costCny: calculateModelCallCost(
             error.usage.inputTokens + error.usage.outputTokens,
-            M0_COST_PER_TOKEN_CNY,
+            modelRatePerTokenCny,
           ),
         }
       : undefined;
