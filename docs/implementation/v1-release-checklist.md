@@ -57,8 +57,9 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 
 ## 4. Remaining blockers
 
-1. Bind the final release-evidence gate to a current-head release CI run; the current-head UI
-   capability audit requires the same run.
+1. Bind the final release-evidence gate to a current-head release CI run.
+2. Bind current-head UI capability evidence to the same successful run; until then
+   `capability-audit:verification-evidence-missing` remains.
 
 Until then the release decision is **BLOCKED**, and no V1 clean long-horizon quality or capacity
 claim may be made.

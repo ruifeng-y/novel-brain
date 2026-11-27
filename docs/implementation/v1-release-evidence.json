@@ -77,7 +77,7 @@
       "id": "final-production-ci",
       "status": "blocked",
       "owner": "release-owner",
-      "rationale": "EVAL-002 is verified against PR #281 Production CI run 45944913873 at head e204faa. The final release-evidence gate remains blocked until a current-head release CI run is bound to the evidence commit; this is the only remaining release blocker.",
+      "rationale": "EVAL-002 is verified against PR #281 Production CI run 45944913873 at head e204faa. The final release-evidence gate remains blocked. The remaining machine blockers are final-production-ci:blocked and capability-audit:verification-evidence-missing for current-head UI capability evidence.",
       "evidence": ["https://github.com/ruifeng-y/novel-brain/actions/runs/45944913873"]
     },
     {
