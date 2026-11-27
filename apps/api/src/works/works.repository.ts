@@ -12,6 +12,7 @@ import {
   foreshadows,
   genrePacks,
   idempotencyRecords,
+  jobs,
   modelConfigs,
   outlineNodes,
   qualityReports,
@@ -19,6 +20,7 @@ import {
   versionNodes,
   volumeContracts,
   workBranches,
+  workBlueprints,
   workExportReceipts,
   works,
   type DatabaseClient,
@@ -51,6 +53,7 @@ import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
+import type { BlueprintJobProvision } from "../blueprints/blueprint.types";
 
 export type WorkRecord = InferSelectModel<typeof works>;
 export type WorkBranchRecord = InferSelectModel<typeof workBranches>;
@@ -2157,9 +2160,10 @@ export class WorksRepository implements OnModuleDestroy {
     templatePackId: string | null;
     settings: Record<string, unknown>;
     initialSettingEntities?: InitialSettingEntity[];
+    blueprint?: BlueprintJobProvision;
     idempotencyKey: string | null;
     audit: WorksAuditContext;
-  }): Promise<{ work: WorkRecord; branch: WorkBranchRecord }> {
+  }): Promise<{ work: WorkRecord; branch: WorkBranchRecord; wasCreated: boolean }> {
     return this.db.transaction(async (transaction) => {
       await transaction.execute(sql`SELECT set_config('app.user_id', ${input.userId}, true)`);
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.userId}))`);
@@ -2187,7 +2191,7 @@ export class WorksRepository implements OnModuleDestroy {
             if (!branch) {
               throw new Error("Existing work is missing its main branch");
             }
-            return { work: existing, branch };
+            return { work: existing, branch, wasCreated: false };
           }
           await transaction
             .update(works)
@@ -2343,6 +2347,46 @@ export class WorksRepository implements OnModuleDestroy {
         branchWithHead = materializedBranch;
       }
 
+      if (input.blueprint) {
+        await transaction.insert(jobs).values({
+          id: input.blueprint.jobId,
+          workId: work.id,
+          branchId: branch.id,
+          userId: input.userId,
+          modelConfigId: input.blueprint.modelConfigId,
+          jobType: "book",
+          workItemKey: "blueprint",
+          type: "generate_blueprint",
+          status: "queued",
+          progress: 0,
+          currentStep: "prepare",
+          priority: 10,
+          idempotencyKey: input.blueprint.jobPayload.idempotencyKey,
+          budget: input.blueprint.budget,
+          checkpoint: input.blueprint.jobPayload.checkpoint,
+          orchestration: { kind: "blueprint_generation" },
+          cost: { inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 },
+        });
+        await transaction.insert(workBlueprints).values({
+          id: input.blueprint.blueprintId,
+          workId: work.id,
+          branchId: branch.id,
+          userId: input.userId,
+          jobId: input.blueprint.jobId,
+          status: "queued",
+          version: 1,
+          progress: 0,
+          currentStep: "prepare",
+          inputHash: input.blueprint.inputHash,
+          estimate: input.blueprint.estimate,
+          cost: { inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 },
+          coreSettingsDraft: [],
+          missingFields: [],
+          conflicts: [],
+          acknowledgements: [],
+        });
+      }
+
       await transaction.insert(auditLogs).values({
         id: uuidv7(),
         actorId: input.userId,
@@ -2355,7 +2399,7 @@ export class WorksRepository implements OnModuleDestroy {
         userAgent: input.audit.userAgent,
       });
 
-      return { work, branch: branchWithHead };
+      return { work, branch: branchWithHead, wasCreated: true };
     });
   }
 

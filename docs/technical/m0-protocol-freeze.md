@@ -65,6 +65,7 @@
 | `AUTH_` | 登录、会话、验证码、限流 |
 | `FORBIDDEN_` | 跨用户或无权操作 |
 | `WORK_` | 作品和分支 |
+| `BLUEPRINT_` | 故事蓝图状态和资源 |
 | `MODEL_` | Provider、Key、连接测试 |
 | `BIBLE_` / `SETTING_` | 故事圣经和最小设定 |
 | `JOB_` | 任务状态和检查点 |
@@ -119,6 +120,7 @@ M0 关键错误：
 - `CANON_CHAPTER_NOT_APPROVED`
 - `IMPORT_CONFLICT_UNRESOLVED`
 - `WORK_IDEMPOTENCY_CONFLICT`
+- `BLUEPRINT_NOT_FOUND`
 - `VERSION_CONFLICT`
 - `FORBIDDEN_TENANT_ACCESS`
 - `ACCOUNT_EXPORT_EXPIRED`
@@ -178,6 +180,9 @@ M0 关键错误：
 | POST | `/api/v1/works/:workId/restore` | 恢复归档前状态 |
 | POST | `/api/v1/works/:workId/duplicate` | 幂等复制作品设定内容，正文与版本默认排除 |
 | GET | `/api/v1/works/:workId/branches` | M0 返回 main 分支 |
+| GET | `/api/v1/blueprint-estimates` | 估算故事蓝图 token、费用和默认预算 |
+| GET | `/api/v1/works/:workId/branches/:branchId/blueprint` | 读取故事蓝图任务和候选状态 |
+| POST | `/api/v1/works/:workId/branches/:branchId/blueprint/retry` | 从持久化排队状态重试任务投递，返回 `202` 和 `jobId` |
 | POST | `/api/v1/works/:workId/import` | 设定导入或旧稿导入 |
 | POST | `/api/v1/imports` | 从粘贴文本或小型 TXT/Markdown/DOCX 文件识别设定候选，不创建作品 |
 | GET | `/api/v1/imports/:importId` | 导入状态和候选 |

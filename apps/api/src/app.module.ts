@@ -5,6 +5,7 @@ import { AccountLifecycleModule } from "./account-lifecycle/account-lifecycle.mo
 import { AgentRuntimeModule } from "./agent-runtime/agent-runtime.module";
 import { BatchPlanModule } from "./batch-plan/batch-plan.module";
 import { BatchReviewModule } from "./batch-review/batch-review.module";
+import { BlueprintModule } from "./blueprints/blueprint.module";
 import { CanonModule } from "./canon/canon.module";
 import { ChaptersModule } from "./chapters/chapters.module";
 import { ChangesModule } from "./changes/changes.module";
@@ -44,6 +45,7 @@ import { WorkExportModule } from "./exports/work-export.module";
     AgentRuntimeModule,
     BatchPlanModule,
     BatchReviewModule,
+    BlueprintModule,
     CanonModule,
     ChaptersModule,
     ChangesModule,

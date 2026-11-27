@@ -877,7 +877,7 @@ describe("generation HTTP integration", () => {
       },
     });
     const jobs = await databasePool.query<{ count: string }>(
-      "SELECT count(*)::text AS count FROM jobs WHERE work_id = $1",
+      "SELECT count(*)::text AS count FROM jobs WHERE work_id = $1 AND type = 'generate_chapter'",
       [work.id],
     );
     expect(jobs.rows[0]?.count).toBe("0");
