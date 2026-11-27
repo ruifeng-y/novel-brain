@@ -127,6 +127,64 @@ describe("tenant RLS audit", () => {
           WHERE oid = 'work_blueprints'::regclass`,
       );
       expect(rls.rows[0]).toEqual({ enabled: true, forced: true });
+      const secondBranchId = uuidv7();
+      const secondJobId = uuidv7();
+      const secondJobKey = `blueprint-${secondJobId}`;
+      await pool.query(
+        `INSERT INTO work_branches (id, work_id, user_id, name)
+         VALUES ($1, $2, $3, 'branch-two')`,
+        [secondBranchId, workId, ownerId],
+      );
+      await pool.query(
+        `INSERT INTO jobs
+           (id, work_id, branch_id, user_id, type, idempotency_key, budget, checkpoint, cost)
+         VALUES ($1, $2, $3, $4, 'generate_blueprint', $5,
+                 '{"maxTokens":20000,"maxCostCny":0.1}'::jsonb,
+                 '{"step":"prepare"}'::jsonb,
+                 '{"inputTokens":0,"outputTokens":0,"totalTokens":0,"costCny":0}'::jsonb)`,
+        [secondJobId, workId, branchId, ownerId, secondJobKey],
+      );
+      await expectSqlState(
+        pool,
+        `INSERT INTO work_blueprints
+           (id, work_id, branch_id, user_id, job_id, input_hash, estimate)
+         VALUES ($1, $2, $3, $4, $5, $6,
+                 '{"ruleVersion":"blueprint-estimate-v1","planned":{"volumes":1,"chapters":12,"scenes":24},"estimatedTokens":40000,"estimatedCostCny":0.08,"defaultBudget":{"maxTokens":48000,"maxCostCny":0.5},"assumptions":["测试"]}'::jsonb)`,
+        [uuidv7(), workId, branchId, ownerId, secondJobId, "c".repeat(64)],
+        "23505",
+      );
+      await expectSqlState(
+        pool,
+        `INSERT INTO work_blueprints
+           (id, work_id, branch_id, user_id, job_id, input_hash, estimate)
+         VALUES ($1, $2, $3, $4, $5, $6,
+                 '{"ruleVersion":"blueprint-estimate-v1","planned":{"volumes":1,"chapters":12,"scenes":24},"estimatedTokens":40000,"estimatedCostCny":0.08,"defaultBudget":{"maxTokens":48000,"maxCostCny":0.5},"assumptions":["测试"]}'::jsonb)`,
+        [uuidv7(), workId, secondBranchId, ownerId, jobId, "d".repeat(64)],
+        "23505",
+      );
+      await expectSqlState(
+        pool,
+        `INSERT INTO jobs
+           (id, work_id, branch_id, user_id, type, idempotency_key, budget, checkpoint, cost)
+         VALUES ($1, $2, $3, $4, 'generate_blueprint', $5,
+                 '{"maxTokens":20000,"maxCostCny":0.1}'::jsonb,
+                 '{"step":"prepare"}'::jsonb,
+                 '{"inputTokens":0,"outputTokens":0,"totalTokens":0,"costCny":0}'::jsonb)`,
+        [uuidv7(), workId, branchId, ownerId, `blueprint-${jobId}`],
+        "23505",
+      );
+      await expectSqlState(
+        pool,
+        "UPDATE work_blueprints SET status = 'invalid' WHERE id = $1",
+        [blueprintId],
+        "23514",
+      );
+      await pool.query(
+        `INSERT INTO version_nodes
+           (id, work_id, branch_id, user_id, node_type, object_type, object_id, actor_id, message)
+         VALUES ($1, $2, $3, $4, 'blueprint_version', 'blueprint', $5, $4, '确认故事蓝图')`,
+        [uuidv7(), workId, branchId, ownerId, blueprintId],
+      );
       await pool.query(`
         DO $$
         BEGIN
@@ -196,6 +254,26 @@ async function updateVisibleBlueprint(
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function expectSqlState(
+  pool: ReturnType<typeof createDatabasePool>,
+  sql: string,
+  parameters: unknown[],
+  code: string,
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(sql, parameters);
+    await client.query("ROLLBACK");
+    throw new Error(`Expected SQLSTATE ${code}`);
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    expect(error).toMatchObject({ code });
   } finally {
     client.release();
   }

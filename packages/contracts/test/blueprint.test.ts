@@ -229,6 +229,20 @@ describe("blueprint contracts", () => {
         status: "unknown",
       }).success,
     ).toBe(false);
+    expect(blueprintDraftSchema.safeParse({}).success).toBe(false);
+    expect(blueprintCheckpointSchema.safeParse({ step: "unknown" }).success).toBe(false);
+    expect(blueprintCheckpointSchema.safeParse({ step: "prepare", inputHash: "bad" }).success).toBe(
+      false,
+    );
+    expect(
+      blueprintMissingFieldSchema.safeParse({
+        key: "",
+        label: "",
+        required: true,
+        severity: "P0",
+        message: "",
+      }).success,
+    ).toBe(false);
   });
 });
 
