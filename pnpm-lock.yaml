@@ -420,6 +420,9 @@ importers:
       '@novel-brain/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@novel-brain/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/capacity-benchmark:
     dependencies:

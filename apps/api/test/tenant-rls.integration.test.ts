@@ -64,7 +64,220 @@ describe("tenant RLS audit", () => {
       await pool.end();
     }
   });
+
+  it("isolates work blueprints between authors", async () => {
+    await ensureDatabaseExists(databaseUrl);
+    await runMigrations(databaseUrl);
+    const pool = createDatabasePool(databaseUrl);
+    const ownerId = uuidv7();
+    const outsiderId = uuidv7();
+    const workId = uuidv7();
+    const branchId = uuidv7();
+    const jobId = uuidv7();
+    const blueprintId = uuidv7();
+    try {
+      await pool.query(
+        `INSERT INTO users (id, email, password_hash, display_name)
+         VALUES ($1, $3, 'hash', '作者'), ($2, $4, 'hash', '其他作者')`,
+        [ownerId, outsiderId, `${ownerId}@example.com`, `${outsiderId}@example.com`],
+      );
+
+      const owner = await pool.connect();
+      try {
+        await owner.query("BEGIN");
+        await owner.query("SELECT set_config('app.user_id', $1, true)", [ownerId]);
+        await owner.query(
+          `INSERT INTO works
+             (id, user_id, title, pen_name, genre, source_mode, settings)
+           VALUES ($1, $2, '蓝图隔离', '作者', 'xianxia', 'idea', '{}'::jsonb)`,
+          [workId, ownerId],
+        );
+        await owner.query(
+          `INSERT INTO work_branches (id, work_id, user_id, name)
+           VALUES ($1, $2, $3, 'main')`,
+          [branchId, workId, ownerId],
+        );
+        await owner.query(
+          `INSERT INTO jobs
+             (id, work_id, branch_id, user_id, type, idempotency_key, budget, checkpoint, cost)
+           VALUES ($1, $2, $3, $4, 'generate_blueprint', $5,
+                   '{"maxTokens":20000,"maxCostCny":0.1}'::jsonb,
+                   '{"step":"prepare"}'::jsonb,
+                   '{"inputTokens":0,"outputTokens":0,"totalTokens":0,"costCny":0}'::jsonb)`,
+          [jobId, workId, branchId, ownerId, `blueprint-${jobId}`],
+        );
+        await owner.query(
+          `INSERT INTO work_blueprints
+             (id, work_id, branch_id, user_id, job_id, input_hash, estimate)
+           VALUES ($1, $2, $3, $4, $5, $6,
+                   '{"ruleVersion":"blueprint-estimate-v1","planned":{"volumes":1,"chapters":12,"scenes":24},"estimatedTokens":40000,"estimatedCostCny":0.08,"defaultBudget":{"maxTokens":48000,"maxCostCny":0.5},"assumptions":["测试"]}'::jsonb)`,
+          [blueprintId, workId, branchId, ownerId, jobId, "a".repeat(64)],
+        );
+        await owner.query("COMMIT");
+      } catch (error) {
+        await owner.query("ROLLBACK").catch(() => undefined);
+        throw error;
+      } finally {
+        owner.release();
+      }
+
+      const rls = await pool.query<{ enabled: boolean; forced: boolean }>(
+        `SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced
+           FROM pg_class
+          WHERE oid = 'work_blueprints'::regclass`,
+      );
+      expect(rls.rows[0]).toEqual({ enabled: true, forced: true });
+      const secondBranchId = uuidv7();
+      const secondJobId = uuidv7();
+      const secondJobKey = `blueprint-${secondJobId}`;
+      await pool.query(
+        `INSERT INTO work_branches (id, work_id, user_id, name)
+         VALUES ($1, $2, $3, 'branch-two')`,
+        [secondBranchId, workId, ownerId],
+      );
+      await pool.query(
+        `INSERT INTO jobs
+           (id, work_id, branch_id, user_id, type, idempotency_key, budget, checkpoint, cost)
+         VALUES ($1, $2, $3, $4, 'generate_blueprint', $5,
+                 '{"maxTokens":20000,"maxCostCny":0.1}'::jsonb,
+                 '{"step":"prepare"}'::jsonb,
+                 '{"inputTokens":0,"outputTokens":0,"totalTokens":0,"costCny":0}'::jsonb)`,
+        [secondJobId, workId, branchId, ownerId, secondJobKey],
+      );
+      await expectSqlState(
+        pool,
+        `INSERT INTO work_blueprints
+           (id, work_id, branch_id, user_id, job_id, input_hash, estimate)
+         VALUES ($1, $2, $3, $4, $5, $6,
+                 '{"ruleVersion":"blueprint-estimate-v1","planned":{"volumes":1,"chapters":12,"scenes":24},"estimatedTokens":40000,"estimatedCostCny":0.08,"defaultBudget":{"maxTokens":48000,"maxCostCny":0.5},"assumptions":["测试"]}'::jsonb)`,
+        [uuidv7(), workId, branchId, ownerId, secondJobId, "c".repeat(64)],
+        "23505",
+      );
+      await expectSqlState(
+        pool,
+        `INSERT INTO work_blueprints
+           (id, work_id, branch_id, user_id, job_id, input_hash, estimate)
+         VALUES ($1, $2, $3, $4, $5, $6,
+                 '{"ruleVersion":"blueprint-estimate-v1","planned":{"volumes":1,"chapters":12,"scenes":24},"estimatedTokens":40000,"estimatedCostCny":0.08,"defaultBudget":{"maxTokens":48000,"maxCostCny":0.5},"assumptions":["测试"]}'::jsonb)`,
+        [uuidv7(), workId, secondBranchId, ownerId, jobId, "d".repeat(64)],
+        "23505",
+      );
+      await expectSqlState(
+        pool,
+        `INSERT INTO jobs
+           (id, work_id, branch_id, user_id, type, idempotency_key, budget, checkpoint, cost)
+         VALUES ($1, $2, $3, $4, 'generate_blueprint', $5,
+                 '{"maxTokens":20000,"maxCostCny":0.1}'::jsonb,
+                 '{"step":"prepare"}'::jsonb,
+                 '{"inputTokens":0,"outputTokens":0,"totalTokens":0,"costCny":0}'::jsonb)`,
+        [uuidv7(), workId, branchId, ownerId, `blueprint-${jobId}`],
+        "23505",
+      );
+      await expectSqlState(
+        pool,
+        "UPDATE work_blueprints SET status = 'invalid' WHERE id = $1",
+        [blueprintId],
+        "23514",
+      );
+      await pool.query(
+        `INSERT INTO version_nodes
+           (id, work_id, branch_id, user_id, node_type, object_type, object_id, actor_id, message)
+         VALUES ($1, $2, $3, $4, 'blueprint_version', 'blueprint', $5, $4, '确认故事蓝图')`,
+        [uuidv7(), workId, branchId, ownerId, blueprintId],
+      );
+      await pool.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'novelbrain_blueprints_rls_test') THEN
+            CREATE ROLE novelbrain_blueprints_rls_test NOLOGIN NOSUPERUSER NOBYPASSRLS;
+          END IF;
+        END
+        $$;
+      `);
+      await pool.query(
+        "GRANT USAGE ON SCHEMA public TO novelbrain_blueprints_rls_test; GRANT SELECT, UPDATE ON work_blueprints TO novelbrain_blueprints_rls_test",
+      );
+      expect(await countVisibleBlueprints(pool, ownerId, blueprintId)).toBe(1);
+      expect(await countVisibleBlueprints(pool, outsiderId, blueprintId)).toBe(0);
+      expect(await updateVisibleBlueprint(pool, outsiderId, blueprintId)).toBe(0);
+      expect(await updateVisibleBlueprint(pool, ownerId, blueprintId)).toBe(1);
+    } finally {
+      await pool.end();
+    }
+  });
 });
+
+async function countVisibleBlueprints(
+  pool: ReturnType<typeof createDatabasePool>,
+  userId: string,
+  blueprintId: string,
+): Promise<number> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL ROLE novelbrain_blueprints_rls_test");
+    await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
+    const context = await client.query<{ user_id: string }>(
+      "SELECT current_setting('app.user_id', true) AS user_id",
+    );
+    expect(context.rows[0]?.user_id).toBe(userId);
+    const result = await client.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM work_blueprints WHERE id = $1",
+      [blueprintId],
+    );
+    await client.query("COMMIT");
+    return result.rows[0]?.count ?? 0;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateVisibleBlueprint(
+  pool: ReturnType<typeof createDatabasePool>,
+  userId: string,
+  blueprintId: string,
+): Promise<number> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL ROLE novelbrain_blueprints_rls_test");
+    await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
+    const result = await client.query(
+      "UPDATE work_blueprints SET updated_at = now() WHERE id = $1",
+      [blueprintId],
+    );
+    await client.query("COMMIT");
+    return result.rowCount ?? 0;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function expectSqlState(
+  pool: ReturnType<typeof createDatabasePool>,
+  sql: string,
+  parameters: unknown[],
+  code: string,
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(sql, parameters);
+    await client.query("ROLLBACK");
+    throw new Error(`Expected SQLSTATE ${code}`);
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    expect(error).toMatchObject({ code });
+  } finally {
+    client.release();
+  }
+}
 
 async function ensureDatabaseExists(url: string): Promise<void> {
   const target = new URL(url);
