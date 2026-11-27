@@ -47,6 +47,9 @@ export interface LoadedBlueprintJob {
     id: string;
     status: string;
     progress: number;
+    storyBible: BlueprintStoryBibleDraft | null;
+    coreSettings: BlueprintCoreSettingDraft[];
+    outline: BlueprintOutlineDraft | null;
   };
   work: {
     title: string;
@@ -171,9 +174,10 @@ export class BlueprintJobProcessor {
     }
 
     let checkpoint = await this.repository.begin(payload, loaded);
-    let storyBible: BlueprintStoryBibleDraft | undefined;
-    let coreSettings: BlueprintCoreSettingDraft[] | undefined;
-    let outline: BlueprintOutlineDraft | undefined;
+    let storyBible = loaded.blueprint.storyBible ?? undefined;
+    let coreSettings =
+      loaded.blueprint.coreSettings.length > 0 ? loaded.blueprint.coreSettings : undefined;
+    let outline = loaded.blueprint.outline ?? undefined;
     let usedCost = loaded.job.cost;
     const startIndex = BLUEPRINT_JOB_STEPS.indexOf(checkpoint.step);
     const provider =

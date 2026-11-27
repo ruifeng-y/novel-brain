@@ -10,6 +10,7 @@ import {
   STORY_BIBLE_CARD_TITLES,
 } from "@novel-brain/contracts";
 import type { AiGateway, GenerationRequest, GenerationResult } from "@novel-brain/ai";
+import { AiProviderError } from "@novel-brain/ai";
 
 import {
   BlueprintJobProcessor,
@@ -39,14 +40,126 @@ describe("BlueprintJobProcessor", () => {
     expect(store.coreSettings?.length).toBeGreaterThanOrEqual(7);
     expect(store.outline?.sceneCards).toHaveLength(24);
     expect(store.chapterVersionCount).toBe(0);
+    expect(store.notifications).toEqual(["ready"]);
+  });
+
+  it("waits for model configuration without calling the provider", async () => {
+    const store = new InMemoryBlueprintStore({
+      ...loadedJob(),
+      job: { ...loadedJob().job, modelConfigId: null },
+      modelConfig: null,
+    });
+    const provider = new SequencedBlueprintProvider();
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(provider.operations).toEqual([]);
+    expect(store.status).toBe("waiting_model_config");
+    expect(store.notifications).toEqual(["waiting_model_config"]);
+  });
+
+  it("pauses before a provider call that would exceed the budget", async () => {
+    const loaded = loadedJob();
+    const store = new InMemoryBlueprintStore({
+      ...loaded,
+      job: {
+        ...loaded.job,
+        budget: { maxTokens: 1000, maxCostCny: 0.1 },
+        cost: { inputTokens: 500000, outputTokens: 90000, totalTokens: 590000, costCny: 9.9 },
+      },
+    });
+    const provider = new SequencedBlueprintProvider();
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(provider.operations).toEqual([]);
+    expect(store.status).toBe("budget_paused");
+    expect(store.notifications).toEqual(["budget_paused"]);
+  });
+
+  it("resumes from the next persisted step without repeating provider calls", async () => {
+    const loaded = loadedJob();
+    const store = new InMemoryBlueprintStore({
+      ...loaded,
+      blueprint: {
+        ...loaded.blueprint,
+        storyBible: { cards: storyBibleCards() },
+      },
+      job: {
+        ...loaded.job,
+        checkpoint: {
+          ...loaded.job.checkpoint,
+          revision: 2,
+          step: "core_settings",
+        },
+      },
+    });
+    const provider = new SequencedBlueprintProvider();
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(provider.operations).toEqual(["blueprint_core_settings", "blueprint_outline"]);
+    expect(store.commits.map((commit) => commit.step)).toEqual([
+      "core_settings",
+      "outline",
+      "validate",
+      "await_review",
+    ]);
+  });
+
+  it("records provider rate limits as a recoverable failed state", async () => {
+    const store = new InMemoryBlueprintStore();
+    const provider = new SequencedBlueprintProvider("blueprint_story_bible", "rate_limit");
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(store.status).toBe("failed");
+    expect(store.failure).toMatchObject({
+      code: "MODEL_RATE_LIMITED",
+      failureClass: "rate_limit",
+      retryable: true,
+    });
+    expect(store.notifications).toEqual(["failed"]);
+  });
+
+  it("records malformed provider output as a schema failure", async () => {
+    const store = new InMemoryBlueprintStore();
+    const provider = new SequencedBlueprintProvider("blueprint_story_bible", "invalid_json");
+
+    await new BlueprintJobProcessor(store, provider).process(blueprintPayload());
+
+    expect(store.status).toBe("failed");
+    expect(store.failure).toMatchObject({
+      code: "MODEL_RESPONSE_INVALID",
+      failureClass: "schema",
+    });
   });
 });
 
 class SequencedBlueprintProvider implements AiGateway {
   operations: GenerationRequest["operation"][] = [];
 
+  constructor(
+    private readonly failOperation?: GenerationRequest["operation"],
+    private readonly failure: "rate_limit" | "invalid_json" = "rate_limit",
+  ) {}
+
   async generateText(input: GenerationRequest): Promise<GenerationResult> {
     this.operations.push(input.operation);
+    if (input.operation === this.failOperation && this.failure === "rate_limit") {
+      throw new AiProviderError("provider is rate limited", {
+        failureClass: "rate_limit",
+        retryable: true,
+      });
+    }
+    if (input.operation === this.failOperation && this.failure === "invalid_json") {
+      return {
+        text: "not-json",
+        model: "fake-blueprint",
+        finishReason: "stop",
+        usage: { inputTokens: 100, outputTokens: 20 },
+      };
+    }
     const text =
       input.operation === "blueprint_story_bible"
         ? JSON.stringify({ cards: storyBibleCards() })
@@ -69,6 +182,7 @@ class SequencedBlueprintProvider implements AiGateway {
 }
 
 class InMemoryBlueprintStore extends BlueprintJobStore {
+  loaded: LoadedBlueprintJob;
   status = "queued";
   checkpoint: BlueprintCheckpoint = {
     schemaVersion: 1,
@@ -82,13 +196,21 @@ class InMemoryBlueprintStore extends BlueprintJobStore {
   coreSettings: Awaited<ReturnType<BlueprintJobProcessor["parseCoreSettings"]>> | null = null;
   outline: Awaited<ReturnType<BlueprintJobProcessor["parseOutline"]>> | null = null;
   chapterVersionCount = 0;
+  notifications: string[] = [];
+  failure: { code: string; failureClass: string; retryable: boolean } | null = null;
+
+  constructor(loaded = loadedJob()) {
+    super();
+    this.loaded = loaded;
+    this.checkpoint = loaded.job.checkpoint;
+  }
 
   async withJobLock<T>(_jobId: string, operation: () => Promise<T>): Promise<T> {
     return operation();
   }
 
   async loadJob(): Promise<LoadedBlueprintJob> {
-    return loadedJob();
+    return this.loaded;
   }
 
   async begin(): Promise<BlueprintCheckpoint> {
@@ -112,18 +234,29 @@ class InMemoryBlueprintStore extends BlueprintJobStore {
 
   async completeReady(): Promise<void> {
     this.status = "waiting_review";
+    this.notifications.push("ready");
   }
 
   async waitingModelConfig(): Promise<void> {
     this.status = "waiting_model_config";
+    this.notifications.push("waiting_model_config");
   }
 
   async pauseBudget(): Promise<void> {
     this.status = "budget_paused";
+    this.notifications.push("budget_paused");
   }
 
-  async fail(): Promise<void> {
+  async fail(
+    _payload: GenerateBlueprintJob,
+    _loaded: LoadedBlueprintJob,
+    _step: Parameters<BlueprintJobStore["fail"]>[2],
+    _checkpoint: BlueprintCheckpoint,
+    failure: Parameters<BlueprintJobStore["fail"]>[4],
+  ): Promise<void> {
     this.status = "failed";
+    this.failure = failure;
+    this.notifications.push("failed");
   }
 }
 
@@ -150,6 +283,9 @@ function loadedJob(): LoadedBlueprintJob {
       id: "01900000-0000-7000-8000-000000000006",
       status: "queued",
       progress: 0,
+      storyBible: null,
+      coreSettings: [],
+      outline: null,
     },
     work: {
       title: "忘川书",
