@@ -102,7 +102,7 @@ function validateGates(
   const blockers = [];
   const gates = Array.isArray(evidence.gates) ? evidence.gates : [];
   const gatesById = new Map(gates.map((gate) => [gate.id, gate]));
-  const approvedDeferralIds = new Set(
+  const registeredDeferralIds = new Set(
     (Array.isArray(deferrals?.deferrals) ? deferrals.deferrals : []).map(
       (deferral) => deferral?.id,
     ),
@@ -148,7 +148,7 @@ function validateGates(
         !gate.owner?.trim() ||
         !gate.rationale?.trim() ||
         requiredDeferrals.length === 0 ||
-        !requiredDeferrals.every((id) => approvedDeferralIds.has(id))
+        !requiredDeferrals.every((id) => registeredDeferralIds.has(id))
       ) {
         blockers.push(`${gate.id}:deferred-not-authorized`);
       }

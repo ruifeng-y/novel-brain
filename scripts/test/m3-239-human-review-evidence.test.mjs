@@ -245,18 +245,29 @@ describe("M3-239 human blind-review evidence", () => {
     ).toBe(1);
   });
 
-  it("keeps continuity quality remediation on #273", () => {
+  it("keeps continuity quality remediation as an explicit V1 deferral", () => {
     const capabilityEvidence = readRootJson(
       "docs/implementation/m3-236-non-ui-capability-evidence.json",
     );
+    const deferrals = readRootJson("docs/planning/v1-deferrals.json");
+    const decision = readFileSync(
+      path.join(root, "docs/implementation/m3-cont-001-deferral.md"),
+      "utf8",
+    );
 
-    expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#278");
-    expect(capabilityEvidence.capabilities["CONT-001"].gap.issues).toEqual(["#278", "#279"]);
-    const remediationReason = capabilityEvidence.capabilities["CONT-001"].gap.reason;
-    expect(remediationReason).not.toContain("inter-rater variance threshold");
-    expect(remediationReason).toContain("24/24");
-    expect(remediationReason).toContain("#278");
-    expect(remediationReason).toContain("#279");
-    expect(remediationReason).toContain("hook/prose");
+    expect(capabilityEvidence.capabilities).not.toHaveProperty("CONT-001");
+    expect(deferrals.deferrals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "CONT-001",
+          status: "deferred",
+          approvedBy: "product-owner",
+          approvedAt: "2026-11-27",
+        }),
+      ]),
+    );
+    expect(decision).toContain("#278 was closed as `NOT_PLANNED`");
+    expect(decision).toContain("#279 is closed as `NOT_PLANNED`");
+    expect(decision).toContain("hook_prose_score = 1.882353");
   });
 });

@@ -142,8 +142,8 @@ describe("M3-240 approved inter-rater variance threshold", () => {
     const checklist = readText("docs/implementation/v1-release-checklist.md");
 
     expect(releaseEvidence.releaseStatus).toBe("blocked");
-    expect(humanReviewGate.status).toBe("blocked");
-    expect(humanReviewGate.rationale).toContain("approved threshold 0.1");
+    expect(humanReviewGate.status).toBe("deferred");
+    expect(humanReviewGate.rationale).toContain("approved variance threshold 0.1");
     expect(humanReviewGate.rationale).toContain("hook/prose");
     expect(humanReviewGate.rationale).not.toContain("threshold remains unapproved");
     expect(humanReviewGate.evidence).toContain(policyPath);
@@ -168,8 +168,17 @@ describe("M3-240 approved inter-rater variance threshold", () => {
         issue: "#242",
       },
     });
-    expect(capabilityEvidence.capabilities["CONT-001"].gap.issue).toBe("#278");
-    expect(capabilityEvidence.capabilities["CONT-001"].gap.issues).toEqual(["#278", "#279"]);
+    expect(capabilityEvidence.capabilities).not.toHaveProperty("CONT-001");
+    const deferrals = readJson("docs/planning/v1-deferrals.json");
+    expect(deferrals.deferrals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "CONT-001",
+          status: "deferred",
+          approvedBy: "product-owner",
+        }),
+      ]),
+    );
     expect(traceability).toMatch(/\| EVAL-002 \| 评分 rubric\/阈值\/回归 \| V1 \| implemented \|/u);
     expect(traceability).toContain(policyPath);
   });

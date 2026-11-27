@@ -424,6 +424,11 @@ describe("V1 release gate", () => {
     });
     const authorized = evaluate({ evidence, traceability, deferrals });
     expect(authorized.blockers).not.toContain("human-blind-review:deferred-not-authorized");
+
+    const invalidDeferrals = structuredClone(deferrals);
+    invalidDeferrals.deferrals.find((deferral) => deferral.id === "CONT-001").approvedAt = "";
+    const invalid = evaluate({ evidence, traceability, deferrals: invalidDeferrals });
+    expect(invalid.blockers).toContain("deferral:CONT-001:invalid");
   });
 
   it("keeps the CONT-001 deferral aligned across the committed ledgers", () => {
