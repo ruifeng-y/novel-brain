@@ -152,6 +152,34 @@ describe("non-UI capability evidence audit", () => {
     expect(validate(audit)).toContain("capability-audit:gap-issue-missing:IO-001");
   });
 
+  it("rejects EVAL-002 implemented with a closed follow-up gap", () => {
+    const evalTraceability = [
+      "| ID | Capability | Scope | Status | Primary issue | Supporting | Design | Evidence | Milestone |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+      "| EVAL-002 | 评分 rubric/阈值/回归 | V1 | implemented | #139 | — | docs | import | M3 |",
+    ].join("\n");
+    const audit = structuredClone(completeAudit);
+    audit.capabilities = {
+      "EVAL-002": {
+        status: "implemented",
+        evidence: ["import"],
+        gap: {
+          reason: "A closed follow-up cannot remain the only evidence boundary.",
+          issue: "#242",
+        },
+      },
+    };
+
+    const blockers = validateNonUiCapabilityEvidence(evalTraceability, audit, {
+      evidenceExists: () => true,
+      auditCiRunIsValid: () => true,
+      gapIssueIsValid: () => false,
+      githubRunIsSuccessful: () => true,
+    });
+
+    expect(blockers).toContain("capability-audit:gap-issue-invalid:EVAL-002:#242");
+  });
+
   it("validates every bounded follow-up issue declared by a capability", () => {
     const audit = structuredClone(completeAudit);
     audit.capabilities["IO-001"].gap.issues = ["#300", "#301"];

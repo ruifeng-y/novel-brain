@@ -2,8 +2,8 @@
 
 > Issue: #104
 > Capabilities: UI-001, UI-002, UI-003, UI-004, UI-005, UI-006, UI-007, UI-008, UI-009
-> Status: integration implementation complete; V1 release sign-off remains blocked by final CI
-> and the EVAL-002 release-head evidence gap. CONT-001 is explicitly deferred.
+> Status: integration implementation complete; V1 release sign-off remains blocked by the final
+> release-evidence binding. EVAL-002 is verified against Production CI `45944913873`; CONT-001 is explicitly deferred.
 
 ## 实现结果
 
@@ -31,10 +31,10 @@
 
 自动化完成不等于 V1 release approved。以下证据仍缺失：
 
-- Non-UI capability 审计已完成：106 项 V1 能力中 105 项 `verified`，EVAL-002 仍有 release-head CI 有界缺口；CONT-001 已明确延期，不再是 V1 能力。EVAL-002 的阈值决定已由 #240 完成，但最终 release-head CI 仍待 #242；CHANGE-004 至 CHANGE-007 已由 #263 补齐证据并绑定 Production CI；EVAL-004 已由 #271 的模型身份 alias 规则与 Production CI 验证；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
+- Non-UI capability 审计已完成：106 项 V1 能力中 106 项 `verified`；EVAL-002 已绑定 Production CI `45944913873` 和 head `e204faa`；CONT-001 已明确延期，不再是 V1 能力。最终 release-evidence gate 仍待 current-head 绑定；CHANGE-004 至 CHANGE-007 已由 #263 补齐证据并绑定 Production CI；EVAL-004 已由 #271 的模型身份 alias 规则与 Production CI 验证；机器账本见 `docs/implementation/m3-236-non-ui-capability-evidence.json`；
 - UI-001..UI-009 与总 traceability 已由 #238 完成，17 页与 UI capability 不再是发布阻塞项；
 - #273 已记录 24/24 替换裁决及 external attestation；CONT-001 已延期，
   `hook_prose_score = 1.882353 < 4`、未冻结 clean packet 和缺失 24/24 replacement approval 保留为历史证据；
-- 最终 #104 Production CI 的绿色运行链接。
+- 最终 release-evidence gate 的 current-head CI 绑定。
 
 在补齐以上发布级证据之前，`#104` 保持 `OPEN`，不得宣称 V1 发布完成。

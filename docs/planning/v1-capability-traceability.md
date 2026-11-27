@@ -1,6 +1,6 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-27。共 **119 个唯一能力 ID**；115 个 V1 能力中 114 个已有可执行证据并标为 `verified`，1 个保留有界缺口。106 个非 UI V1 能力中 105 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 与 CONT-001 已按产品决定延期。CONT-001 的人工原始评分保留为 #239 `complete-with-warnings`，#273 的 24/24 替换裁决和 external attestation 作为历史证据保留，但 #278 clean packet 未完成且已关闭为 `NOT_PLANNED`，#279 全量重评不属于 V1。EVAL-002 的 variance threshold 已由 #240 批准为 `0.1`；最终 release-head CI 仍由 #242 收口。
+> 状态：V1 delivery ledger，2026-11-27。共 **119 个唯一能力 ID**；115 个 V1 能力中 115 个已有可执行证据并标为 `verified`。106 个非 UI V1 能力中 106 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 与 CONT-001 已按产品决定延期。CONT-001 的人工原始评分保留为 #239 `complete-with-warnings`，#273 的 24/24 替换裁决和 external attestation 作为历史证据保留，但 #278 clean packet 未完成且已关闭为 `NOT_PLANNED`，#279 全量重评不属于 V1。EVAL-002 的 variance threshold 已由 #240 批准为 `0.1`，并以 #242 的最终 PR Production CI run `45944913873` 绑定到 head `e204faa`。
 > `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 保留；`deferred` 不属于 V1 发布承诺。
 
 ## 状态定义
@@ -133,7 +133,7 @@
 | OPS-002 | 备份/恢复演练 | V1 | verified | #136 | — | Backend design §§11–13; ADR 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#OPS-002` | M3 |
 | OPS-003 | 监控/日志/成本告警 | V1 | verified | #135 | — | Backend design §§11–13; ADR 0023 | `docs/implementation/m3-236-non-ui-capability-evidence.json#OPS-003` | M3 |
 | EVAL-001 | 三题材 + 长线基准集 | V1 | verified | #139 | #79 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-001` | M3 |
-| EVAL-002 | 评分 rubric/阈值/回归 | V1 | implemented | #139 | — | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-002`; `docs/quality/evidence/m3-240/review-policy.json`; `scripts/test/m3-240-variance-threshold.test.mjs`; release-head CI gap #242 | M3 |
+| EVAL-002 | 评分 rubric/阈值/回归 | V1 | verified | #139 | — | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-002`; `docs/quality/evidence/m3-240/review-policy.json`; `scripts/test/m3-240-variance-threshold.test.mjs`; [Production CI 45944913873](https://github.com/ruifeng-y/novel-brain/actions/runs/45944913873) | M3 |
 | EVAL-003 | 真实 DeepSeek smoke | V1 | verified | #140 | #79, #241 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-003`; [protected run 45557765302](https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302) | M3 |
 | EVAL-004 | Prompt/模型灰度与回滚 | V1 | verified | #140 | #241, #271 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-004`; approved model identity and fail-closed alias tests; [Production CI 45686912713](https://github.com/ruifeng-y/novel-brain/actions/runs/45686912713) | M3 |
 | PERF-001 | 1000 万字容量/性能/恢复基准 | 后续 | deferred | — | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 产品决定 V1 不声明 10M 容量；未来重启需重新认证 | Post-V1 |
@@ -148,4 +148,4 @@
 5. `mapped` 不等于 `ready`。依赖全部满足后才允许 /implement；不得仅凭 issue 存在或标签开始。
 6. `implemented` 不等于 `verified`；发布前必须提供机器测试结果、人工签收或基准报告。
 7. AGENT-007（向量检索增强）、QUALITY-009（真实读者反馈）、PERF-001 与 CONT-001 保持 post-V1/deferred，不得用假接口或未完成候选计入 V1；授权记录见 `docs/planning/v1-deferrals.json` 与 ADR 0028。
-8. CONT-001 的 #239/#273 证据保留为历史记录，但 #278 clean packet 未完成且已关闭为 `NOT_PLANNED`，#279 不属于 V1；#242 release-head CI 仍是发布阻塞项。任何未登记解除 V1 归属的能力都会使 release gate 失败。
+8. CONT-001 的 #239/#273 证据保留为历史记录，但 #278 clean packet 未完成且已关闭为 `NOT_PLANNED`，#279 不属于 V1；最终 release-evidence gate 仍是发布阻塞项。任何未登记解除 V1 归属的能力都会使 release gate 失败。

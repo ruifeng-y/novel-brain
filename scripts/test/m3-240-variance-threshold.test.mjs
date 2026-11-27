@@ -151,7 +151,7 @@ describe("M3-240 approved inter-rater variance threshold", () => {
     expect(checklist).not.toContain("Approve and record the inter-rater variance threshold");
   });
 
-  it("keeps EVAL-002 bounded on final release CI while recording threshold evidence", () => {
+  it("binds EVAL-002 to the final release-head Production CI evidence", () => {
     const capabilityEvidence = readJson(
       "docs/implementation/m3-236-non-ui-capability-evidence.json",
     );
@@ -161,13 +161,15 @@ describe("M3-240 approved inter-rater variance threshold", () => {
       kind: "guardrail",
       path: "scripts/test/m3-240-variance-threshold.test.mjs",
     });
-    expect(capabilityEvidence.capabilities["EVAL-002"]).toMatchObject({
-      status: "implemented",
-      evidence: expect.arrayContaining(["variance-threshold-policy"]),
-      gap: {
-        issue: "#242",
-      },
+    expect(capabilityEvidence.verification).toMatchObject({
+      path: "https://github.com/ruifeng-y/novel-brain/actions/runs/45944913873",
+      headSha: "e204faaffbda574f7840550647dcf15812a3b192",
     });
+    expect(capabilityEvidence.capabilities["EVAL-002"]).toMatchObject({
+      status: "verified",
+      evidence: expect.arrayContaining(["variance-threshold-policy"]),
+    });
+    expect(capabilityEvidence.capabilities["EVAL-002"]).not.toHaveProperty("gap");
     expect(capabilityEvidence.capabilities).not.toHaveProperty("CONT-001");
     const deferrals = readJson("docs/planning/v1-deferrals.json");
     expect(deferrals.deferrals).toEqual(
@@ -179,7 +181,7 @@ describe("M3-240 approved inter-rater variance threshold", () => {
         }),
       ]),
     );
-    expect(traceability).toMatch(/\| EVAL-002 \| 评分 rubric\/阈值\/回归 \| V1 \| implemented \|/u);
+    expect(traceability).toMatch(/\| EVAL-002 \| 评分 rubric\/阈值\/回归 \| V1 \| verified \|/u);
     expect(traceability).toContain(policyPath);
   });
 });
