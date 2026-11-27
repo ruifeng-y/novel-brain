@@ -24,6 +24,17 @@ export class BlueprintJobQueue implements OnModuleDestroy {
   }
 
   async enqueue(payload: GenerateBlueprintJob): Promise<void> {
+    const existing = await this.queue.getJob(payload.jobId);
+    if (existing) {
+      const state = await existing.getState();
+      if (state === "completed" || state === "failed") {
+        await existing.remove();
+      } else if (
+        ["active", "delayed", "prioritized", "waiting", "waiting-children"].includes(state)
+      ) {
+        return;
+      }
+    }
     await this.queue.add(GENERATE_BLUEPRINT_JOB, payload, {
       jobId: payload.jobId,
       removeOnComplete: false,
