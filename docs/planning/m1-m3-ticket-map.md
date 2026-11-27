@@ -63,17 +63,17 @@ M2 guardrail: #110 owns Agent orchestration state/Workflow Envelope, #115 owns c
 | #100 Security and lifecycle | #132 RLS/authorization audit; #133 log/trace redaction; #134 account export/deletion/purge | SEC-002–004/006; ACCT-005/006; IO-006 |
 | #101 Operations | #135 deploy/health/metrics/alerts; #136 backup/restore/RPO/RTO | OPS-001–003; IO-007 |
 | #102 10M capacity certification (deferred outside V1) | #137 deterministic data generator, workload and capacity/recovery benchmark | PERF-001 (post-V1/deferred) |
-| #103 Quality and release evaluation | #138 long-horizon continuity fixture; #139 fixed dataset/rubric/regression; #140 real-provider smoke/canary/rollback | CONT-001; QUALITY-006; EVAL-001–004 |
+| #103 Quality and release evaluation | #138 long-horizon continuity fixture; #139 fixed dataset/rubric/regression; #140 real-provider smoke/canary/rollback | CONT-001 (post-V1/deferred); QUALITY-006; EVAL-001–004 |
 | #104 V1-wide UI parity/release closeout | Aggregates page-level evidence for all 17 production pages and approved deviations | UI-001–009 |
 
 ## 6. Cross-cutting benchmark gates
 
-`CONT-001` remains a V1 release gate. `PERF-001` was added as a separate benchmark claim but is now explicitly deferred outside V1:
+`CONT-001` and `PERF-001` are explicitly deferred outside V1:
 
 - **PERF-001 / #137 (deferred):** A future capacity claim would require the integrated system to store, retrieve, edit, index, import/export and recover a 10,000,000-character work on the pinned 8 vCPU / 16 GB RAM / 100 GB SSD baseline.
-- **CONT-001 / #138:** Can the system preserve canon, per-character knowledge, state transitions, time, plotlines and foreshadowing across 3,000–4,000 chapters / 30–40 volumes, while keeping Agent autonomy within its grant?
+- **CONT-001 / #138 (deferred):** A future claim would require a clean, human-approved 204-sample packet and a complete two-reviewer rerun for 3,000–4,000 chapters / 30–40 volumes.
 
-PERF-001 is not part of the V1 release claim. CONT-001 has human raw-score evidence from #239 as complete-with-warnings. #273 records 24/24 replacement decisions and invalidates old scores for clean review. #278 owns clean-packet rebuild; #279 owns benchmark prose remediation and full 204-sample rerun. EVAL-002's variance threshold is approved as `0.1` under #240. See docs/performance/v1-10m-capacity-benchmark.md, docs/quality/v1-long-horizon-continuity-benchmark.md, docs/quality/evidence/m3-239/, docs/quality/evidence/m3-240/ and docs/quality/evidence/m3-273/.
+PERF-001 and CONT-001 are not part of the V1 release claim. CONT-001 retains #239 human raw-score evidence as complete-with-warnings and #273's 24/24 replacement decisions, but #278 was closed `NOT_PLANNED` without a frozen clean packet or `24/24` replacement approval; #279 is not a V1 deliverable. EVAL-002's variance threshold is approved as `0.1` under #240. See docs/performance/v1-10m-capacity-benchmark.md, docs/quality/v1-long-horizon-continuity-benchmark.md, docs/quality/evidence/m3-239/, docs/quality/evidence/m3-240/ and docs/quality/evidence/m3-273/.
 
 ## 7. Dependency graph and readiness
 

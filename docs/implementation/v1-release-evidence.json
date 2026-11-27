@@ -11,6 +11,8 @@
       "evidence": [
         "docs/planning/v1-capability-manifest.md",
         "docs/planning/v1-capability-traceability.md",
+        "docs/planning/v1-deferrals.json",
+        "docs/implementation/m3-cont-001-deferral.md",
         "docs/implementation/m3-238-ui-capability-evidence.json",
         "scripts/validate-readiness.mjs"
       ]
@@ -90,10 +92,12 @@
     },
     {
       "id": "human-blind-review",
-      "status": "blocked",
+      "status": "deferred",
       "owner": "product-owner",
-      "rationale": "Human raw scores are recorded in #239 with the accepted reviewer-completion-times-identical warning. The approved threshold 0.1 passes observed maxVariance 0. #273 records 24/24 replacement decisions, invalidates old scores for clean review and has an owner-authored external attestation. #278 rebuilds the clean packet, #279 reruns the full 204-sample review, and hook/prose remains 1.882353 below the required 4/5.",
+      "rationale": "CONT-001 is explicitly deferred from V1 by product decision. Historical evidence remains visible: #239 recorded human raw scores with warnings, #240 approved variance threshold 0.1, and #273 recorded 24/24 replacement decisions with external attestation. No clean 204-sample packet was frozen, no 24/24 replacement approval exists, and hook/prose remains 1.882353 below 4/5. V1 makes no clean long-horizon quality claim; #279 is not a V1 deliverable.",
       "evidence": [
+        "docs/implementation/m3-cont-001-deferral.md",
+        "docs/planning/v1-deferrals.json",
         "docs/implementation/m3-273-hidden-truth-adjudication.md",
         "docs/quality/v1-quality-benchmark-registry.md",
         "docs/quality/v1-long-horizon-continuity-benchmark.md",

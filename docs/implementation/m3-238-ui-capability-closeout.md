@@ -47,10 +47,10 @@ commit `6bc4fa2a83172ae3ece9d75065462d973397333f`.
 - All 15 non-static production pages have complete, verified action evidence.
 - UI-001..UI-009 are `verified` in the traceability ledger.
 - The release gate now reports UI capability and parity evidence as passing.
-- V1 traceability records 114 of 116 V1 capabilities as `verified`; EVAL-002
-  awaits final release-head CI, while CONT-001 retains a bounded evidence gap.
-- The remaining release blockers are #278 clean-packet rebuild, #279 benchmark
-  prose remediation and full 204-sample rerun, and the final #242 Production CI.
+- V1 traceability records 114 of 115 V1 capabilities as `verified`; EVAL-002
+  awaits final release-head CI, while CONT-001 is explicitly deferred.
+- The remaining release blockers are the EVAL-002 release-head evidence gap and
+  the final #242 Production CI. CONT-001, #278 and #279 are not V1 deliverables.
   The inter-rater
   variance threshold is approved separately under #240. #238 does not close #104.
 
@@ -87,16 +87,15 @@ Local verification:
   `node scripts/validate-readiness.mjs` passed.
 - `pnpm release:check` is rerun after the current-head Production CI completes;
   it must remove UI capability blockers and leave only blocked release status,
-  final Production CI, the recorded quality failure and the two bounded
-  non-UI capability gaps.
+  final Production CI and the EVAL-002 release-head evidence gap.
 
 ## 5. Boundary
 
 This ticket does not claim that every V1 capability is already `verified` or
-authorized-deferred. EVAL-002 and CONT-001 remain explicit, bounded release
-blockers. #239 records the human review, #240 records the approved variance
-threshold but its capability verification remains with #242, and #104 remains
-open until the remaining release gates close.
+authorized-deferred. EVAL-002 remains an explicit bounded release blocker.
+CONT-001 is authorized-deferred. #239 records the human review, #240 records the
+approved variance threshold but its capability verification remains with #242,
+and #104 remains open until the remaining release gates close.
 
 This report does not record or substitute for:
 

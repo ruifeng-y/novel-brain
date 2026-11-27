@@ -1,7 +1,7 @@
 # V1 3000–4000 章跨卷叙事连续性基准
 
 > Owner: M3 #103 (quality/release package) / #138 (implementation)
-> Status: implementation complete with deterministic full/maximum fixture evidence; #239 records human raw scores as complete-with-warnings and #240 approves threshold `0.1`. #273 records 24/24 replacement decisions; #278/#279 own clean-packet rebuild and full corpus rerun, so the release quality claim remains blocked.
+> Status: implementation complete with deterministic full/maximum fixture evidence; #239 records human raw scores as complete-with-warnings and #240 approves threshold `0.1`. #273 records 24/24 replacement decisions. CONT-001 is explicitly deferred from V1; #278 was closed `NOT_PLANNED` and #279 is not a V1 deliverable, so no clean 204-sample quality claim is made.
 > This benchmark verifies long-horizon story correctness. It does not certify storage capacity or infrastructure performance.
 
 ## 1. Objective and claim boundary
@@ -154,19 +154,22 @@ Any threshold change requires an explicit decision/ADR and a versioned benchmark
 
 Recorded evidence: `docs/quality/evidence/m3-239/` contains two signed reviewer records, 816 raw scores and deterministic validation. The reviewers flagged all 24 defect-metadata cases for follow-up adjudication because the frozen samples contain continuity labels rather than narrative prose. #273 now records all 24 replacement decisions; #239 remains complete-with-warnings rather than a clean release-quality review.
 
-`docs/quality/evidence/m3-273/` records the product-owner decision: all 24 flagged samples are replaced, old scores are invalidated for clean review, hook/prose remediation is required, and an owner-authored external attestation is present. The proposal remains `proposed-not-approved` and `reviewerReadiness.status = not-ready`. #278 must produce 24 human-approved replacements and rebuild the clean packet. #279 must rerun the complete 204-sample two-reviewer review. The observed `hook_prose_score` is `1.882353`, below the `4/5` gate. #240 separately approves the inter-rater variance threshold `0.1`.
+`docs/quality/evidence/m3-273/` records the product-owner decision: all 24 flagged samples are replaced, old scores are invalidated for clean review, hook/prose remediation is required, and an owner-authored external attestation is present. The proposal remains `proposed-not-approved` and `reviewerReadiness.status = not-ready`. #278 was closed `NOT_PLANNED` without a clean packet or 24/24 replacement approval. The product owner deferred CONT-001 from V1 on 2026-11-27; #279 is not a V1 deliverable. The observed `hook_prose_score` is `1.882353`, below the `4/5` gate, and remains historical evidence for a future restart. #240 separately approves the inter-rater variance threshold `0.1`.
 
 ## 8. Regression protocol and release gate
 
 Any change to model, prompt, Agent Contract, grant/tool policy, context compilation, retrieval ranking, summary generation, genre pack or continuity rules must rerun the same pinned fixture suite. Record the code commit, schema/migration version, model/provider, prompt version, context compiler, evaluator/rubric version and fixture hash.
 
-A release is blocked by:
+A future restart of the long-horizon quality claim is blocked by:
 - any P0 canon loss or knowledge leakage;
 - any unauthorized or unreviewed high-risk canon mutation;
 - branch contamination or future-fact leakage;
 - untraceable state changes or unrecoverable derived memory;
 - rubric threshold failure without an approved waiver;
 - missing human review evidence for subjective long-horizon quality claims.
+
+V1 does not claim this benchmark. The current release checklist keeps CONT-001 deferred and
+must not convert historical #239/#273 evidence into a passed clean review.
 
 Every failure must identify work/branch, chapter range, source event, affected entity, version node, responsible runtime step and minimal reproduction. Waivers include owner, rationale, impact, expiry and follow-up issue.
 

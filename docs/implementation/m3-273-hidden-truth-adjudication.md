@@ -2,14 +2,14 @@
 
 > Issue: #273
 > Capabilities: CONT-001 supporting evidence
-> Status: decision and external attestation complete; **release blocked by #278/#279**
+> Status: decision and external attestation complete; **CONT-001 explicitly deferred from V1**
 
 ## 结论
 
 产品/质量负责人已完成 24/24 真人裁决：替换污染样本、旧评分对 clean review 失效、
 `hook_prose_score` 修复后重跑。外部 GitHub attestation 已发布并由发布门禁验证通过；
-本票的裁决职责已完成。CONT-001 继续为 `implemented`，V1 release gate 由 #278/#279
-继续 blocked。
+本票的裁决职责已完成。CONT-001 原实现和历史证据保留，但产品负责人已于 2026-11-27
+明确将其延期出 V1；#278 已关闭为 `NOT_PLANNED`，#279 不再属于 V1。
 
 本轮没有修改冻结 rubric、冻结 dataset、#239 原始问卷、816 条人工原始评分或旧 packet。
 模型没有补写裁决人、身份声明、时间、理由或影响。
@@ -27,8 +27,7 @@
     `requiredBeats`。
 - 记录 `adjudication.json`：24/24 `replace_sample`、旧评分
   `invalidated_for_clean_review`、hook/prose `remediate_and_rerun`。
-- #278 负责 24 个替代文本和 clean packet 重建；#279 负责 benchmark 文风修复及完整
-  204 样本双人重评；两者均阻塞 #242。
+- #278 未完成 clean packet，已关闭为 `NOT_PLANNED`；#279 不再作为 V1 交付项。
 - 生成机器状态 `docs/quality/evidence/m3-273/status.json`，当前结果为：
   - `completedAdjudicationCount: 24`
   - `pendingAdjudicationCount: 0`
@@ -72,10 +71,10 @@
 - 原始人工评分：
   `docs/quality/evidence/m3-239/human-scores.json`
 
-## 仍需完成
+## 后续边界
 
-- #278 完成 24/24 替代样本逐项人工批准并重建 clean packet。
-- #279 完成 benchmark corpus 修复和完整 204 样本双人重评。
+- CONT-001 已延期；未来恢复需要新的产品决定、人工批准 packet 和完整双人重评。
+- #278/#279 的关闭不构成质量通过证据。
 - #240 已单独批准 inter-rater variance threshold `0.1`；#273 无权修改或替代该决定。
 
 ## 验证
@@ -87,5 +86,5 @@ pnpm test:guardrails
 pnpm release:check
 ```
 
-`pnpm release:check` 仍应失败。当前预期真缺口包括 #278、#279 和最终 #242 Production CI，
-不得把机器准备的候选包解释为质量通过。
+`pnpm release:check` 仍应失败。当前预期真缺口包括 EVAL-002 的 release-head CI 证据；
+CONT-001 是授权延期，不得把机器准备的候选包解释为质量通过。

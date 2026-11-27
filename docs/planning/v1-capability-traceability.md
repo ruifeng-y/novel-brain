@@ -1,7 +1,7 @@
 # V1 Capability Traceability v2
 
-> 状态：V1 delivery ledger，2026-11-26。共 **119 个唯一能力 ID**；116 个 V1 能力中 114 个已有可执行证据并标为 `verified`，2 个保留有界缺口。107 个非 UI V1 能力中 105 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 已按产品决定延期。CONT-001 的人工原始评分已由 #239 记录为 `complete-with-warnings`；#273 已记录 24/24 替换裁决并使旧评分对 clean review 失效，#278/#279 负责 clean packet 与全量重评。EVAL-002 的 variance threshold 已由 #240 批准为 `0.1`；最终 release-head CI 仍由 #242 收口。
-> `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 或 `deferred` 保留。
+> 状态：V1 delivery ledger，2026-11-27。共 **119 个唯一能力 ID**；115 个 V1 能力中 114 个已有可执行证据并标为 `verified`，1 个保留有界缺口。106 个非 UI V1 能力中 105 个已验证；UI-001..UI-009 已由 #238 的机器账本、Playwright 证据和 Production CI 收口。PERF-001 与 CONT-001 已按产品决定延期。CONT-001 的人工原始评分保留为 #239 `complete-with-warnings`，#273 的 24/24 替换裁决和 external attestation 作为历史证据保留，但 #278 clean packet 未完成且已关闭为 `NOT_PLANNED`，#279 全量重评不属于 V1。EVAL-002 的 variance threshold 已由 #240 批准为 `0.1`；最终 release-head CI 仍由 #242 收口。
+> `verified` 表示实现、集成和自动化验收证据已齐；不等于 V1 release approved。发布阻塞项以 `implemented` 保留；`deferred` 不属于 V1 发布承诺。
 
 ## 状态定义
 
@@ -137,7 +137,7 @@
 | EVAL-003 | 真实 DeepSeek smoke | V1 | verified | #140 | #79, #241 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-003`; [protected run 45557765302](https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302) | M3 |
 | EVAL-004 | Prompt/模型灰度与回滚 | V1 | verified | #140 | #241, #271 | M3 Spec #82; EvalModule; ADR 0022 | `docs/implementation/m3-236-non-ui-capability-evidence.json#EVAL-004`; approved model identity and fail-closed alias tests; [Production CI 45686912713](https://github.com/ruifeng-y/novel-brain/actions/runs/45686912713) | M3 |
 | PERF-001 | 1000 万字容量/性能/恢复基准 | 后续 | deferred | — | #91/#93/#95/#96/#128/#135/#136 | Backend design §§12–13; #137 | 产品决定 V1 不声明 10M 容量；未来重启需重新认证 | Post-V1 |
-| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | implemented | #138 | #106–#119/#86/#90/#115/#239/#273/#278/#279 | ADR 0017/0019/0022; #138 | `docs/implementation/m3-236-non-ui-capability-evidence.json#CONT-001`; `docs/quality/evidence/m3-273/adjudication.json`; 24/24 replacement decisions; #278 clean packet, #279 full rerun; hook/prose 1.882353 < 4; gap #278/#279 | M3 |
+| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | 后续 | deferred | — | #106–#119/#86/#90/#115/#239/#273/#278/#279 | ADR 0017/0019/0022; ADR 0028; #138 | 产品决定 V1 不声明 clean 204 样本人工盲评；#278 已 `NOT_PLANNED`，#279 不再作为 V1 交付；未来重启需新决策、人工批准 packet、完整双人重评和冻结证据 | Post-V1 |
 
 ## 强制规则
 
@@ -147,5 +147,5 @@
 4. 每个 leaf issue 必须链接设计来源、受影响 API/DB/Worker/UI 面、可执行测试类型和可复现验收证据。
 5. `mapped` 不等于 `ready`。依赖全部满足后才允许 /implement；不得仅凭 issue 存在或标签开始。
 6. `implemented` 不等于 `verified`；发布前必须提供机器测试结果、人工签收或基准报告。
-7. AGENT-007（向量检索增强）与 QUALITY-009（真实读者反馈）保持 post-V1/deferred，不得用假接口计入 V1；授权记录见 `docs/planning/v1-deferrals.json` 与 ADR 0028。
-8. PERF-001 已明确延期，不属于 V1 发布承诺；CONT-001 的评分证据已由 #239 收口、阈值已由 #240 批准、#273 已记录 24/24 真人决定和 external attestation，但 #278 clean packet、#279 full rerun 和 #242 release-head CI 仍是发布阻塞项。任何未登记解除 V1 归属的能力都会使 release gate 失败。
+7. AGENT-007（向量检索增强）、QUALITY-009（真实读者反馈）、PERF-001 与 CONT-001 保持 post-V1/deferred，不得用假接口或未完成候选计入 V1；授权记录见 `docs/planning/v1-deferrals.json` 与 ADR 0028。
+8. CONT-001 的 #239/#273 证据保留为历史记录，但 #278 clean packet 未完成且已关闭为 `NOT_PLANNED`，#279 不属于 V1；#242 release-head CI 仍是发布阻塞项。任何未登记解除 V1 归属的能力都会使 release gate 失败。

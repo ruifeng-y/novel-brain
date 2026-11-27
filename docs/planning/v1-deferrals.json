@@ -39,6 +39,20 @@
         "docs/planning/v1-capability-manifest.md",
         "docs/planning/v1-capability-traceability.md"
       ]
+    },
+    {
+      "id": "CONT-001",
+      "scope": "后续",
+      "status": "deferred",
+      "approvedBy": "product-owner",
+      "approvedAt": "2026-11-27",
+      "rationale": "The product owner approved deferring the clean long-horizon quality benchmark from V1 after #278 was closed as not planned. V1 makes no clean 204-sample quality claim; #279 is not a V1 deliverable.",
+      "evidence": [
+        "docs/adr/0028-v1-scope-deferrals.md",
+        "docs/planning/v1-capability-manifest.md",
+        "docs/planning/v1-capability-traceability.md",
+        "docs/implementation/m3-cont-001-deferral.md"
+      ]
     }
   ]
 }
