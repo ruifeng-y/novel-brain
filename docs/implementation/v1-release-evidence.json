@@ -77,13 +77,10 @@
       "id": "final-production-ci",
       "status": "blocked",
       "owner": "release-owner",
-      "rationale": "EVAL-002 is verified against PR #281 Production CI run 45944913873 at head e204faa. PR #285 current-head UI evidence passes with Production CI 45954872224, Readiness 45954872160 and Deployment Smoke 45954872263. The final gate remains blocked until a matching current-head release run is bound to the final evidence commit; the remaining machine blocker is final-production-ci:blocked.",
+      "rationale": "EVAL-002 is verified against PR #281 Production CI run 45944913873 at head e204faa. PR #285 current-head UI evidence passed; exact run IDs are recorded in #284. The final gate remains blocked until a matching current-head release run is bound to the final evidence commit; the remaining machine blocker is final-production-ci:blocked.",
       "evidence": [
         "docs/implementation/m3-284-release-gate.md",
-        "https://github.com/ruifeng-y/novel-brain/actions/runs/45944913873",
-        "https://github.com/ruifeng-y/novel-brain/actions/runs/45954872224",
-        "https://github.com/ruifeng-y/novel-brain/actions/runs/45954872160",
-        "https://github.com/ruifeng-y/novel-brain/actions/runs/45954872263"
+        "https://github.com/ruifeng-y/novel-brain/actions/runs/45944913873"
       ]
     },
     {

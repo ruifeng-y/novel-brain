@@ -32,8 +32,8 @@ same pull-request head.
 
 ## Current Evidence
 
-PR #285 passed Production CI `45954872224`, Readiness `45954872160`, and Deployment Smoke
-`45954872263` on head `50d2747`. `pnpm release:check` now reports only:
+PR #285 passed Production CI, Readiness, and Deployment Smoke; exact run IDs are recorded in
+#284. `pnpm release:check` now reports only:
 
 ```text
 release-evidence:status-blocked
