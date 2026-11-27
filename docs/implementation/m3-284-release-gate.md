@@ -30,6 +30,16 @@ infrastructure, and selected deployment scripts.
 A release-evidence PR now triggers Deployment Smoke alongside Production CI and Readiness on the
 same pull-request head.
 
+## Current Evidence
+
+PR #285 passed Production CI `45954872224`, Readiness `45954872160`, and Deployment Smoke
+`45954872263` on head `50d2747`. `pnpm release:check` now reports only:
+
+```text
+release-evidence:status-blocked
+final-production-ci:blocked
+```
+
 ## Boundary
 
 This does not fabricate the final gate. A successful PR run must still be bound to the final

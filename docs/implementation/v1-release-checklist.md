@@ -30,7 +30,7 @@ Machine-readable release evidence and waiver ownership live in `docs/implementat
 | Real-provider smoke | `.github/workflows/provider-smoke.yml`; [protected manual run 45557765302](https://github.com/ruifeng-y/novel-brain/actions/runs/45557765302); `docs/implementation/evidence/m3-07e-01-provider-smoke-success-2026-11-25.json` | pass / DeepSeek official HTTPS API, `finishReason: stop`, 1 network call |
 | Human blind review and variance threshold | `docs/implementation/m3-239-human-blind-review.md`, `docs/implementation/m3-240-variance-threshold.md`, `docs/implementation/m3-273-hidden-truth-adjudication.md`, `docs/implementation/m3-cont-001-deferral.md`, `docs/planning/v1-deferrals.json`, `docs/quality/evidence/m3-240/review-policy.json`, `docs/quality/evidence/m3-239/validation.json`, `docs/quality/evidence/m3-239/human-scores.json`, `docs/quality/evidence/m3-273/adjudication.json`, `docs/quality/evidence/m3-273/status.json` | historical record complete-with-warnings; threshold `0.1` approved; #273 records 24/24 replace decisions and external attestation; CONT-001 is deferred, so no clean V1 quality claim |
 | 10M capacity | `#137` / `PERF-001` | explicitly deferred; excluded from V1 claims |
-| Final #104 Production CI | Production CI `check`/`playwright` run [45944913873](https://github.com/ruifeng-y/novel-brain/actions/runs/45944913873); Deployment Smoke [45946581591](https://github.com/ruifeng-y/novel-brain/actions/runs/45946581591) | code-head evidence passed at `e204faa`; final release-evidence gate remains blocked |
+| Final #104 Production CI | Production CI `check`/`playwright` run [45954872224](https://github.com/ruifeng-y/novel-brain/actions/runs/45954872224); Readiness [45954872160](https://github.com/ruifeng-y/novel-brain/actions/runs/45954872160); Deployment Smoke [45954872263](https://github.com/ruifeng-y/novel-brain/actions/runs/45954872263) | current-head UI evidence passed at `50d2747`; final release-evidence gate remains blocked |
 
 The P0 ledger is `p0Failures: []`. Every waiver must include both an owner and rationale; an unchecked P0 or ownerless waiver blocks release.
 
@@ -57,9 +57,8 @@ The real-provider gate must be run separately from GitHub Actions using the manu
 
 ## 4. Remaining blockers
 
-1. Bind the final release-evidence gate to a current-head release CI run.
-2. Bind current-head UI capability evidence to the same successful run; release-evidence
-   changes now trigger Deployment Smoke, but the evidence commit still needs a matching run.
+1. Bind the final release-evidence gate to a matching current-head release CI run.
+   Current-head UI evidence now passes; `final-production-ci:blocked` remains.
 
 Until then the release decision is **BLOCKED**, and no V1 clean long-horizon quality or capacity
 claim may be made.
