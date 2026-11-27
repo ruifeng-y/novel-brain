@@ -137,10 +137,12 @@ describe("tenant RLS audit", () => {
         $$;
       `);
       await pool.query(
-        "GRANT USAGE ON SCHEMA public TO novelbrain_blueprints_rls_test; GRANT SELECT ON work_blueprints TO novelbrain_blueprints_rls_test",
+        "GRANT USAGE ON SCHEMA public TO novelbrain_blueprints_rls_test; GRANT SELECT, UPDATE ON work_blueprints TO novelbrain_blueprints_rls_test",
       );
       expect(await countVisibleBlueprints(pool, ownerId, blueprintId)).toBe(1);
       expect(await countVisibleBlueprints(pool, outsiderId, blueprintId)).toBe(0);
+      expect(await updateVisibleBlueprint(pool, outsiderId, blueprintId)).toBe(0);
+      expect(await updateVisibleBlueprint(pool, ownerId, blueprintId)).toBe(1);
     } finally {
       await pool.end();
     }
@@ -167,6 +169,30 @@ async function countVisibleBlueprints(
     );
     await client.query("COMMIT");
     return result.rows[0]?.count ?? 0;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateVisibleBlueprint(
+  pool: ReturnType<typeof createDatabasePool>,
+  userId: string,
+  blueprintId: string,
+): Promise<number> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL ROLE novelbrain_blueprints_rls_test");
+    await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
+    const result = await client.query(
+      "UPDATE work_blueprints SET updated_at = now() WHERE id = $1",
+      [blueprintId],
+    );
+    await client.query("COMMIT");
+    return result.rowCount ?? 0;
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw error;

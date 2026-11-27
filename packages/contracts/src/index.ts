@@ -6094,6 +6094,17 @@ export const BLUEPRINT_ACTIONS = ["edit", "retry", "resume_budget", "cancel", "c
 export const blueprintActionSchema = z.enum(BLUEPRINT_ACTIONS);
 export type BlueprintAction = z.infer<typeof blueprintActionSchema>;
 
+const REQUIRED_BLUEPRINT_SETTING_TYPES = [
+  "world_rule",
+  "character",
+  "faction",
+  "map",
+  "power_system",
+  "item",
+  "timeline_event",
+] as const;
+const REQUIRED_BLUEPRINT_LEVELS = ["book", "volume", "act", "chapter", "scene"] as const;
+
 export const workBlueprintSchema = z
   .object({
     id: uuidV7Schema,
@@ -6154,6 +6165,26 @@ export const workBlueprintSchema = z
           code: "custom",
           message: "Unresolved P0 conflicts block blueprint confirmation",
           path: ["conflicts"],
+        });
+      }
+      const settingTypes = new Set(blueprint.coreSettingsDraft.map((candidate) => candidate.type));
+      const missingSettingTypes = REQUIRED_BLUEPRINT_SETTING_TYPES.filter(
+        (type) => !settingTypes.has(type),
+      );
+      if (missingSettingTypes.length > 0) {
+        context.addIssue({
+          code: "custom",
+          message: `Confirmed blueprints require core settings: ${missingSettingTypes.join(", ")}`,
+          path: ["coreSettingsDraft"],
+        });
+      }
+      const outlineLevels = new Set(blueprint.outlineDraft?.nodes.map((node) => node.level) ?? []);
+      const missingLevels = REQUIRED_BLUEPRINT_LEVELS.filter((level) => !outlineLevels.has(level));
+      if (missingLevels.length > 0 || !blueprint.outlineDraft?.sceneCards.length) {
+        context.addIssue({
+          code: "custom",
+          message: "Confirmed blueprints require a complete five-level outline with scene cards",
+          path: ["outlineDraft"],
         });
       }
     }

@@ -38,6 +38,23 @@ describe("blueprint contracts", () => {
     expect(workBlueprintSchema.safeParse(makeBlueprint()).success).toBe(true);
   });
 
+  it("rejects confirmed blueprints without required settings and outline levels", () => {
+    expect(workBlueprintSchema.safeParse(makeBlueprint({ coreSettingsDraft: [] })).success).toBe(
+      false,
+    );
+    expect(
+      workBlueprintSchema.safeParse(
+        makeBlueprint({
+          outlineDraft: {
+            nodes: [makeOutlineDraft().nodes[0]],
+            volumeContracts: [],
+            sceneCards: [],
+          },
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
   it("blocks unresolved P0 conflicts in a confirmed blueprint", () => {
     const result = workBlueprintSchema.safeParse(
       makeBlueprint({
@@ -204,25 +221,8 @@ function makeBlueprint(overrides: Record<string, unknown> = {}) {
     cost: { inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 },
     draftHash: "a".repeat(64),
     storyBibleDraft: { cards: makeCards() },
-    coreSettingsDraft: [],
-    outlineDraft: {
-      nodes: [
-        {
-          id: "01900000-0000-7000-8000-000000000030",
-          parentId: null,
-          level: "book",
-          sortOrder: 0,
-          title: "全书",
-          summary: "全书大纲",
-          status: "planned",
-          chapterNumber: null,
-          brief: null,
-          tension: null,
-        },
-      ],
-      volumeContracts: [],
-      sceneCards: [],
-    },
+    coreSettingsDraft: makeCoreSettings(),
+    outlineDraft: makeOutlineDraft(),
     missingFields: [],
     conflicts: [],
     acknowledgements: [],
@@ -232,5 +232,122 @@ function makeBlueprint(overrides: Record<string, unknown> = {}) {
     createdAt: "2026-11-27T00:00:00.000Z",
     updatedAt: "2026-11-27T00:00:00.000Z",
     ...overrides,
+  };
+}
+
+function makeCoreSettings() {
+  return (
+    ["world_rule", "character", "faction", "map", "power_system", "item", "timeline_event"] as const
+  ).map((type, index) => ({
+    candidateId: `01900000-0000-7000-8000-${String(100 + index).padStart(12, "0")}`,
+    type,
+    name: `核心设定 ${index + 1}`,
+    aliases: [],
+    summary: `核心设定 ${index + 1} 摘要`,
+    description: `核心设定 ${index + 1} 描述`,
+    tags: [],
+    data: {},
+    required: true,
+    source: "blueprint",
+  }));
+}
+
+function makeOutlineDraft() {
+  const bookId = "01900000-0000-7000-8000-000000000030";
+  const volumeId = "01900000-0000-7000-8000-000000000031";
+  const actId = "01900000-0000-7000-8000-000000000032";
+  const chapterId = "01900000-0000-7000-8000-000000000033";
+  const sceneId = "01900000-0000-7000-8000-000000000034";
+  return {
+    nodes: [
+      {
+        id: bookId,
+        parentId: null,
+        level: "book",
+        sortOrder: 0,
+        title: "全书",
+        summary: "全书大纲",
+        status: "planned",
+        chapterNumber: null,
+        brief: null,
+        tension: null,
+      },
+      {
+        id: volumeId,
+        parentId: bookId,
+        level: "volume",
+        sortOrder: 0,
+        title: "第一卷",
+        summary: "第一卷大纲",
+        status: "planned",
+        chapterNumber: null,
+        brief: null,
+        tension: 30,
+      },
+      {
+        id: actId,
+        parentId: volumeId,
+        level: "act",
+        sortOrder: 0,
+        title: "第一幕",
+        summary: "第一幕大纲",
+        status: "planned",
+        chapterNumber: null,
+        brief: null,
+        tension: 40,
+      },
+      {
+        id: chapterId,
+        parentId: actId,
+        level: "chapter",
+        sortOrder: 0,
+        title: "第一章",
+        summary: "第一章大纲",
+        status: "planned",
+        chapterNumber: 1,
+        brief: {
+          goal: "主角发现古书。",
+          pov: "沈砚",
+          location: "山门",
+          sceneBeats: ["主角捡到古书。"],
+          requiredFacts: ["古书存在"],
+        },
+        tension: 50,
+      },
+      {
+        id: sceneId,
+        parentId: chapterId,
+        level: "scene",
+        sortOrder: 0,
+        title: "山门夜雨",
+        summary: "主角在雨夜捡到古书。",
+        status: "planned",
+        chapterNumber: null,
+        brief: null,
+        tension: 55,
+      },
+    ],
+    volumeContracts: [
+      {
+        nodeId: volumeId,
+        objective: "主角进入修炼世界。",
+        conflict: "宗门排斥主角。",
+        turningPoints: ["发现古书"],
+        exitConditions: ["进入外门"],
+        plotLines: [],
+      },
+    ],
+    sceneCards: [
+      {
+        nodeId: sceneId,
+        title: "山门夜雨",
+        povLabel: "沈砚",
+        locationLabel: "山门",
+        storyTime: "入宗第一夜",
+        beats: ["主角躲雨", "古书发光"],
+        informationReleases: ["古书会吞噬记忆"],
+        tension: 55,
+      },
+    ],
   };
 }
