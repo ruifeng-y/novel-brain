@@ -188,7 +188,7 @@ describe("blueprint worker persistence", () => {
       pool,
       seeded.userId,
       "blueprint_waiting_model_config",
-      `blueprint:${seeded.jobId}:waiting_model_config`,
+      `blueprint:${seeded.jobId}:waiting_model_config:0`,
     );
   });
 
@@ -525,7 +525,7 @@ describe("blueprint worker persistence", () => {
       pool,
       seeded.userId,
       "blueprint_failed",
-      `blueprint:${seeded.jobId}:failed:1:MODEL_RATE_LIMITED`,
+      `blueprint:${seeded.jobId}:failed:1`,
     );
   });
 

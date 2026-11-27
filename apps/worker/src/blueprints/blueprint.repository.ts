@@ -751,7 +751,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
         title: "故事蓝图正在等待模型配置",
         message: "配置可用的规划模型后，可从当前检查点继续。",
         href: `/workspace/settings/account`,
-        dedupeKey: `blueprint:${payload.jobId}:waiting_model_config`,
+        dedupeKey: `blueprint:${payload.jobId}:waiting_model_config:${loaded.job.checkpoint.revision}`,
       });
     });
   }
@@ -943,7 +943,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           title: "故事蓝图生成失败",
           message: failure.message,
           href: `/workspace/${payload.workId}/blueprint`,
-          dedupeKey: `blueprint:${payload.jobId}:failed:${checkpoint.revision}:${failure.code}`,
+        dedupeKey: `blueprint:${payload.jobId}:failed:${checkpoint.revision}`,
         });
       }
     });
