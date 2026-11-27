@@ -12,6 +12,7 @@ import {
 import { Queue } from "bullmq";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
+import { uuidv7 } from "uuidv7";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../src/app.module";
@@ -263,6 +264,115 @@ describe("blueprint provisioning API", () => {
     }
   });
 
+  it("requeues a failed blueprint from its persisted checkpoint", async () => {
+    const owner = await createAuthenticatedAgent("blueprint-failed-retry@example.com");
+    const work = await createIdeaWork(owner, "blueprint-failed-retry");
+    const blueprintPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/blueprint`;
+    const before = await owner.get(blueprintPath).expect(200);
+    await databasePool.query(
+      `UPDATE jobs
+          SET status = 'failed', checkpoint_version = 2,
+              checkpoint = $3::jsonb, error_code = 'MODEL_RATE_LIMITED',
+              error_message = '限流'
+        WHERE id = $1 AND user_id = (SELECT user_id FROM works WHERE id = $2)`,
+      [
+        before.body.data.jobId,
+        work.id,
+        JSON.stringify({
+          schemaVersion: 1,
+          revision: 2,
+          step: "core_settings",
+          inputHash: "a".repeat(64),
+          payload: { storyBibleReady: true },
+        }),
+      ],
+    );
+    await databasePool.query(
+      `UPDATE work_blueprints
+          SET status = 'failed', current_step = 'core_settings', progress = 35
+        WHERE work_id = $1 AND branch_id = $2`,
+      [work.id, work.mainBranch.id],
+    );
+
+    const csrfToken = await csrf(owner);
+    const retried = await owner
+      .post(`${blueprintPath}/retry`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(202);
+    expect(retried.body.data).toMatchObject({
+      status: "queued",
+      currentStep: "core_settings",
+    });
+
+    const persisted = await databasePool.query<{ job_status: string; blueprint_status: string }>(
+      `SELECT j.status AS job_status, wb.status AS blueprint_status
+         FROM jobs AS j
+         INNER JOIN work_blueprints AS wb ON wb.job_id = j.id
+        WHERE j.id = $1`,
+      [before.body.data.jobId],
+    );
+    expect(persisted.rows[0]).toEqual({
+      job_status: "queued",
+      blueprint_status: "queued",
+    });
+  });
+
+  it("refreshes the planning model when recovering a waiting blueprint", async () => {
+    const owner = await createAuthenticatedAgent("blueprint-model-recovery@example.com");
+    const work = await createIdeaWork(owner, "blueprint-model-recovery", null);
+    const created = await databasePool.query<{ job_id: string; user_id: string }>(
+      `SELECT wb.job_id, wb.user_id
+         FROM work_blueprints AS wb
+        WHERE wb.work_id = $1 AND wb.branch_id = $2`,
+      [work.id, work.mainBranch.id],
+    );
+    const jobId = created.rows[0]!.job_id;
+    const userId = created.rows[0]!.user_id;
+    const modelConfigId = (
+      await databasePool.query<{ id: string }>(
+        `INSERT INTO model_configs
+           (id, user_id, provider, label, base_url, model, purposes, encrypted_key,
+            key_masked, is_default)
+         VALUES (gen_random_uuid(), $1, 'deepseek', '规划模型',
+                 'https://api.deepseek.com', 'deepseek-chat',
+                 '["planning"]'::jsonb, 'encrypted', 'sk-****', true)
+         RETURNING id`,
+        [userId],
+      )
+    ).rows[0]!.id;
+    await databasePool.query(
+      `UPDATE jobs
+          SET status = 'paused', model_config_id = NULL,
+              error_code = 'MODEL_PROVIDER_ERROR'
+        WHERE id = $1`,
+      [jobId],
+    );
+    await databasePool.query(
+      `UPDATE work_blueprints
+          SET status = 'waiting_model_config'
+        WHERE work_id = $1 AND branch_id = $2`,
+      [work.id, work.mainBranch.id],
+    );
+
+    const csrfToken = await csrf(owner);
+    await owner
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/blueprint/retry`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(202);
+
+    const queue = new Queue<GenerateBlueprintJob>(WORKER_QUEUE_NAME, {
+      connection: redis,
+    });
+    try {
+      const queued = await waitForQueueJob(queue, jobId);
+      expect(queued.data.modelConfigId).toBe(modelConfigId);
+    } finally {
+      await queue.close();
+    }
+  });
+
   it("uses the estimated default budget when no override is supplied", async () => {
     const owner = await createAuthenticatedAgent("blueprint-default-budget@example.com");
     const work = await createIdeaWork(owner, "blueprint-default-budget", null);
@@ -277,6 +387,30 @@ describe("blueprint provisioning API", () => {
     );
 
     expect(result.rows[0]?.budget).toEqual({ maxTokens: 216000, maxCostCny: 1 });
+    expect(result.rows[0]?.model_config_id).toBeNull();
+  });
+
+  it("does not fall back to a writing-only model for blueprint planning", async () => {
+    const owner = await createAuthenticatedAgent("blueprint-planning-model@example.com");
+    await databasePool.query(
+      `INSERT INTO model_configs
+         (id, user_id, provider, label, base_url, model, purposes, encrypted_key,
+          key_masked, is_default)
+       SELECT $2, id, 'deepseek', '写作模型',
+              'https://api.deepseek.com', 'deepseek-chat',
+              '["writing"]'::jsonb, 'encrypted', 'sk-****', true
+         FROM users WHERE email = $1`,
+      ["blueprint-planning-model@example.com", uuidv7()],
+    );
+
+    const work = await createIdeaWork(owner, "blueprint-writing-only", null);
+    const result = await databasePool.query<{ model_config_id: string | null }>(
+      `SELECT model_config_id
+         FROM jobs
+        WHERE work_id = $1 AND branch_id = $2 AND type = 'generate_blueprint'`,
+      [work.id, work.mainBranch.id],
+    );
+
     expect(result.rows[0]?.model_config_id).toBeNull();
   });
 

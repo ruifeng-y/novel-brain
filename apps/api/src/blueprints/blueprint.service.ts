@@ -126,7 +126,7 @@ export class BlueprintService {
   }
 
   async retry(userId: string, workId: string, branchId: string): Promise<WorkBlueprint> {
-    const payload = await this.repository.requeuePayload(userId, workId, branchId);
+    const payload = await this.repository.requeuePayload(userId, workId, branchId, true);
     if (payload) {
       await this.queue.enqueue(payload);
     }

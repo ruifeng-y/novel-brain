@@ -1,0 +1,1 @@
+ALTER TABLE "job_step_attempts" ADD COLUMN "cost" jsonb DEFAULT '{}'::jsonb NOT NULL;

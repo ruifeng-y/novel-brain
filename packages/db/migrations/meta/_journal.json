@@ -568,6 +568,27 @@
       "when": 1795771719565,
       "tag": "0080_next_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1795780554096,
+      "tag": "0081_nostalgic_morlun",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1795784335391,
+      "tag": "0082_fresh_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1795785519935,
+      "tag": "0083_bitter_venom",
+      "breakpoints": true
     }
   ]
 }

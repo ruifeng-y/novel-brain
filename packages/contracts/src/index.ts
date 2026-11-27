@@ -5986,6 +5986,8 @@ export const blueprintOutlineNodeDraftSchema = z
     status: outlineNodeStatusSchema.default("planned"),
     chapterNumber: z.number().int().positive().max(10_000).nullable(),
     brief: chapterBriefSchema.nullable(),
+    hook: z.string().trim().min(1).max(1_000).nullable().default(null),
+    foreshadow: z.string().trim().min(1).max(1_000).nullable().default(null),
     tension: z.number().int().min(0).max(100).nullable(),
   })
   .strict();
@@ -7795,6 +7797,10 @@ export const batchCostReportResponseSchema = apiEnvelopeSchema(batchCostReportSc
 export const notificationTypeSchema = z.enum([
   "job_completed",
   "job_failed",
+  "blueprint_ready",
+  "blueprint_failed",
+  "blueprint_waiting_model_config",
+  "blueprint_budget_paused",
   "review_required",
   "merge_completed",
   "merge_conflict",

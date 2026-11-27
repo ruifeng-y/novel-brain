@@ -310,6 +310,18 @@ export const genrePacks = pgTable(
     version: integer("version").notNull(),
     label: text("label").notNull(),
     fields: jsonb("fields").$type<Record<string, unknown>>().notNull(),
+    fieldSchema: jsonb("field_schema")
+      .$type<
+        Array<{
+          key: string;
+          label: string;
+          type: "text" | "number" | "boolean" | "list";
+          required: boolean;
+          options: string[];
+        }>
+      >()
+      .notNull()
+      .default([]),
     rules: jsonb("rules").$type<Array<Record<string, unknown>>>().notNull().default([]),
     uiHints: jsonb("ui_hints").$type<Record<string, unknown>>().notNull().default({}),
     generationGuidance: jsonb("generation_guidance")
@@ -3241,6 +3253,7 @@ export const jobStepAttempts = pgTable(
       .$type<Array<{ type: string; id: string }>>()
       .notNull()
       .default([]),
+    cost: jsonb("cost").$type<Record<string, unknown>>().notNull().default({}),
     checkpointRevision: integer("checkpoint_revision").notNull().default(0),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
@@ -3404,7 +3417,7 @@ export const notifications = pgTable(
     index("notifications_user_unread_idx").on(table.userId, table.readAt, table.createdAt),
     check(
       "notifications_type_check",
-      sql`${table.type} in ('job_completed', 'job_failed', 'review_required', 'merge_completed', 'merge_conflict')`,
+      sql`${table.type} in ('job_completed', 'job_failed', 'blueprint_ready', 'blueprint_failed', 'blueprint_waiting_model_config', 'blueprint_budget_paused', 'review_required', 'merge_completed', 'merge_conflict')`,
     ),
     check(
       "notifications_target_type_check",

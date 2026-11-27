@@ -438,6 +438,14 @@ manifest `schemaVersion` 为 2 时固定 `aiDisclosureMetadata`：`required` 来
 - `id`、`type`、`workId`、`branchId`、`chapterId`、`status`、`progress`、`currentStep`、`checkpoint`、`cost`、`errorCode`、`createdAt`、`startedAt`、`finishedAt`。
 - Job status：`queued`、`preparing`、`running`、`paused`、`waiting_review`、`completed`、`failed`、`cancelled`。
 
+### Blueprint
+
+- `WorkBlueprint`：`id`、`workId`、`branchId`、`jobId`、`status`、`version`、`progress`、`currentStep`、`inputHash`、`estimate`、`storyBibleDraft`、`coreSettingsDraft`、`outlineDraft`、`missingFields`、`conflicts`、`cost`、`confirmedAt`、`confirmedBy`。
+- Blueprint status：`queued`、`running`、`waiting_model_config`、`budget_paused`、`waiting_review`、`confirmed`、`failed`、`cancelled`。
+- `generate_blueprint` 步骤固定为 `prepare -> story_bible -> core_settings -> outline -> validate -> await_review`；每个成功步骤写 checkpoint、进度、token 和费用。
+- 蓝图大纲节点在通用大纲字段外增加 `hook`、`foreshadow`，两者均为可空字符串；前 12 章至少有一个可追踪伏笔。
+- 蓝图候选与已确认故事圣经、设定、大纲分离；Worker 只写候选，不写章节正文或 `chapter_versions`。
+
 ### BatchPlan / WorkItem
 
 - `BatchPlan`：`id`、`jobId`、`workId`、`branchId`、`userId`、`status`、`scope`、`approvalMode`、`priorityClass`、`idempotencyKey`、`counts`、`scheduling`、`createdAt`、`updatedAt`。
@@ -453,12 +461,13 @@ manifest `schemaVersion` 为 2 时固定 `aiDisclosureMetadata`：`required` 来
 ### Notification
 
 - `id`、`userId`、`workId`、`branchId`、`type`、`targetType`、`targetId`、`payload`、`dedupeKey`、`readAt`、`createdAt`。
-- `type`：`job_completed`、`job_failed`、`review_required`、`merge_completed`、`merge_conflict`。
+- `type`：`job_completed`、`job_failed`、`blueprint_ready`、`blueprint_failed`、`blueprint_waiting_model_config`、`blueprint_budget_paused`、`review_required`、`merge_completed`、`merge_conflict`。
 - `targetType`：`job`、`review`、`merge`、`work`、`branch`。
 - `payload`：作者可读的 `title`、`message` 和站内 `href`。
 - 列表按 `createdAt DESC, id DESC` 游标分页；`meta.unreadCount` 是当前用户全部未读数，不是当前页未读数。
 - `POST /notifications/read-all` 返回 `{ updated }`，表示本次实际从“未读”变为“已读”的数量。
 - 批量计划和独立单章生成事件通知都在同一数据库事务内写入，去重键包含任务、事件类型和事件序号；重试后的新事件可以产生新通知，批量子任务不重复通知。
+- 故事蓝图通知按任务、事件类型和 checkpoint revision 去重；同一检查点重放不重复通知，推进到新检查点后可再次通知。
 
 ### ChangeRequest / MergeItem
 

@@ -13,6 +13,8 @@ export interface StoredModelConfig {
   baseUrl: string;
   model: string;
   encryptedKey: string;
+  ratePerTokenCny?: number | undefined;
+  contextWindowTokens?: number | undefined;
 }
 
 export type WorkerAiProviderMode = "fake" | "byok";
@@ -69,7 +71,13 @@ export function resolveWorkerAiProviderMode(
 }
 
 export function isFakeGenerationOperation(value: string): value is GenerationOperation {
-  return ["draft", "verify", "revise", ...WRITING_ACTION_OPERATIONS].includes(
-    value as GenerationOperation,
-  );
+  return [
+    "draft",
+    "verify",
+    "revise",
+    "blueprint_story_bible",
+    "blueprint_core_settings",
+    "blueprint_outline",
+    ...WRITING_ACTION_OPERATIONS,
+  ].includes(value as GenerationOperation);
 }

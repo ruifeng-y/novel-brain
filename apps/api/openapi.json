@@ -9590,6 +9590,20 @@
                                     ],
                                     "additionalProperties": false
                                   },
+                                  "hook": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "foreshadow": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
                                   "tension": {
                                     "nullable": true,
                                     "type": "integer",
@@ -9607,6 +9621,8 @@
                                   "status",
                                   "chapterNumber",
                                   "brief",
+                                  "hook",
+                                  "foreshadow",
                                   "tension"
                                 ],
                                 "additionalProperties": false
@@ -10412,6 +10428,20 @@
                                     ],
                                     "additionalProperties": false
                                   },
+                                  "hook": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "foreshadow": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
                                   "tension": {
                                     "nullable": true,
                                     "type": "integer",
@@ -10429,6 +10459,8 @@
                                   "status",
                                   "chapterNumber",
                                   "brief",
+                                  "hook",
+                                  "foreshadow",
                                   "tension"
                                 ],
                                 "additionalProperties": false
@@ -50319,6 +50351,10 @@
                             "enum": [
                               "job_completed",
                               "job_failed",
+                              "blueprint_ready",
+                              "blueprint_failed",
+                              "blueprint_waiting_model_config",
+                              "blueprint_budget_paused",
                               "review_required",
                               "merge_completed",
                               "merge_conflict"
@@ -50468,6 +50504,10 @@
                           "enum": [
                             "job_completed",
                             "job_failed",
+                            "blueprint_ready",
+                            "blueprint_failed",
+                            "blueprint_waiting_model_config",
+                            "blueprint_budget_paused",
                             "review_required",
                             "merge_completed",
                             "merge_conflict"

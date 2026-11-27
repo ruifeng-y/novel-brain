@@ -16,6 +16,8 @@ import { BatchPlanChildQueue } from "./batch-plan/batch-plan-child.queue";
 import { WorkerBatchPlanQueue } from "./batch-plan/batch-plan.queue";
 import { WorkerBatchPlanRepository } from "./batch-plan/batch-plan.repository";
 import { GenerationJobProcessor } from "./generation/generation.processor";
+import { BlueprintJobProcessor, BlueprintJobStore } from "./blueprints/blueprint.processor";
+import { WorkerBlueprintRepository } from "./blueprints/blueprint.repository";
 import { WorkerGenerationRepository } from "./generation/generation.repository";
 import { AI_GATEWAY } from "./generation/generation.tokens";
 import { WorkerGoldenThreeContextCompiler } from "./golden-three/golden-three-context.compiler";
@@ -59,6 +61,12 @@ import { WorkerManuscriptImportRepository } from "./imports/manuscript-import.re
     },
     WorkerGenerationRepository,
     GenerationJobProcessor,
+    WorkerBlueprintRepository,
+    {
+      provide: BlueprintJobStore,
+      useExisting: WorkerBlueprintRepository,
+    },
+    BlueprintJobProcessor,
     WorkerGoldenThreeContextCompiler,
     {
       provide: WORKER_REDIS,

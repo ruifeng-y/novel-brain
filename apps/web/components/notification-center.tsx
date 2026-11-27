@@ -34,6 +34,10 @@ interface NotificationPresentation {
 const notificationPresentations: Record<Notification["type"], NotificationPresentation> = {
   job_completed: { icon: Layers3, label: "任务完成", tone: "jade" },
   job_failed: { icon: CircleAlert, label: "任务失败", tone: "alert" },
+  blueprint_ready: { icon: Layers3, label: "蓝图待审", tone: "gold" },
+  blueprint_failed: { icon: CircleAlert, label: "蓝图失败", tone: "alert" },
+  blueprint_waiting_model_config: { icon: CircleAlert, label: "蓝图等待配置", tone: "gold" },
+  blueprint_budget_paused: { icon: CircleAlert, label: "蓝图预算暂停", tone: "gold" },
   review_required: { icon: Layers3, label: "等待审核", tone: "gold" },
   merge_completed: { icon: GitBranch, label: "合并完成", tone: "jade" },
   merge_conflict: { icon: GitBranch, label: "合并冲突", tone: "alert" },

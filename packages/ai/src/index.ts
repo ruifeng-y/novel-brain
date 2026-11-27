@@ -34,6 +34,7 @@ export interface GenerationRequest {
   model?: string;
   maxTokens?: number;
   operation?: GenerationOperation;
+  responseFormat?: "json";
 }
 
 export const WRITING_ACTION_OPERATIONS = [
@@ -49,7 +50,14 @@ export const WRITING_ACTION_OPERATIONS = [
   "targeted_revision",
 ] as const;
 export type WritingActionOperation = (typeof WRITING_ACTION_OPERATIONS)[number];
-export type GenerationOperation = "draft" | "verify" | "revise" | WritingActionOperation;
+export type GenerationOperation =
+  | "draft"
+  | "verify"
+  | "revise"
+  | "blueprint_story_bible"
+  | "blueprint_core_settings"
+  | "blueprint_outline"
+  | WritingActionOperation;
 
 export interface GenerationUsage {
   inputTokens: number;
@@ -189,6 +197,9 @@ export class DeepSeekProvider implements AiGateway {
       ],
       max_tokens: input.maxTokens ?? 2_000,
       stream: false,
+      ...(input.responseFormat === "json"
+        ? { response_format: { type: "json_object" as const } }
+        : {}),
     });
     const response = this.fetchImpl
       ? await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
@@ -755,6 +766,15 @@ function operationText(
   if (operation === "verify") {
     return `审校通过：章纲、已确认设定和必用事实一致。指纹 ${fingerprint}`;
   }
+  if (operation === "blueprint_story_bible") {
+    return fakeStoryBibleJson();
+  }
+  if (operation === "blueprint_core_settings") {
+    return fakeCoreSettingsJson();
+  }
+  if (operation === "blueprint_outline") {
+    return fakeBlueprintOutlineJson();
+  }
   if (operation === "revise") {
     return [
       `修订稿 ${fingerprint}`,
@@ -831,4 +851,174 @@ function operationText(
     "追兵逼近时，忘川书在暮色里短暂显形。顾青看见书页一角，却没有点破。",
     "风穿过残钟，沈砚记住了这一夜的代价。",
   ].join("\n\n");
+}
+
+function fakeStoryBibleJson(): string {
+  const keys = [
+    "oneSentence",
+    "sellingPoints",
+    "protagonist",
+    "goldenFinger",
+    "worldLaws",
+    "mainPlot",
+    "subplots",
+    "ending",
+    "readerPromise",
+  ] as const;
+  return JSON.stringify({
+    cards: keys.map((key) => ({
+      key,
+      title: key,
+      content: `虚构故事蓝图 ${key}`,
+      complete: true,
+      worldRules:
+        key === "worldLaws"
+          ? [1, 2, 3].map((index) => ({
+              id: fakeUuid(100 + index),
+              name: `虚构世界规则 ${index}`,
+              constraint: `虚构规则 ${index} 必须成立。`,
+              scope: "全书",
+              exceptions: [],
+            }))
+          : [],
+    })),
+  });
+}
+
+function fakeCoreSettingsJson(): string {
+  const types = [
+    "world_rule",
+    "world_rule",
+    "world_rule",
+    "character",
+    "faction",
+    "map",
+    "power_system",
+    "golden_finger",
+    "item",
+    "timeline_event",
+  ] as const;
+  return JSON.stringify(
+    types.map((type, index) => ({
+      candidateId: fakeUuid(200 + index),
+      type,
+      name: `虚构核心设定 ${index + 1}`,
+      aliases: [],
+      summary: `虚构核心设定 ${index + 1} 摘要`,
+      description: `虚构核心设定 ${index + 1} 描述`,
+      tags: [],
+      data: index === 0 ? { genre: "仙侠", world: "修真世界" } : {},
+      required: true,
+      source: "blueprint",
+    })),
+  );
+}
+
+function fakeBlueprintOutlineJson(): string {
+  const bookId = fakeUuid(300);
+  const volumeId = fakeUuid(301);
+  const actIds = [0, 1, 2].map((index) => fakeUuid(310 + index));
+  const chapters = Array.from({ length: 12 }, (_, index) => {
+    const id = fakeUuid(400 + index);
+    return {
+      id,
+      parentId: actIds[index % actIds.length],
+      level: "chapter" as const,
+      sortOrder: index,
+      title: `虚构第 ${index + 1} 章`,
+      summary: `虚构第 ${index + 1} 章大纲`,
+      status: "planned" as const,
+      chapterNumber: index + 1,
+      brief: {
+        goal: `完成虚构第 ${index + 1} 章目标`,
+        pov: "主角",
+        location: "起点",
+        sceneBeats: ["主角作出选择。"],
+        requiredFacts: ["起点存在"],
+      },
+      hook: `虚构章末钩子 ${index + 1}`,
+      foreshadow: index === 0 ? "虚构全书伏笔" : null,
+      tension: 50,
+    };
+  });
+  const scenes = chapters.flatMap((chapter, chapterIndex) =>
+    [0, 1].map((sceneIndex) => ({
+      id: fakeUuid(500 + chapterIndex * 2 + sceneIndex),
+      parentId: chapter.id,
+      level: "scene" as const,
+      sortOrder: sceneIndex,
+      title: `虚构场景 ${chapterIndex + 1}-${sceneIndex + 1}`,
+      summary: "虚构场景大纲",
+      status: "planned" as const,
+      chapterNumber: null,
+      brief: null,
+      tension: 55,
+    })),
+  );
+  return JSON.stringify({
+    nodes: [
+      {
+        id: bookId,
+        parentId: null,
+        level: "book",
+        sortOrder: 0,
+        title: "全书",
+        summary: "虚构全书大纲",
+        status: "planned",
+        chapterNumber: null,
+        brief: null,
+        tension: null,
+      },
+      {
+        id: volumeId,
+        parentId: bookId,
+        level: "volume",
+        sortOrder: 0,
+        title: "第一卷",
+        summary: "虚构第一卷大纲",
+        status: "planned",
+        chapterNumber: null,
+        brief: null,
+        tension: 35,
+      },
+      ...actIds.map((id, index) => ({
+        id,
+        parentId: volumeId,
+        level: "act",
+        sortOrder: index,
+        title: `第 ${index + 1} 幕`,
+        summary: `虚构第 ${index + 1} 幕大纲`,
+        status: "planned",
+        chapterNumber: null,
+        brief: null,
+        tension: 40,
+      })),
+      ...chapters,
+      ...scenes,
+    ],
+    volumeContracts: [
+      {
+        nodeId: volumeId,
+        objective: "完成第一卷目标。",
+        conflict: "主角遭遇核心冲突。",
+        turningPoints: ["第一次转折"],
+        exitConditions: ["完成卷末选择"],
+        plotLines: [],
+      },
+    ],
+    sceneCards: scenes.map((scene) => ({
+      nodeId: scene.id,
+      title: scene.title,
+      povLabel: "主角",
+      locationLabel: "起点",
+      storyTime: "故事开始",
+      beats: ["场景开始", "场景转折"],
+      informationReleases: ["释放一条信息"],
+      tension: 55,
+    })),
+  });
+}
+
+function fakeUuid(value: number): string {
+  return `01900000-0000-7000-8000-${String(value).padStart(12, "0")}`;
 }
