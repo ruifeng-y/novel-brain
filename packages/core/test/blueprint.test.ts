@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { blueprintEstimateSchema } from "@novel-brain/contracts";
 
-import { estimateBlueprint } from "../src/blueprint";
+import { canTransitionBlueprintStatus, estimateBlueprint } from "../src/blueprint";
 
 describe("estimateBlueprint", () => {
   it("scales the long blueprint deterministically from chapter length", () => {
@@ -87,5 +87,24 @@ describe("estimateBlueprint", () => {
     expect(estimate.estimatedTokens).toBe(450000);
     expect(estimate.defaultBudget.maxTokens).toBe(540000);
     expect(blueprintEstimateSchema.safeParse(estimate).success).toBe(true);
+  });
+
+  it("keeps the raw model cost before currency presentation", () => {
+    const estimate = estimateBlueprint({
+      genre: "history",
+      scaleTarget: "short",
+      chapterLengthTarget: 3333,
+      modelRatePerTokenCny: 0.000002,
+    });
+
+    expect(estimate.estimatedTokens).toBe(41332);
+    expect(estimate.estimatedCostCny).toBeCloseTo(0.082664, 8);
+  });
+
+  it("rejects illegal blueprint status transitions", () => {
+    expect(canTransitionBlueprintStatus("queued", "running")).toBe(true);
+    expect(canTransitionBlueprintStatus("waiting_review", "confirmed")).toBe(true);
+    expect(canTransitionBlueprintStatus("confirmed", "running")).toBe(false);
+    expect(canTransitionBlueprintStatus("failed", "confirmed")).toBe(false);
   });
 });

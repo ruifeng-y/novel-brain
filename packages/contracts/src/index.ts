@@ -5878,8 +5878,6 @@ export const blueprintStatusSchema = z.enum([
 ]);
 export type BlueprintStatus = z.infer<typeof blueprintStatusSchema>;
 
-export const M0_COST_PER_TOKEN_CNY = 0.000002;
-
 export const blueprintBudgetSchema = z
   .object({
     maxTokens: z.number().int().min(20_000).max(600_000),
@@ -6186,6 +6184,63 @@ export const workBlueprintSchema = z
           message: "Confirmed blueprints require a complete five-level outline with scene cards",
           path: ["outlineDraft"],
         });
+      }
+      if (blueprint.storyBibleDraft?.cards.some((card) => !card.complete)) {
+        context.addIssue({
+          code: "custom",
+          message: "Confirmed blueprints require all nine story-bible cards to be complete",
+          path: ["storyBibleDraft"],
+        });
+      }
+      const outline = blueprint.outlineDraft;
+      if (outline) {
+        const chapters = outline.nodes.filter((node) => node.level === "chapter");
+        const scenes = outline.nodes.filter((node) => node.level === "scene");
+        const contractNodeIds = new Set(outline.volumeContracts.map((contract) => contract.nodeId));
+        const sceneCardNodeIds = new Set(outline.sceneCards.map((card) => card.nodeId));
+        if (outline.nodes.some((node) => node.status !== "planned")) {
+          context.addIssue({
+            code: "custom",
+            message: "Confirmed blueprint outline nodes must remain planned",
+            path: ["outlineDraft", "nodes"],
+          });
+        }
+        if (chapters.some((chapter) => chapter.chapterNumber === null || chapter.brief === null)) {
+          context.addIssue({
+            code: "custom",
+            message: "Confirmed blueprint chapters require numbers and complete briefs",
+            path: ["outlineDraft", "nodes"],
+          });
+        }
+        if (
+          chapters.some(
+            (chapter) => scenes.filter((scene) => scene.parentId === chapter.id).length < 2,
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            message: "Each confirmed blueprint chapter requires at least two scenes",
+            path: ["outlineDraft", "nodes"],
+          });
+        }
+        if (
+          outline.nodes
+            .filter((node) => node.level === "volume")
+            .some((node) => !contractNodeIds.has(node.id))
+        ) {
+          context.addIssue({
+            code: "custom",
+            message: "Each confirmed blueprint volume requires a volume contract",
+            path: ["outlineDraft", "volumeContracts"],
+          });
+        }
+        if (scenes.some((scene) => !sceneCardNodeIds.has(scene.id))) {
+          context.addIssue({
+            code: "custom",
+            message: "Each confirmed blueprint scene requires a scene card",
+            path: ["outlineDraft", "sceneCards"],
+          });
+        }
       }
     }
   });

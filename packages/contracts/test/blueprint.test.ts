@@ -4,7 +4,11 @@ import {
   STORY_BIBLE_CARD_KEYS,
   STORY_BIBLE_CARD_TITLES,
   blueprintBudgetUpdateRequestSchema,
+  blueprintCheckpointSchema,
   blueprintConfirmRequestSchema,
+  blueprintConflictSchema,
+  blueprintDraftSchema,
+  blueprintMissingFieldSchema,
   blueprintStoryBibleDraftSchema,
   generateBlueprintJobSchema,
   workBlueprintSchema,
@@ -180,6 +184,52 @@ describe("blueprint contracts", () => {
     );
     expect(blueprintStoryBibleDraftSchema.safeParse({ cards: duplicateRules }).success).toBe(false);
   });
+
+  it("validates the complete draft, checkpoint, missing-field and conflict shapes", () => {
+    expect(
+      blueprintDraftSchema.safeParse({
+        storyBible: { cards: makeCards() },
+        coreSettings: makeCoreSettings(),
+        outline: makeOutlineDraft(),
+      }).success,
+    ).toBe(true);
+    expect(blueprintCheckpointSchema.parse({ step: "prepare" })).toEqual({
+      schemaVersion: 1,
+      revision: 0,
+      step: "prepare",
+      inputHash: null,
+      payload: {},
+    });
+    expect(
+      blueprintMissingFieldSchema.safeParse({
+        key: "required:field",
+        label: "必填字段",
+        required: true,
+        severity: "P0",
+        message: "缺少必填字段",
+      }).success,
+    ).toBe(true);
+    expect(
+      blueprintConflictSchema.safeParse({
+        id: "01900000-0000-7000-8000-000000000020",
+        severity: "P0",
+        title: "冲突",
+        detail: "冲突详情",
+        affectedKeys: ["field"],
+        status: "open",
+      }).success,
+    ).toBe(true);
+    expect(
+      blueprintConflictSchema.safeParse({
+        id: "not-a-uuid",
+        severity: "P4",
+        title: "",
+        detail: "",
+        affectedKeys: [],
+        status: "unknown",
+      }).success,
+    ).toBe(false);
+  });
 });
 
 function makeCards(worldRuleCount = 3) {
@@ -258,6 +308,7 @@ function makeOutlineDraft() {
   const actId = "01900000-0000-7000-8000-000000000032";
   const chapterId = "01900000-0000-7000-8000-000000000033";
   const sceneId = "01900000-0000-7000-8000-000000000034";
+  const secondSceneId = "01900000-0000-7000-8000-000000000035";
   return {
     nodes: [
       {
@@ -326,6 +377,18 @@ function makeOutlineDraft() {
         brief: null,
         tension: 55,
       },
+      {
+        id: secondSceneId,
+        parentId: chapterId,
+        level: "scene",
+        sortOrder: 1,
+        title: "古书苏醒",
+        summary: "古书吞噬了主角的一段记忆。",
+        status: "planned",
+        chapterNumber: null,
+        brief: null,
+        tension: 65,
+      },
     ],
     volumeContracts: [
       {
@@ -347,6 +410,16 @@ function makeOutlineDraft() {
         beats: ["主角躲雨", "古书发光"],
         informationReleases: ["古书会吞噬记忆"],
         tension: 55,
+      },
+      {
+        nodeId: secondSceneId,
+        title: "古书苏醒",
+        povLabel: "沈砚",
+        locationLabel: "山门",
+        storyTime: "入宗第一夜",
+        beats: ["古书翻开", "主角失去一段记忆"],
+        informationReleases: ["记忆可以被吞噬"],
+        tension: 65,
       },
     ],
   };

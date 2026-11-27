@@ -14,7 +14,8 @@
     "dist"
   ],
   "dependencies": {
-    "@novel-brain/contracts": "workspace:*"
+    "@novel-brain/contracts": "workspace:*",
+    "@novel-brain/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -1,6 +1,6 @@
 import {
-  M0_COST_PER_TOKEN_CNY,
   type BlueprintEstimate,
+  type BlueprintStatus,
   type WorkGenre,
   type WorkScaleTarget,
 } from "@novel-brain/contracts";
@@ -19,6 +19,23 @@ const SCALE = {
   epic: { volumes: 8, chapters: 96, scenes: 192, baseTokens: 300_000 },
 } as const;
 
+export const M0_COST_PER_TOKEN_CNY = 0.000002;
+
+const BLUEPRINT_STATUS_TRANSITIONS: Record<BlueprintStatus, BlueprintStatus[]> = {
+  queued: ["running", "waiting_model_config", "failed", "cancelled"],
+  running: ["waiting_model_config", "budget_paused", "waiting_review", "failed", "cancelled"],
+  waiting_model_config: ["queued", "failed", "cancelled"],
+  budget_paused: ["queued", "failed", "cancelled"],
+  waiting_review: ["confirmed", "failed", "cancelled"],
+  failed: ["queued", "cancelled"],
+  confirmed: [],
+  cancelled: [],
+};
+
+export function canTransitionBlueprintStatus(from: BlueprintStatus, to: BlueprintStatus): boolean {
+  return BLUEPRINT_STATUS_TRANSITIONS[from].includes(to);
+}
+
 export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstimate {
   const scale = SCALE[input.scaleTarget];
   const chapterLengthFactor = Math.max(
@@ -28,7 +45,7 @@ export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstim
   const estimatedTokens = Math.round(scale.baseTokens * chapterLengthFactor);
   const usesFallbackRate = input.modelRatePerTokenCny === undefined;
   const modelRatePerTokenCny = input.modelRatePerTokenCny ?? M0_COST_PER_TOKEN_CNY;
-  const estimatedCostCny = roundCurrencyToFourDecimals(estimatedTokens * modelRatePerTokenCny);
+  const estimatedCostCny = estimatedTokens * modelRatePerTokenCny;
   return {
     ruleVersion: "blueprint-estimate-v1",
     planned: {
@@ -52,8 +69,4 @@ export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstim
 
 function roundUpToFiveJiao(value: number): number {
   return Math.max(0.5, Math.ceil(value / 0.5) * 0.5);
-}
-
-function roundCurrencyToFourDecimals(value: number): number {
-  return Number(value.toFixed(4));
 }

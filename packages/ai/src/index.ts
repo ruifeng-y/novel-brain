@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 
 import {
-  M0_COST_PER_TOKEN_CNY,
   aiFailureClassSchema,
   deepSeekSmokeEvidenceSchema,
   type AiFailureClass as AiFailureClassContract,
   type DeepSeekSmokeEvidence as DeepSeekSmokeEvidenceContract,
 } from "@novel-brain/contracts";
+import { M0_COST_PER_TOKEN_CNY } from "@novel-brain/core";
 
 import { requestPinnedHttps, validateProviderEndpoint } from "./provider-endpoint";
 
