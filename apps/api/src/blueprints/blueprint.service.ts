@@ -22,7 +22,10 @@ import { estimateBlueprint } from "@novel-brain/core";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+// Nest uses the runtime class references for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { BlueprintJobQueue } from "./blueprint.queue";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { BlueprintRepository } from "./blueprint.repository";
 import type { BlueprintJobProvision, PrepareIdeaBlueprintInput } from "./blueprint.types";
 

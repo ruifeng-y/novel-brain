@@ -26,6 +26,8 @@ import sharp from "sharp";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { BlueprintService } from "../blueprints/blueprint.service";
 import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.

@@ -13,6 +13,8 @@ import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { ApiQuerySchema } from "../common/zod-openapi";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { BlueprintService } from "./blueprint.service";
 
 function schemaOf(schema: z.ZodType): SchemaObject {
