@@ -69,10 +69,9 @@ Expected release result after the #238 UI closeout:
 V1 RELEASE BLOCKED
 - release-evidence:status-blocked
 - final-production-ci:blocked
-- capability-audit:verification-evidence-missing
 ```
 
 EVAL-002 is verified against Production CI run `45944913873` at head `e204faa`. The remaining
-release blockers are the final release-evidence gate and current-head UI capability evidence.
-CONT-001 is explicitly deferred and #279 is no longer a V1 deliverable. UI capability closure was
-completed by #238.
+release blocker is the final release-evidence gate. Current-head UI capability evidence passes
+on PR #285. CONT-001 is explicitly deferred and #279 is no longer a V1 deliverable. UI capability
+closure was completed by #238.

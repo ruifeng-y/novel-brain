@@ -9,7 +9,12 @@ on:
       - "docs/planning/v1-capability-traceability.md"
       - "docs/planning/v1-issue-dependency-graph.json"
       - "docs/ui/v1-ui-parity-matrix.md"
+      - "docs/implementation/v1-release-evidence.json"
+      - "docs/implementation/v1-release-checklist.md"
+      - "docs/implementation/m3-238-ui-capability-evidence.json"
       - "scripts/validate-readiness.mjs"
+      - "scripts/validate-v1-release.mjs"
+      - "scripts/v1-capability-evidence.mjs"
       - ".github/workflows/readiness-validation.yml"
   push:
     branches:
