@@ -4,6 +4,8 @@
 >
 > Product decision source: Issue discussion recorded in this branch and accepted ADR 0029.
 >
+> Scale boundary: `scaleTarget` and the size table below define the bounded opening blueprint baseline from accepted ADR 0030, not the final full-book capacity from ADR 0010.
+>
 > Delivery gate: the blueprint review page requires a signed prototype, UI contract row and Production Golden before its production UI can merge.
 
 ## 1. Problem
@@ -154,6 +156,8 @@ updated_at
 - `settings_import` 和 `manuscript_import` 继续走各自确认流程。
 
 ### 5.2 Estimate
+
+`scaleTarget` 描述开书蓝图基线，不声明作品最终全书容量。最终容量仍按 ADR 0010 独立评估；本节的卷章数量只用于首轮候选生成、预算和审阅。
 
 创建表单在提交前调用：
 

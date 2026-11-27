@@ -26,6 +26,7 @@
 - #239 records two signed human reviewer records and 816 raw scores for the frozen quality packet as `complete-with-warnings`. #273 records 24/24 product-owner replacement decisions, invalidates old scores for clean review and has external attestation. #278 was closed `NOT_PLANNED` without a frozen clean packet or 24/24 replacement approval; #279 is not a V1 deliverable. `outline_adherence = 1.000000` passes, while `hook_prose_score = 1.882353` remains historical evidence for the deferred capability. #240 approves `interRaterVarianceThreshold = 0.1`.
 - PR #213 closed the #142 delivery retro through Issue #212: commit validation now accepts common project terms in Chinese prose, and parity screenshot failures are collected across all viewports in one run.
 - Post-V1 story blueprint bootstrap is specified by ADR 0029 and #286. The accepted scope requires idea-mode creation to generate durable story bible, core settings and initial outline candidates; authors must review and explicitly confirm them before any candidate becomes authoritative. Child tickets #287–#294 remain open. #291 must complete a four-viewport prototype and human visual signoff before #292 production UI can merge.
+- ADR 0030 resolves the scale boundary: blueprint `short/medium/long/epic` sizes are bounded opening baselines, while ADR 0010 remains the final full-book capacity target. Stacked delivery should proceed through the #287 → #288 → #289 branch chain before #290 starts.
 
 ## 2. Immediate frontier
 
