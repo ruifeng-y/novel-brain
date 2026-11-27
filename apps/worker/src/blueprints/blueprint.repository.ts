@@ -53,6 +53,10 @@ interface LoadedRow {
   rules: Array<{ key: string; label: string }> | null;
   ui_hints: Record<string, unknown> | null;
   generation_guidance: Record<string, unknown> | null;
+  field_schema: Array<{
+    key: string;
+    required: boolean;
+  }> | null;
   provider: string | null;
   base_url: string | null;
   model: string | null;
@@ -119,7 +123,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
                 wb.story_bible_draft, wb.core_settings_draft, wb.outline_draft,
                 w.title, w.pen_name, w.idea, w.genre, w.scale_target,
                 w.chapter_length_target, w.template_pack_id,
-                gp.fields, gp.rules, gp.ui_hints, gp.generation_guidance,
+                gp.fields, gp.field_schema, gp.rules, gp.ui_hints, gp.generation_guidance,
                 mc.provider, mc.base_url, mc.model, mc.encrypted_key,
                 pending_step.step_key AS pending_step_key,
                 pending_step.output->'providerResult' AS pending_provider_result
@@ -197,6 +201,7 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           row.fields && row.rules && row.ui_hints && row.generation_guidance
             ? {
                 fields: row.fields,
+                fieldSchema: row.field_schema ?? [],
                 rules: row.rules,
                 uiHints: row.ui_hints,
                 generationGuidance: row.generation_guidance,
@@ -841,6 +846,14 @@ export class WorkerBlueprintRepository extends BlueprintJobStore implements OnMo
           ? addBlueprintCost(existingCost, failure.cost)
           : existingCost;
       if (attempt) {
+        if (failure.failureClass === "schema") {
+          await client.query(
+            `UPDATE job_steps
+                SET output = output - 'providerResult' - 'costRecorded'
+              WHERE job_id = $1 AND step_key = $2`,
+            [payload.jobId, step],
+          );
+        }
         await client.query(
           `UPDATE job_steps
               SET status = 'failed', error_code = $3, error_message = $4,

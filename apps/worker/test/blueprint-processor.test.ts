@@ -322,7 +322,7 @@ describe("BlueprintJobProcessor", () => {
         "核心设定至少需要三条世界规则",
         "当前规模需要 36 章，实际为 12 章",
         "每卷必须包含 12 章",
-        "前十二个章节点必须包含章末钩子",
+        "前十二个章节点至少需要一个章末钩子",
       ]),
     );
   });
@@ -365,6 +365,60 @@ describe("BlueprintJobProcessor", () => {
       scaleTarget: "short",
     });
     expect(present.missingFields.map((field) => field.key)).not.toContain("genre_pack:genre");
+
+    const reorderedObject = validateBlueprintCandidates({
+      storyBible: { cards: storyBibleCards() },
+      coreSettings: coreSettings()!.map((setting, index) =>
+        index === 0
+          ? {
+              ...setting,
+              data: { constraints: { deadline: "三更", cost: "寿命" } },
+            }
+          : setting,
+      ),
+      outline: outlineDraft()!,
+      generationGuidance: {
+        protagonistArchetypes: [],
+        conflictSeeds: [],
+        worldRuleSeeds: [],
+        forbiddenElements: [],
+      },
+      genrePackFields: {
+        constraints: { cost: "寿命", deadline: "三更" },
+      },
+      genre: "xianxia",
+      scaleTarget: "short",
+    });
+    expect(reorderedObject.missingFields.map((field) => field.key)).not.toContain(
+      "genre_pack:constraints",
+    );
+  });
+
+  it("fails validation closed when world-rule names are duplicated", () => {
+    const settings = coreSettings()!;
+    const firstRule = settings.find((candidate) => candidate.type === "world_rule")!;
+    const validation = validateBlueprintCandidates({
+      storyBible: { cards: storyBibleCards() },
+      coreSettings: settings.map((candidate, index) =>
+        index === 1 && candidate.type === "world_rule"
+          ? { ...candidate, name: firstRule.name }
+          : candidate,
+      ),
+      outline: outlineDraft()!,
+      generationGuidance: {
+        protagonistArchetypes: [],
+        conflictSeeds: [],
+        worldRuleSeeds: [],
+        forbiddenElements: [],
+      },
+      genrePackFields: {},
+      genre: "xianxia",
+      scaleTarget: "short",
+    });
+
+    expect(validation.conflicts.map((conflict) => conflict.detail)).toContain(
+      "世界规则名称必须唯一",
+    );
   });
 });
 
@@ -566,6 +620,7 @@ function loadedJob(): LoadedBlueprintJob {
     },
     genrePack: {
       fields: { genre: "仙侠", world: "修真世界" },
+      fieldSchema: [],
       rules: [{ key: "costly-power", label: "力量有代价" }],
       uiHints: { worldLabel: "修真世界" },
       generationGuidance: {

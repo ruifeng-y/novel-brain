@@ -66,6 +66,10 @@ export interface LoadedBlueprintJob {
   };
   genrePack: {
     fields: Record<string, unknown>;
+    fieldSchema: Array<{
+      key: string;
+      required: boolean;
+    }>;
     rules: Array<{ key: string; label: string }>;
     uiHints: Record<string, unknown>;
     generationGuidance: Record<string, unknown>;
@@ -321,7 +325,9 @@ export class BlueprintJobProcessor {
         storyBible = result.storyBible ?? storyBible;
         coreSettings = result.coreSettings ?? coreSettings;
         outline = result.outline ?? outline;
-        usedCost = addBlueprintCost(usedCost, result.cost);
+        if (!cachedProviderResult) {
+          usedCost = addBlueprintCost(usedCost, result.cost);
+        }
         const nextStep =
           BLUEPRINT_JOB_STEPS[BLUEPRINT_JOB_STEPS.indexOf(step) + 1] ?? "await_review";
         checkpoint = await this.repository.commitStep({
@@ -482,7 +488,7 @@ export class BlueprintJobProcessor {
           coreSettings: input.coreSettings,
           outline: input.outline,
           generationGuidance: input.loaded.genrePack?.generationGuidance ?? {},
-          genrePackFields: input.loaded.genrePack?.fields ?? {},
+          genrePackFields: requiredGenrePackFields(input.loaded.genrePack),
           genre: input.loaded.work.genre,
           scaleTarget: input.loaded.work.scaleTarget,
         });
@@ -577,6 +583,7 @@ function storyBiblePrompt(loaded: LoadedBlueprintJob): string {
     `章节字数：${loaded.work.chapterLengthTarget}`,
     `故事灵感：${loaded.work.idea ?? ""}`,
     `题材字段：${JSON.stringify(loaded.genrePack?.fields ?? {})}`,
+    `题材字段定义：${JSON.stringify(loaded.genrePack?.fieldSchema ?? [])}`,
     `题材规则：${JSON.stringify(loaded.genrePack?.rules ?? [])}`,
     `题材界面提示：${JSON.stringify(loaded.genrePack?.uiHints ?? {})}`,
     `生成指南：${JSON.stringify(loaded.genrePack?.generationGuidance ?? {})}`,
@@ -591,7 +598,7 @@ function coreSettingsPrompt(
   return [
     `基于以下故事圣经生成核心设定候选：${JSON.stringify(storyBible)}`,
     `题材：${loaded.work.genre}`,
-    `题材必填字段：${JSON.stringify(loaded.genrePack?.fields ?? {})}`,
+    `题材必填字段：${JSON.stringify(requiredGenrePackFields(loaded.genrePack))}`,
     `题材指南：${JSON.stringify(loaded.genrePack?.generationGuidance ?? {})}`,
     "每个必填题材字段必须以精确 key/value 写入至少一个核心设定的 data 中。",
     "输出严格 JSON 数组，字段符合核心设定候选结构。",
@@ -673,6 +680,12 @@ export function validateBlueprintCandidates(input: {
   }
   if ((typeCounts.get("world_rule") ?? 0) < 3) {
     conflicts.push(structureConflict("核心设定至少需要三条世界规则"));
+  }
+  const worldRuleNames = input.coreSettings
+    .filter((setting) => setting.type === "world_rule")
+    .map((setting) => setting.name.trim());
+  if (new Set(worldRuleNames).size !== worldRuleNames.length) {
+    conflicts.push(structureConflict("世界规则名称必须唯一"));
   }
   const itemCount = typeCounts.get("item") ?? 0;
   if (itemCount < 1 || itemCount > 3) {
@@ -763,9 +776,7 @@ export function validateBlueprintCandidates(input: {
       const acts = nodes.filter((node) => node.level === "act" && node.parentId === volume.id);
       if (acts.length !== BLUEPRINT_ACTS_PER_VOLUME) {
         conflicts.push(
-          structureConflict(
-            `卷 ${volume.title} 必须恰好包含 ${BLUEPRINT_ACTS_PER_VOLUME} 幕`,
-          ),
+          structureConflict(`卷 ${volume.title} 必须恰好包含 ${BLUEPRINT_ACTS_PER_VOLUME} 幕`),
         );
       }
       const volumeChapters = chapters.filter(
@@ -789,8 +800,8 @@ export function validateBlueprintCandidates(input: {
   const openingChapters = chapters
     .filter((chapter) => (chapter.chapterNumber ?? 0) <= 12)
     .sort((left, right) => (left.chapterNumber ?? 0) - (right.chapterNumber ?? 0));
-  if (openingChapters.some((chapter) => !chapter.hook)) {
-    conflicts.push(structureConflict("前十二个章节点必须包含章末钩子"));
+  if (!openingChapters.some((chapter) => Boolean(chapter.hook))) {
+    conflicts.push(structureConflict("前十二个章节点至少需要一个章末钩子"));
   }
   if (!openingChapters.some((chapter) => Boolean(chapter.foreshadow))) {
     conflicts.push(structureConflict("前十二章至少需要一个可追踪伏笔"));
@@ -851,7 +862,21 @@ function structuredValueMatches(actualValue: unknown, expectedValue: unknown): b
     );
   }
   if (expectedValue && typeof expectedValue === "object") {
-    return JSON.stringify(actualValue) === JSON.stringify(expectedValue);
+    if (!actualValue || typeof actualValue !== "object" || Array.isArray(actualValue)) {
+      return false;
+    }
+    const expectedRecord = expectedValue as Record<string, unknown>;
+    const actualRecord = actualValue as Record<string, unknown>;
+    const expectedKeys = Object.keys(expectedRecord).sort();
+    const actualKeys = Object.keys(actualRecord).sort();
+    return (
+      expectedKeys.length === actualKeys.length &&
+      expectedKeys.every(
+        (key, index) =>
+          key === actualKeys[index] &&
+          structuredValueMatches(actualRecord[key], expectedRecord[key]),
+      )
+    );
   }
   return actualValue === expectedValue;
 }
@@ -877,6 +902,23 @@ function requireStoryBible(
 
 function providerStep(step: BlueprintJobStep): boolean {
   return step === "story_bible" || step === "core_settings" || step === "outline";
+}
+
+function requiredGenrePackFields(
+  genrePack: LoadedBlueprintJob["genrePack"],
+): Record<string, unknown> {
+  if (!genrePack) {
+    return {};
+  }
+  const definitions =
+    genrePack.fieldSchema.length > 0
+      ? genrePack.fieldSchema
+      : Object.keys(genrePack.fields).map((key) => ({ key, required: true }));
+  return Object.fromEntries(
+    definitions
+      .filter((definition) => definition.required)
+      .map((definition) => [definition.key, genrePack.fields[definition.key]]),
+  );
 }
 
 function providerOutputTokens(step: BlueprintJobStep): number {

@@ -1,0 +1,1 @@
+ALTER TABLE "genre_packs" ADD COLUMN "field_schema" jsonb DEFAULT '[]'::jsonb NOT NULL;

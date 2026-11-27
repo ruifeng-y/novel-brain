@@ -582,6 +582,13 @@
       "when": 1795784335391,
       "tag": "0082_fresh_kate_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1795785519935,
+      "tag": "0083_bitter_venom",
+      "breakpoints": true
     }
   ]
 }

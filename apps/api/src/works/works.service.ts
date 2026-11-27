@@ -619,7 +619,7 @@ function toGenrePackContract(pack: GenrePackRecord): GenrePackDefinition {
     version: pack.version,
     label: pack.label,
     fields: pack.fields,
-    fieldSchema: deriveFieldSchema(pack.fields),
+    fieldSchema: pack.fieldSchema.length > 0 ? pack.fieldSchema : deriveFieldSchema(pack.fields),
     rules: pack.rules.length > 0 ? pack.rules : defaultGenreRules(pack.key),
     uiHints: normalizeUiHints(pack.key, pack.uiHints),
     generationGuidance: normalizeGenerationGuidance(pack.key, pack.generationGuidance),

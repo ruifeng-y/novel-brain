@@ -237,6 +237,47 @@ describe("blueprint worker persistence", () => {
     }
   });
 
+  it("honors optional genre-pack fields from the persisted field schema", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    const pack = await pool.query<{ id: string; fields: unknown; field_schema: unknown }>(
+      `SELECT gp.id, gp.fields, gp.field_schema
+         FROM works AS w
+         INNER JOIN genre_packs AS gp ON gp.id = w.template_pack_id
+        WHERE w.id = $1`,
+      [seeded.workId],
+    );
+    const packId = pack.rows[0]!.id;
+    try {
+      await pool.query(
+        `UPDATE genre_packs
+            SET fields = '{"genre":"仙侠","world":"修真世界","tone":"冷峻"}'::jsonb,
+                field_schema = '[
+                  {"key":"genre","label":"题材","type":"text","required":true,"options":[]},
+                  {"key":"world","label":"世界","type":"text","required":true,"options":[]},
+                  {"key":"tone","label":"基调","type":"text","required":false,"options":[]}
+                ]'::jsonb
+          WHERE id = $1`,
+        [packId],
+      );
+
+      await new BlueprintJobProcessor(repository, new FakeAiProvider()).process(seeded.payload);
+
+      const blueprint = await pool.query<{ missing_fields: Array<{ key: string }> }>(
+        `SELECT missing_fields FROM work_blueprints WHERE id = $1`,
+        [seeded.blueprintId],
+      );
+      expect(blueprint.rows[0]?.missing_fields.map((field) => field.key)).not.toContain(
+        "genre_pack:tone",
+      );
+    } finally {
+      await pool.query(
+        `UPDATE genre_packs SET fields = $2::jsonb, field_schema = '[]'::jsonb WHERE id = $1`,
+        [packId, JSON.stringify(pack.rows[0]!.fields)],
+      );
+    }
+  });
+
   it("resumes from a persisted provider result before advancing the checkpoint", async () => {
     await pool.query("TRUNCATE TABLE users CASCADE");
     const seeded = await seedQueuedBlueprint(pool);
@@ -371,6 +412,35 @@ describe("blueprint worker persistence", () => {
     } finally {
       await cancellingRepository.onModuleDestroy();
     }
+  });
+
+  it("calls the provider again when a persisted result fails schema validation", async () => {
+    await pool.query("TRUNCATE TABLE users CASCADE");
+    const seeded = await seedQueuedBlueprint(pool);
+    const provider = new MalformedStoryOnceGateway();
+
+    await new BlueprintJobProcessor(repository, provider).process(seeded.payload);
+    const failed = await pool.query<{ status: string; error_code: string }>(
+      `SELECT status, error_code FROM jobs WHERE id = $1`,
+      [seeded.jobId],
+    );
+    expect(failed.rows[0]).toMatchObject({
+      status: "failed",
+      error_code: "MODEL_RESPONSE_INVALID",
+    });
+
+    await pool.query(`UPDATE jobs SET status = 'queued' WHERE id = $1`, [seeded.jobId]);
+    await pool.query(`UPDATE work_blueprints SET status = 'queued' WHERE id = $1`, [
+      seeded.blueprintId,
+    ]);
+    await new BlueprintJobProcessor(repository, provider).process(seeded.payload);
+
+    expect(provider.storyBibleCalls).toBe(2);
+    const completed = await pool.query<{ status: string }>(
+      `SELECT status FROM work_blueprints WHERE id = $1`,
+      [seeded.blueprintId],
+    );
+    expect(completed.rows[0]?.status).toBe("waiting_review");
   });
 
   it("pauses at the budget gate before calling the provider", async () => {
@@ -580,6 +650,25 @@ class CancelBeforeReadyRepository extends WorkerBlueprintRepository {
       );
     }
     return checkpoint;
+  }
+}
+
+class MalformedStoryOnceGateway extends FakeAiProvider {
+  storyBibleCalls = 0;
+
+  override async generateText(input: GenerationRequest) {
+    if (input.operation === "blueprint_story_bible") {
+      this.storyBibleCalls += 1;
+      if (this.storyBibleCalls === 1) {
+        return {
+          text: "not-json",
+          model: "fake-blueprint",
+          finishReason: "stop" as const,
+          usage: { inputTokens: 10, outputTokens: 2 },
+        };
+      }
+    }
+    return super.generateText(input);
   }
 }
 

@@ -310,6 +310,18 @@ export const genrePacks = pgTable(
     version: integer("version").notNull(),
     label: text("label").notNull(),
     fields: jsonb("fields").$type<Record<string, unknown>>().notNull(),
+    fieldSchema: jsonb("field_schema")
+      .$type<
+        Array<{
+          key: string;
+          label: string;
+          type: "text" | "number" | "boolean" | "list";
+          required: boolean;
+          options: string[];
+        }>
+      >()
+      .notNull()
+      .default([]),
     rules: jsonb("rules").$type<Array<Record<string, unknown>>>().notNull().default([]),
     uiHints: jsonb("ui_hints").$type<Record<string, unknown>>().notNull().default({}),
     generationGuidance: jsonb("generation_guidance")
