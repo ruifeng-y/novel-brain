@@ -8,6 +8,7 @@ import {
   ACCOUNT_PURGE_JOB,
   ACCOUNT_PURGE_TICK_JOB,
   BATCH_TICK_JOB,
+  GENERATE_BLUEPRINT_JOB,
   GENERATE_CHAPTER_JOB,
   GENERATE_GOLDEN_THREE_JOB,
   PROCESS_IMPORT_JOB,
@@ -35,6 +36,7 @@ import type Redis from "ioredis";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GenerationJobProcessor } from "./generation/generation.processor";
+import { BlueprintJobProcessor } from "./blueprints/blueprint.processor";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GoldenThreeJobProcessor } from "./golden-three/golden-three.processor";
@@ -80,6 +82,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
 
   constructor(
     private readonly processor: GenerationJobProcessor,
+    private readonly blueprintProcessor: BlueprintJobProcessor,
     private readonly goldenThreeProcessor: GoldenThreeJobProcessor,
     private readonly batchPlanProcessor: BatchPlanTickProcessor,
     private readonly summaryProcessor: SummaryRebuildProcessor,
@@ -151,6 +154,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         queue: WORKER_QUEUE_NAME,
         jobTypes: [
           GENERATE_CHAPTER_JOB,
+          GENERATE_BLUEPRINT_JOB,
           GENERATE_GOLDEN_THREE_JOB,
           WRITE_ACTION_JOB,
           SUMMARY_REBUILD_JOB,
@@ -257,11 +261,13 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         outcome = await this.manuscriptImportProcessor.process(payload);
       } else if (payload.jobType === GENERATE_GOLDEN_THREE_JOB) {
         await this.goldenThreeProcessor.process(payload);
+      } else if (payload.jobType === GENERATE_BLUEPRINT_JOB) {
+        await this.blueprintProcessor.process(payload);
       } else if (payload.jobType === GENERATE_CHAPTER_JOB) {
         await this.processor.process(payload);
         await this.batchPlanProcessor.onChildFinished(payload);
       } else {
-        throw new Error(`Unsupported worker job type: ${payload.jobType}`);
+        throw new Error("Unsupported worker job type");
       }
       if (!outcome) {
         outcome = await this.completedJobOutcome(payload);
@@ -384,6 +390,11 @@ function jobLogContext(payload: WorkerJob): Record<string, unknown> {
       return {
         jobId: payload.jobId,
         checkpointStep: payload.checkpoint.stepKey ?? payload.checkpoint.stage,
+      };
+    case GENERATE_BLUEPRINT_JOB:
+      return {
+        jobId: payload.jobId,
+        checkpointStep: payload.checkpoint.step,
       };
     default:
       return { jobId: payload.jobId, checkpointStep: payload.checkpoint.step };
