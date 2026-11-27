@@ -86,5 +86,6 @@ pnpm test:guardrails
 pnpm release:check
 ```
 
-`pnpm release:check` 仍应失败。当前预期真缺口包括 EVAL-002 的 release-head CI 证据；
-CONT-001 是授权延期，不得把机器准备的候选包解释为质量通过。
+`pnpm release:check` 仍应失败。当前预期真缺口只剩最终 release-evidence gate；
+EVAL-002 已由 Production CI `45944913873` 绑定到 `e204faa`，CONT-001 是授权延期，
+不得把机器准备的候选包解释为质量通过。

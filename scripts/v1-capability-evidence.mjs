@@ -195,6 +195,9 @@ function validateCapabilityEvidence(
     if (row.status !== record.status) {
       blockers.push(`capability-audit:trace-mismatch:${row.id}`);
     }
+    if (record.status === "verified" && record.gap !== undefined) {
+      blockers.push(`capability-audit:stale-gap:${row.id}`);
+    }
 
     const executablePaths = validateEvidenceReferences(
       row.id,

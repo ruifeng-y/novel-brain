@@ -5,8 +5,8 @@
   "verification": {
     "kind": "ci",
     "status": "passed",
-    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381",
-    "headSha": "491d059e2d08c787758b31f1a72c5ef652800570"
+    "path": "https://github.com/ruifeng-y/novel-brain/actions/runs/45944913873",
+    "headSha": "e204faaffbda574f7840550647dcf15812a3b192"
   },
   "evidence": {
     "auth-http": { "kind": "integration", "path": "apps/api/test/auth.integration.test.ts" },
@@ -496,12 +496,8 @@
     },
     "EVAL-001": { "status": "verified", "evidence": ["quality-registry"] },
     "EVAL-002": {
-      "status": "implemented",
-      "evidence": ["quality-regression", "quality-eval-http", "variance-threshold-policy"],
-      "gap": {
-        "reason": "inter-rater variance threshold 已批准并登记，但仍需 #242 的最终 Production CI 将证据绑定到发布 head。",
-        "issue": "#242"
-      }
+      "status": "verified",
+      "evidence": ["quality-regression", "quality-eval-http", "variance-threshold-policy"]
     },
     "EVAL-003": {
       "status": "verified",

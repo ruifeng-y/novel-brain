@@ -3,10 +3,10 @@
 > Issue: #236
 > Audited: 2026-11-24; updated 2026-11-27 after the CONT-001 V1 deferral
 > Machine-readable ledger: `docs/implementation/m3-236-non-ui-capability-evidence.json`
-> Verification: historical #236 audit baseline from
-> [Production CI #45332565381](https://github.com/ruifeng-y/novel-brain/actions/runs/45332565381)
-> on code head `491d059`; current release-head verification remains #242.
-> Result: 105 / 106 non-UI V1 capabilities verified; 1 retained as implemented with a bounded gap.
+> Verification: final PR Production CI
+> [run 45944913873](https://github.com/ruifeng-y/novel-brain/actions/runs/45944913873)
+> on code head `e204faa`; the final release-evidence gate remains separate.
+> Result: 106 / 106 non-UI V1 capabilities verified.
 
 ## 1. Audit Rule
 
@@ -29,15 +29,11 @@ The release gate now validates:
 
 | Status | Count |
 | --- | ---: |
-| Verified | 105 |
-| Blocked by a bounded gap | 1 |
+| Verified | 106 |
+| Blocked by a bounded gap | 0 |
 | Missing audit record | 0 |
 
-The remaining blocked capability is:
-
-| Capability | Gap | Follow-up |
-| --- | --- | --- |
-| EVAL-002 | The variance threshold is approved, but final release-head Production CI has not yet bound the complete evidence set. | #242 |
+No non-UI V1 capability remains in a bounded gap.
 
 `PERF-001`, `CONT-001`, `AGENT-007` and `QUALITY-009` remain authorized post-V1 deferrals and
 are not part of this audit. CONT-001's historical #239/#273 evidence is retained, but no clean
@@ -73,14 +69,10 @@ Expected release result after the #238 UI closeout:
 V1 RELEASE BLOCKED
 - release-evidence:status-blocked
 - final-production-ci:blocked
-- capability-verification:1
-  EVAL-002
 - capability-audit:verification-evidence-missing
 ```
 
-The final audit blocker is expected until the current PR has an exact-head
-Production CI run; #242 records the final release CI.
-
-The remaining non-UI blocker is tracked by #242. CONT-001 is explicitly deferred and #279 is no
-longer a V1 deliverable. UI capability closure was completed by #238; final release evidence and
-CI remain #242.
+EVAL-002 is verified against Production CI run `45944913873` at head `e204faa`. The remaining
+release blockers are the final release-evidence gate and current-head UI capability evidence.
+CONT-001 is explicitly deferred and #279 is no longer a V1 deliverable. UI capability closure was
+completed by #238.

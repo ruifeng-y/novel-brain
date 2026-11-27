@@ -47,10 +47,10 @@ commit `6bc4fa2a83172ae3ece9d75065462d973397333f`.
 - All 15 non-static production pages have complete, verified action evidence.
 - UI-001..UI-009 are `verified` in the traceability ledger.
 - The release gate now reports UI capability and parity evidence as passing.
-- V1 traceability records 114 of 115 V1 capabilities as `verified`; EVAL-002
-  awaits final release-head CI, while CONT-001 is explicitly deferred.
-- The remaining release blockers are the EVAL-002 release-head evidence gap and
-  the final #242 Production CI. CONT-001, #278 and #279 are not V1 deliverables.
+- V1 traceability records 115 of 115 V1 capabilities as `verified`; EVAL-002
+  is bound to Production CI `45944913873`, while CONT-001 is explicitly deferred.
+- The remaining release blocker is the final release-evidence gate binding.
+  CONT-001, #278 and #279 are not V1 deliverables.
   The inter-rater
   variance threshold is approved separately under #240. #238 does not close #104.
 
@@ -86,16 +86,16 @@ Local verification:
 - `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm check:migrations` and
   `node scripts/validate-readiness.mjs` passed.
 - `pnpm release:check` is rerun after the current-head Production CI completes;
-  it must remove UI capability blockers and leave only blocked release status,
-  final Production CI and the EVAL-002 release-head evidence gap.
+  it must remove UI capability blockers and leave only the final release-evidence
+  gate blocker.
 
 ## 5. Boundary
 
 This ticket does not claim that every V1 capability is already `verified` or
-authorized-deferred. EVAL-002 remains an explicit bounded release blocker.
+authorized-deferred. EVAL-002 is verified against the final PR Production CI;
 CONT-001 is authorized-deferred. #239 records the human review, #240 records the
-approved variance threshold but its capability verification remains with #242,
-and #104 remains open until the remaining release gates close.
+approved variance threshold, and #104 remains open until the final release-evidence
+gate closes.
 
 This report does not record or substitute for:
 

@@ -2,7 +2,7 @@
 
 > Issue: #240
 > Capabilities: EVAL-002
-> Status: decision complete; V1 release remains blocked by #242 and the EVAL-002 release-head evidence gap. CONT-001 and its clean rerun are deferred.
+> Status: decision complete; EVAL-002 is verified against Production CI `45944913873`. V1 release remains blocked only by the final release-evidence gate. CONT-001 and its clean rerun are deferred.
 
 ## 决定
 
@@ -27,8 +27,9 @@ Release gate 仅在 `maxVariance > 0.1` 时记录
 4. 处置后重跑完整质量与发布门禁。
 5. V1 quality claim 不接受 waiver，也不允许通过调整阈值解除阻断。
 
-批准阈值只解除 `decision-required:interRaterVarianceThreshold`。当前 release 仍因
-#242 release-head CI 和 EVAL-002 的最终证据绑定保持 blocked。`hook_prose_score = 1.882353 < 4`
+批准阈值只解除 `decision-required:interRaterVarianceThreshold`。EVAL-002 已绑定
+Production CI `45944913873` 和 head `e204faa`；当前 release 只因最终 release-evidence gate
+保持 blocked。`hook_prose_score = 1.882353 < 4`
 保留为 CONT-001 的历史证据；该能力已延期，不构成 V1 clean quality claim。
 
 ## Completion Time Warning
