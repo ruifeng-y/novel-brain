@@ -730,15 +730,15 @@ describe("V1 release gate", () => {
       const paths = [];
       let inPaths = false;
       for (const line of lines.slice(start + 1)) {
-        if (/^  \S/u.test(line)) break;
-        if (/^    paths:/u.test(line)) {
+        if (/^ {2}\S/u.test(line)) break;
+        if (/^ {4}paths:/u.test(line)) {
           inPaths = true;
           continue;
         }
         if (inPaths) {
-          const match = /^      - "([^"]+)"$/u.exec(line);
+          const match = /^ {6}- "([^"]+)"$/u.exec(line);
           if (match) paths.push(match[1]);
-          else if (!/^      /u.test(line)) break;
+          else if (!/^ {6}/u.test(line)) break;
         }
       }
       return paths;
