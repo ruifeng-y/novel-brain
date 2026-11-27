@@ -208,7 +208,7 @@ defaultMaxCostCny = roundUpToFiveJiao(estimatedCostCny * 1.5)
 
 ```ts
 blueprintBudget?: {
-  maxTokens: number; // 20,000..400,000
+  maxTokens: number; // 20,000..600,000
   maxCostCny: number; // 0.10..10.00
 };
 ```

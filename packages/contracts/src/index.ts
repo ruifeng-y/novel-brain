@@ -5878,9 +5878,11 @@ export const blueprintStatusSchema = z.enum([
 ]);
 export type BlueprintStatus = z.infer<typeof blueprintStatusSchema>;
 
+export const M0_COST_PER_TOKEN_CNY = 0.000002;
+
 export const blueprintBudgetSchema = z
   .object({
-    maxTokens: z.number().int().min(20_000).max(400_000),
+    maxTokens: z.number().int().min(20_000).max(600_000),
     maxCostCny: z.number().min(0.1).max(10),
   })
   .strict();
@@ -6033,6 +6035,19 @@ export const blueprintStoryBibleDraftSchema = z
             context.addIssue({ code: "custom", message: `Story bible card ${key} is required` });
           }
         }
+        const worldRules = cards.find((card) => card.key === "worldLaws")?.worldRules ?? [];
+        if (worldRules.length < 3) {
+          context.addIssue({
+            code: "custom",
+            message: "Blueprint worldLaws requires at least three rules",
+          });
+        }
+        if (new Set(worldRules.map((rule) => rule.name)).size !== worldRules.length) {
+          context.addIssue({
+            code: "custom",
+            message: "Blueprint world rule names must be unique",
+          });
+        }
       }),
   })
   .strict();
@@ -6118,6 +6133,29 @@ export const workBlueprintSchema = z
         message: "Confirmed blueprints require confirmation metadata and complete drafts",
         path: ["status"],
       });
+    }
+    if (blueprint.status === "confirmed") {
+      const acknowledged = new Set(
+        blueprint.acknowledgements.map((acknowledgement) => acknowledgement.fieldKey),
+      );
+      if (blueprint.missingFields.some((field) => field.required && !acknowledged.has(field.key))) {
+        context.addIssue({
+          code: "custom",
+          message: "Required blueprint fields need a value or not_applicable acknowledgement",
+          path: ["missingFields"],
+        });
+      }
+      if (
+        blueprint.conflicts.some(
+          (conflict) => conflict.severity === "P0" && conflict.status === "open",
+        )
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Unresolved P0 conflicts block blueprint confirmation",
+          path: ["conflicts"],
+        });
+      }
     }
   });
 export type WorkBlueprint = z.infer<typeof workBlueprintSchema>;

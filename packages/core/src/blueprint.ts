@@ -1,10 +1,13 @@
-import type { BlueprintEstimate } from "@novel-brain/contracts";
-
-export type BlueprintScaleTarget = "short" | "medium" | "long" | "epic";
+import {
+  M0_COST_PER_TOKEN_CNY,
+  type BlueprintEstimate,
+  type WorkGenre,
+  type WorkScaleTarget,
+} from "@novel-brain/contracts";
 
 export interface BlueprintEstimateInput {
-  genre: "xianxia" | "history" | "urban";
-  scaleTarget: BlueprintScaleTarget;
+  genre: WorkGenre;
+  scaleTarget: WorkScaleTarget;
   chapterLengthTarget: number;
   modelRatePerTokenCny?: number;
 }
@@ -16,8 +19,6 @@ const SCALE = {
   epic: { volumes: 8, chapters: 96, scenes: 192, baseTokens: 300_000 },
 } as const;
 
-const FALLBACK_MODEL_RATE_PER_TOKEN_CNY = 0.000002;
-
 export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstimate {
   const scale = SCALE[input.scaleTarget];
   const chapterLengthFactor = Math.max(
@@ -25,8 +26,9 @@ export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstim
     Math.min(1.5, 1 + (input.chapterLengthTarget - 3000) / 10_000),
   );
   const estimatedTokens = Math.round(scale.baseTokens * chapterLengthFactor);
-  const modelRatePerTokenCny = input.modelRatePerTokenCny ?? FALLBACK_MODEL_RATE_PER_TOKEN_CNY;
-  const estimatedCostCny = roundMoney(estimatedTokens * modelRatePerTokenCny);
+  const usesFallbackRate = input.modelRatePerTokenCny === undefined;
+  const modelRatePerTokenCny = input.modelRatePerTokenCny ?? M0_COST_PER_TOKEN_CNY;
+  const estimatedCostCny = roundCurrencyToFourDecimals(estimatedTokens * modelRatePerTokenCny);
   return {
     ruleVersion: "blueprint-estimate-v1",
     planned: {
@@ -43,6 +45,7 @@ export function estimateBlueprint(input: BlueprintEstimateInput): BlueprintEstim
     assumptions: [
       `按${input.genre}题材和${input.scaleTarget}规模估算`,
       `章节字数目标 ${input.chapterLengthTarget}`,
+      ...(usesFallbackRate ? ["模型价格不可用，按当前默认单价估算"] : []),
     ],
   };
 }
@@ -51,6 +54,6 @@ function roundUpToFiveJiao(value: number): number {
   return Math.max(0.5, Math.ceil(value / 0.5) * 0.5);
 }
 
-function roundMoney(value: number): number {
+function roundCurrencyToFourDecimals(value: number): number {
   return Number(value.toFixed(4));
 }

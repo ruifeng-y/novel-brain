@@ -256,7 +256,7 @@ export const blueprintStatusSchema = z.enum([
 
 export const blueprintBudgetSchema = z
   .object({
-    maxTokens: z.number().int().min(20_000).max(400_000),
+    maxTokens: z.number().int().min(20_000).max(600_000),
     maxCostCny: z.number().positive().max(10),
   })
   .strict();

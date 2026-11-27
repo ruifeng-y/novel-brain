@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { blueprintEstimateSchema } from "@novel-brain/contracts";
+
 import { estimateBlueprint } from "../src/blueprint";
 
 describe("estimateBlueprint", () => {
@@ -71,5 +73,19 @@ describe("estimateBlueprint", () => {
 
     expect(fallback.estimatedCostCny).toBe(explicit.estimatedCostCny);
     expect(fallback.defaultBudget).toEqual(explicit.defaultBudget);
+    expect(fallback.assumptions).toContain("模型价格不可用，按当前默认单价估算");
+  });
+
+  it("keeps the largest legal estimate inside the budget contract", () => {
+    const estimate = estimateBlueprint({
+      genre: "xianxia",
+      scaleTarget: "epic",
+      chapterLengthTarget: 12000,
+      modelRatePerTokenCny: 0.000002,
+    });
+
+    expect(estimate.estimatedTokens).toBe(450000);
+    expect(estimate.defaultBudget.maxTokens).toBe(540000);
+    expect(blueprintEstimateSchema.safeParse(estimate).success).toBe(true);
   });
 });

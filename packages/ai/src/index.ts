@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  M0_COST_PER_TOKEN_CNY,
   aiFailureClassSchema,
   deepSeekSmokeEvidenceSchema,
   type AiFailureClass as AiFailureClassContract,
@@ -114,7 +115,7 @@ export function classifyAiFailure(error: unknown): AiFailureClass {
   return "unknown";
 }
 
-export const M0_COST_PER_TOKEN_CNY = 0.000002;
+export { M0_COST_PER_TOKEN_CNY };
 
 interface DeepSeekProviderOptions {
   apiKey: string;
