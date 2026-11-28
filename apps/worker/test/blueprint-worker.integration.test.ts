@@ -263,12 +263,15 @@ describe("blueprint worker persistence", () => {
 
       await new BlueprintJobProcessor(repository, new FakeAiProvider()).process(seeded.payload);
 
-      const blueprint = await pool.query<{ missing_fields: Array<{ key: string }> }>(
-        `SELECT missing_fields FROM work_blueprints WHERE id = $1`,
-        [seeded.blueprintId],
-      );
-      expect(blueprint.rows[0]?.missing_fields.map((field) => field.key)).not.toContain(
-        "genre_pack:tone",
+      const blueprint = await pool.query<{
+        missing_fields: Array<{ key: string; required: boolean; severity: string }>;
+      }>(`SELECT missing_fields FROM work_blueprints WHERE id = $1`, [seeded.blueprintId]);
+      expect(blueprint.rows[0]?.missing_fields).toContainEqual(
+        expect.objectContaining({
+          key: "genre_pack:tone",
+          required: false,
+          severity: "P1",
+        }),
       );
     } finally {
       await pool.query(

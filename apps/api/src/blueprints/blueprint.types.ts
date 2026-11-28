@@ -31,3 +31,9 @@ export interface PrepareIdeaBlueprintInput {
   templatePackId: string;
   budgetOverride?: BlueprintBudget;
 }
+
+export interface BlueprintAuditContext {
+  requestId: string;
+  ip: string;
+  userAgent: string;
+}

@@ -12,6 +12,7 @@ export function createRequestId(generateUuid: RandomUuid = randomUUID): string {
 }
 
 export * from "./blueprint";
+export * from "./blueprint-validation";
 
 export function elapsedMilliseconds(startedAt: bigint): number {
   const elapsedNanoseconds = process.hrtime.bigint() - startedAt;

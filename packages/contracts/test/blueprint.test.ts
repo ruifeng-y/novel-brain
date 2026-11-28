@@ -311,6 +311,7 @@ function makeBlueprint(overrides: Record<string, unknown> = {}) {
     version: 1,
     progress: 100,
     currentStep: "await_review",
+    budget: { maxTokens: 48000, maxCostCny: 0.5 },
     estimate: {
       ruleVersion: "blueprint-estimate-v1",
       planned: { volumes: 1, chapters: 12, scenes: 24 },
