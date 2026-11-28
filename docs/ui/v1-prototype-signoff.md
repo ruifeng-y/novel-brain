@@ -271,6 +271,38 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 该签收是 `#291` 的硬门禁证据。PR #299 合并并关闭 `#291` 后，`#292` 可开始生产页面实现；生产 Golden 仍需按 ADR 0027 单独生成和签收。
 
+## 2026-11-28 #292 生产候选待签收
+
+状态：**待作者生产视觉签收，不得合并 PR #300，不得提升为 `parity-verified`，不得解除 #293 阻塞。**
+
+候选由受控 Linux/Chromium 运行 [Production CI #46131986193](https://github.com/ruifeng-y/novel-brain/actions/runs/46131986193) 的 `update_golden` 任务生成：
+
+- `artifacts/ui/golden/blueprint/blueprint-390.png`：`BE10F493641B11F439D424540F7CC9FE7A26EF394516E50FE37196CE589E54E4`
+- `artifacts/ui/golden/blueprint/blueprint-900.png`：`7D7235283DC7D9AD7D5E5D50DA3A75F9D5DF4AF47A4FDBB319A3C25124E680C1`
+- `artifacts/ui/golden/blueprint/blueprint-1180.png`：`F2C2915FE5C82A972D1D2CE872A853A0BAA936516DF840E1F7B34DEECE9FE6FD`
+- `artifacts/ui/golden/blueprint/blueprint-1440.png`：`44C11F8B5628F3FDB569E1260031F2D1EFA77014DDA308E6BB7AE93D27D98E62`
+
+新增全局作品导航“故事蓝图”后，以下既有页面壳层候选也由同一受控运行重拍。作者需确认这些导航变化没有造成布局回归：
+
+- `batch`：1180 / 1440
+- `changes`：390 / 1180 / 1440
+- `entity-detail`：1180 / 1440
+- `export-publish`：1180 / 1440
+- `outline`：1180 / 1440
+- `settings`：1180 / 1440
+- `work-settings`：1180 / 1440
+- `writing`：1180 / 1440
+
+作者逐项签收入口：
+
+- [ ] 390：审阅故事蓝图、等待模型配置/预算暂停/失败/冲突/只读关键状态与移动端无裁切。
+- [ ] 900：审阅双列收束、状态卡动作和大纲场景卡可读性。
+- [ ] 1180：审阅左主栏/右确认栏切换、故事圣经九卡、设定与大纲密度。
+- [ ] 1440：审阅完整桌面布局、确认门禁、费用/预算和长内容可读性。
+- [ ] 确认上述受影响既有页面的导航壳层候选没有非预期布局漂移。
+
+在上述复选框由真实作者确认前，不得由代理代签，不得将本记录改写为签收通过。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
