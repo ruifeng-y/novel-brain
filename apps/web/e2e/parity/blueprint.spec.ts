@@ -9,7 +9,12 @@ import { Pool } from "pg";
 import { workBlueprintResponseSchema, type WorkBlueprint } from "@novel-brain/contracts";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage, expectNoPrototypeOnlyLeakage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
@@ -602,6 +607,7 @@ test("keeps the signed blueprint layout usable at four viewports", async ({
   const worker = await startWorker();
   try {
     await waitForBlueprintStatus(page.request, work, "waiting_review");
+    await freezeApiTimestamps(page);
     await page.goto(`/workspace/${work.id}/blueprint`);
     await expect(page.locator(".story-bible-card")).toHaveCount(9);
     await expectAuthorFacingLanguage(page);
@@ -655,6 +661,12 @@ test("keeps the signed blueprint layout usable at four viewports", async ({
         }),
         contentType: "image/png",
       });
+      await expect
+        .soft(page)
+        .toHaveScreenshot(
+          ["blueprint", `blueprint-${viewport.width}.png`],
+          productionScreenshotOptions,
+        );
     }
   } finally {
     await worker.stop();

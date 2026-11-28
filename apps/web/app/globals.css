@@ -12780,22 +12780,22 @@ a:focus-visible {
   border-radius: 8px;
 }
 
-.tone-jade .blueprint-status-icon {
+.blueprint-status-card.tone-jade .blueprint-status-icon {
   color: var(--jade);
   background: var(--jade-soft);
 }
 
-.tone-gold .blueprint-status-icon {
+.blueprint-status-card.tone-gold .blueprint-status-icon {
   color: var(--gold);
   background: var(--gold-soft);
 }
 
-.tone-red .blueprint-status-icon {
+.blueprint-status-card.tone-red .blueprint-status-icon {
   color: var(--cinnabar);
   background: var(--cinnabar-soft);
 }
 
-.tone-muted .blueprint-status-icon {
+.blueprint-status-card.tone-muted .blueprint-status-icon {
   color: var(--muted);
   background: var(--paper);
 }
@@ -12971,14 +12971,14 @@ a:focus-visible {
   line-height: 1.6;
 }
 
-.story-bible-grid {
+.blueprint-page .story-bible-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 16px;
 }
 
-.story-bible-card {
+.blueprint-page .story-bible-card {
   min-width: 0;
   min-height: 132px;
   overflow: hidden;
@@ -12987,12 +12987,12 @@ a:focus-visible {
   border-radius: 8px;
 }
 
-.story-bible-card.is-incomplete {
+.blueprint-page .story-bible-card.is-incomplete {
   border-color: var(--gold);
   background: var(--gold-soft);
 }
 
-.story-bible-card-head {
+.blueprint-page .story-bible-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -13003,7 +13003,7 @@ a:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 
-.story-bible-card-head > span {
+.blueprint-page .story-bible-card-head > span {
   display: flex;
   min-width: 0;
   align-items: center;
@@ -13012,20 +13012,20 @@ a:focus-visible {
   font-weight: 700;
 }
 
-.story-bible-card-head .lucide {
+.blueprint-page .story-bible-card-head .lucide {
   width: 15px;
   height: 15px;
   color: var(--cinnabar);
 }
 
-.story-bible-card-head > strong {
+.blueprint-page .story-bible-card-head > strong {
   flex-shrink: 0;
   color: var(--jade);
   font-size: 12px;
   font-weight: 600;
 }
 
-.story-bible-card p {
+.blueprint-page .story-bible-card p {
   margin: 0;
   padding: 12px;
   color: var(--ink-3);
@@ -13115,7 +13115,7 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.state-chip {
+.blueprint-page .state-chip {
   display: inline-flex;
   width: fit-content;
   margin-top: 6px;
@@ -13544,7 +13544,7 @@ a:focus-visible {
   border-color: var(--jade);
 }
 
-.gate-severity {
+.blueprint-page .gate-severity {
   display: inline-flex;
   min-width: 58px;
   align-items: center;
@@ -13556,18 +13556,18 @@ a:focus-visible {
   border-radius: 999px;
 }
 
-.gate-severity.required,
-.gate-severity.danger {
+.blueprint-page .gate-severity.required,
+.blueprint-page .gate-severity.danger {
   color: var(--cinnabar-2);
   background: var(--cinnabar-soft);
 }
 
-.gate-severity.warning {
+.blueprint-page .gate-severity.warning {
   color: var(--gold);
   background: var(--gold-soft);
 }
 
-.gate-severity.optional {
+.blueprint-page .gate-severity.optional {
   color: var(--blue);
   background: var(--blue-soft);
 }
@@ -13787,7 +13787,7 @@ a:focus-visible {
     width: min(100%, 380px);
   }
 
-  .story-bible-grid,
+  .blueprint-page .story-bible-grid,
   .blueprint-scene-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -13834,7 +13834,7 @@ a:focus-visible {
   }
 
   .blueprint-metric-grid,
-  .story-bible-grid,
+  .blueprint-page .story-bible-grid,
   .blueprint-scene-strip,
   .blueprint-act-strip,
   .blueprint-volume-list {
