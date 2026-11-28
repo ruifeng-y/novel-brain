@@ -51,6 +51,10 @@
           <button class="nav-item" data-page="work-overview">
             <i data-lucide="book-open"></i><span>作品总览</span>
           </button>
+          <button class="nav-item" data-page="blueprint">
+            <i data-lucide="sparkles"></i><span>故事蓝图</span>
+            <span class="nav-dot"></span>
+          </button>
           <button class="nav-item" data-page="bible">
             <i data-lucide="book-marked"></i><span>故事圣经</span>
             <span class="nav-dot"></span>
@@ -717,16 +721,498 @@
           </div>
         </section>
 
-        <section class="page" data-page="work-overview">
+        <section class="page blueprint-page" data-page="blueprint" data-blueprint-status="waiting_review">
+          <div class="page-head blueprint-page-head">
+            <div>
+              <p class="eyebrow">开书蓝图 · 仙途：忘川书</p>
+              <div class="title-with-badge">
+                <h1>审阅故事蓝图</h1>
+                <span class="badge gold-badge" id="blueprint-status-badge">待你确认</span>
+                <span class="badge">仙侠 · 3 卷 / 36 章</span>
+              </div>
+              <p class="page-sub">先看故事圣经、核心设定和初始大纲。确认后这些内容才会成为后续写作基线。</p>
+            </div>
+            <div class="head-actions">
+              <button class="btn btn-ghost" data-page="work-overview">
+                <i data-lucide="arrow-left"></i><span>返回作品总览</span>
+              </button>
+              <button class="btn btn-ghost" id="blueprint-review-jump" data-action="blueprint-scroll-review">
+                <i data-lucide="list-checks"></i><span>查看待处理项</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="blueprint-prototype-strip" data-prototype-only="blueprint-scenarios">
+            <div>
+              <span class="panel-kicker">原型场景</span>
+              <small>切换查看生成中、恢复和确认后的页面状态</small>
+            </div>
+            <div class="blueprint-scenario-switcher" role="group" aria-label="蓝图原型场景">
+              <button class="chip active" data-action="blueprint-scenario" data-blueprint-scenario="waiting_review">待确认</button>
+              <button class="chip" data-action="blueprint-scenario" data-blueprint-scenario="running">生成中</button>
+              <button class="chip" data-action="blueprint-scenario" data-blueprint-scenario="waiting_model_config">等待模型配置</button>
+              <button class="chip" data-action="blueprint-scenario" data-blueprint-scenario="budget_paused">预算暂停</button>
+              <button class="chip" data-action="blueprint-scenario" data-blueprint-scenario="failed">失败</button>
+              <button class="chip" data-action="blueprint-scenario" data-blueprint-scenario="conflict">冲突</button>
+              <button class="chip" data-action="blueprint-scenario" data-blueprint-scenario="confirmed">已确认</button>
+              <button class="chip" data-action="blueprint-scenario" data-blueprint-scenario="cancelled">已取消</button>
+            </div>
+          </div>
+
+          <div class="blueprint-status-stack" aria-live="polite">
+            <article class="panel blueprint-status-card tone-jade" data-blueprint-status-panel="waiting_review">
+              <span class="blueprint-status-icon"><i data-lucide="check-check"></i></span>
+              <div class="blueprint-status-copy">
+                <span class="panel-kicker">生成完成</span>
+                <h2>候选已齐，等待你的确认</h2>
+                <p>九卡故事圣经与初始大纲已生成。确认前，它们只作为候选保留，不会进入正文生成。</p>
+              </div>
+              <div class="blueprint-status-actions">
+                <span class="badge jade-badge">可开始审阅</span>
+                <button class="btn btn-ghost btn-small" data-action="blueprint-cancel">取消蓝图</button>
+              </div>
+            </article>
+
+            <article class="panel blueprint-status-card tone-blue" data-blueprint-status-panel="running" hidden>
+              <span class="blueprint-status-icon"><i data-lucide="loader-circle"></i></span>
+              <div class="blueprint-status-copy">
+                <span class="panel-kicker">后台生成中</span>
+                <h2>正在整理世界观与前三卷主线</h2>
+                <p id="blueprint-running-stage">当前阶段：初始大纲 · 第一卷章纲。关闭页面不会中断任务，完成后会在站内通知。</p>
+              </div>
+              <button class="btn btn-ghost btn-small" data-action="blueprint-cancel">取消生成</button>
+            </article>
+
+            <article class="panel blueprint-status-card tone-gold" data-blueprint-status-panel="waiting_model_config" hidden>
+              <span class="blueprint-status-icon"><i data-lucide="key-round"></i></span>
+              <div class="blueprint-status-copy">
+                <span class="panel-kicker">等待模型配置</span>
+                <h2>还差一个可用的模型连接</h2>
+                <p>故事蓝图尚未开始调用模型，也不会消耗费用。配置完成后会从第一步继续。</p>
+              </div>
+              <div class="blueprint-status-actions">
+                <button class="btn btn-primary btn-small" data-page="account-settings"><i data-lucide="settings"></i><span>打开模型设置</span></button>
+                <button class="btn btn-ghost btn-small" data-action="blueprint-retry">配置完成后重试</button>
+                <button class="btn btn-ghost btn-small" data-action="blueprint-cancel">取消蓝图</button>
+              </div>
+            </article>
+
+            <article class="panel blueprint-status-card tone-gold" data-blueprint-status-panel="budget_paused" hidden>
+              <span class="blueprint-status-icon"><i data-lucide="circle-pause"></i></span>
+              <div class="blueprint-status-copy">
+                <span class="panel-kicker">预算暂停</span>
+                <h2>下一次模型调用会超过当前预算</h2>
+                <p>故事圣经和核心设定已保留，初始大纲停在第 2 卷。提高预算后可从检查点继续。</p>
+              </div>
+              <div class="blueprint-inline-recovery">
+                <label for="blueprint-token-budget-input">Token 上限</label>
+                <input class="input" id="blueprint-token-budget-input" type="number" min="68421" max="600000" step="1000" value="220000">
+                <label for="blueprint-budget-input">费用上限（元）</label>
+                <input class="input" id="blueprint-budget-input" type="number" min="2.43" max="10" step="0.01" value="8.0">
+                <div class="blueprint-inline-actions">
+                  <button class="btn btn-primary btn-small" data-action="blueprint-resume-budget">提高预算并继续</button>
+                  <button class="btn btn-ghost btn-small" data-action="blueprint-cancel">取消蓝图</button>
+                </div>
+                <small class="blueprint-budget-error" id="blueprint-budget-error" hidden>Token 必须高于已用 68,420 且不超过 600,000；费用必须高于 ¥2.42 且不超过 ¥10.00。</small>
+              </div>
+            </article>
+
+            <article class="panel blueprint-status-card tone-red" data-blueprint-status-panel="failed" hidden>
+              <span class="blueprint-status-icon"><i data-lucide="cloud-off"></i></span>
+              <div class="blueprint-status-copy">
+                <span class="panel-kicker">生成失败</span>
+                <h2>初始大纲第二卷中断</h2>
+                <p>已完成的故事圣经、核心设定和第一卷章纲都已保留。可以从检查点重试，不会重复已完成的调用。</p>
+              </div>
+              <div class="blueprint-status-actions">
+                <button class="btn btn-primary btn-small" data-action="blueprint-retry"><i data-lucide="refresh-cw"></i><span>从检查点重试</span></button>
+              </div>
+            </article>
+
+            <article class="panel blueprint-status-card tone-red" data-blueprint-status-panel="conflict" hidden>
+              <span class="blueprint-status-icon"><i data-lucide="shield-alert"></i></span>
+              <div class="blueprint-status-copy">
+                <span class="panel-kicker">需要处理冲突</span>
+                <h2>有一条时间线冲突会阻止确认</h2>
+                <p>第 7 章同时安排了两种互斥状态。处理后仍可继续查看建议项，不必把提醒全部清空。</p>
+              </div>
+              <div class="blueprint-status-actions">
+                <button class="btn btn-ghost btn-small" data-action="blueprint-scroll-review">去处理</button>
+                <button class="btn btn-ghost btn-small" data-action="blueprint-cancel">取消蓝图</button>
+              </div>
+            </article>
+
+            <article class="panel blueprint-status-card tone-jade" data-blueprint-status-panel="confirmed" hidden>
+              <span class="blueprint-status-icon"><i data-lucide="badge-check"></i></span>
+              <div class="blueprint-status-copy">
+                <span class="panel-kicker">蓝图已确认</span>
+                <h2>故事圣经、核心设定和初始大纲已锁定</h2>
+                <p>2026-11-28 14:26 由你确认。第一章正文尚未生成，章节状态全部为“已规划”。</p>
+              </div>
+              <div class="blueprint-status-actions">
+                <button class="btn btn-ghost btn-small" data-page="work-overview">返回作品总览</button>
+                <button class="btn btn-primary btn-small" data-page="writing"><i data-lucide="pen-line"></i><span>开始写第一章</span></button>
+              </div>
+            </article>
+
+            <article class="panel blueprint-status-card tone-muted" data-blueprint-status-panel="cancelled" hidden>
+              <span class="blueprint-status-icon"><i data-lucide="circle-slash-2"></i></span>
+              <div class="blueprint-status-copy">
+                <span class="panel-kicker">已取消生成</span>
+                <h2 id="blueprint-cancelled-title">候选和检查点仍然保留</h2>
+                <p id="blueprint-cancelled-copy">可以继续查看已完成部分。取消后不会直接继续生成。</p>
+              </div>
+              <div class="blueprint-status-actions">
+                <button class="btn btn-ghost btn-small" id="blueprint-cancelled-candidates-button" data-action="blueprint-scroll-candidate">查看已完成候选</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="blueprint-metric-grid">
+            <article class="blueprint-metric">
+              <span>生成进度</span>
+              <strong id="blueprint-progress-value">100%</strong>
+              <div class="progress jade"><span id="blueprint-progress-bar" style="width:100%"></span></div>
+              <small id="blueprint-progress-note">6 / 6 个阶段完成</small>
+            </article>
+            <article class="blueprint-metric">
+              <span>Token 用量</span>
+              <strong id="blueprint-token-value">96,480</strong>
+              <div class="progress"><span id="blueprint-token-bar" style="width:80%"></span></div>
+              <small>预计上限 <span id="blueprint-token-limit">120,000</span></small>
+            </article>
+            <article class="blueprint-metric">
+              <span>费用与预算</span>
+              <strong id="blueprint-cost-value">¥3.42 / ¥6.00</strong>
+              <div class="progress gold"><span id="blueprint-cost-bar" style="width:57%"></span></div>
+              <small id="blueprint-cost-note">仍在默认预算内</small>
+            </article>
+            <article class="blueprint-metric blueprint-metric-note">
+              <span>当前检查点</span>
+              <strong id="blueprint-checkpoint-value">审阅等待</strong>
+              <small id="blueprint-checkpoint-note">保存于 14:22 · 候选 v18</small>
+            </article>
+          </div>
+
+          <div class="blueprint-review-layout">
+            <div class="blueprint-main-column">
+              <section class="panel blueprint-section">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">故事圣经 · 九卡</span>
+                    <h2>故事圣经</h2>
+                  </div>
+                  <div class="blueprint-panel-meta">
+                    <span class="badge jade-badge" id="blueprint-story-bible-badge">9 / 9 完整</span>
+                    <span class="badge">候选 v18</span>
+                  </div>
+                  <button class="btn btn-ghost btn-small" data-action="blueprint-toggle-edit" data-blueprint-edit-section="story">编辑九卡</button>
+                </div>
+                <div class="story-bible-grid">
+                  <article class="story-bible-card active" data-blueprint-card="story">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="story">
+                      <span><i data-lucide="quote"></i>一句话故事</span><strong>完成</strong>
+                    </button>
+                    <p>边城外门杂役沈砚得到一本吞记忆的书，为寻找母亲失踪真相一步步走向天门。</p>
+                  </article>
+                  <article class="story-bible-card" data-blueprint-card="hook">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="hook">
+                      <span><i data-lucide="flame"></i>核心卖点</span><strong>完成</strong>
+                    </button>
+                    <p>克制的记忆代价、宗门权力博弈与“每次变强都忘记一个人”的长线悬念。</p>
+                  </article>
+                  <article class="story-bible-card" data-blueprint-card="protagonist">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="protagonist">
+                      <span><i data-lucide="user-round"></i>主角</span><strong>完成</strong>
+                    </button>
+                    <p>沈砚，外冷内热，想证明不靠宗门也能活，也害怕再次被亲近的人抛下。</p>
+                  </article>
+                  <article class="story-bible-card" data-blueprint-card="golden-finger">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="golden-finger">
+                      <span><i data-lucide="book-open-text"></i>金手指</span><strong>完成</strong>
+                    </button>
+                    <p>忘川书以重要记忆换取一次经验，每次翻页都会让一段关系变得陌生。</p>
+                  </article>
+                  <article class="story-bible-card" data-blueprint-card="world-law">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="world-law">
+                      <span><i data-lucide="scale"></i>世界铁律</span><strong>3 条</strong>
+                    </button>
+                    <p>记忆是天门唯一贡品；誓言不能撤回；同一段记忆不能被两个人完整持有。</p>
+                  </article>
+                  <article class="story-bible-card" data-blueprint-card="mainline">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="mainline">
+                      <span><i data-lucide="route"></i>主线</span><strong>完成</strong>
+                    </button>
+                    <p>从外门杂役到天门守门人，追查父母之死、母亲失踪和忘川书缺页的真相。</p>
+                  </article>
+                  <article class="story-bible-card" data-blueprint-card="subplot">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="subplot">
+                      <span><i data-lucide="git-branch"></i>支线</span><strong>完成</strong>
+                    </button>
+                    <p>顾青的监视与动摇、半枚青玉、血河宗追杀和太玄门掌门的选择。</p>
+                  </article>
+                  <article class="story-bible-card" data-blueprint-card="ending">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="ending">
+                      <span><i data-lucide="door-open"></i>结局方向</span><strong>完成</strong>
+                    </button>
+                    <p>沈砚用全部记忆换天门开启，把最后一页留给读者，也把选择还给故事里的人。</p>
+                  </article>
+                  <article class="story-bible-card" data-blueprint-card="promise">
+                    <button class="story-bible-card-head" data-action="blueprint-select-card" data-blueprint-card-target="promise">
+                      <span><i data-lucide="handshake"></i>读者承诺</span><strong>完成</strong>
+                    </button>
+                    <p>稳步升级、长线伏笔、克制的代价，不写无代价复活，不用失忆反复推翻人物关系。</p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="panel blueprint-section">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">核心设定 · 6 类</span>
+                    <h2>核心设定候选</h2>
+                  </div>
+                  <div class="blueprint-panel-meta">
+                    <span class="badge jade-badge" id="blueprint-settings-badge">12 条完整</span>
+                    <span class="badge alert-badge" id="blueprint-setting-missing-badge">1 个必填项待处理</span>
+                  </div>
+                  <button class="btn btn-ghost btn-small" data-action="blueprint-toggle-edit" data-blueprint-edit-section="settings">编辑设定</button>
+                </div>
+                <div class="blueprint-setting-grid">
+                  <article class="blueprint-setting-card">
+                    <span class="blueprint-setting-icon"><i data-lucide="scale"></i></span>
+                    <div><strong>世界规则</strong><p>天门只收完整记忆，缺失会留下可追踪的空白。</p></div>
+                    <span class="state-chip">必填 · 已完整</span>
+                  </article>
+                  <article class="blueprint-setting-card">
+                    <span class="blueprint-setting-icon"><i data-lucide="user-round"></i></span>
+                    <div><strong>主角 · 沈砚</strong><p>核心欲望、恐惧、秘密和起始状态均已给出。</p></div>
+                    <span class="state-chip">必填 · 已完整</span>
+                  </article>
+                  <article class="blueprint-setting-card">
+                    <span class="blueprint-setting-icon"><i data-lucide="shield"></i></span>
+                    <div><strong>核心势力 · 太玄门</strong><p>正道魁首，控制东境三十六城，内部对天门态度分裂。</p></div>
+                    <span class="state-chip">必填 · 已完整</span>
+                  </article>
+                  <article class="blueprint-setting-card">
+                    <span class="blueprint-setting-icon"><i data-lucide="map"></i></span>
+                    <div><strong>地图 · 东境七州</strong><p>从忘川渡到天门台，包含三处关键关隘和一条禁行水路。</p></div>
+                    <span class="state-chip">必填 · 已完整</span>
+                  </article>
+                  <article class="blueprint-setting-card">
+                    <span class="blueprint-setting-icon"><i data-lucide="activity"></i></span>
+                    <div><strong>力量体系 · 九境天门</strong><p>境界、瓶颈、寿元与记忆完整度相互制约。</p></div>
+                    <span class="state-chip">必填 · 已完整</span>
+                  </article>
+                  <article class="blueprint-setting-card">
+                    <span class="blueprint-setting-icon"><i data-lucide="book-open-text"></i></span>
+                    <div><strong>金手指 · 忘川书</strong><p>翻页、代价、限制和成长曲线已经结构化。</p></div>
+                    <span class="state-chip">必填 · 已完整</span>
+                  </article>
+                </div>
+                <div class="blueprint-setting-evidence">
+                  <div>
+                    <strong>世界规则 · 3 条</strong>
+                    <ul>
+                      <li>记忆是天门唯一贡品。</li>
+                      <li>誓言不能撤回，只能由更高代价替换。</li>
+                      <li>同一段记忆不能被两个人完整持有。</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <strong>起点时间线 · 1 条</strong>
+                    <p>忘川村大火，母亲把沈砚藏进地窖，忘川书第一次翻页。</p>
+                  </div>
+                  <div>
+                    <strong>物品候选 · 0 / 1</strong>
+                    <p>尚未给出可追踪核心物品，可在下方补全或声明“不适用”。</p>
+                  </div>
+                </div>
+                <div class="blueprint-required-field" id="blueprint-required-field" data-field-state="missing">
+                  <span class="blueprint-setting-icon"><i data-lucide="package-open"></i></span>
+                  <div>
+                    <strong>核心物品 · 忘川书缺页</strong>
+                    <p>题材包要求至少一条核心物品。当前候选没有给出与前 12 章冲突直接相关的物品。</p>
+                    <span class="state-chip" id="blueprint-required-field-state">必填缺失</span>
+                    <p class="blueprint-na-evidence" id="blueprint-na-evidence" hidden></p>
+                  </div>
+                  <div class="blueprint-required-actions">
+                    <button class="btn btn-ghost btn-small" id="blueprint-mark-na-button" data-action="blueprint-mark-na">标记不适用</button>
+                    <div class="blueprint-na-editor" id="blueprint-na-editor" hidden>
+                      <label for="blueprint-na-reason">不适用理由</label>
+                      <textarea class="input" id="blueprint-na-reason" rows="2" placeholder="说明为什么这次开书不需要核心物品，例如：前 12 章只写人物关系，不出现可追踪物品。"></textarea>
+                      <div class="blueprint-na-actions">
+                        <button class="btn btn-ghost btn-small" data-action="blueprint-cancel-na">取消</button>
+                        <button class="btn btn-primary btn-small" data-action="blueprint-confirm-na">确认不适用</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel blueprint-section">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">初始大纲基线</span>
+                    <h2>初始大纲基线</h2>
+                  </div>
+                  <div class="blueprint-panel-meta">
+                    <span class="badge" data-blueprint-outline-meta>3 卷</span>
+                    <span class="badge" data-blueprint-outline-meta>36 章</span>
+                    <span class="badge" data-blueprint-outline-meta>72 场景</span>
+                  </div>
+                  <button class="btn btn-ghost btn-small" data-action="blueprint-toggle-edit" data-blueprint-edit-section="outline">编辑章纲</button>
+                </div>
+                <div class="blueprint-outline-board">
+                  <div class="blueprint-volume-list" role="tablist" aria-label="初始大纲卷">
+                    <button class="active" id="blueprint-volume-tab-1" role="tab" aria-selected="true" aria-controls="blueprint-volume-detail" tabindex="0" data-action="blueprint-select-volume" data-blueprint-volume="1">
+                      <span>第一卷</span><strong>少年出山</strong><small>12 章 · 24 场景</small>
+                    </button>
+                    <button id="blueprint-volume-tab-2" role="tab" aria-selected="false" aria-controls="blueprint-volume-detail" tabindex="-1" data-action="blueprint-select-volume" data-blueprint-volume="2">
+                      <span>第二卷</span><strong>东境风雷</strong><small>12 章 · 24 场景</small>
+                    </button>
+                    <button id="blueprint-volume-tab-3" role="tab" aria-selected="false" aria-controls="blueprint-volume-detail" tabindex="-1" data-action="blueprint-select-volume" data-blueprint-volume="3">
+                      <span>第三卷</span><strong>天门将开</strong><small>12 章 · 24 场景</small>
+                    </button>
+                  </div>
+                  <div class="blueprint-volume-detail" id="blueprint-volume-detail" role="tabpanel" aria-labelledby="blueprint-volume-tab-1">
+                    <div class="blueprint-volume-head">
+                      <div>
+                        <span class="panel-kicker" id="blueprint-volume-kicker">第一卷</span>
+                        <h3 id="blueprint-volume-title">少年出山</h3>
+                      </div>
+                      <span class="badge jade-badge">卷契约已生成</span>
+                    </div>
+                    <p id="blueprint-volume-summary">沈砚离开忘川村，被卷入太玄门与血河宗的追索；卷末必须揭开忘川书会吞掉记忆的代价。</p>
+                    <div class="blueprint-act-strip" id="blueprint-act-strip" aria-label="本卷三幕">
+                      <span><strong>第一幕</strong>雨夜离村</span>
+                      <span><strong>第二幕</strong>外门立身</span>
+                      <span><strong>第三幕</strong>卷末回声</span>
+                    </div>
+                    <div class="blueprint-chapter-table">
+                      <div class="blueprint-table-head"><span>章节</span><span>章纲</span><span>钩子 / 场景</span><span>状态</span></div>
+                      <div id="blueprint-volume-chapters">
+                        <div class="blueprint-table-row"><strong>第 1 章</strong><span>雨夜埋名</span><small>顾青第一次看见忘川书 · 2 个场景</small><em>已规划</em></div>
+                        <div class="blueprint-table-row"><strong>第 2 章</strong><span>太玄门外</span><small>沈砚隐瞒断臂旧伤 · 2 个场景</small><em>已规划</em></div>
+                        <div class="blueprint-table-row"><strong>第 3 章</strong><span>借命一页</span><small>用记忆换路引，代价首次显现 · 2 个场景</small><em>已规划</em></div>
+                        <div class="blueprint-table-row"><strong>… 至第 12 章</strong><span>卷末：天门回声</span><small>第一卷 12 章、24 场景均已规划</small><em>已规划</em></div>
+                      </div>
+                    </div>
+                    <div class="blueprint-scene-strip" id="blueprint-scene-strip">
+                      <article><span>场景 1-1</span><strong>忘川村雨夜</strong><small>沈砚 / 忘川村 · 逼出第一次翻页</small></article>
+                      <article><span>场景 1-2</span><strong>旧道追踪</strong><small>顾青 / 东境旧道 · 释放半枚青玉线索</small></article>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel blueprint-section" id="blueprint-review-gates">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">缺失项与冲突</span>
+                    <h2>确认前还要看什么</h2>
+                  </div>
+                  <span class="badge alert-badge" id="blueprint-conflict-summary-badge">1 个必填项 · 1 条必须解决</span>
+                </div>
+                <div class="blueprint-gate-columns">
+                  <div class="blueprint-gate-list">
+                    <h3>缺失项</h3>
+                    <article class="blueprint-gate-item" id="blueprint-missing-gate-item">
+                      <span class="gate-severity required" id="blueprint-missing-gate-severity">必填</span>
+                      <div><strong>核心物品 · 忘川书缺页</strong><small id="blueprint-missing-gate-detail">可补全候选，也可以标记“不适用”并填写理由。</small></div>
+                      <button class="text-btn small" data-action="blueprint-focus-missing">去处理</button>
+                    </article>
+                    <article class="blueprint-gate-item muted-item">
+                      <span class="gate-severity optional">可选</span>
+                      <div><strong>补充东境方言风格</strong><small>不影响确认，后续可在写作台补充。</small></div>
+                      <span class="badge">提醒</span>
+                    </article>
+                  </div>
+                  <div class="blueprint-gate-list">
+                    <h3>冲突检查</h3>
+                    <article class="blueprint-conflict is-unresolved" data-severity="P0" data-conflict-state="unresolved">
+                      <span class="gate-severity danger">必须解决</span>
+                      <div><strong>第 7 章时间线互相排斥</strong><small>同一夜沈砚既在忘川渡，又在太玄门山门。需保留一条路线。</small></div>
+                      <button class="btn btn-ghost btn-small" data-action="blueprint-resolve-conflict">标记已解决</button>
+                    </article>
+                    <article class="blueprint-conflict" data-severity="P1" data-conflict-state="open">
+                      <span class="gate-severity warning">建议处理</span>
+                      <div><strong>顾青知道忘川书的时间偏早</strong><small>第 2 章就能看出秘密，建议把第二次暗示后移。</small></div>
+                      <span class="badge gold-badge">提醒</span>
+                    </article>
+                    <article class="blueprint-conflict" data-severity="P2" data-conflict-state="open">
+                      <span class="gate-severity optional">可选优化</span>
+                      <div><strong>第二卷章末钩子语气重复</strong><small>连续三章都用反问收尾，可增加动作型悬念。</small></div>
+                      <span class="badge">提醒</span>
+                    </article>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <aside class="blueprint-rail">
+              <section class="panel blueprint-confirm-card">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">确认门禁</span>
+                    <h2>确认蓝图</h2>
+                  </div>
+                  <span class="badge gold-badge" id="blueprint-gate-badge">待处理</span>
+                </div>
+                <div class="blueprint-check-list">
+                  <div class="is-complete"><i data-lucide="check"></i><span><strong>九卡故事圣经</strong><small>9 / 9 完整</small></span></div>
+                  <div class="is-warning" id="blueprint-setting-gate"><i data-lucide="alert-triangle"></i><span><strong>核心设定</strong><small>1 个必填项待处理</small></span></div>
+                  <div class="is-danger" id="blueprint-conflict-gate"><i data-lucide="shield-alert"></i><span><strong>必须解决的冲突</strong><small>1 条未处理</small></span></div>
+                  <div class="is-complete"><i data-lucide="list-tree"></i><span><strong>初始大纲</strong><small>3 卷 / 36 章 / 72 场景</small></span></div>
+                </div>
+                <div class="blueprint-version-line">
+                  <span>草案版本</span><strong>v18</strong>
+                  <span>确认后</span><strong>锁定并进入总览</strong>
+                </div>
+                <button class="btn btn-primary btn-block" id="blueprint-confirm-button" data-action="blueprint-confirm" disabled aria-describedby="blueprint-confirm-reason">
+                  <i data-lucide="badge-check"></i><span>确认蓝图</span>
+                </button>
+                <p class="blueprint-confirm-reason" id="blueprint-confirm-reason">先处理 1 项必须解决冲突，再补全 1 个必填项。</p>
+              </section>
+
+              <section class="panel blueprint-side-note">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">作者提示</span><h3>确认不会开始写正文</h3></div>
+                </div>
+                <p>确认只锁定故事圣经、核心设定和初始大纲。第一章正文仍为空，由你之后主动开始。</p>
+                <div class="blueprint-side-facts">
+                  <div><span>预计章节</span><strong>36</strong></div>
+                  <div><span>会生成正文</span><strong>否</strong></div>
+                  <div><span>候选来源</span><strong>本次生成</strong></div>
+                </div>
+              </section>
+
+              <section class="panel blueprint-side-note blueprint-cost-note">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">费用明细</span><h3>实际用量</h3></div>
+                  <span class="badge jade-badge" id="blueprint-cost-badge">未超预算</span>
+                </div>
+                <div class="blueprint-cost-rows">
+                  <div><span>故事圣经</span><strong id="blueprint-story-cost">¥0.86</strong></div>
+                  <div><span>核心设定</span><strong id="blueprint-settings-cost">¥1.12</strong></div>
+                  <div><span>初始大纲</span><strong id="blueprint-outline-cost">¥1.44</strong></div>
+                  <div class="total"><span>合计</span><strong id="blueprint-total-cost">¥3.42</strong></div>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page" data-page="work-overview" id="work-overview-page">
           <div class="page-head">
             <div>
               <p class="eyebrow">作品总览</p>
               <div class="title-with-badge">
                 <h1>仙途：忘川书</h1>
-                <span class="badge live-badge">连载中</span>
+                <span class="badge live-badge" id="work-overview-status-badge">连载中</span>
                 <span class="badge">仙侠 · 长篇</span>
               </div>
-              <p class="page-sub">林见鹿 · 1000 万字 · 起点中文网 · 第 1 卷 / 共 30–40 卷（示例前 5 卷）</p>
+              <p class="page-sub" id="work-overview-sub">林见鹿 · 1000 万字 · 起点中文网 · 第 1 卷 / 共 30–40 卷（示例前 5 卷）</p>
             </div>
             <div class="head-actions">
               <button class="btn btn-ghost" data-page="settings">
@@ -740,6 +1226,19 @@
               </button>
             </div>
           </div>
+
+          <article class="panel blueprint-completion-banner" id="blueprint-completion-banner" data-prototype-only="blueprint-confirm-overview" hidden>
+            <span class="blueprint-completion-mark"><i data-lucide="badge-check"></i></span>
+            <div>
+              <p class="eyebrow">开书准备完成</p>
+              <h2>蓝图已完成</h2>
+              <p>九卡故事圣经、核心设定和初始大纲已确认并锁定。第一章正文仍为空，章节状态为“已规划”。</p>
+              <div class="button-row">
+                <button class="btn btn-primary" data-page="writing"><i data-lucide="pen-line"></i><span>开始写第一章</span></button>
+                <button class="btn btn-ghost" data-page="blueprint"><i data-lucide="book-marked"></i><span>查看已确认蓝图</span></button>
+              </div>
+            </div>
+          </article>
 
           <article class="overview-hero">
             <div class="overview-cover">
@@ -2746,7 +3245,7 @@
             </article>
           </div>
           <article class="panel">
-            <div class="panel-head"><div><span class="panel-kicker">逐页状态规格</span><h3>每页需要的状态，不是一张全局遮罩</h3></div><span class="badge">18 页</span></div>
+            <div class="panel-head"><div><span class="panel-kicker">逐页状态规格</span><h3>每页需要的状态，不是一张全局遮罩</h3></div><span class="badge">19 页</span></div>
             <div class="state-matrix-wrap">
               <table class="state-matrix">
                 <thead><tr><th>页面</th><th>必需状态</th><th>已实现状态</th><th>证据</th></tr></thead>
@@ -2754,6 +3253,7 @@
                   <tr><td>auth</td><td>normal / loading / error / disabled / permission</td><td>normal / error / permission</td><td>页面状态 + 登录状态演示</td></tr>
                   <tr><td>dashboard</td><td>normal / empty / loading / error / disabled / long</td><td>normal / empty / error / long</td><td>页面内状态面板</td></tr>
                   <tr><td>new-project</td><td>normal / loading / error / partial / disabled / long</td><td>normal / error / partial / long</td><td>向导、旧稿导入、设定导入</td></tr>
+                  <tr><td>blueprint</td><td>loading / empty / partial / long / conflict / disabled / readonly + 7 lifecycle</td><td>normal + 7 lifecycle + empty / partial / long / conflict / disabled / readonly</td><td>九卡、核心设定、大纲、预算、确认门禁</td></tr>
                   <tr><td>work-overview</td><td>normal / loading / error / readonly / archived / long</td><td>normal / empty / error / partial / readonly / long</td><td>页面内状态面板</td></tr>
                   <tr><td>bible</td><td>normal / loading / error / empty / locked / proposal</td><td>normal / empty / error / partial / locked / long</td><td>锁定、补全提案、来源状态</td></tr>
                   <tr><td>settings</td><td>normal / loading / error / empty / disabled / locked / long</td><td>normal / empty / error / locked / long</td><td>7 栏、锁定、长列表</td></tr>
@@ -3726,6 +4226,7 @@
   <script>
     (function () {
       var workPages = [
+        'blueprint',
         'work-overview',
         'bible',
         'settings',

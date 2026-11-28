@@ -118,7 +118,7 @@ The capability ledger contains **119 IDs**: the 117 original manifest entries pl
 
 ## 7. UI parity and prototype evidence
 
-The signed-off prototype contains 18 screens: 17 production page contracts plus one prototype-only states gallery. All 17 production pages have owner Playwright specs, four viewport production Golden artifacts, completed per-action API/persistence evidence and final normal PR CI, and are currently `parity-verified`. V1 release approval depends on `v1-release-checklist.md`.
+The signed V1 prototype contains 18 screens: 17 production page contracts plus one prototype-only states gallery. All 17 V1 production pages have owner Playwright specs, four viewport production Golden artifacts, completed per-action API/persistence evidence and final normal PR CI, and are currently `parity-verified`. Post-V1 `#291` adds `#blueprint` as a nineteenth prototype candidate with four source screenshots, but it remains `prototype-waiting-signoff`; `#292` stays blocked until real author visual approval. V1 release approval depends on `v1-release-checklist.md`.
 
 Release-only UI checks are split across `docs/ui/v1-ui-deviations.json` for recorded product-owner deviations, `docs/ui/v1-action-contract.json` for the required action IDs, and `docs/implementation/v1-action-evidence.json` for per-action API/persistence evidence. Pending entries intentionally block `pnpm release:check`.
 

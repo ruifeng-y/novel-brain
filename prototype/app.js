@@ -1,6 +1,7 @@
 const pageLabels = {
   dashboard: "工作台",
   "new-project": "新建作品",
+  blueprint: "故事蓝图",
   "work-overview": "作品总览",
   bible: "故事圣经",
   settings: "设定中心",
@@ -23,6 +24,7 @@ const validPages = new Set(Object.keys(pageLabels));
 const pageTitles = {
   dashboard: "工作台 · 墨舟",
   "new-project": "新建作品 · 墨舟",
+  blueprint: "故事蓝图 · 墨舟",
   "work-overview": "作品总览 · 墨舟",
   bible: "故事圣经 · 墨舟",
   settings: "设定中心 · 墨舟",
@@ -51,6 +53,7 @@ const accountPages = new Set([
   "help",
 ]);
 const workPages = new Set([
+  "blueprint",
   "work-overview",
   "bible",
   "settings",
@@ -3895,6 +3898,7 @@ const PAGE_STATE_LABELS = {
   auth: "登录与注册",
   dashboard: "工作台",
   "new-project": "新建作品",
+  blueprint: "故事蓝图",
   "work-overview": "作品总览",
   bible: "故事圣经",
   settings: "设定中心",
@@ -3936,6 +3940,15 @@ const PAGE_STATE_OVERRIDES = {
     error: { title: "开书向导加载失败", body: "题材包或故事蓝图服务暂时不可用，请重试。" },
     partial: { title: "开书资料部分完成", body: "故事罗盘已保存，世界规则和核心人物仍未完成。" },
     long: { title: "导入 10M 字旧稿", body: "后台按文件、卷、章分块处理；已完成 3 / 12 块，可断点恢复。" },
+  },
+  blueprint: {
+    empty: { title: "还没有故事蓝图", body: "从一句话想法创建作品后，系统会自动开始起草故事蓝图。" },
+    partial: { title: "蓝图候选仍在补全", body: "故事圣经已生成，核心设定和初始大纲还在继续。" },
+    long: { title: "初始大纲基线较长", body: "3 卷 36 章按卷折叠，只展开当前卷和待处理缺项。" },
+    conflict: { title: "蓝图里还有需要处理的冲突", body: "必须解决的时间线冲突会阻止确认，建议和可选提醒不会。" },
+    disabled: { title: "当前不能确认蓝图", body: "请先补全必填项，并处理必须解决的冲突。" },
+    readonly: { title: "蓝图已确认，只能查看", body: "已确认的故事圣经和核心设定已经锁定，需要修改时发起新的修改请求。" },
+    error: { title: "故事蓝图加载失败", body: "候选、预算或冲突状态暂时不可用，请重试。" },
   },
   writing: {
     conflict: { title: "左臂骨折，但正文出现双手结印", body: "已确认设定要求第 53 章前不能双手结印。必须修订、拒稿或拉平行版本。" },
@@ -4005,8 +4018,8 @@ const PAGE_STATE_OVERRIDES = {
   },
   states: {
     disabled: { title: "状态演示已停用", body: "关闭批量任务后再切换全局状态。" },
-    partial: { title: "状态矩阵部分加载", body: "18 页规格已加载，截图证据仍在同步。" },
-    long: { title: "18 页 × 11 类状态", body: "状态矩阵按页面折叠，避免一次展示全部组合。" },
+    partial: { title: "状态矩阵部分加载", body: "19 页规格已加载，截图证据仍在同步。" },
+    long: { title: "19 页 × 11 类状态", body: "状态矩阵按页面折叠，避免一次展示全部组合。" },
   },
   auth: {
     error: { title: "登录失败", body: "账号、密码或验证码不正确，请重试。" },
@@ -4055,6 +4068,21 @@ function setDemoState(state) {
   const labels = { normal: "正常", empty: "空状态", loading: "加载中", error: "错误", disabled: "禁用", permission: "权限不足", partial: "部分成功", long: "长内容", locked: "锁定", readonly: "只读", conflict: "冲突" };
   clearPageStates();
   const pageEl = document.querySelector(".page.active");
+  if (pageEl?.dataset.page === "blueprint") {
+    const blueprintState =
+      {
+        normal: "waiting_review",
+        empty: "waiting_model_config",
+        loading: "running",
+        partial: "running",
+        disabled: "budget_paused",
+        error: "failed",
+        readonly: "confirmed",
+        conflict: "conflict",
+        long: "waiting_review",
+      }[state] || "waiting_review";
+    setBlueprintScenario(blueprintState, { silent: true });
+  }
   if (!pageEl || state === "normal") {
     showToast(`演示状态：${labels[state] || state}`);
     return;
@@ -4081,6 +4109,1249 @@ function setDemoState(state) {
   else pageEl.prepend(panel);
   initIcons();
   showToast(`演示状态：${labels[state] || state}`);
+}
+
+let blueprintCurrentContent = null;
+const blueprintVolumeDrafts = new Map();
+
+const blueprintScenarioData = {
+  waiting_review: {
+    badge: "待你确认",
+    badgeClass: "gold-badge",
+    content: {
+      showWorkspace: true,
+      reviewGates: true,
+      storyCards: 9,
+      settingCards: 6,
+      volumeTabs: 3,
+      chapterCounts: { 1: 12, 2: 12, 3: 12 },
+      storyBible: "9 / 9 完整",
+      settings: "12 条完整",
+      outline: ["3 卷", "36 章", "72 场景"],
+      costs: ["¥0.86", "¥1.12", "¥1.44"],
+      totalCost: "¥3.42",
+      costBadge: "未超预算",
+    },
+    progress: 100,
+    progressNote: "6 / 6 个阶段完成",
+    tokens: "96,480",
+    tokenPercent: 80,
+    tokenLimit: "120,000",
+    cost: "¥3.42 / ¥6.00",
+    costPercent: 57,
+    costNote: "仍在默认预算内",
+    checkpoint: "审阅等待",
+    checkpointNote: "保存于 14:22 · 候选 v18",
+  },
+  running: {
+    badge: "生成中",
+    badgeClass: "blue-badge",
+    content: {
+      showWorkspace: true,
+      reviewGates: false,
+      storyCards: 6,
+      settingCards: 4,
+      volumeTabs: 1,
+      chapterCounts: { 1: 0, 2: 0, 3: 0 },
+      storyBible: "6 / 9 已生成",
+      settings: "4 / 6 类生成中",
+      outline: ["第 1 卷生成中", "0 / 36 章待校验", "0 / 72 场景待校验"],
+      costs: ["¥0.78", "¥1.15", "¥0.68"],
+      totalCost: "¥2.61",
+      costBadge: "预算内进行中",
+    },
+    progress: 62,
+    progressNote: "4 / 6 个阶段完成",
+    tokens: "74,320",
+    tokenPercent: 62,
+    tokenLimit: "120,000",
+    cost: "¥2.61 / ¥6.00",
+    costPercent: 44,
+    costNote: "预计还剩 ¥3.39",
+    checkpoint: "初始大纲 · 第一卷",
+    checkpointNote: "2 分钟前 · 可断点恢复",
+  },
+  waiting_model_config: {
+    badge: "等待配置",
+    badgeClass: "gold-badge",
+    content: {
+      showWorkspace: false,
+      reviewGates: false,
+      storyCards: 0,
+      settingCards: 0,
+      volumeTabs: 0,
+      chapterCounts: { 1: 0, 2: 0, 3: 0 },
+      storyBible: "尚未开始",
+      settings: "尚未开始",
+      outline: ["尚未开始", "尚未开始", "尚未开始"],
+      costs: ["¥0.00", "¥0.00", "¥0.00"],
+      totalCost: "¥0.00",
+      costBadge: "尚未产生费用",
+    },
+    progress: 0,
+    progressNote: "尚未开始调用模型",
+    tokens: "0",
+    tokenPercent: 0,
+    tokenLimit: "120,000",
+    cost: "¥0.00 / ¥6.00",
+    costPercent: 0,
+    costNote: "尚未产生费用",
+    checkpoint: "等待配置",
+    checkpointNote: "模型可用后从第一步继续",
+  },
+  budget_paused: {
+    badge: "预算暂停",
+    badgeClass: "gold-badge",
+    content: {
+      showWorkspace: true,
+      reviewGates: false,
+      storyCards: 9,
+      settingCards: 6,
+      volumeTabs: 2,
+      chapterCounts: { 1: 12, 2: 6, 3: 0 },
+      storyBible: "9 / 9 完整",
+      settings: "6 / 6 类完整",
+      outline: ["2 / 3 卷", "18 / 36 章", "36 / 72 场景"],
+      costs: ["¥0.86", "¥1.12", "¥0.44"],
+      totalCost: "¥2.42",
+      costBadge: "预算暂停",
+    },
+    progress: 68,
+    progressNote: "5 / 6 个阶段已开始",
+    tokens: "68,420",
+    tokenPercent: 98,
+    tokenLimit: "70,000",
+    cost: "¥2.42 / ¥2.50",
+    costPercent: 97,
+    costNote: "预算已用 96.8%",
+    checkpoint: "初始大纲 · 第二卷",
+    checkpointNote: "调用前暂停，候选已保留",
+  },
+  failed: {
+    badge: "生成失败",
+    badgeClass: "alert-badge",
+    content: {
+      showWorkspace: true,
+      reviewGates: false,
+      storyCards: 9,
+      settingCards: 6,
+      volumeTabs: 1,
+      chapterCounts: { 1: 12, 2: 0, 3: 0 },
+      storyBible: "9 / 9 完整",
+      settings: "6 / 6 类完整",
+      outline: ["1 / 3 卷", "12 / 36 章", "24 / 72 场景"],
+      costs: ["¥0.86", "¥1.12", "¥1.10"],
+      totalCost: "¥3.08",
+      costBadge: "已保留检查点",
+    },
+    progress: 81,
+    progressNote: "5 / 6 个阶段完成",
+    tokens: "88,200",
+    tokenPercent: 74,
+    tokenLimit: "120,000",
+    cost: "¥3.08 / ¥6.00",
+    costPercent: 51,
+    costNote: "已完成阶段不会重复计费",
+    checkpoint: "初始大纲 · 第一卷",
+    checkpointNote: "失败步骤已保存，可重试",
+  },
+  conflict: {
+    badge: "有冲突",
+    badgeClass: "alert-badge",
+    content: {
+      showWorkspace: true,
+      reviewGates: true,
+      storyCards: 9,
+      settingCards: 6,
+      volumeTabs: 3,
+      chapterCounts: { 1: 12, 2: 12, 3: 12 },
+      storyBible: "9 / 9 完整",
+      settings: "12 条完整",
+      outline: ["3 卷", "36 章", "72 场景"],
+      costs: ["¥0.86", "¥1.12", "¥1.44"],
+      totalCost: "¥3.42",
+      costBadge: "未超预算",
+    },
+    progress: 100,
+    progressNote: "校验完成，等待处理",
+    tokens: "96,480",
+    tokenPercent: 80,
+    tokenLimit: "120,000",
+    cost: "¥3.42 / ¥6.00",
+    costPercent: 57,
+    costNote: "处理冲突不会重新生成",
+    checkpoint: "校验完成 · 待处理",
+    checkpointNote: "候选 v18 · 保存于 14:22",
+  },
+  confirmed: {
+    badge: "已确认",
+    badgeClass: "jade-badge",
+    content: {
+      showWorkspace: true,
+      reviewGates: true,
+      storyCards: 9,
+      settingCards: 6,
+      volumeTabs: 3,
+      chapterCounts: { 1: 12, 2: 12, 3: 12 },
+      storyBible: "9 / 9 已锁定",
+      settings: "12 条已锁定",
+      outline: ["3 卷", "36 章", "72 场景"],
+      costs: ["¥0.86", "¥1.12", "¥1.44"],
+      totalCost: "¥3.42",
+      costBadge: "最终费用已结算",
+    },
+    progress: 100,
+    progressNote: "6 / 6 个阶段完成",
+    tokens: "96,480",
+    tokenPercent: 80,
+    tokenLimit: "120,000",
+    cost: "¥3.42 / ¥6.00",
+    costPercent: 57,
+    costNote: "最终费用已结算",
+    checkpoint: "已确认",
+    checkpointNote: "14:26 锁定 · 作者确认",
+  },
+  cancelled: {
+    badge: "已取消",
+    badgeClass: "",
+    content: {
+      showWorkspace: true,
+      reviewGates: false,
+      storyCards: 7,
+      settingCards: 4,
+      volumeTabs: 0,
+      chapterCounts: { 1: 0, 2: 0, 3: 0 },
+      storyBible: "7 / 9 已保留",
+      settings: "4 / 6 类已保留",
+      outline: ["尚未开始", "0 / 36 章", "0 / 72 场景"],
+      costs: ["¥0.86", "¥1.02", "¥0.00"],
+      totalCost: "¥1.88",
+      costBadge: "已取消 · 不再计费",
+    },
+    progress: 50,
+    progressNote: "3 / 6 个阶段完成",
+    tokens: "51,320",
+    tokenPercent: 43,
+    tokenLimit: "120,000",
+    cost: "¥1.88 / ¥6.00",
+    costPercent: 31,
+    costNote: "已停止继续调用模型",
+    checkpoint: "核心设定",
+    checkpointNote: "已取消但保留候选与检查点",
+  },
+};
+
+function createBlueprintVolume(
+  startChapter,
+  kicker,
+  title,
+  summary,
+  chapterTitles,
+  acts
+) {
+  return { startChapter, kicker, title, summary, chapterTitles, acts };
+}
+
+const blueprintVolumeData = {
+  1: createBlueprintVolume(
+    1,
+    "第一卷",
+    "少年出山",
+    "沈砚离开忘川村，被卷入太玄门与血河宗的追索；卷末必须揭开忘川书会吞掉记忆的代价。",
+    [
+      "雨夜埋名",
+      "太玄门外",
+      "借命一页",
+      "外门第一夜",
+      "缺页之价",
+      "顾青的试探",
+      "忘川渡口",
+      "血河追索",
+      "一页换一城",
+      "太玄门的门规",
+      "记忆里少了一个人",
+      "卷末：天门回声",
+    ],
+    ["雨夜离村", "外门立身", "卷末回声"]
+  ),
+  2: createBlueprintVolume(
+    13,
+    "第二卷",
+    "东境风雷",
+    "沈砚在七州之间追查半枚青玉，太玄门内部对天门的路线分歧爆发，顾青第一次主动违抗师门。",
+    [
+      "七州风讯",
+      "旧盟新债",
+      "风雷渡口",
+      "南境证人",
+      "青玉裂纹",
+      "第二次翻页",
+      "同门异路",
+      "无相楼的价码",
+      "血河旧案",
+      "太玄门分裂",
+      "顾青的选择",
+      "卷末：风雷破门",
+    ],
+    ["七州风讯", "旧盟破裂", "风雷破门"]
+  ),
+  3: createBlueprintVolume(
+    25,
+    "第三卷",
+    "天门将开",
+    "东境三方势力围绕天门台决战，沈砚必须选择保留记忆里最重要的人，还是打开可能吞掉整个东境的门。",
+    [
+      "天门台前",
+      "最后一页",
+      "守门人之约",
+      "三方会盟",
+      "青玉合页",
+      "记忆的缺口",
+      "无相楼倒戈",
+      "血河终局",
+      "太玄门的选择",
+      "母亲留下的字",
+      "忘川书最后一页",
+      "卷末：把最后一页留给读者",
+    ],
+    ["天门会盟", "旧案终局", "最后一页"]
+  ),
+};
+
+function updateBlueprintGate() {
+  const root = document.querySelector('.page[data-page="blueprint"]');
+  if (!root) return;
+  const status = root.dataset.blueprintStatus || "waiting_review";
+  const field = root.querySelector("#blueprint-required-field");
+  const requiredMissing = field?.dataset.fieldState === "missing";
+  const unresolvedP0 = root.querySelector(
+    '.blueprint-conflict[data-severity="P0"][data-conflict-state="unresolved"]'
+  );
+  const confirmButton = root.querySelector("#blueprint-confirm-button");
+  const reason = root.querySelector("#blueprint-confirm-reason");
+  const gateBadge = root.querySelector("#blueprint-gate-badge");
+  const settingGate = root.querySelector("#blueprint-setting-gate");
+  const conflictGate = root.querySelector("#blueprint-conflict-gate");
+  const missingBadge = root.querySelector("#blueprint-setting-missing-badge");
+  const naButton = root.querySelector("#blueprint-mark-na-button");
+  const fieldState = root.querySelector("#blueprint-required-field-state");
+  const missingGate = root.querySelector("#blueprint-missing-gate-item");
+  const missingGateSeverity = root.querySelector(
+    "#blueprint-missing-gate-severity"
+  );
+  const missingGateDetail = root.querySelector(
+    "#blueprint-missing-gate-detail"
+  );
+  const missingGateAction = missingGate?.querySelector(
+    '[data-action="blueprint-focus-missing"]'
+  );
+  const conflictSummaryBadge = root.querySelector(
+    "#blueprint-conflict-summary-badge"
+  );
+  const notApplicableReason =
+    field?.dataset.notApplicableReason ||
+    "前 12 章以人物关系和追索为主，不引入可追踪物品。";
+
+  if (!confirmButton || !reason || !gateBadge) return;
+
+  const isReviewable = status === "waiting_review" || status === "conflict";
+  const isConfirmed = status === "confirmed";
+  const isCancelled = status === "cancelled";
+
+  if (conflictSummaryBadge) {
+    conflictSummaryBadge.className = unresolvedP0
+      ? "badge alert-badge"
+      : requiredMissing
+        ? "badge gold-badge"
+        : "badge jade-badge";
+    conflictSummaryBadge.textContent = unresolvedP0
+      ? requiredMissing
+        ? "1 个必填项 · 1 条必须解决"
+        : "1 条必须解决"
+      : requiredMissing
+        ? "1 个必填项待处理"
+        : "没有阻断项";
+  }
+
+  if (fieldState) {
+    fieldState.textContent =
+      field?.dataset.fieldState === "not_applicable"
+        ? "已声明不适用"
+        : "必填缺失";
+  }
+  if (naButton) {
+    naButton.hidden =
+      field?.dataset.fieldState === "not_applicable" || !isReviewable;
+  }
+  if (missingGate) {
+    const isNotApplicable = field?.dataset.fieldState === "not_applicable";
+    missingGate.classList.toggle("is-resolved", isNotApplicable);
+    if (missingGateSeverity) {
+      missingGateSeverity.className = `gate-severity ${
+        isNotApplicable ? "optional" : "required"
+      }`;
+      missingGateSeverity.textContent = isNotApplicable ? "已处理" : "必填";
+    }
+    if (missingGateDetail) {
+      missingGateDetail.textContent = isNotApplicable
+        ? `已声明不适用：${notApplicableReason}`
+        : "可补全候选，也可以标记“不适用”并填写理由。";
+    }
+    if (missingGateAction) {
+      missingGateAction.hidden = isNotApplicable;
+      missingGateAction.disabled = isNotApplicable || !isReviewable;
+    }
+  }
+
+  if (settingGate) {
+    settingGate.className = requiredMissing ? "is-warning" : "is-complete";
+    settingGate.querySelector("small").textContent = requiredMissing
+      ? "1 个必填项待处理"
+      : "必填项已完整或已声明不适用";
+  }
+  if (conflictGate) {
+    conflictGate.className = unresolvedP0 ? "is-danger" : "is-complete";
+    conflictGate.querySelector("small").textContent = unresolvedP0
+      ? "1 条未处理"
+      : "必须解决的冲突已处理";
+  }
+  if (missingBadge) {
+    missingBadge.hidden = !requiredMissing;
+  }
+
+  confirmButton.disabled = true;
+  confirmButton.querySelector("span").textContent = "确认蓝图";
+  gateBadge.className = "badge gold-badge";
+  gateBadge.textContent = "待处理";
+  reason.classList.remove("is-ready");
+
+  if (isConfirmed) {
+    confirmButton.querySelector("span").textContent = "蓝图已确认";
+    gateBadge.className = "badge jade-badge";
+    gateBadge.textContent = "已确认";
+    reason.textContent = "故事蓝图已于 2026-11-28 14:26 确认并锁定。";
+    reason.classList.add("is-ready");
+    return;
+  }
+
+  if (isCancelled) {
+    confirmButton.querySelector("span").textContent = "生成已取消";
+    gateBadge.className = "badge";
+    gateBadge.textContent = "已取消";
+    reason.textContent = "取消状态不能确认；可以继续查看已完成候选。";
+    return;
+  }
+
+  if (!isReviewable) {
+    confirmButton.querySelector("span").textContent = "候选尚未就绪";
+    gateBadge.className = "badge";
+    gateBadge.textContent = "不可确认";
+    reason.textContent = {
+      running: "生成完成后才能确认蓝图。",
+      waiting_model_config: "配置可用模型后才能继续生成并确认。",
+      budget_paused: "提高预算并继续生成后，才能确认蓝图。",
+      failed: "从检查点重试并完成校验后，才能确认蓝图。",
+    }[status] || "当前状态不能确认蓝图。";
+    return;
+  }
+
+  if (unresolvedP0 && requiredMissing) {
+    reason.textContent =
+      "先处理 1 项必须解决冲突，再补全 1 个必填项或标记不适用并填写理由。";
+    return;
+  }
+
+  if (unresolvedP0) {
+    confirmButton.disabled = true;
+    gateBadge.className = "badge alert-badge";
+    gateBadge.textContent = "有冲突";
+    reason.textContent = "先处理 1 项必须解决冲突。";
+    return;
+  }
+
+  if (requiredMissing) {
+    confirmButton.disabled = true;
+    gateBadge.className = "badge gold-badge";
+    gateBadge.textContent = "缺少必填项";
+    reason.textContent = "先补全 1 个必填项，或标记不适用并填写理由。";
+    return;
+  }
+
+  confirmButton.disabled = false;
+  gateBadge.className = "badge jade-badge";
+  gateBadge.textContent = "可以确认";
+  reason.textContent = "必填项和必须解决的冲突都已处理，可以确认蓝图。";
+  reason.classList.add("is-ready");
+}
+
+function setBlueprintBadge(node, text, tone = "jade-badge") {
+  if (!node) return;
+  node.className = `badge ${tone}`;
+  node.textContent = text;
+}
+
+function resetBlueprintReviewEvidence(root) {
+  const field = root.querySelector("#blueprint-required-field");
+  const editor = root.querySelector("#blueprint-na-editor");
+  const reason = root.querySelector("#blueprint-na-reason");
+  const evidence = root.querySelector("#blueprint-na-evidence");
+  const markButton = root.querySelector("#blueprint-mark-na-button");
+  if (field) {
+    field.dataset.fieldState = "missing";
+    delete field.dataset.notApplicableReason;
+  }
+  if (editor) editor.hidden = true;
+  if (reason) {
+    reason.value = "";
+    reason.setAttribute("aria-invalid", "false");
+  }
+  if (evidence) {
+    evidence.hidden = true;
+    evidence.textContent = "";
+  }
+  if (markButton) markButton.hidden = false;
+
+  const p0 = root.querySelector('.blueprint-conflict[data-severity="P0"]');
+  if (p0) {
+    p0.dataset.conflictState = "unresolved";
+    p0.classList.add("is-unresolved");
+    const action = p0.querySelector('[data-action="blueprint-resolve-conflict"]');
+    if (action) {
+      action.disabled = false;
+      action.textContent = "标记已解决";
+    }
+    const detail = p0.querySelector("small");
+    if (detail) {
+      detail.textContent =
+        "同一夜沈砚既在忘川渡，又在太玄门山门。需保留一条路线。";
+    }
+  }
+}
+
+function settleBlueprintReviewEvidence(root, reasonText) {
+  const field = root.querySelector("#blueprint-required-field");
+  const markButton = root.querySelector("#blueprint-mark-na-button");
+  const editor = root.querySelector("#blueprint-na-editor");
+  const evidence = root.querySelector("#blueprint-na-evidence");
+  const resolvedReason =
+    reasonText ||
+    field?.dataset.notApplicableReason ||
+    "前 12 章以人物关系和追索为主，不引入可追踪物品。";
+  if (field) {
+    field.dataset.fieldState = "not_applicable";
+    field.dataset.notApplicableReason = resolvedReason;
+  }
+  if (markButton) markButton.hidden = true;
+  if (editor) editor.hidden = true;
+  if (evidence) {
+    evidence.hidden = false;
+    evidence.textContent = `不适用理由：${resolvedReason}`;
+  }
+
+  const p0 = root.querySelector('.blueprint-conflict[data-severity="P0"]');
+  if (p0) {
+    p0.dataset.conflictState = "resolved";
+    p0.classList.remove("is-unresolved");
+    const action = p0.querySelector('[data-action="blueprint-resolve-conflict"]');
+    if (action) {
+      action.disabled = true;
+      action.textContent = "已解决";
+    }
+    const detail = p0.querySelector("small");
+    if (detail) {
+      detail.textContent =
+        "已选择保留“忘川渡”路线，第 7 章后续章纲已同步调整。";
+    }
+  }
+}
+
+function syncBlueprintCandidateVisibility(root, content) {
+  root.querySelectorAll(".story-bible-card").forEach((card, index) => {
+    card.hidden = index >= content.storyCards;
+    card
+      .querySelector(".story-bible-card-head")
+      ?.setAttribute("aria-pressed", String(card.classList.contains("active")));
+  });
+  root
+    .querySelectorAll(".blueprint-setting-card")
+    .forEach((card, index) => {
+      card.hidden = index >= content.settingCards;
+    });
+
+  const volumeTabs = [...root.querySelectorAll("[data-blueprint-volume]")];
+  volumeTabs.forEach((tab, index) => {
+    tab.hidden = index >= content.volumeTabs;
+  });
+  const outlineBoard = root.querySelector(".blueprint-outline-board");
+  if (outlineBoard) outlineBoard.hidden = content.volumeTabs === 0;
+  const activeTab = volumeTabs.find((tab) => tab.classList.contains("active"));
+  if (activeTab?.hidden) {
+    const firstVisible = volumeTabs.find((tab) => !tab.hidden);
+    if (firstVisible) selectBlueprintVolume(firstVisible);
+  }
+}
+
+function blueprintEditFields(section) {
+  const selectors = {
+    story: ".story-bible-card p",
+    settings: [
+      ".blueprint-setting-card strong",
+      ".blueprint-setting-card p",
+      ".blueprint-setting-evidence p",
+      ".blueprint-setting-evidence li",
+    ],
+    outline: [
+      "#blueprint-volume-title",
+      "#blueprint-volume-summary",
+      ".blueprint-table-row span",
+      ".blueprint-table-row small",
+      ".blueprint-scene-card dd",
+    ],
+  };
+  const selector = selectors[section];
+  return selector
+    ? [...document.querySelectorAll(Array.isArray(selector) ? selector.join(",") : selector)]
+    : [];
+}
+
+function setBlueprintEditing(section, active, options = {}) {
+  const button = document.querySelector(
+    `[data-blueprint-edit-section="${section}"]`
+  );
+  if (!button) return;
+  if (section === "outline" && !active && options.persistDraft) {
+    const currentVolume = Number(
+      document.querySelector("[data-blueprint-volume].active")?.dataset
+        .blueprintVolume || 1
+    );
+    captureBlueprintVolumeDraft(currentVolume);
+  }
+  const sectionLabels = {
+    story: "故事圣经编辑项",
+    settings: "核心设定编辑项",
+    outline: "大纲候选编辑项",
+  };
+  blueprintEditFields(section).forEach((field, index) => {
+    field.contentEditable = active ? "true" : "false";
+    field.classList.toggle("is-editing", active);
+    if (active) {
+      field.setAttribute("role", "textbox");
+      field.setAttribute("aria-label", `${sectionLabels[section]} ${index + 1}`);
+      field.setAttribute("aria-multiline", "true");
+    } else {
+      field.removeAttribute("role");
+      field.removeAttribute("aria-label");
+      field.removeAttribute("aria-multiline");
+    }
+  });
+  button.dataset.editing = String(active);
+  button.setAttribute("aria-pressed", String(active));
+  const labels = {
+    story: ["编辑九卡", "完成九卡编辑"],
+    settings: ["编辑设定", "完成设定编辑"],
+    outline: ["编辑章纲", "完成章纲编辑"],
+  };
+  button.textContent = labels[section][active ? 1 : 0];
+}
+
+function toggleBlueprintEdit(button) {
+  const root = document.querySelector('.page[data-page="blueprint"]');
+  if (
+    !root ||
+    !["waiting_review", "conflict"].includes(root.dataset.blueprintStatus)
+  ) {
+    return;
+  }
+  const section = button.dataset.blueprintEditSection;
+  const active = button.dataset.editing !== "true";
+  setBlueprintEditing(section, active, { persistDraft: !active });
+  showToast(active ? "已进入候选编辑，修改只保存在本页" : "候选编辑已完成");
+}
+
+function syncBlueprintControlState(root, scenario) {
+  const editable = scenario === "waiting_review" || scenario === "conflict";
+  root
+    .querySelectorAll(
+      '#blueprint-mark-na-button, [data-action="blueprint-focus-missing"]'
+    )
+    .forEach((control) => {
+      control.disabled = !editable;
+    });
+  root
+    .querySelectorAll(
+      '#blueprint-na-editor textarea, [data-action="blueprint-confirm-na"], [data-action="blueprint-cancel-na"]'
+    )
+    .forEach((control) => {
+      control.disabled = !editable;
+    });
+  root
+    .querySelectorAll('[data-action="blueprint-resolve-conflict"]')
+    .forEach((control) => {
+      const conflict = control.closest(".blueprint-conflict");
+      control.disabled =
+        !editable || conflict?.dataset.conflictState === "resolved";
+    });
+  root
+    .querySelectorAll('[data-action="blueprint-toggle-edit"]')
+    .forEach((control) => {
+      control.disabled = !editable;
+      if (!editable && control.dataset.editing === "true") {
+        setBlueprintEditing(control.dataset.blueprintEditSection, false);
+      }
+    });
+}
+
+function setBlueprintScenario(status, options = {}) {
+  const root = document.querySelector('.page[data-page="blueprint"]');
+  if (!root) return;
+  const scenario = blueprintScenarioData[status]
+    ? status
+    : "waiting_review";
+  const data = {
+    ...blueprintScenarioData[scenario],
+    ...(options.data || {}),
+  };
+  const content = options.content || data.content;
+  blueprintCurrentContent = content;
+  blueprintVolumeDrafts.clear();
+  if (scenario !== "confirmed") {
+    hideBlueprintCompletionOverview();
+  }
+  root.dataset.blueprintStatus = scenario;
+  root.querySelectorAll("[data-blueprint-status-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.blueprintStatusPanel !== scenario;
+  });
+  root.querySelectorAll("[data-blueprint-scenario]").forEach((button) => {
+    const active = button.dataset.blueprintScenario === scenario;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+
+  const badge = root.querySelector("#blueprint-status-badge");
+  if (badge) {
+    badge.className = `badge ${data.badgeClass}`;
+    badge.textContent = data.badge;
+  }
+
+  const textFields = {
+    "blueprint-progress-value": `${data.progress}%`,
+    "blueprint-progress-note": data.progressNote,
+    "blueprint-token-value": data.tokens,
+    "blueprint-token-limit": data.tokenLimit,
+    "blueprint-cost-value": data.cost,
+    "blueprint-cost-note": data.costNote,
+    "blueprint-checkpoint-value": data.checkpoint,
+    "blueprint-checkpoint-note": data.checkpointNote,
+  };
+  for (const [id, value] of Object.entries(textFields)) {
+    const node = root.querySelector(`#${id}`);
+    if (node) node.textContent = value;
+  }
+  const progressBar = root.querySelector("#blueprint-progress-bar");
+  if (progressBar) progressBar.style.width = `${data.progress}%`;
+  const tokenBar = root.querySelector("#blueprint-token-bar");
+  if (tokenBar) tokenBar.style.width = `${data.tokenPercent}%`;
+  const costBar = root.querySelector("#blueprint-cost-bar");
+  if (costBar) costBar.style.width = `${data.costPercent}%`;
+
+  const workspace = root.querySelector(".blueprint-review-layout");
+  if (workspace) workspace.hidden = !content.showWorkspace;
+  const reviewGates = root.querySelector("#blueprint-review-gates");
+  if (reviewGates) reviewGates.hidden = !content.reviewGates;
+  syncBlueprintCandidateVisibility(root, content);
+  const activeVolume = root.querySelector(
+    '[data-blueprint-volume].active:not([hidden])'
+  );
+  if (activeVolume) selectBlueprintVolume(activeVolume);
+  const reviewJump = root.querySelector("#blueprint-review-jump");
+  if (reviewJump) reviewJump.hidden = !content.reviewGates;
+  const cancelledCandidates = root.querySelector(
+    "#blueprint-cancelled-candidates-button"
+  );
+  if (cancelledCandidates) {
+    cancelledCandidates.hidden = !content.showWorkspace;
+  }
+  const runningStage = root.querySelector("#blueprint-running-stage");
+  if (runningStage && scenario === "running") {
+    runningStage.textContent = `当前阶段：${data.checkpoint}。关闭页面不会中断任务，完成后会在站内通知。`;
+  }
+  if (scenario === "cancelled") {
+    const cancelledTitle = root.querySelector("#blueprint-cancelled-title");
+    const cancelledCopy = root.querySelector("#blueprint-cancelled-copy");
+    if (cancelledTitle) {
+      cancelledTitle.textContent = "候选和检查点仍然保留";
+    }
+    if (cancelledCopy) {
+      cancelledCopy.textContent =
+        "可以继续查看已完成部分。取消后不会直接继续生成。";
+    }
+  }
+
+  setBlueprintBadge(
+    root.querySelector("#blueprint-story-bible-badge"),
+    content.storyBible,
+    content.storyBible.startsWith("9 / 9") ? "jade-badge" : "gold-badge"
+  );
+  setBlueprintBadge(
+    root.querySelector("#blueprint-settings-badge"),
+    content.settings,
+    content.settings.includes("完整") || content.settings.includes("锁定")
+      ? "jade-badge"
+      : "gold-badge"
+  );
+  root.querySelectorAll("[data-blueprint-outline-meta]").forEach((node, index) => {
+    node.textContent = content.outline[index] || "";
+  });
+  ["story", "settings", "outline"].forEach((name, index) => {
+    const node = root.querySelector(`#blueprint-${name}-cost`);
+    if (node) node.textContent = content.costs[index];
+  });
+  const totalCost = root.querySelector("#blueprint-total-cost");
+  if (totalCost) totalCost.textContent = content.totalCost;
+  setBlueprintBadge(
+    root.querySelector("#blueprint-cost-badge"),
+    content.costBadge,
+    content.costBadge.includes("取消") || content.costBadge.includes("停止")
+      ? ""
+      : content.costBadge.includes("暂停") || content.costBadge.includes("停止")
+        ? "gold-badge"
+        : "jade-badge"
+  );
+
+  if (
+    (scenario === "waiting_review" || scenario === "conflict") &&
+    !options.preserveEvidence
+  ) {
+    resetBlueprintReviewEvidence(root);
+  } else if (scenario === "confirmed") {
+    settleBlueprintReviewEvidence(root);
+    showBlueprintCompletionOverview();
+  }
+
+  syncBlueprintControlState(root, scenario);
+
+  if (!options.silent) {
+    showToast(`已切换到：${data.badge}`);
+  }
+  initIcons();
+  updateBlueprintGate();
+  syncBlueprintControlState(root, scenario);
+}
+
+function resolveBlueprintConflict(button) {
+  const conflict = button.closest(".blueprint-conflict");
+  if (!conflict) return;
+  conflict.dataset.conflictState = "resolved";
+  conflict.classList.remove("is-unresolved");
+  button.disabled = true;
+  button.textContent = "已解决";
+  const detail = conflict.querySelector("small");
+  if (detail) {
+    detail.textContent =
+      "已选择保留“忘川渡”路线，第 7 章后续章纲会同步调整。";
+  }
+  const root = document.querySelector('.page[data-page="blueprint"]');
+  if (root?.dataset.blueprintStatus === "conflict") {
+    setBlueprintScenario("waiting_review", {
+      silent: true,
+      preserveEvidence: true,
+    });
+  }
+  updateBlueprintGate();
+  showToast("时间线冲突已标记解决，确认门禁已更新");
+}
+
+function openBlueprintNotApplicable() {
+  const root = document.querySelector('.page[data-page="blueprint"]');
+  if (
+    !root ||
+    !["waiting_review", "conflict"].includes(root.dataset.blueprintStatus)
+  ) {
+    return;
+  }
+  const editor = document.querySelector("#blueprint-na-editor");
+  const button = document.querySelector("#blueprint-mark-na-button");
+  if (!editor || !button) return;
+  editor.hidden = false;
+  button.hidden = true;
+  const reason = document.querySelector("#blueprint-na-reason");
+  if (reason) {
+    reason.setAttribute("aria-invalid", "false");
+    window.setTimeout(() => reason.focus(), 30);
+  }
+}
+
+function closeBlueprintNotApplicable() {
+  const editor = document.querySelector("#blueprint-na-editor");
+  const button = document.querySelector("#blueprint-mark-na-button");
+  const reason = document.querySelector("#blueprint-na-reason");
+  if (editor) editor.hidden = true;
+  if (button) button.hidden = false;
+  if (reason) {
+    reason.value = "";
+    reason.setAttribute("aria-invalid", "false");
+  }
+}
+
+function confirmBlueprintNotApplicable() {
+  const root = document.querySelector('.page[data-page="blueprint"]');
+  if (
+    !root ||
+    !["waiting_review", "conflict"].includes(root.dataset.blueprintStatus)
+  ) {
+    return;
+  }
+  const field = document.querySelector("#blueprint-required-field");
+  const editor = document.querySelector("#blueprint-na-editor");
+  const reason = document.querySelector("#blueprint-na-reason");
+  if (!field || !editor || !reason) return;
+  if (reason.value.trim().length < 4) {
+    reason.setAttribute("aria-invalid", "true");
+    reason.focus();
+    showToast("请填写不适用理由");
+    return;
+  }
+  const reasonText = reason.value.trim();
+  field.dataset.fieldState = "not_applicable";
+  field.dataset.notApplicableReason = reasonText;
+  editor.hidden = true;
+  reason.setAttribute("aria-invalid", "false");
+  const evidence = document.querySelector("#blueprint-na-evidence");
+  if (evidence) {
+    evidence.hidden = false;
+    evidence.textContent = `不适用理由：${reasonText}`;
+  }
+  updateBlueprintGate();
+  showToast("已记录“不适用”和理由，确认门禁已更新");
+}
+
+function focusBlueprintMissingField() {
+  const field = document.querySelector("#blueprint-required-field");
+  field?.scrollIntoView({ behavior: "smooth", block: "center" });
+  openBlueprintNotApplicable();
+}
+
+function captureBlueprintVolumeDraft(volume) {
+  const title = document.querySelector("#blueprint-volume-title");
+  const summary = document.querySelector("#blueprint-volume-summary");
+  const acts = document.querySelector("#blueprint-act-strip");
+  const chapters = document.querySelector("#blueprint-volume-chapters");
+  const scenes = document.querySelector("#blueprint-scene-strip");
+  if (!title || !summary || !acts || !chapters || !scenes) return;
+  const chaptersClone = chapters.cloneNode(true);
+  const scenesClone = scenes.cloneNode(true);
+  [chaptersClone, scenesClone].forEach((fragment) => {
+    fragment.querySelectorAll('[contenteditable="true"]').forEach((field) => {
+      field.removeAttribute("contenteditable");
+      field.removeAttribute("role");
+      field.removeAttribute("aria-label");
+      field.removeAttribute("aria-multiline");
+      field.classList.remove("is-editing");
+    });
+  });
+  blueprintVolumeDrafts.set(volume, {
+    title: title.textContent,
+    summary: summary.textContent,
+    acts: acts.innerHTML,
+    chapters: chaptersClone.innerHTML,
+    scenes: scenesClone.innerHTML,
+  });
+}
+
+function applyBlueprintVolumeDraft(volume) {
+  const draft = blueprintVolumeDrafts.get(volume);
+  if (!draft) return false;
+  const title = document.querySelector("#blueprint-volume-title");
+  const summary = document.querySelector("#blueprint-volume-summary");
+  const acts = document.querySelector("#blueprint-act-strip");
+  const chapters = document.querySelector("#blueprint-volume-chapters");
+  const scenes = document.querySelector("#blueprint-scene-strip");
+  if (title) title.textContent = draft.title;
+  if (summary) summary.textContent = draft.summary;
+  if (acts) acts.innerHTML = draft.acts;
+  if (chapters) chapters.innerHTML = draft.chapters;
+  if (scenes) scenes.innerHTML = draft.scenes;
+  return true;
+}
+
+function selectBlueprintVolume(button) {
+  const volume = Number(button.dataset.blueprintVolume || 1);
+  const data = blueprintVolumeData[volume];
+  if (!data) return;
+  const previousVolume = Number(
+    document.querySelector("[data-blueprint-volume].active")?.dataset
+      .blueprintVolume || 1
+  );
+  const outlineEditing =
+    document.querySelector('[data-blueprint-edit-section="outline"]')?.dataset
+      .editing === "true";
+  if (previousVolume !== volume && outlineEditing) {
+    captureBlueprintVolumeDraft(previousVolume);
+  }
+  document.querySelectorAll("[data-blueprint-volume]").forEach((item) => {
+    const active = item === button;
+    item.classList.toggle("active", active);
+    item.setAttribute("aria-selected", String(active));
+    item.tabIndex = active ? 0 : -1;
+  });
+  const kicker = document.querySelector("#blueprint-volume-kicker");
+  const title = document.querySelector("#blueprint-volume-title");
+  const summary = document.querySelector("#blueprint-volume-summary");
+  const panel = document.querySelector("#blueprint-volume-detail");
+  if (kicker) kicker.textContent = data.kicker;
+  if (title) title.textContent = data.title;
+  if (summary) summary.textContent = data.summary;
+  if (panel) panel.setAttribute("aria-labelledby", button.id);
+  const actStrip = document.querySelector("#blueprint-act-strip");
+  if (actStrip) {
+    actStrip.innerHTML = data.acts
+      .map(
+        (act, index) =>
+          `<span><strong>第 ${index + 1} 幕</strong>${act}</span>`
+      )
+      .join("");
+  }
+
+  const volumeLocation = {
+    1: "忘川村 / 太玄门外",
+    2: "东境七州 / 风雷渡",
+    3: "天门台 / 东境上空",
+  }[volume];
+  const chapterHost = document.querySelector("#blueprint-volume-chapters");
+  if (chapterHost) {
+    const completed = blueprintCurrentContent?.chapterCounts?.[volume] ?? 0;
+    chapterHost.innerHTML = data.chapterTitles
+      .map(
+        (chapterTitle, index) => {
+          const chapterNumber = data.startChapter + index;
+          const generated = index < completed;
+          return `<div class="blueprint-table-row">
+            <strong>第 ${chapterNumber} 章</strong>
+            <span>${generated ? chapterTitle : "待生成"}</span>
+            <small>${
+              generated
+                ? `目标：推进「${chapterTitle}」 · POV：${index % 2 === 0 ? "沈砚" : "顾青"} · 地点：${volumeLocation} · 节拍：触发→选择→代价 · 必用事实：记忆代价不可撤回`
+                : "生成将在当前检查点之后继续"
+            }</small>
+            <em>${generated ? "已规划" : "等待生成"}</em>
+          </div>`;
+        }
+      )
+      .join("");
+  }
+  const sceneHost = document.querySelector("#blueprint-scene-strip");
+  if (sceneHost) {
+    const completed = blueprintCurrentContent?.chapterCounts?.[volume] ?? 0;
+    sceneHost.innerHTML =
+      completed > 0
+        ? data.chapterTitles
+            .slice(0, completed)
+            .flatMap((sceneTitle, index) => {
+              const chapterNumber = data.startChapter + index;
+              return [
+                {
+                  label: `场景 ${chapterNumber}-1`,
+                  title: `${sceneTitle} · 起势`,
+                  pov: index % 2 === 0 ? "沈砚" : "顾青",
+                  time: `第 ${chapterNumber} 日 · 夜`,
+                  beats: "触发冲突 → 暴露线索 → 迫使角色做选择",
+                  reveal: "读者获知线索来源；沈砚只看到表面结果",
+                },
+                {
+                  label: `场景 ${chapterNumber}-2`,
+                  title: `${sceneTitle} · 转折`,
+                  pov: index % 2 === 0 ? "顾青" : "沈砚",
+                  time: `第 ${chapterNumber} 日 · 深夜`,
+                  beats: "误判方向 → 代价显现 → 留下章末钩子",
+                  reveal: "顾青察觉一角真相；沈砚仍未确认记忆缺口",
+                },
+              ];
+            })
+            .map(
+              (scene) => `<article class="blueprint-scene-card">
+                <div class="blueprint-scene-card-head">
+                  <span>${scene.label}</span>
+                  <strong>${scene.title}</strong>
+                </div>
+                <dl>
+                  <div><dt>POV</dt><dd>${scene.pov}</dd></div>
+                  <div><dt>地点</dt><dd>${volumeLocation}</dd></div>
+                  <div><dt>故事时间</dt><dd>${scene.time}</dd></div>
+                  <div><dt>有序节拍</dt><dd>${scene.beats}</dd></div>
+                  <div><dt>信息释放</dt><dd>${scene.reveal}</dd></div>
+                </dl>
+              </article>`
+            )
+            .join("")
+        : '<article class="blueprint-scene-card is-empty"><span>场景待生成</span><strong>尚无场景候选</strong><small>完成当前大纲阶段后显示每章两张场景卡。</small></article>';
+  }
+  applyBlueprintVolumeDraft(volume);
+  const outlineEdit = document.querySelector(
+    '[data-blueprint-edit-section="outline"]'
+  );
+  if (outlineEdit?.dataset.editing === "true") {
+    setBlueprintEditing("outline", true);
+  }
+}
+
+function selectBlueprintCard(button) {
+  const card = button.closest(".story-bible-card");
+  if (!card) return;
+  document.querySelectorAll(".story-bible-card").forEach((item) => {
+    const active = item === card;
+    item.classList.toggle("active", active);
+    item.querySelector(".story-bible-card-head")?.setAttribute(
+      "aria-pressed",
+      String(active)
+    );
+  });
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function resumeBlueprintFromCheckpoint(sourceStatus, dataOverrides = {}) {
+  const sourceData =
+    blueprintScenarioData[sourceStatus] || blueprintScenarioData.failed;
+  setBlueprintScenario("running", {
+    silent: true,
+    content: {
+      ...(blueprintScenarioData[sourceStatus]?.content ||
+        blueprintScenarioData.running.content),
+      costBadge: "预算内继续生成",
+    },
+    data: {
+      ...sourceData,
+      badge: "继续生成",
+      badgeClass: "blue-badge",
+      ...dataOverrides,
+    },
+  });
+}
+
+function cancelledBlueprintContent(sourceStatus) {
+  const source =
+    blueprintScenarioData[sourceStatus]?.content ||
+    blueprintScenarioData.running.content;
+  return {
+    ...source,
+    storyBible: source.storyBible
+      .replace("已生成", "已保留")
+      .replace("生成中", "已保留"),
+    settings: source.settings
+      .replace("已生成", "已保留")
+      .replace("生成中", "已保留"),
+    outline: source.outline.map((item) =>
+      item.replace("生成中", "已暂停").replace("待校验", "未完成")
+    ),
+    costBadge: "已取消 · 不再计费",
+  };
+}
+
+function resumeBlueprintBudget() {
+  const budget = document.querySelector("#blueprint-budget-input");
+  const tokenBudget = document.querySelector("#blueprint-token-budget-input");
+  const error = document.querySelector("#blueprint-budget-error");
+  if (!budget || !tokenBudget) return;
+  const value = Number(budget.value);
+  const tokenValue = Number(tokenBudget.value);
+  const costValid = value > 2.42 && value <= 10;
+  const tokenValid = tokenValue > 68420 && tokenValue <= 600000;
+  budget.setAttribute("aria-invalid", String(!costValid));
+  tokenBudget.setAttribute("aria-invalid", String(!tokenValid));
+  if (error) error.hidden = costValid && tokenValid;
+  if (!costValid || !tokenValid) {
+    (!tokenValid ? tokenBudget : budget).focus();
+    showToast(
+      "请同时设置有效的 Token 上限和费用上限"
+    );
+    return;
+  }
+  resumeBlueprintFromCheckpoint("budget_paused", {
+    progress: 72,
+    progressNote: "5 / 6 个阶段继续中",
+    tokenLimit: tokenValue.toLocaleString("en-US"),
+    tokenPercent: Math.min(100, Math.round((68420 / tokenValue) * 100)),
+    cost: `¥2.42 / ¥${value.toFixed(2)}`,
+    costPercent: Math.min(100, Math.round((2.42 / value) * 100)),
+    costNote: `预算已提高至 ¥${value.toFixed(2)}`,
+    checkpoint: "初始大纲 · 第二卷",
+    checkpointNote: "已从预算暂停检查点继续",
+  });
+  showToast("预算已提高，生成将从初始大纲第二卷检查点继续");
+}
+
+function hideBlueprintCompletionOverview() {
+  const page = document.querySelector("#work-overview-page");
+  const banner = document.querySelector("#blueprint-completion-banner");
+  const badge = document.querySelector("#work-overview-status-badge");
+  const sub = document.querySelector("#work-overview-sub");
+  if (!page) return;
+  page.dataset.blueprintCompletion = "false";
+  if (banner) banner.hidden = true;
+  if (badge) {
+    badge.className = "badge live-badge";
+    badge.textContent = "连载中";
+  }
+  if (sub) {
+    sub.textContent =
+      "林见鹿 · 1000 万字 · 起点中文网 · 第 1 卷 / 共 30–40 卷（示例前 5 卷）";
+  }
+}
+
+function showBlueprintCompletionOverview() {
+  const page = document.querySelector("#work-overview-page");
+  const banner = document.querySelector("#blueprint-completion-banner");
+  const badge = document.querySelector("#work-overview-status-badge");
+  const sub = document.querySelector("#work-overview-sub");
+  if (!page || !banner) return;
+  page.dataset.blueprintCompletion = "true";
+  banner.hidden = false;
+  if (badge) {
+    badge.className = "badge jade-badge";
+    badge.textContent = "蓝图已完成";
+  }
+  if (sub) {
+    sub.textContent =
+      "故事圣经与核心设定已锁定 · 初始大纲 3 卷 / 36 章 / 72 场景 · 第一章尚未生成";
+  }
+  initIcons();
+}
+
+function confirmBlueprint() {
+  const root = document.querySelector('.page[data-page="blueprint"]');
+  if (
+    !root ||
+    !["waiting_review", "conflict"].includes(root.dataset.blueprintStatus)
+  ) {
+    return;
+  }
+  const button = document.querySelector("#blueprint-confirm-button");
+  if (!button || button.disabled) return;
+  setBlueprintScenario("confirmed");
+  showBlueprintCompletionOverview();
+  showToast("故事蓝图已确认，故事圣经和核心设定已锁定");
+  navigate("work-overview");
+}
+
+function initBlueprintReview() {
+  const volumeList = document.querySelector(".blueprint-volume-list");
+  if (!volumeList) return;
+  volumeList.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const tabs = [
+      ...volumeList.querySelectorAll(
+        "[data-blueprint-volume]:not([hidden]):not(:disabled)"
+      ),
+    ];
+    const currentIndex = tabs.indexOf(document.activeElement);
+    if (currentIndex < 0 || tabs.length === 0) return;
+    event.preventDefault();
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+    const next = tabs[nextIndex];
+    if (next.disabled) return;
+    next.focus();
+    selectBlueprintVolume(next);
+  });
 }
 
 const writtenThroughChapter = 47;
@@ -6632,6 +7903,117 @@ function handleAction(action, element) {
         document.body.classList.toggle("sidebar-collapsed");
       }
       break;
+    case "blueprint-scenario":
+      setBlueprintScenario(element.dataset.blueprintScenario);
+      break;
+    case "blueprint-scroll-review":
+      {
+        const target = document.querySelector("#blueprint-review-gates");
+        const fallback = document.querySelector(".blueprint-review-layout");
+        (target?.hidden ? fallback : target)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+      break;
+    case "blueprint-scroll-candidate":
+      document.querySelector(".blueprint-review-layout")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      break;
+    case "blueprint-resolve-conflict":
+      resolveBlueprintConflict(element);
+      break;
+    case "blueprint-mark-na":
+      openBlueprintNotApplicable();
+      break;
+    case "blueprint-cancel-na":
+      closeBlueprintNotApplicable();
+      break;
+    case "blueprint-confirm-na":
+      confirmBlueprintNotApplicable();
+      break;
+    case "blueprint-focus-missing":
+      focusBlueprintMissingField();
+      break;
+    case "blueprint-select-volume":
+      selectBlueprintVolume(element);
+      break;
+    case "blueprint-select-card":
+      selectBlueprintCard(element);
+      break;
+    case "blueprint-toggle-edit":
+      toggleBlueprintEdit(element);
+      break;
+    case "blueprint-resume-budget":
+      resumeBlueprintBudget();
+      break;
+    case "blueprint-retry":
+      resumeBlueprintFromCheckpoint(
+        document.querySelector('.page[data-page="blueprint"]')?.dataset
+          .blueprintStatus || "failed"
+      );
+      showToast("已从最近检查点重试，不会重复已完成阶段");
+      break;
+    case "blueprint-cancel":
+      {
+        const root = document.querySelector('.page[data-page="blueprint"]');
+        const source = root?.dataset.blueprintStatus || "running";
+        const sourceData =
+          blueprintScenarioData[source] || blueprintScenarioData.running;
+        setBlueprintScenario("cancelled", {
+          content: cancelledBlueprintContent(source),
+          data: {
+            ...blueprintScenarioData.cancelled,
+            badge: "已取消",
+            badgeClass: "",
+            progress: sourceData.progress,
+            progressNote: `${sourceData.progressNote} · 已停止`,
+            tokens: sourceData.tokens,
+            tokenPercent: sourceData.tokenPercent,
+            tokenLimit: sourceData.tokenLimit,
+            cost: sourceData.cost,
+            costPercent: sourceData.costPercent,
+            checkpoint:
+              source === "waiting_model_config"
+                ? "尚未开始"
+                : sourceData.checkpoint,
+            checkpointNote:
+              source === "waiting_model_config"
+                ? "没有候选或检查点"
+                : blueprintScenarioData.cancelled.checkpointNote,
+          },
+        });
+        const cancelledTitle = document.querySelector(
+          "#blueprint-cancelled-title"
+        );
+        const cancelledCopy = document.querySelector(
+          "#blueprint-cancelled-copy"
+        );
+        if (source === "waiting_model_config") {
+          if (cancelledTitle) cancelledTitle.textContent = "尚未开始生成";
+          if (cancelledCopy) {
+            cancelledCopy.textContent =
+              "没有产生候选或检查点，也不会继续调用模型。";
+          }
+        } else {
+          if (cancelledTitle) cancelledTitle.textContent = "候选和检查点仍然保留";
+          if (cancelledCopy) {
+            cancelledCopy.textContent =
+              "可以继续查看已完成部分。取消后不会直接继续生成。";
+          }
+        }
+        showToast(
+          source === "waiting_model_config"
+            ? "已取消等待，尚未生成候选或检查点"
+            : "已取消生成，候选和检查点仍然保留"
+        );
+      }
+      break;
+    case "blueprint-confirm":
+      confirmBlueprint();
+      break;
     case "open-export":
       openExport();
       break;
@@ -7638,10 +9020,12 @@ document.addEventListener("DOMContentLoaded", () => {
   initOutlineNode();
   initChangeRequest();
   initEditorInput();
+  initBlueprintReview();
   updateFactSubmitGate();
   bindCommentMarks();
   initIcons();
   setWizardStep(1);
+  setBlueprintScenario("waiting_review", { silent: true });
 
   const hash = window.location.hash.replace("#", "");
   const initialPage = validPages.has(hash) ? hash : "dashboard";

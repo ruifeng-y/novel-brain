@@ -3,10 +3,11 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const pages = [
+const allPages = [
   'auth',
   'dashboard',
   'new-project',
+  'blueprint',
   'work-overview',
   'bible',
   'settings',
@@ -23,6 +24,10 @@ const pages = [
   'legal',
   'states',
 ];
+const requestedPages = process.argv.slice(2);
+const pages = requestedPages.length
+  ? allPages.filter((pageName) => requestedPages.includes(pageName))
+  : allPages;
 
 const viewports = [
   { width: 390, height: 844 },
