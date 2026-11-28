@@ -254,20 +254,22 @@ Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和�
 
 #238 不改变已签收的生产布局或 Golden。作者既有 17 个生产页的四档 Golden 签收继续有效；UI-001..UI-009 的可复现证据和页面 action contract 登记在 `docs/implementation/m3-238-ui-capability-evidence.json`，release gate 动态要求当前 HEAD 的正常 PR Production CI、Deployment Smoke 与 Readiness 全部成功。后续任何页面结构、动作或 Golden 变化仍须按 ADR 0027 重新签收，不能沿用本次账本结论。
 
-## 2026-11-28 故事蓝图审阅页候选待签收
+## 2026-11-28 故事蓝图审阅页四档视觉签收
 
-签收状态：**未签收，不得代签**。
+签收状态：**已签收**。
 
-`#291` 已形成 `#blueprint` 故事蓝图审阅页原型候选，覆盖生成中、等待模型配置、预算暂停、失败、待确认、已确认、已取消和冲突，并包含空、部分、长内容、禁用与只读状态。原型公开 seam 为 `prototype/index.html#blueprint`，四档截图待作者逐项检查：
+签收人：ruifeng-y。作者已在任务会话中明确回复“确认签收”，确认 `#blueprint` 故事蓝图审阅页原型的 390 / 900 / 1180 / 1440 四档视觉方向与交互状态可作为后续生产 UI 基线。
 
-- `prototype/screens/v1-baseline/blueprint-390.png`
-- `prototype/screens/v1-baseline/blueprint-900.png`
-- `prototype/screens/v1-baseline/blueprint-1180.png`
-- `prototype/screens/v1-baseline/blueprint-1440.png`
+签收范围覆盖：生成中、等待模型配置、预算暂停、失败、待确认、已确认、已取消和冲突状态；空、加载、错误、部分、长内容、禁用与只读状态；状态/进度、Token/费用/预算、故事圣经九卡、核心设定、三幕 / 12 章 / 24 张场景卡、缺失项与三档冲突、确认禁用原因、必填项“不适用 + 理由”、候选编辑，以及确认后的“蓝图已完成 / 开始写第一章”过渡预览。
 
-作者签收至少需要逐项确认：状态与进度、Token/费用/预算、故事圣经九卡、核心设定、初始大纲（每卷三幕、12 章和 24 张场景卡）、缺失项、必须解决/建议处理/可选优化三档冲突、确认按钮禁用原因、必填项“不适用 + 理由”交互，以及确认后“蓝图已完成 / 开始写第一章”的过渡预览。
+四档证据与 SHA-256：
 
-在真实作者明确回复四档均通过前：#291 保持 OPEN，不能写完成记录；`#292` 保持阻塞，不能开始生产页面实现或合并。自动化 parity 通过不能替代本签收。
+- `prototype/screens/v1-baseline/blueprint-390.png`：`5949FDBAD3928CBA99686EB5147B56C801F30EF2E462EF149458A1103A2BA96A`
+- `prototype/screens/v1-baseline/blueprint-900.png`：`5223CF4AB43D6562539090323598BD67B791D434A5EA6F68659EE4F1BB153EFE`
+- `prototype/screens/v1-baseline/blueprint-1180.png`：`D1F6C3D2A6EAD04426E3B5290CA3C162F6B03D26DB8E885A92CA8BAACCA38294`
+- `prototype/screens/v1-baseline/blueprint-1440.png`：`A60096E5DEEAE3CBD6327A7E4223DAE8085DFAB0CAC9226628231450487E1DD3`
+
+该签收是 `#291` 的硬门禁证据。PR #299 合并并关闭 `#291` 后，`#292` 可开始生产页面实现；生产 Golden 仍需按 ADR 0027 单独生成和签收。
 
 ## 变更规则
 

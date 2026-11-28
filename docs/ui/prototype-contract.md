@@ -11,7 +11,7 @@
 | auth | `/login`、`/register`、`/forgot-password`、`/reset-password` | 登录、注册、验证码、找回 | loading/error/disabled/permission/rate-limit/session-expired | 无 | parity-verified；七个必需动作、持久化会话、四档 Golden、错误与权限状态和正常 PR Production CI 均已通过 |
 | dashboard | `/workspace` | 搜索、状态/题材/最近编辑/字数筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | parity-verified；7 个动作、完整 §5.8 筛选、主线指标、四档 Golden、作者视觉签收和最终正常 PR CI 均已通过 |
 | new-project | `/workspace/new-project` | 想法/空白/三题材模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long/conflict | 导入报告 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，三题材模板、导入双模式、冲突裁决、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
-| blueprint | `/workspace/[workId]/blueprint` | 审阅候选、调整预算、重试、取消、标记必填项不适用、处理冲突、确认蓝图 | running/waiting_model_config/budget_paused/failed/waiting_review/confirmed/cancelled/loading/empty/partial/long/conflict/disabled/readonly | 候选来源/缺失项/冲突证据/成本/检查点/确认门禁 | 原型候选待作者四档视觉签收；`#291` 未完成、`#292` production-pending，签收前禁止生产实现或合并 |
+| blueprint | `/workspace/[workId]/blueprint` | 审阅候选、调整预算、重试、取消、标记必填项不适用、处理冲突、确认蓝图 | running/waiting_model_config/budget_paused/failed/waiting_review/confirmed/cancelled/loading/empty/partial/long/conflict/disabled/readonly | 候选来源/缺失项/冲突证据/成本/检查点/确认门禁 | prototype-signed；作者已完成四档视觉签收，`#291` 随 PR #299 合并关闭后 `#292` 可进入 production-pending |
 | work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改、跨卷风格检查、卷末审计与签收 | loading/empty/error/partial/readonly/archived/long | 生成摘要/风格证据/卷审计证据 | parity-verified；7 个必需动作均通过真实 API 与持久化断言，正常态、长内容态、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | parity-verified；9 个必需动作均通过真实 API 与持久化断言，三题材、世界铁律、版本/锁定、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
 | settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线、题材包版本切换 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | parity-verified；10 个必需动作均通过真实 API 与持久化断言，七栏 CRUD、关系、地图、力量、时间线与题材包切换、四档 Golden、作者视觉签收和正常 PR CI 均已通过 |
@@ -103,6 +103,6 @@
 - Playwright：74 个测试通过，覆盖 19 页 × 4 档响应式、19 页专属状态文案、蓝图生命周期与确认门禁、设定导入、事实提交和全站内部术语扫描。
 - 视觉证据：Playwright Chromium 已生成 V1 基线 18 页 × 4 档共 72 张截图；post-V1 `blueprint` 候选另有 4 张，位于 `prototype/screens/v1-baseline/blueprint-{390,900,1180,1440}.png`，尚未获得作者签收。
 - V1 基线已签收：见 `docs/ui/v1-prototype-signoff.md`。
-- 2026-11-28：`#291` 的故事蓝图审阅页已形成四档原型候选，覆盖生成中、等待模型配置、预算暂停、失败、待确认、已确认、已取消和冲突；人工四档视觉签收仍未完成，`#292` 继续阻塞。
+- 2026-11-28：作者已签收 `#291` 故事蓝图审阅页的 390 / 900 / 1180 / 1440 四档原型，覆盖全部生命周期、异常、编辑与确认状态；PR #299 合并关闭 #291 后，#292 可开始生产 UI 实现。
 - 完整组件变体和真实后端数据属于实现阶段验证，不回退原型基线。
 - 2026-11-24：#238 已把 UI-001..UI-009 收口到 `docs/implementation/m3-238-ui-capability-evidence.json`；17 个生产页仍以本契约和 parity matrix 为事实源。
